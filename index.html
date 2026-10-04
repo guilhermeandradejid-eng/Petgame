@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<!-- page:start -->
+<title>Mochi Pet</title>
+<meta name="theme-color" content="#F5F1F7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap">
+<link rel="stylesheet" href="style.css">
+<!-- head:end -->
+</head>
+<body>
+<!-- body:start -->
+<div id="app" data-room="kitchen">
+  <header class="top">
+    <button class="profile" id="profileBtn" type="button" aria-label="Abrir perfil do bichinho">
+      <span class="lvl"><small>nv</small><b id="lvlNum">1</b></span>
+      <span class="who">
+        <span class="nm" id="petName">Mochi</span>
+        <span class="xp"><i id="xpFill"></i></span>
+      </span>
+    </button>
+    <div class="coins" id="coinPill" aria-label="Moedas"><span class="coin" aria-hidden="true"></span><b id="coinNum">60</b></div>
+    <button class="icon-btn" id="soundBtn" type="button" aria-label="Desligar som">
+      <svg class="snd-on" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>
+      <svg class="snd-off" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+    </button>
+  </header>
+
+  <div class="needs" id="needs">
+    <div class="need" data-stat="hunger" style="--c:#FF9A7A">
+      <span class="ring"><svg viewBox="0 0 48 48"><circle class="trk" cx="24" cy="24" r="20"/><circle class="val" cx="24" cy="24" r="20"/></svg>
+        <svg class="ico" viewBox="0 0 24 24"><path d="M12 7.2c-1-1.8-2.8-2.8-4.8-2.4C4.3 5.4 3.4 8.8 4.4 12c1.1 3.6 3.6 7.2 5.6 7.2.8 0 1.3-.4 2-.4s1.2.4 2 .4c2 0 4.5-3.6 5.6-7.2 1-3.2.1-6.6-2.8-7.2-2-.4-3.8.6-4.8 2.4z"/><path d="M12 7.2c0-1.8.8-3.2 2.6-4"/></svg></span>
+      <span class="lbl">Fome</span>
+    </div>
+    <div class="need" data-stat="energy" style="--c:#A98BFF">
+      <span class="ring"><svg viewBox="0 0 48 48"><circle class="trk" cx="24" cy="24" r="20"/><circle class="val" cx="24" cy="24" r="20"/></svg>
+        <svg class="ico" viewBox="0 0 24 24"><path d="M19.5 14.5A7.8 7.8 0 1 1 9.5 4.5a6.3 6.3 0 0 0 10 10z"/></svg></span>
+      <span class="lbl">Energia</span>
+    </div>
+    <div class="need" data-stat="fun" style="--c:#FF85BF">
+      <span class="ring"><svg viewBox="0 0 48 48"><circle class="trk" cx="24" cy="24" r="20"/><circle class="val" cx="24" cy="24" r="20"/></svg>
+        <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.3"/><path d="M8.6 13.4c1 1.6 2.1 2.3 3.4 2.3s2.4-.7 3.4-2.3"/><path d="M9.2 9.6v.4M14.8 9.6v.4"/></svg></span>
+      <span class="lbl">Diversão</span>
+    </div>
+    <div class="need" data-stat="clean" style="--c:#5EC4F0">
+      <span class="ring"><svg viewBox="0 0 48 48"><circle class="trk" cx="24" cy="24" r="20"/><circle class="val" cx="24" cy="24" r="20"/></svg>
+        <svg class="ico" viewBox="0 0 24 24"><path d="M12 3.8c3 3.9 5.9 6.9 5.9 10.3a5.9 5.9 0 0 1-11.8 0c0-3.4 2.9-6.4 5.9-10.3z"/></svg></span>
+      <span class="lbl">Higiene</span>
+    </div>
+  </div>
+
+  <main class="stage" id="stage">
+    <canvas id="scene" aria-label="Seu bichinho. Toque para cutucar, arraste para fazer carinho."></canvas>
+    <div class="room-chip" id="roomChip">Cozinha</div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </main>
+
+  <section class="dock">
+    <div class="tray" id="tray">
+      <div class="panel on" data-panel="kitchen">
+        <p class="hint">Arraste até a boquinha ou toque para dar</p>
+        <div class="food-row" id="foodRow"></div>
+      </div>
+
+      <div class="panel" data-panel="bath">
+        <p class="hint">Esfregue o sabonete, depois segure o chuveiro</p>
+        <div class="bath-row">
+          <button class="tool" id="soapBtn" type="button"><canvas data-item="sabao"></canvas><span>Sabonete</span></button>
+          <button class="tool" id="showerBtn" type="button"><canvas data-item="chuveiro"></canvas><span>Chuveiro</span></button>
+        </div>
+      </div>
+
+      <div class="panel" data-panel="bedroom">
+        <p class="hint" id="sleepHint">Apague a luz para recarregar a energia</p>
+        <button class="jbtn lamp" id="lampBtn" type="button">
+          <svg viewBox="0 0 24 24"><path d="M19.5 14.5A7.8 7.8 0 1 1 9.5 4.5a6.3 6.3 0 0 0 10 10z"/></svg>
+          <span id="lampLbl">Apagar a luz</span>
+        </button>
+      </div>
+
+      <div class="panel" data-panel="play">
+        <p class="hint">Jogue a bolinha ou ganhe moedas no minigame</p>
+        <div class="play-card">
+          <canvas data-item="estrela" class="pc-ico"></canvas>
+          <div class="pc-txt"><b>Chuva de Doces</b><span>Recorde: <i id="bestNum">0</i> moedas</span></div>
+          <button class="jbtn small" id="playBtn" type="button">Jogar</button>
+        </div>
+      </div>
+
+      <div class="panel" data-panel="closet">
+        <div class="seg" id="closetSeg" role="tablist">
+          <button type="button" role="tab" data-seg="species" class="on">Bichinho</button>
+          <button type="button" role="tab" data-seg="skin">Cor</button>
+          <button type="button" role="tab" data-seg="hat">Acessório</button>
+        </div>
+        <div class="closet-row" id="closetRow"></div>
+      </div>
+    </div>
+
+    <nav class="tabs" id="tabs" aria-label="Cômodos">
+      <span class="blob" id="tabBlob" aria-hidden="true"></span>
+      <button type="button" data-room="kitchen" class="on"><svg viewBox="0 0 24 24"><path d="M3.5 11h17a8.5 8.5 0 0 1-17 0z"/><path d="M9 7.5c0-1.5 1-2 1-3.5M13.5 7.5c0-1.5 1-2 1-3.5"/></svg><span>Cozinha</span></button>
+      <button type="button" data-room="bath"><svg viewBox="0 0 24 24"><circle cx="9" cy="14" r="5"/><circle cx="17" cy="7.5" r="3"/><circle cx="17.5" cy="16.5" r="1.8"/></svg><span>Banho</span></button>
+      <button type="button" data-room="bedroom"><svg viewBox="0 0 24 24"><path d="M19.5 14.5A7.8 7.8 0 1 1 9.5 4.5a6.3 6.3 0 0 0 10 10z"/></svg><span>Quarto</span></button>
+      <button type="button" data-room="play"><svg viewBox="0 0 24 24"><rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7.5 10.5v4M5.5 12.5h4"/><path d="M15.5 11.3v.2M17.6 13.6v.2"/></svg><span>Brincar</span></button>
+      <button type="button" data-room="closet"><svg viewBox="0 0 24 24"><path d="M12 8.6c0-1.6 2.1-1.8 2.1-3.3a2.1 2.1 0 1 0-4.2 0"/><path d="M12 8.6 3.8 15a1.5 1.5 0 0 0 .9 2.7h14.6a1.5 1.5 0 0 0 .9-2.7z"/></svg><span>Closet</span></button>
+    </nav>
+  </section>
+
+  <canvas id="ghost" aria-hidden="true"></canvas>
+
+  <div class="mg" id="mg" hidden>
+    <canvas id="mgCanvas" aria-label="Minigame Chuva de Doces"></canvas>
+    <div class="mg-hud">
+      <div class="mg-score"><span class="coin" aria-hidden="true"></span><b id="mgScore">0</b></div>
+      <div class="mg-lives" id="mgLives"></div>
+      <button class="icon-btn" id="mgClose" type="button" aria-label="Sair do minigame"><svg viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
+    </div>
+    <div class="mg-screen" id="mgStart">
+      <div class="mg-card">
+        <h2>Chuva de Doces</h2>
+        <p>Arraste o dedo para mover. Pegue balas, morangos e estrelas. Fuja das nuvens de chuva!</p>
+        <ul class="mg-legend">
+          <li><canvas data-item="bala"></canvas>+1</li>
+          <li><canvas data-item="morango"></canvas>+2</li>
+          <li><canvas data-item="estrela"></canvas>+5</li>
+          <li><canvas data-item="nuvem"></canvas>−1 vida</li>
+        </ul>
+        <button class="jbtn" id="mgGo" type="button">Começar</button>
+      </div>
+    </div>
+    <div class="mg-screen" id="mgOver" hidden>
+      <div class="mg-card">
+        <h2 id="mgOverTitle">Fim de jogo</h2>
+        <p class="big"><span class="coin" aria-hidden="true"></span><b id="mgEarn">0</b> moedas</p>
+        <p id="mgBestLine">Recorde: 0</p>
+        <div class="mg-actions">
+          <button class="jbtn ghost" id="mgExit" type="button">Voltar</button>
+          <button class="jbtn" id="mgAgain" type="button">Jogar de novo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet-wrap" id="sheet" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+      <div class="sheet-head">
+        <h2 id="sheetTitle">Perfil</h2>
+        <button class="icon-btn" id="sheetClose" type="button" aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
+      </div>
+      <label class="field" for="nameInput"><span>Nome do bichinho</span>
+        <input id="nameInput" type="text" maxlength="12" autocomplete="off" spellcheck="false">
+      </label>
+      <dl class="facts" id="facts"></dl>
+      <button class="jbtn ghost danger" id="resetBtn" type="button">Recomeçar do zero</button>
+    </div>
+  </div>
+</div>
+<script src="game.js"></script>
+<!-- body:end -->
+</body>
+</html>
