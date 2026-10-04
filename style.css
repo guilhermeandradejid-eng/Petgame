@@ -170,7 +170,9 @@ svg { fill: none; stroke: currentColor; stroke-width: 2.1; stroke-linecap: round
 
 /* ---------- stage ---------- */
 .stage { position: relative; flex: 1 1 auto; min-height: 0; }
-#scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+#bg, #scene, .gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#scene { touch-action: none; }
+.gl { pointer-events: none; animation: fadein .4s ease; }
 .room-chip {
   position: absolute; left: 16px; top: 8px;
   font-family: var(--font-display); font-weight: 600; font-size: 13px;

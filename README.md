@@ -15,7 +15,7 @@ As necessidades (fome, energia, diversão, higiene) caem com o tempo, e o progre
 
 ## Rodando
 
-Abra `index.html` no navegador, ou sirva a pasta:
+Sirva a pasta com qualquer servidor estático (o renderizador 3D usa módulos ES, que não carregam via `file://`; nesse caso o jogo cai para a versão 2D):
 
 ```sh
 npx http-server .
@@ -27,4 +27,8 @@ No celular, acesse o endereço da sua máquina na rede local (ou publique no Git
 
 - `index.html`: estrutura da interface
 - `style.css`: visual da interface
-- `game.js`: renderização em Canvas 2D (material "jelly"), física de molas para squash & stretch, cômodos, minigame e sons sintetizados com Web Audio
+- `game.js`: lógica do jogo, física de molas para squash & stretch, cômodos, minigame, sons sintetizados com Web Audio e renderização 2D (cenário, partículas, ícones e fallback do bichinho)
+- `pet3d.js`: bichinho em 3D com Three.js. Corpos gerados por revolução do contorno de cada espécie e um `ShaderMaterial` "jelly" próprio:
+  - vertex shader: balanço de gelatina (o topo atrasa em relação à base) e ondulação que se espalha a partir do toque
+  - fragment shader: gradiente de altura, subsurface/translucidez falsos, fresnel, reflexos de estúdio e o rosto projetado na superfície (desenhado num canvas e usado como textura, então todas as expressões animam)
+- `vendor/three.module.min.js`: Three.js r160 (MIT), embutido para funcionar offline; se faltar, carrega da CDN

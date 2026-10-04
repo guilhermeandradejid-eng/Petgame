@@ -781,6 +781,9 @@ function emitConfetti(x, y, n = 40) { for (let i = 0; i < n; i++) FX.add({ type:
 
 // ============================================================ DOM refs
 const app = $('#app');
+const stage = $('#stage');
+const bg = $('#bg');
+const bctx = bg.getContext('2d');
 const scene = $('#scene');
 const ctx = scene.getContext('2d');
 const toastEl = $('#toast');
@@ -792,15 +795,40 @@ function resizeScene() {
   const r = scene.getBoundingClientRect();
   DPR = Math.min(window.devicePixelRatio || 1, 2);
   W = Math.max(1, r.width); H = Math.max(1, r.height);
-  scene.width = Math.round(W * DPR); scene.height = Math.round(H * DPR);
+  for (const c of [bg, scene]) { c.width = Math.round(W * DPR); c.height = Math.round(H * DPR); }
   layoutPet();
 }
+
+// ============================================================ 3D renderer (Three.js, loaded progressively)
+let P3 = null;
+let petMode = 'loading'; // 'loading' → '3d', or '2d' when WebGL / modules are unavailable
+const THREE_CDN = 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js';
+async function load3D() {
+  try {
+    let THREE;
+    try { THREE = await import('./vendor/three.module.min.js'); } catch (e) { THREE = await import(THREE_CDN); }
+    const mod = await import('./pet3d.js');
+    P3 = mod.createPet3D(THREE, { SPEC, SKINS, SK, drawFace, drawDirt });
+    P3.attach(MG.open ? MG.el : stage, MG.open ? $('.mg-hud') : scene);
+    const was = petMode;
+    petMode = '3d';
+    if (was === 'loading') { pet.sq.set(0.3); hop(7); trick(); emitSparkles(pet.x, groundY - pet.R, 10, pet.R); }
+  } catch (e) {
+    console.warn('3D indisponível, usando 2D:', e);
+    petMode = '2d';
+  }
+}
+setTimeout(() => { if (petMode === 'loading') petMode = '2d'; }, 6000);
+const is3D = () => petMode === '3d' && P3;
 
 // ============================================================ pet runtime
 const pet = {
   x: 0, R: 80,
   sq: new Spring(0, 230, 10), rot: new Spring(0, 140, 8), ear: new Spring(0, 110, 4.5),
   lookX: new Spring(0, 90, 13), lookY: new Spring(0, 90, 13), mouth: new Spring(0, 220, 18),
+  yaw: new Spring(0, 60, 9), pitch: new Spring(0, 70, 10),
+  wobX: new Spring(0, 120, 3.6), wobZ: new Spring(0, 120, 3.6),
+  spin: 0, spinT: -1, danceN: 0, danceT: 0,
   hopY: 0, hopV: 0,
   blinkT: 2.5, blink: 0, joy: 0, chew: 0, chewTick: 0, dizzy: 0, pokes: 0, refuse: 0,
   idleT: 4, idleLook: { x: 0, y: 0, t: 0 },
@@ -814,22 +842,37 @@ function layoutPet() {
   groundY = H * 0.84;
 }
 function petSpec() { return SPEC[S.species]; }
-function petTopY() { return groundY + pet.hopY - petSpec().h * pet.R; }
+function petTopY() {
+  if (is3D()) return P3.topScreen().y;
+  return groundY + pet.hopY - petSpec().h * pet.R;
+}
+// Returns a truthy hit (with 3D surface data when available) or false.
 function petHit(x, y, pad = 1.08) {
+  if (is3D()) { const h = P3.raycast(x, y); if (h) return h; }
   const d = petSpec(), R = pet.R;
   const cy = groundY + pet.hopY - d.h * R * 0.5;
   const nx = (x - pet.x) / (d.w * R), ny = (y - cy) / (d.h * R * 0.5);
   return nx * nx + ny * ny <= pad * pad;
 }
 function mouthPos() {
+  if (is3D()) return P3.mouthScreen();
   const d = petSpec();
   return { x: pet.x, y: groundY + pet.hopY + d.mouthY * pet.R * (1 - pet.sq.v) };
 }
 function hop(power = 6) {
   if (pet.hopY < 0 || S.sleeping) return;
-  pet.hopV = -pet.R * power; pet.hopY = -0.01; pet.sq.kick(-3.2);
+  pet.hopV = -pet.R * power; pet.hopY = -0.01; pet.sq.kick(-3.2); pet.wobZ.kick(0.8);
 }
-function poke(x, y) {
+// a twirl in the air
+function trick() {
+  if (S.sleeping) return;
+  hop(7.5); pet.spinT = 0; pet.ear.kick(12);
+  Snd.tone(500, 1100, 0.35, 'sine', 0.12);
+}
+function dance() { if (S.sleeping) return; pet.danceN = 3; hop(4); }
+function poke(x, y, hit) {
+  if (hit && hit.world && is3D()) P3.poke(hit.world, S.sleeping ? 0.5 : 1);
+  if (hit && hit.local) { pet.wobX.kick(-hit.local.x * 1.6); pet.wobZ.kick(-1.4); }
   if (S.sleeping) {
     pet.sq.kick(2); pet.rot.kick(rand(-1.5, 1.5)); Snd.squish();
     if (Math.random() < 0.5) toast('Shhh… está dormindo');
@@ -846,7 +889,8 @@ function poke(x, y) {
   pet.joy = Math.max(pet.joy, 0.5);
   emitHearts(x, y - 10, 1);
   addStat('fun', 0.7);
-  if (Math.random() < 0.25) hop(4.5);
+  const r = Math.random();
+  if (r < 0.08) trick(); else if (r < 0.3) hop(4.5);
 }
 
 function addStat(k, v) {
@@ -872,7 +916,7 @@ function addXP(n) {
     Snd.levelup();
     emitConfetti(W / 2, H * 0.35, 60);
     toast(`Nível ${S.level}! Você ganhou 20 moedas`);
-    hop(7);
+    trick();
   }
   renderHUD();
 }
@@ -913,7 +957,8 @@ scene.addEventListener('pointerdown', (e) => {
     ball.held = true; ball.hx = [{ x: p.x, y: p.y, t: T }]; Snd.tap(); return;
   }
   if (S.room === 'bedroom' && lampHit(p.x, p.y)) { toggleSleep(); return; }
-  if (petHit(p.x, p.y)) { pointer.onPet = true; pet.petDist = 0; poke(p.x, p.y); }
+  const hit = petHit(p.x, p.y);
+  if (hit) { pointer.onPet = true; pet.petDist = 0; poke(p.x, p.y, hit); }
 });
 scene.addEventListener('pointermove', (e) => {
   const p = toScene(e);
@@ -926,9 +971,12 @@ scene.addEventListener('pointermove', (e) => {
   if (pointer.down && pointer.onPet && !S.sleeping) {
     const d = Math.hypot(p.x - pointer.lastX, p.y - pointer.lastY);
     pet.petDist += d;
-    if (pet.petDist > 38 && petHit(p.x, p.y, 1.2)) {
+    const h = pet.petDist > 38 && petHit(p.x, p.y, 1.2);
+    if (h) {
       pet.petDist = 0; pet.joy = Math.max(pet.joy, 0.7); pet.pokes = 0;
       pet.sq.kick(rand(-0.8, 0.8)); pet.rot.kick((p.x - pointer.lastX) * 0.02);
+      pet.wobX.kick(clamp((p.x - pointer.lastX) * 0.05, -1.2, 1.2));
+      if (h.world && is3D()) P3.poke(h.world, 0.35);
       emitHearts(p.x, p.y - 12, 1); addStat('fun', 0.6);
       if (T - pet.purrT > 0.5) { pet.purrT = T; Snd.giggle(); }
     }
@@ -1017,9 +1065,11 @@ function moveDrag(cx, cy) {
   if (drag.kind === 'soap') {
     const r = scene.getBoundingClientRect();
     const sx = cx - r.left, sy = cy - r.top;
-    if (petHit(sx, sy, 1.05)) {
+    const h = petHit(sx, sy, 1.05);
+    if (h) {
       drag.scrub += Math.hypot(cx - lastX, cy - lastY);
-      if (drag.scrub > 16) { drag.scrub = 0; addFoam(sx, sy); }
+      pet.wobX.kick(clamp((cx - lastX) * 0.012, -0.5, 0.5));
+      if (drag.scrub > 16) { drag.scrub = 0; addFoam(sx, sy, h); }
     }
   }
 }
@@ -1099,10 +1149,11 @@ function tryEat(id) {
 }
 
 // ---- bath
-function addFoam(sx, sy) {
+function addFoam(sx, sy, hit) {
   const R = pet.R;
-  const ux = (sx - pet.x) / R + rand(-0.08, 0.08), uy = (sy - (groundY + pet.hopY)) / R + rand(-0.08, 0.08);
-  if (pet.foam.length < 46) pet.foam.push({ x: ux, y: uy, r: rand(0.07, 0.15), born: T, ph: rand(0, TAU), pop: null });
+  let ux = (sx - pet.x) / R + rand(-0.08, 0.08), uy = (sy - (groundY + pet.hopY)) / R + rand(-0.08, 0.08), uz = null;
+  if (hit && hit.local) { ux = hit.local.x + rand(-0.05, 0.05); uy = -hit.local.y + rand(-0.05, 0.05); uz = hit.local.z; }
+  if (pet.foam.length < 46) pet.foam.push({ x: ux, y: uy, z: uz, r: rand(0.07, 0.15), born: T, ph: rand(0, TAU), pop: null });
   addStat('clean', 0.9);
   pet.joy = Math.max(pet.joy, 0.4);
   pet.sq.kick(rand(-0.6, 0.6));
@@ -1352,7 +1403,13 @@ function updateScene(dt) {
   if (S.sleeping) lookT = { x: 0, y: 0.3 };
   pet.lookX.t = lookT.x; pet.lookY.t = lookT.y;
   pet.mouth.t = 0;
-  if (foodNearMouth() && !S.sleeping) pet.mouth.t = 1;
+  const hungry = foodNearMouth() && !S.sleeping;
+  if (hungry) { pet.mouth.t = 1; pet.sq.t = -0.06; }
+  if (S.sleeping) pet.sq.t = 0.05;
+  // the body turns toward what it looks at, with a slow idle sway
+  pet.yaw.t = S.sleeping ? 0 : lookT.x * 0.55 + Math.sin(T * 0.55) * 0.08;
+  pet.pitch.t = S.sleeping ? 0.08 : clamp(lookT.y, -1, 1) * 0.14 + (hungry ? 0.12 : 0);
+  pet.wobX.t = 0; pet.wobZ.t = 0;
   if (pet.chew > 0) {
     pet.chew -= dt; pet.chewTick -= dt;
     pet.mouth.t = 0.25 + 0.35 * (Math.sin(T * 22) * 0.5 + 0.5);
@@ -1361,14 +1418,21 @@ function updateScene(dt) {
       const m = mouthPos();
       for (let i = 0; i < 4; i++) FX.add({ type: 'crumb', x: m.x + rand(-10, 10), y: m.y, vx: rand(-90, 90), vy: rand(-160, -60), g: 900, life: 0.7, size: rand(2, 3.5), color: pick(['#FFC9A8', '#FF9AA6', '#FFE08A', '#C98A5A']), floor: groundY });
     }
-    if (pet.chew <= 0) { pet.joy = 1.0; Snd.happy(); emitHearts(pet.x, petTopY() + 10, 3); }
+    if (pet.chew <= 0) { pet.joy = 1.0; Snd.happy(); emitHearts(pet.x, petTopY() + 10, 3); if (Math.random() < 0.35) setTimeout(trick, 250); }
   }
-  stepSprings([pet.sq, pet.rot, pet.ear, pet.lookX, pet.lookY, pet.mouth, pet.bubbleS], dt);
+  stepSprings([pet.sq, pet.rot, pet.ear, pet.lookX, pet.lookY, pet.mouth, pet.bubbleS, pet.yaw, pet.pitch, pet.wobX, pet.wobZ], dt);
+  pet.wobX.v = clamp(pet.wobX.v, -0.35, 0.35); pet.wobZ.v = clamp(pet.wobZ.v, -0.35, 0.35);
+  if (pet.spinT >= 0) {
+    pet.spinT += dt / 0.85;
+    const k = Math.min(1, pet.spinT); pet.spin = TAU * (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+    if (pet.spinT >= 1) { pet.spinT = -1; pet.spin = 0; pet.wobX.kick(1.5); }
+  }
+  if (pet.danceN > 0 && pet.hopY === 0) { pet.danceT -= dt; if (pet.danceT <= 0) { pet.danceN -= 1; pet.danceT = 0.06; hop(3.6); pet.rot.kick(pet.danceN % 2 ? 4 : -4); } }
 
   // hop physics
   if (pet.hopY < 0 || pet.hopV < 0) {
     pet.hopV += pet.R * 32 * dt; pet.hopY += pet.hopV * dt;
-    if (pet.hopY >= 0) { pet.hopY = 0; pet.sq.kick(clamp(pet.hopV / pet.R * 0.42, 1.2, 4)); pet.hopV = 0; }
+    if (pet.hopY >= 0) { pet.hopY = 0; pet.sq.kick(clamp(pet.hopV / pet.R * 0.42, 1.2, 4)); pet.wobZ.kick(-clamp(pet.hopV / pet.R * 0.15, 0.3, 1.2)); pet.hopV = 0; pet.danceT = 0.05; }
   }
 
   // blink
@@ -1383,7 +1447,10 @@ function updateScene(dt) {
   if (pet.idleT <= 0 && !S.sleeping && !drag.on) {
     pet.idleT = rand(3.5, 7);
     const r = Math.random();
-    if (r < 0.3 && Math.min(st.fun, st.energy) > 35) hop(rand(4, 6));
+    const happy = Math.min(st.fun, st.energy) > 35;
+    if (r < 0.1 && happy) trick();
+    else if (r < 0.2 && happy) dance();
+    else if (r < 0.35 && happy) hop(rand(4, 6));
     else if (r < 0.55) pet.idleLook = { x: rand(-1, 1), y: rand(-0.6, 0.6) };
     else if (r < 0.75) { pet.rot.kick(rand(-2, 2)); pet.ear.kick(rand(-6, 6)); }
     else pet.idleLook = { x: 0, y: 0 };
@@ -1424,24 +1491,51 @@ function towards(x, y) {
   return { x: (dx / L) * k, y: (dy / L) * k };
 }
 
-function drawScene() {
-  const c = ctx;
-  c.setTransform(DPR, 0, 0, DPR, 0, 0);
-  drawRoom(c, S.room, 1);
-  if (roomFade > 0 && prevRoom) drawRoom(c, prevRoom, easeOut(roomFade));
-
-  // pet
+function petOptions() {
   const ex = expression();
   const breathe = Math.sin(T * (S.sleeping ? 1.6 : 2.6)) * (S.sleeping ? 0.03 : 0.018);
-  const petOpts = {
+  return {
     x: pet.x, y: groundY, R: pet.R, species: S.species, skin: S.skin, hat: S.hat,
     sq: pet.sq.v, rot: pet.rot.v * 0.35, hop: pet.hopY, breathe: REDUCED ? 0 : breathe, ear: pet.ear.v * 0.12,
     look: { x: pet.lookX.v, y: pet.lookY.v }, eyes: ex.eyes, mouth: ex.mouth,
     blink: pet.blink > 0 ? 1 - Math.abs(1 - pet.blink) : 0,
     mouthOpen: S.sleeping ? 0 : clamp(pet.mouth.v, 0, 1.2),
     dirt: clamp((62 - S.stats.clean) / 50, 0, 1), foam: pet.foam, t: T,
+    yaw: pet.yaw.v, pitch: pet.pitch.v, spin: pet.spin, wobX: pet.wobX.v, wobZ: pet.wobZ.v, happy: pet.joy > 0,
   };
-  drawPet(c, petOpts);
+}
+
+function drawScene(dt) {
+  // layer 1: room + contact shadow (2D)
+  const b = bctx;
+  b.setTransform(DPR, 0, 0, DPR, 0, 0);
+  drawRoom(b, S.room, 1);
+  if (roomFade > 0 && prevRoom) drawRoom(b, prevRoom, easeOut(roomFade));
+  const o = petOptions();
+  const showBall = S.room === 'play' && ball.placed;
+  if (showBall) {
+    b.save(); b.translate(ball.x, groundY); b.scale(1, 0.2);
+    const sh = 1 - clamp((groundY - ball.y) / (H * 0.6), 0, 0.7);
+    b.fillStyle = `rgba(70,40,90,${0.16 * sh})`; b.beginPath(); b.arc(0, 0, ball.r * sh, 0, TAU); b.fill(); b.restore();
+  }
+
+  // layer 2: the pet — WebGL when ready, 2D canvas fallback otherwise
+  if (is3D()) {
+    drawShadow(b, pet.x, groundY, pet.R, petSpec(), -pet.hopY, SKINS[S.skin]);
+    P3.update({ ...o, W, H, groundY, dt, ball: showBall ? { x: ball.x, y: ball.y, r: ball.r, spin: ball.spin } : null });
+    P3.render();
+  } else if (petMode === '2d') {
+    drawPet(b, o);
+  } else {
+    const k = (Math.sin(T * 5) + 1) / 2;
+    drawSparkle(b, pet.x, groundY - pet.R * 0.7, 8 + k * 8, '#FFFFFF', 0.5 + k * 0.5);
+  }
+
+  // layer 3: effects, overlays and UI-in-scene (2D)
+  const c = ctx;
+  c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  c.clearRect(0, 0, W, H);
+  if (showBall && !is3D()) drawItem(c, 'bola', ball.x, ball.y, ball.r * 2, T, { spin: ball.spin });
 
   // stink lines when very dirty
   if (S.stats.clean < 25 && !S.sleeping) {
@@ -1453,14 +1547,6 @@ function drawScene() {
       c.stroke();
     }
     c.globalAlpha = 1;
-  }
-
-  // ball
-  if (S.room === 'play' && ball.placed) {
-    c.save(); c.translate(ball.x, groundY); c.scale(1, 0.2);
-    const sh = 1 - clamp((groundY - ball.y) / (H * 0.6), 0, 0.7);
-    c.fillStyle = `rgba(70,40,90,${0.16 * sh})`; c.beginPath(); c.arc(0, 0, ball.r * sh, 0, TAU); c.fill(); c.restore();
-    drawItem(c, 'bola', ball.x, ball.y, ball.r * 2, T, { spin: ball.spin });
   }
 
   // shower head
@@ -1606,7 +1692,7 @@ function closetPick(it, el) {
     pet.foam.length = 0;
   } else if (closetSeg === 'skin') S.skin = it.id;
   else S.hat = it.id;
-  pet.sq.kick(-3); hop(6); pet.joy = 1; emitSparkles(pet.x, petTopY() + pet.R * 0.3, 8, pet.R * 0.8);
+  pet.sq.kick(-3); trick(); pet.joy = 1; emitSparkles(pet.x, petTopY() + pet.R * 0.3, 8, pet.R * 0.8);
   renderCloset(); renderHUD(); save();
 }
 
@@ -1614,7 +1700,7 @@ function closetPick(it, el) {
 const MG = {
   el: $('#mg'), cv: $('#mgCanvas'), ctx: null, w: 1, h: 1, dpr: 1, open: false, running: false,
   score: 0, lives: 3, items: [], fx: new Particles(), t: 0, spawn: 0, px: 0, tx: 0, pv: 0,
-  sq: new Spring(0, 230, 10), rot: new Spring(0, 120, 10), dizzy: 0, shake: 0, combo: 0, keys: { l: false, r: false }, endT: 0, R: 50,
+  sq: new Spring(0, 230, 10), rot: new Spring(0, 120, 10), wob: new Spring(0, 120, 4), yaw: new Spring(0, 80, 10), dizzy: 0, shake: 0, combo: 0, keys: { l: false, r: false }, endT: 0, R: 50,
 };
 MG.ctx = MG.cv.getContext('2d');
 function mgResize() {
@@ -1628,6 +1714,7 @@ function openMG() {
   if (S.stats.energy < 12) { Snd.nope(); toast(`${S.name} está cansado demais. Hora de dormir!`); return; }
   MG.open = true; MG.el.hidden = false; MG.running = false;
   mgResize(); MG.px = MG.tx = MG.w / 2;
+  if (P3) P3.attach(MG.el, $('.mg-hud'));
   $('#mgStart').hidden = false; $('#mgOver').hidden = true;
   MG.score = 0; MG.lives = 3; MG.items.length = 0; MG.fx.list.length = 0; renderMGHud();
   Snd.tap();
@@ -1655,7 +1742,7 @@ function endMG() {
   if (record && MG.score > 0) Snd.levelup(); else Snd.coin();
   renderHUD(); save();
 }
-function closeMG() { MG.open = false; MG.running = false; MG.el.hidden = true; pet.joy = 1; hop(6); renderHUD(); }
+function closeMG() { MG.open = false; MG.running = false; MG.el.hidden = true; if (P3) P3.attach(stage, scene); pet.joy = 1; hop(6); renderHUD(); }
 function renderMGHud() {
   $('#mgScore').textContent = MG.score;
   const L = $('#mgLives'); if (L.children.length !== 3) L.innerHTML = '<i></i><i></i><i></i>';
@@ -1678,7 +1765,7 @@ function mgSpawn() {
 }
 function updateMG(dt) {
   MG.fx.update(dt);
-  stepSprings([MG.sq, MG.rot], dt);
+  stepSprings([MG.sq, MG.rot, MG.wob, MG.yaw], dt);
   MG.sq.t = 0; MG.rot.t = 0;
   MG.dizzy = Math.max(0, MG.dizzy - dt); MG.shake = Math.max(0, MG.shake - dt);
   if (MG.keys.l) MG.tx -= MG.w * 1.3 * dt;
@@ -1688,6 +1775,8 @@ function updateMG(dt) {
   MG.px = lerp(MG.px, MG.tx, 1 - Math.exp(-dt * 14));
   MG.pv = (MG.px - prev) / Math.max(dt, 0.001);
   MG.rot.t = clamp(MG.pv * 0.0009, -0.35, 0.35);
+  MG.wob.t = clamp(-MG.pv * 0.00025, -0.3, 0.3);
+  MG.yaw.t = clamp(MG.pv * 0.0016, -0.7, 0.7);
   if (!MG.running) { if (MG.endT > 0) { MG.endT -= dt; if (MG.endT <= 0) endMG(); } return; }
   MG.t += dt; MG.spawn -= dt;
   if (MG.spawn <= 0) { mgSpawn(); MG.spawn = Math.max(0.3, 0.85 - MG.t * 0.011) * rand(0.75, 1.2); }
@@ -1742,12 +1831,18 @@ function drawMG() {
   let near = null, nd = 1e9;
   for (const it of MG.items) if (it.val > 0) { const d = Math.abs(it.x - MG.px) + (MG.ground - it.y) * 0.5; if (d < nd) { nd = d; near = it; } }
   const look = near ? { x: clamp((near.x - MG.px) / (MG.R * 3), -1, 1), y: -0.8 } : { x: 0, y: -0.3 };
-  drawPet(c, {
+  const mo = {
     x: MG.px, y: MG.ground, R: MG.R, species: S.species, skin: S.skin, hat: S.hat,
     sq: MG.sq.v + Math.min(Math.abs(MG.pv) * 0.00008, 0.08), rot: MG.rot.v, t: T, look,
     eyes: MG.dizzy > 0 ? 'swirl' : MG.sq.v > 0.15 ? 'happy' : 'open', mouth: MG.dizzy > 0 ? 'wavy' : 'grin',
-    blink: 0,
-  });
+    blink: 0, hop: 0, breathe: 0, ear: MG.wob.v * 0.6, mouthOpen: 0, dirt: 0, foam: null,
+    yaw: MG.yaw.v, pitch: -0.1, spin: 0, wobX: MG.wob.v, wobZ: 0, happy: true,
+  };
+  if (is3D()) {
+    drawShadow(c, MG.px, MG.ground, MG.R, SPEC[S.species], 0, SKINS[S.skin]);
+    P3.update({ ...mo, W: MG.w, H: MG.h, groundY: MG.ground, dt: 1 / 60, ball: null });
+    P3.render();
+  } else drawPet(c, mo);
   MG.fx.draw(c);
   c.restore();
 }
@@ -1817,7 +1912,7 @@ function frame(now) {
   const dt = Math.min((now - last) / 1000, 0.05); last = now; T += dt;
   tickStats(dt);
   if (MG.open) { updateMG(dt); drawMG(); }
-  else { updateScene(dt); drawScene(); }
+  else { updateScene(dt); drawScene(dt); }
   updateGhost(dt);
   hudT += dt; if (hudT > 0.25) { hudT = 0; renderHUD(); }
   saveT += dt; if (saveT > 4) { saveT = 0; save(); }
@@ -1838,7 +1933,7 @@ function start(hotData) {
     S.tips.hello = true;
     setTimeout(() => toast(`Oi! Toque no ${S.name} ou faça carinho`), 900);
   }
-  hop(6);
+  load3D();
   requestAnimationFrame((t) => { last = t; frame(t); });
   window.claude?.hot?.snapshot?.(() => ({ S }));
 }
@@ -1847,5 +1942,5 @@ const hot = window.claude && window.claude.hot;
 if (hot && hot.ready) hot.ready(start); else start(hot && hot.data ? hot.data : null);
 
 // debug hook for automated tests
-window.__mochi = { get S() { return S; }, pet, setRoom, openMG, startMG, MG, toggleSleep };
+window.__mochi = { get S() { return S; }, get mode() { return petMode; }, pet, setRoom, openMG, startMG, MG, toggleSleep, trick, dance };
 })();
