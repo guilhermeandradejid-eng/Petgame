@@ -32,3 +32,29 @@ No celular, acesse o endereço da sua máquina na rede local (ou publique no Git
   - vertex shader: balanço de gelatina (o topo atrasa em relação à base) e ondulação que se espalha a partir do toque
   - fragment shader: gradiente de altura, subsurface/translucidez falsos, fresnel, reflexos de estúdio e o rosto projetado na superfície (desenhado num canvas e usado como textura, então todas as expressões animam)
 - `vendor/three.module.min.js`: Three.js r160 (MIT), embutido para funcionar offline; se faltar, carrega da CDN
+
+---
+
+# Gramado Estelar
+
+Minigolfe isométrico em pixel art, flutuando num céu de pôr do sol, inspirado em Kirby's Dream Course, com personagens próprios. Fica na pasta [`estelar/`](estelar/).
+
+## Como jogar
+
+- Arraste para trás e solte para tacar. A linha pontilhada mostra o começo do caminho.
+- Derrube todos os inimigos. O último vira o buraco, e aí é só acertar a bola nele.
+- **Pulo**: liga a tacada aérea, para passar por vãos, água e acertar inimigos voadores.
+- Durante a rolagem, segure para frear. Se tiver uma habilidade, toque para usá-la:
+  - **Rocha**: para na hora.
+  - **Turbo**: dá uma arrancada.
+  - **Mola**: dá um quique alto.
+- Ouriços não podem ser derrotados e rebatem a bola. Água e vãos custam uma tacada.
+- Personagens: Pipo (equilibrado), Brasa (força), Nimbo (pulo) e Musgo (controle).
+- 6 buracos com rampas, areia, gelo, setas de turbo e rebatedores.
+
+Teclado: `J` liga o pulo, espaço freia ou usa a habilidade, `Esc` pausa.
+
+## Estrutura
+
+- `estelar/holes.js`: os buracos, descritos como mapas de texto (tipo de piso + altura por casa)
+- `estelar/game.js`: física isométrica com alturas e rampas, renderização em baixa resolução ampliada sem suavização, sprites gerados por código (personagens e inimigos são esferas iluminadas rasterizadas pixel a pixel, por isso rolam de verdade), música chiptune e efeitos sintetizados com Web Audio

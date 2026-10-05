@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<!-- page:start -->
+<title>Gramado Estelar</title>
+<meta name="theme-color" content="#1B1446">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+<!-- head:end -->
+</head>
+<body>
+<!-- body:start -->
+<div id="wrap">
+  <canvas id="game" aria-label="Campo de golfe flutuante. Arraste para trás e solte para tacar."></canvas>
+
+  <div id="hud" hidden>
+    <div class="hud-top">
+      <div class="chip hole"><span id="hHole">Buraco 1</span><small id="hPar">Par 2</small></div>
+      <div class="chip strokes"><small>Tacadas</small><b id="hStrokes">0</b></div>
+      <button class="pbtn icon" id="pauseBtn" type="button" aria-label="Pausar">
+        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 2h2v6H2zM6 2h2v6H6z"/></svg>
+      </button>
+    </div>
+    <div class="hud-foes" id="hFoes" aria-label="Inimigos restantes"></div>
+    <div class="hud-bottom">
+      <div class="ability" id="abilitySlot" hidden><canvas id="abilityIco" width="9" height="9"></canvas><span id="abilityName">Rocha</span></div>
+      <p class="hint" id="hint">Arraste para trás e solte</p>
+      <button class="pbtn jump" id="jumpBtn" type="button" aria-pressed="false">
+        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M4 1h2v1h1v1h1v1H6v5H4V4H2V3h1V2h1z"/></svg>
+        <span>Pulo</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <section class="screen" id="title">
+    <div class="logo">
+      <span class="l1">Gramado</span>
+      <span class="l2">Estelar</span>
+    </div>
+    <div class="picker">
+      <button class="pbtn icon" id="prevChar" type="button" aria-label="Personagem anterior"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M6 1h2v2H7v1H6v2h1v1h1v2H6V8H5V7H4V6H3V4h1V3h1V2h1z"/></svg></button>
+      <div class="char-info">
+        <h2 id="charName">Pipo</h2>
+        <p id="charDesc">Equilibrado</p>
+        <dl class="stats" id="charStats"></dl>
+      </div>
+      <button class="pbtn icon" id="nextChar" type="button" aria-label="Próximo personagem"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 1h2v1h1v1h1v1h1v2H6v1H5v1H4v1H2V7h1V6h1V4H3V3H2z"/></svg></button>
+    </div>
+    <button class="pbtn big" id="startBtn" type="button">Jogar</button>
+    <p class="best" id="bestLine"></p>
+  </section>
+
+  <section class="screen card-screen" id="intro" hidden>
+    <div class="card pop">
+      <small id="iNum">Buraco 1 de 6</small>
+      <h2 id="iName">Brisa da Manhã</h2>
+      <p class="par" id="iPar">Par 2</p>
+      <p id="iTip">Derrube todos os inimigos. O último vira o buraco!</p>
+      <button class="pbtn big" id="iGo" type="button">Começar</button>
+    </div>
+  </section>
+
+  <section class="screen card-screen" id="result" hidden>
+    <div class="card pop">
+      <small id="rName">Brisa da Manhã</small>
+      <h2 class="rank" id="rRank">Birdie!</h2>
+      <div class="stars" id="rStars"></div>
+      <p id="rLine">2 tacadas · Par 2</p>
+      <button class="pbtn big" id="rNext" type="button">Próximo buraco</button>
+    </div>
+  </section>
+
+  <section class="screen card-screen" id="final" hidden>
+    <div class="card pop wide">
+      <h2>Placar final</h2>
+      <div class="table-wrap"><table id="fTable"></table></div>
+      <p class="big-total" id="fTotal"></p>
+      <div class="row">
+        <button class="pbtn" id="fTitle" type="button">Menu</button>
+        <button class="pbtn big" id="fAgain" type="button">Jogar de novo</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen card-screen" id="pause" hidden>
+    <div class="card pop">
+      <h2>Pausa</h2>
+      <div class="col">
+        <button class="pbtn big" id="pResume" type="button">Continuar</button>
+        <button class="pbtn" id="pRestart" type="button">Recomeçar buraco</button>
+        <button class="pbtn" id="pMusic" type="button">Música: ligada</button>
+        <button class="pbtn" id="pSfx" type="button">Efeitos: ligados</button>
+        <button class="pbtn" id="pQuit" type="button">Voltar ao menu</button>
+      </div>
+    </div>
+  </section>
+</div>
+<script src="holes.js"></script>
+<script src="game.js"></script>
+<!-- body:end -->
+</body>
+</html>
