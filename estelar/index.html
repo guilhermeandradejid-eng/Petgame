@@ -17,20 +17,24 @@
 <body>
 <!-- body:start -->
 <div id="wrap">
-  <canvas id="game" aria-label="Campo de golfe flutuante. Arraste para trás e solte para tacar."></canvas>
+  <canvas id="game" aria-label="Campo de golfe flutuante. Puxe a bolinha para trás e solte para tacar."></canvas>
+  <canvas id="ui" aria-hidden="true"></canvas>
 
   <div id="hud" hidden>
     <div class="hud-top">
       <div class="chip hole"><span id="hHole">Buraco 1</span><small id="hPar">Par 2</small></div>
       <div class="chip strokes"><small>Tacadas</small><b id="hStrokes">0</b></div>
+      <button class="pbtn icon" id="mapBtn" type="button" aria-label="Ver o campo inteiro" aria-pressed="false">
+        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 2h2v1h2V2h2v1h2v6H7V8H5v1H3V8H1zM2 3v5h1V3zm3 1v4h1V4zm3-1v5h1V3z"/></svg>
+      </button>
       <button class="pbtn icon" id="pauseBtn" type="button" aria-label="Pausar">
         <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 2h2v6H2zM6 2h2v6H6z"/></svg>
       </button>
     </div>
     <div class="hud-foes" id="hFoes" aria-label="Inimigos restantes"></div>
     <div class="hud-bottom">
-      <div class="ability" id="abilitySlot" hidden><canvas id="abilityIco" width="9" height="9"></canvas><span id="abilityName">Rocha</span></div>
-      <p class="hint" id="hint">Arraste para trás e solte</p>
+      <div class="ability" id="abilitySlot" hidden><canvas id="abilityIco" width="11" height="11"></canvas><span id="abilityName">Rocha</span></div>
+      <p class="hint" id="hint">Puxe a bolinha para trás e solte</p>
       <button class="pbtn jump" id="jumpBtn" type="button" aria-pressed="false">
         <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M4 1h2v1h1v1h1v1H6v5H4V4H2V3h1V2h1z"/></svg>
         <span>Pulo</span>
@@ -63,6 +67,7 @@
       <small id="iNum">Buraco 1 de 6</small>
       <h2 id="iName">Brisa da Manhã</h2>
       <p class="par" id="iPar">Par 2</p>
+      <p class="foes" id="iFoes">2 inimigos para derrubar</p>
       <p id="iTip">Derrube todos os inimigos. O último vira o buraco!</p>
       <button class="pbtn big" id="iGo" type="button">Começar</button>
     </div>
