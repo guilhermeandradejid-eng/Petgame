@@ -1,0 +1,10 @@
+{
+  "character": "slime",
+  "tick_rate": 60,
+  "animations": {
+    "idle":  {"loop": true,  "frames": [{"ticks": 12}, {"ticks": 12}, {"ticks": 12}, {"ticks": 12}]},
+    "walk":  {"loop": true,  "frames": [{"ticks": 6}, {"ticks": 6}, {"ticks": 6}, {"ticks": 6}, {"ticks": 6}, {"ticks": 6}]},
+    "hurt":  {"loop": false, "frames": [{"ticks": 6}, {"ticks": 6}, {"ticks": 8}]},
+    "death": {"loop": false, "frames": [{"ticks": 6}, {"ticks": 8}, {"ticks": 8}, {"ticks": 20}]}
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "character": "mage",
+  "tick_rate": 60,
+  "animations": {
+    "idle":  {"loop": true,  "frames": [{"ticks": 15}, {"ticks": 15}, {"ticks": 15}, {"ticks": 15}]},
+    "walk":  {"loop": true,  "frames": [{"ticks": 4}, {"ticks": 4}, {"ticks": 4}, {"ticks": 4}, {"ticks": 4}, {"ticks": 4}, {"ticks": 4}, {"ticks": 4}]},
+    "cast":  {"loop": false, "attack": true, "frames": [
+      {"ticks": 10}, {"ticks": 7}, {"ticks": 6}, {"ticks": 12, "event": "release"}, {"ticks": 8}, {"ticks": 10}]},
+    "hurt":  {"loop": false, "frames": [{"ticks": 8}, {"ticks": 8}, {"ticks": 8}]},
+    "death": {"loop": false, "frames": [{"ticks": 6}, {"ticks": 8}, {"ticks": 8}, {"ticks": 8}, {"ticks": 30}]}
+  }
+}
