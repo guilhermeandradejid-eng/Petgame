@@ -5,6 +5,11 @@ var world: Node
 var tex: Texture2D = preload("res://assets/gen/tiles/floor.png")
 var marker := Vector2.ZERO
 var marker_t := 0.0
+var decals: Array = []
+
+
+func add_decal(tex: Texture2D, g: Vector2, life: float) -> void:
+	decals.append({"tex": tex, "g": g, "t": life, "life": life})
 
 
 func show_marker(g: Vector2) -> void:
@@ -13,6 +18,11 @@ func show_marker(g: Vector2) -> void:
 
 
 func _process(delta: float) -> void:
+	if not decals.is_empty():
+		for d in decals:
+			d.t -= delta
+		decals = decals.filter(func(d): return d.t > 0.0)
+		queue_redraw()
 	if marker_t > 0.0:
 		marker_t -= delta
 		queue_redraw()
@@ -23,6 +33,10 @@ func _draw() -> void:
 		var p := Iso.to_screen(Vector2(c) + Vector2(0.5, 0.5))
 		var v: int = (c.x + c.y) % 2
 		draw_texture_rect_region(tex, Rect2(p - Vector2(32, 16), Vector2(64, 32)), Rect2(v * 64, 0, 64, 32))
+	for d in decals:
+		var tex: Texture2D = d.tex
+		var a: float = clamp(d.t / (d.life * 0.5), 0.0, 1.0)
+		draw_texture(tex, Iso.to_screen(d.g) - tex.get_size() * 0.5, Color(1, 1, 1, a))
 	if marker_t > 0.0:
 		var s := Iso.to_screen(marker)
 		var k := marker_t / 0.6

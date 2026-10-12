@@ -6,13 +6,29 @@ Protótipo de RPG de ação isométrico em Godot 4.7 (feito para PC). Os sprites
 
 Todas as animações do mago (S, E, N, O e SE): [docs/contact_mage.png](docs/contact_mage.png)
 
+## Magias
+
+![magias](docs/spells.png)
+
+| Tecla | Magia | Animação do mago | Efeito |
+|---|---|---|---|
+| 1 / Q | Seta Arcana | `cast` | projétil teleguiado, 1 de dano. É o ataque do clique no slime |
+| 2 / W | Cometa | `summon`: ergue o cajado com as duas mãos e crava o cristal no chão | marca o alvo com uma runa; o cometa cai, deixa cratera e onda de choque. 3 de dano em área com empurrão |
+| 3 / E | Anel de Fogo | `spin`: giro de 360° com o cajado estendido | anel de 16 pilares de chama que se expande a partir do mago. 2 de dano e empurrão forte |
+| 4 / R | Lança de Gelo | `thrust`: estocada a duas mãos | lança de cristal que atravessa a linha inteira. 2 de dano e congela por 2,6 s |
+
+- Acertar um inimigo **congelado** estilhaça o gelo e causa +1 de dano. Combo: Lança de Gelo e depois Cometa.
+- No PC, a tecla lança a magia na posição do cursor. No celular, toque no ícone da barra e depois no alvo (o Anel de Fogo sai na hora).
+- Cada magia tem seu próprio círculo rúnico sob os pés e uma luz na cor do elemento, que ilumina o mago pelo normal map.
+- O efeito começa no evento `release` da animação, um frame lógico congelado no contrato.
+
 ## Como jogar
 
 - **Clique esquerdo no chão**: andar. Segurar o botão faz o personagem seguir o cursor.
 - **Clique esquerdo num slime**: o mago anda até ficar no alcance e ataca até o slime morrer.
-- **Clique direito**: lança a magia na direção do cursor.
-- No celular (versão web), toque para andar e toque no slime para atacar.
-- Abrir com `?demo` ou `#demo` na URL (ou `--demo` na linha de comando) faz o mago lutar sozinho, para testar.
+- **1-4 ou Q W E R**: magias (veja acima). **Clique direito**: lança a magia armada, ou a Seta Arcana.
+- No celular (versão web), toque para andar, toque no slime para atacar e use a barra de magias embaixo.
+- Abrir com `?demo` ou `#demo` na URL (e `#slow` para câmera lenta) (ou `--demo` na linha de comando) faz o mago lutar sozinho, para testar.
 
 O mago tem 6 de vida. Os slimes perseguem quando você chega perto e reaparecem depois de alguns segundos.
 
@@ -27,7 +43,12 @@ isorpg/
     gen_sprite.gd    toca as sheets geradas, emite eventos por frame lógico
     player.gd        mago: andar, conjurar, levar dano, morrer e renascer
     slime.gd         inimigo de teste
-    bolt.gd          projétil arcano com luz própria
+    spells.gd        grimório: tecla, animação, recarga, alcance, cor e runa de cada magia
+    bolt.gd          Seta Arcana
+    comet.gd         Cometa
+    fire_ring.gd     Anel de Fogo
+    ice_lance.gd     Lança de Gelo
+    fx_anim.gd, damage_number.gd   efeitos de uma vez só e números de dano em pixel
     iso.gd           conversão grid <-> tela 2:1 e direção (8)
   assets/gen/        tudo aqui é gerado pelo tools/spritegen, não edite à mão
   tools/spritegen/   o pipeline de sprites
@@ -41,6 +62,7 @@ Só usa Python, Pillow e numpy.
 ```sh
 cd isorpg/tools/spritegen
 python3 build.py          # renderiza mago, slime, tiles e fx
+python3 fx.py             # só os efeitos das magias (rápido)
 python3 qa_hero.py        # gate de qualidade
 ```
 
@@ -59,7 +81,9 @@ Como um frame é feito:
 11. **Frames lógicos vs sub-frames**: o contrato (`contracts/*.json`) congela nomes, quantidade de frames lógicos e ticks. O renderer pode mudar tudo, inclusive acrescentar sub-frames, mas não o contrato. O evento `release` do `cast` (que dispara o projétil) fica num frame lógico.
 12. **Âncoras** por frame (`staff_tip`, mãos, cabeça, peito): o projétil e a luz saem da ponta do cajado em qualquer direção.
 
-Animações do mago: `idle`, `walk`, `cast`, `hurt` e `death`, cada uma em 8 direções.
+Animações do mago: `idle`, `walk`, `cast`, `summon`, `spin`, `thrust`, `hurt` e `death`, cada uma em 8 direções. A pose aceita `yaw` (giro do corpo inteiro) e `lgrip`/`lgrip_w` (mão esquerda presa ao cajado).
+
+Os efeitos (`fx.py`) também são objetos desenhados por código: o cometa, os pilares de fogo, as ondas de choque e as runas são desenhados em 4x e reduzidos por voto de maioria. A lança e o bloco de gelo passam pelo mesmo rasterizador do mago (z-buffer, cel shading e contorno), a lança em 16 direções. Formas grandes como anéis e ondas têm o miolo vazio, para a magia nunca esconder o herói.
 
 ## Rodando
 

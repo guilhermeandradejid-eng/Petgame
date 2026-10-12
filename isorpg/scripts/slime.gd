@@ -18,6 +18,8 @@ var think := 0.0
 var attack_cd := 0.0
 var knock := Vector2.ZERO
 var flash := 0.0
+var frozen := 0.0
+var ice: Sprite2D
 
 
 func _ready() -> void:
@@ -26,6 +28,13 @@ func _ready() -> void:
 	spr.setup("res://assets/gen/slime", "slime")
 	spr.finished.connect(_on_finished)
 	spr.speed_scale = randf_range(0.9, 1.1)
+	ice = Sprite2D.new()
+	ice.texture = preload("res://assets/gen/fx/frozen.png")
+	ice.centered = false
+	ice.offset = Vector2(-24, -40)
+	ice.modulate = Color(1, 1, 1, 0.82)
+	ice.visible = false
+	add_child(ice)
 	position = Iso.to_screen(g)
 
 
@@ -33,23 +42,59 @@ func alive() -> bool:
 	return state != "dead"
 
 
-func take_damage(n: int, from: Vector2) -> void:
+func take_damage(n: int, from: Vector2, strength := 3.0) -> void:
 	if not alive():
 		return
+	var color := Color(1, 1, 1)
+	if frozen > 0.0 and n > 0:
+		# hitting something frozen shatters the ice for an extra point
+		n += 1
+		color = Color(0.72, 0.92, 1.0)
+		_thaw(true)
 	hp -= n
 	flash = 0.2
+	world.damage_number(position + Vector2(0, -26), n, color)
 	var away := g - from
-	knock = away.normalized() * 3.0 if away.length() > 0.001 else Vector2.ZERO
+	knock = away.normalized() * strength if away.length() > 0.001 else Vector2.ZERO
 	world.burst(position + Vector2(0, -10), Color(0.6, 0.95, 0.4), 10)
 	if hp <= 0:
 		state = "dead"
+		_thaw(false)
 		spr.play("death", true)
 		return
 	state = "hurt"
 	spr.play("hurt", true)
 
 
+func freeze(t: float) -> void:
+	if not alive():
+		return
+	frozen = t
+	ice.visible = true
+	spr.playing = false
+	spr.modulate = Color(0.75, 0.9, 1.25)
+	knock = Vector2.ZERO
+
+
+func _thaw(shatter: bool) -> void:
+	if frozen <= 0.0 and not ice.visible:
+		return
+	frozen = 0.0
+	ice.visible = false
+	spr.playing = true
+	spr.modulate = Color.WHITE
+	if shatter:
+		FxAnim.spawn(world.fx_layer, preload("res://assets/gen/fx/ice_burst.png"), 6, position + Vector2(0, -12), 18.0, 5)
+
+
 func _process(delta: float) -> void:
+	if frozen > 0.0:
+		frozen -= delta
+		attack_cd = max(attack_cd, 0.4)
+		if frozen <= 0.0:
+			_thaw(true)
+		position = Iso.to_screen(g)
+		return
 	flash = max(flash - delta, 0.0)
 	spr.modulate = Color(3, 3, 3) if flash > 0.0 else spr.modulate
 	if flash <= 0.0 and state != "dead":

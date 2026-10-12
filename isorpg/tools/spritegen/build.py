@@ -143,11 +143,12 @@ def build(name, pool):
             pose = anim["sample"](f["t"], length)
             jobs.append((pose, chains[int(round(f["t"]))]))
         tasks = [(name, k, jobs, size, origin) for k in range(8)]
-        try:
-            res = dict(pool.map(render_dir, tasks)) if pool else None
+        res = None
+        try:  # a fresh pool per animation: one dead worker only costs that animation's speed
+            with ProcessPoolExecutor(max_workers=min(8, os.cpu_count() or 4)) as ex:
+                res = dict(ex.map(render_dir, tasks))
         except BrokenProcessPool as e:
             print("  worker pool broke (%s), rendering sequentially" % e)
-            res = None
         if res is None:
             res = dict(render_dir(t) for t in tasks)
         nf = len(plan)
@@ -205,7 +206,8 @@ if __name__ == "__main__":
     names = sys.argv[1:] or [n for n in ("mage", "slime") if os.path.exists(os.path.join(HERE, "contracts", n + ".json"))]
     for n in names:
         print("building", n, flush=True)
-        with ProcessPoolExecutor(max_workers=min(8, os.cpu_count() or 4)) as pool:
-            build(n, pool)
+        build(n, None)
     import tiles
+    import fx
     tiles.main()
+    fx.main()

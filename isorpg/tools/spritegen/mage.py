@@ -48,6 +48,7 @@ BASE = dict(
     toe_r=0.0, toe_l=0.0,
     staff=(0.10, 0.20, 1.0),
     glow=0.0, expr="neutral",
+    yaw=0.0, lgrip=-9.0, lgrip_w=0.0,
 )
 
 
@@ -60,6 +61,7 @@ def P(**kw):
 # ----------------------------------------------------------------------------- skeleton
 
 def solve(pose):
+    """Pose -> joint positions. Built facing +y, then the whole body is turned by `yaw`."""
     s = {}
     root = v3(pose["root"])
     T = body_rot(pose["lean"], pose["twist"], pose["roll"])
@@ -71,30 +73,44 @@ def solve(pose):
     head = neck + Hr @ v3(0, 0, HEAD_C)
     s.update(root=root, T=T, H=Hr, pelvis=pelvis, chest=chest, neck=neck, head=head)
 
-    for side, sx in (("r", 1), ("l", -1)):
+    def arm(side, sx, target):
         sh = chest + T @ v3(sx * SH_X, 0, SH_Z)
-        target = root + v3(pose["hand_" + side])
         elbow, wrist = two_bone_ik(sh, target, UPPER_ARM, FOREARM, T @ norm(v3(pose["pole_" + side])))
         s["sh_" + side], s["elbow_" + side], s["hand_" + side] = sh, elbow, wrist
 
-        hip = pelvis + rot_z(pose["twist"] * -0.4) @ v3(sx * HIP_X, 0, -1.5)
-        knee, ankle = two_bone_ik(hip, v3(pose["foot_" + side]), THIGH, SHIN, rot_z(pose["twist"] * -0.4) @ v3(0, 1, 0.2))
-        F = rot_x(pose["toe_" + side])
-        s["hip_" + side], s["knee_" + side], s["ankle_" + side] = hip, knee, ankle
-        s["toe_" + side] = ankle + F @ v3(sx * 0.3, 4.6, -1.4)
-
+    arm("r", 1, root + v3(pose["hand_r"]))
     d = norm(v3(pose["staff"]))
     bottom = s["hand_r"] - d * STAFF_GRIP
     s["staff_dir"] = d
     s["staff_bottom"] = bottom
     s["staff_top"] = bottom + d * STAFF_LEN
     s["staff_tip"] = s["staff_top"] + d * 3.6
+    # off hand: free target, or blended onto the staff for two-handed moves
+    free = root + v3(pose["hand_l"])
+    w = float(pose.get("lgrip_w", 0.0))
+    on_staff = s["hand_r"] + d * float(pose.get("lgrip", -9.0))
+    arm("l", -1, free * (1 - w) + on_staff * w)
+
+    for side, sx in (("r", 1), ("l", -1)):
+        hip = pelvis + rot_z(pose["twist"] * -0.4) @ v3(sx * HIP_X, 0, -1.5)
+        knee, ankle = two_bone_ik(hip, v3(pose["foot_" + side]), THIGH, SHIN, rot_z(pose["twist"] * -0.4) @ v3(0, 1, 0.2))
+        F = rot_x(pose["toe_" + side])
+        s["hip_" + side], s["knee_" + side], s["ankle_" + side] = hip, knee, ankle
+        s["toe_" + side] = ankle + F @ v3(sx * 0.3, 4.6, -1.4)
+
     s["waist"] = pelvis + T @ v3(0, 0, 4.5)
     s["hat_rot"] = Hr @ rot_x(24)
     s["hat_base"] = head + Hr @ v3(0, -1.4, 5.0)
     s["hair_root"] = head + Hr @ v3(0, -4.3, -0.6)
     s["scarf_r"] = neck + T @ v3(1.8, -3.6, -0.6)
     s["scarf_l"] = neck + T @ v3(-1.4, -3.9, -0.2)
+
+    yaw = float(pose.get("yaw", 0.0))
+    if abs(yaw) > 1e-6:
+        Y = rot_z(yaw)
+        for k, val in list(s.items()):
+            if isinstance(val, np.ndarray):
+                s[k] = Y @ val
     s["pose"] = pose
     return s
 
@@ -436,6 +452,53 @@ DEATH_KEYS = [
 ]
 
 
+# Comet: gather, lift the staff with both hands, hold it to the sky, then drive the crystal into the ground.
+SUMMON_KEYS = [
+    P(lean=8, root=(0, 0, -2.5), hand_r=(5, 7, 25), staff=(0.1, 0.55, 1), lgrip_w=1, lgrip=-8,
+      head=(10, 0, 0), foot_r=(4.4, 1, 3), foot_l=(-4.4, -1, 3), expr="focus", glow=0.3),
+    P(lean=-6, root=(0, 0, 0), hand_r=(3, 3, 44), staff=(0.05, 0.12, 1), lgrip_w=1, lgrip=-9,
+      head=(-14, 0, 0), foot_r=(4.4, 1, 3), foot_l=(-4.4, -1, 3), expr="focus", glow=0.6),
+    P(lean=-10, root=(0, -0.5, 1.0), hand_r=(2, 1, 56), staff=(0, -0.15, 1), lgrip_w=1, lgrip=-9,
+      head=(-22, 0, 0), foot_r=(4.4, 1, 3), foot_l=(-4.4, -1, 3), toe_r=-8, toe_l=-8, expr="focus", glow=1.0),
+    P(lean=-13, root=(0, -1, 2.0), hand_r=(2, 0, 58), staff=(0, -0.32, 1), lgrip_w=1, lgrip=-9,
+      head=(-24, 0, 0), foot_r=(4.4, 1, 3.8), foot_l=(-4.4, -1, 3.8), toe_r=-14, toe_l=-14, expr="shout", glow=1.0),
+    P(lean=20, root=(0, 2.5, -4.5), hand_r=(3, 13, 26), staff=(0, 0.75, -0.66), lgrip_w=1, lgrip=-9,
+      head=(12, 0, 0), foot_r=(4.6, 6, 3), foot_l=(-4.6, -6, 3), toe_l=15, expr="shout", glow=1.0),
+    P(lean=16, root=(0, 2, -3.5), hand_r=(3, 12, 27), staff=(0, 0.7, -0.6), lgrip_w=1, lgrip=-9,
+      head=(8, 0, 0), foot_r=(4.6, 6, 3), foot_l=(-4.6, -6, 3), toe_l=10, expr="neutral", glow=0.4),
+    P(lean=4, root=(0, 0.5, -0.4), lgrip_w=0, foot_r=(3.8, 2, 3), foot_l=(-3.8, -1.5, 3), expr="neutral"),
+]
+
+# Ring of fire: wind up, spin a full turn with the staff swept out, plant it.
+_SWEEP = dict(hand_r=(12, 2, 36), staff=(1, 0.1, 0.12), hand_l=(-10, 2, 36), lean=6, root=(0, 0, -1.2),
+              foot_r=(4.4, 0.5, 3), foot_l=(-4.4, -0.5, 3), expr="focus", glow=0.8)
+SPIN_KEYS = [
+    P(twist=25, lean=5, root=(0, 0, -2), hand_r=(11, -4, 32), staff=(0.6, -0.8, 0.25), hand_l=(-8, 6, 34),
+      foot_r=(4.4, 0.5, 3), foot_l=(-4.4, -0.5, 3), expr="focus", glow=0.4),
+    P(yaw=-100, **_SWEEP),
+    P(yaw=-200, **_SWEEP),
+    P(yaw=-300, **_SWEEP),
+    P(yaw=-360, lean=10, root=(0, 1, -3.2), hand_r=(8, 7, 34), staff=(0.05, 0.25, 1), hand_l=(-11, 4, 42),
+      head=(4, 0, 0), foot_r=(4.8, 1.5, 3), foot_l=(-4.8, -1.5, 3), expr="shout", glow=1.0),
+    P(yaw=-360, lean=4, root=(0, 0.4, -0.5), foot_r=(3.8, 1.5, 3), foot_l=(-3.8, -1, 3), expr="neutral"),
+]
+
+# Ice lance: coil back with the staff level like a spear, then lunge.
+THRUST_KEYS = [
+    P(lean=-6, twist=28, root=(0, -2, -2), hand_r=(8, -8, 32), staff=(0, 1, 0.12), lgrip_w=1, lgrip=13,
+      foot_r=(3.8, -4, 3), foot_l=(-3.8, 4, 3), head=(0, -10, 0), expr="focus", glow=0.5),
+    P(lean=-4, twist=34, root=(0, -2.5, -3), hand_r=(8, -10, 31), staff=(0.05, 1, 0.08), lgrip_w=1, lgrip=13,
+      foot_r=(3.8, -4.5, 3), foot_l=(-3.8, 4.5, 3), head=(0, -12, 0), expr="focus", glow=1.0),
+    P(lean=8, twist=10, root=(0, 3, -3), hand_r=(6, 6, 33), staff=(0, 1, 0.06), lgrip_w=0.6, lgrip=13,
+      hand_l=(-10, -2, 34), foot_r=(3.8, -5, 3), foot_l=(-3.8, 9, 3.5), head=(0, -4, 0), expr="shout", glow=1.0),
+    P(lean=16, twist=-12, root=(0, 7, -4.5), hand_r=(5, 17, 34), staff=(0, 1, 0.05), lgrip_w=0,
+      hand_l=(-11, -6, 37), foot_r=(3.8, -6, 3), foot_l=(-3.8, 13, 3), toe_r=20, expr="shout", glow=1.0),
+    P(lean=12, twist=-8, root=(0, 6, -4), hand_r=(5, 14, 33), staff=(0, 1, 0.12), lgrip_w=0,
+      hand_l=(-10, -4, 34), foot_r=(3.8, -6, 3), foot_l=(-3.8, 13, 3), toe_r=14, expr="neutral", glow=0.4),
+    P(lean=4, twist=-2, root=(0, 1, -0.4), foot_r=(3.8, 1, 3), foot_l=(-3.8, 1.5, 3), expr="neutral"),
+]
+
+
 def keyed(keys, contract_anim):
     times, t = [], 0
     for f in contract_anim["frames"]:
@@ -453,6 +516,9 @@ def animations(contract):
         "cast": dict(sample=keyed(CAST_KEYS, a["cast"]), root_speed=0.0),
         "hurt": dict(sample=keyed(HURT_KEYS, a["hurt"]), root_speed=0.0),
         "death": dict(sample=keyed(DEATH_KEYS, a["death"]), root_speed=0.0),
+        "summon": dict(sample=keyed(SUMMON_KEYS, a["summon"]), root_speed=0.0),
+        "spin": dict(sample=keyed(SPIN_KEYS, a["spin"]), root_speed=0.0),
+        "thrust": dict(sample=keyed(THRUST_KEYS, a["thrust"]), root_speed=0.0),
     }
 
 
@@ -465,4 +531,7 @@ SUBFRAMES = {
     "cast": [2, 1, 1, 0, 1, 1],
     "hurt": [1, 1, 1],
     "death": [1, 1, 1, 1, 0],
+    "summon": [1, 1, 1, 1, 0, 1, 1],
+    "spin": [1, 1, 1, 1, 0, 1],
+    "thrust": [1, 1, 1, 0, 1, 1],
 }

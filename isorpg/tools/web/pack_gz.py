@@ -4,11 +4,17 @@
 
 Gzips the .wasm and .pck (39 MB -> ~10 MB) and injects a tiny fetch shim into index.html
 that downloads the .gz files and inflates them in the browser with DecompressionStream.
+It also writes vesper.html (from tools/web/vesper.html) for hosts that only serve a few file
+types: there the payloads are named engine.gz.wasm and data.gz.wasm.
 """
 import gzip
+import json
 import os
+import re
 import shutil
 import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
 
 SHIM = """<script>
 (function () {
@@ -41,6 +47,12 @@ def main(src, dst):
             open(os.path.join(dst, name), "w", encoding="utf-8").write(html)
         else:
             shutil.copy(p, os.path.join(dst, name))
+    shutil.copy(os.path.join(dst, "index.wasm.gz"), os.path.join(dst, "engine.gz.wasm"))
+    shutil.copy(os.path.join(dst, "index.pck.gz"), os.path.join(dst, "data.gz.wasm"))
+    sizes = {n: os.path.getsize(os.path.join(src, n)) for n in ("index.pck", "index.wasm")}
+    shell = open(os.path.join(HERE, "vesper.html"), encoding="utf-8").read()
+    shell = re.sub(r'"fileSizes":\{[^}]*\}', '"fileSizes":' + json.dumps(sizes, separators=(",", ":")), shell)
+    open(os.path.join(dst, "vesper.html"), "w", encoding="utf-8").write(shell)
     for name in sorted(os.listdir(dst)):
         print(f"{os.path.getsize(os.path.join(dst, name)) / 1e6:8.2f} MB  {name}")
 
