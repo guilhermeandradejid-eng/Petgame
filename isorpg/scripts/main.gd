@@ -35,7 +35,7 @@ var light_texture: Texture2D
 var holding := false
 var hold_t := 0.0
 var shake_amt := 0.0
-## ?demo in the web URL (or --demo on the command line): the mage fights on its own, for testing.
+## ?demo or #demo in the web URL (or --demo on the command line): the mage fights on its own, for testing.
 var demo := false
 var demo_t := 0.0
 
@@ -44,7 +44,7 @@ func _ready() -> void:
 	randomize()
 	demo = "--demo" in OS.get_cmdline_user_args()
 	if OS.has_feature("web"):
-		demo = demo or str(JavaScriptBridge.eval("location.search")).contains("demo")
+		demo = demo or str(JavaScriptBridge.eval("location.search + location.hash")).contains("demo")
 	light_texture = _make_light_texture()
 	var cm := CanvasModulate.new()
 	cm.color = Color(0.8, 0.8, 0.92)

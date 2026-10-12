@@ -12,7 +12,7 @@ Todas as animações do mago (S, E, N, O e SE): [docs/contact_mage.png](docs/con
 - **Clique esquerdo num slime**: o mago anda até ficar no alcance e ataca até o slime morrer.
 - **Clique direito**: lança a magia na direção do cursor.
 - No celular (versão web), toque para andar e toque no slime para atacar.
-- Abrir com `?demo` na URL (ou `--demo` na linha de comando) faz o mago lutar sozinho, para testar.
+- Abrir com `?demo` ou `#demo` na URL (ou `--demo` na linha de comando) faz o mago lutar sozinho, para testar.
 
 O mago tem 6 de vida. Os slimes perseguem quando você chega perto e reaparecem depois de alguns segundos.
 
@@ -64,5 +64,5 @@ Animações do mago: `idle`, `walk`, `cast`, `hurt` e `death`, cada uma em 8 dir
 ## Rodando
 
 - **Editor**: abra `isorpg/project.godot` na Godot 4.7 e aperte F5.
-- **Web**: `godot --headless --export-release Web build/web/index.html` (precisa dos templates `web_nothreads`). `tools/web/pack_gz.py` comprime o `.wasm` para hospedagem com limite de tamanho de arquivo.
+- **Web**: `godot --headless --export-release Web build/web/index.html` (precisa dos templates `web_nothreads`). `tools/web/pack_gz.py` comprime o `.wasm` (39 MB para 10 MB) para hosts com limite de tamanho por arquivo. `tools/web/vesper.html` é a página que carrega essa versão comprimida (espera `engine.gz.wasm` e `data.gz.wasm` ao lado).
 - **PC**: os presets "Windows Desktop" e "Linux" já estão no `export_presets.cfg`.

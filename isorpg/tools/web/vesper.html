@@ -1,0 +1,96 @@
+<title>Vesper</title>
+<style>
+/* Layout: one full-bleed canvas; a pixel-art loading card centred over it until the engine starts. */
+:root {
+  --night: #110e1c;
+  --ink: #e9e6ff;
+  --muted: #9a94c4;
+  --robe: #5864de;
+  --gold: #f5c451;
+  --crystal: #55e2ea;
+  --display: "Silkscreen", "Courier New", monospace;
+  --body: "Space Mono", ui-monospace, "Courier New", monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { margin: 0; background: var(--night); color: var(--ink); overflow: hidden; touch-action: none; font-family: var(--body); }
+#canvas { display: block; width: 100%; height: 100%; outline: none; image-rendering: pixelated; }
+#status {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  padding-inline: 16px; background: var(--night);
+}
+.card { display: grid; gap: 14px; width: min(360px, 100%); text-align: center; }
+.card h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 2rem; letter-spacing: 0.08em; color: var(--gold); text-shadow: 3px 3px 0 var(--robe); }
+.card p { margin: 0; color: var(--muted); font-size: 0.8rem; line-height: 1.5; }
+.bar { height: 10px; border: 2px solid var(--robe); background: transparent; image-rendering: pixelated; }
+.bar i { display: block; height: 100%; width: 0%; background: var(--crystal); transition: width 0.15s steps(4); }
+.hint { color: var(--ink); font-size: 0.75rem; }
+.hint b { color: var(--gold); font-weight: 400; }
+.error { display: none; color: #ffb08a; font-size: 0.8rem; line-height: 1.5; }
+.error a { color: var(--crystal); }
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Space+Mono&display=swap">
+
+<canvas id="canvas" tabindex="0"></canvas>
+<div id="status">
+  <div class="card">
+    <h1>VESPER</h1>
+    <p>RPG isométrico · MVP em Godot 4.7 · sprites gerados por código</p>
+    <div class="bar" role="progressbar" aria-label="Carregando"><i id="fill"></i></div>
+    <p id="label">Carregando o motor (≈ 12 MB)…</p>
+    <p class="hint"><b>Toque/clique</b> no chão para andar · <b>toque/clique no slime</b> para atacar · <b>botão direito</b> lança magia (PC)</p>
+    <p class="hint"><a id="demo" href="#demo" style="color: var(--crystal)">Ver o mago lutando sozinho (modo demo)</a></p>
+    <p class="error" id="error"></p>
+  </div>
+</div>
+
+<script>
+// The .wasm and .pck are published gzipped; inflate them in the browser.
+(function () {
+  const orig = window.fetch.bind(window);
+  window.fetch = async function (input, init) {
+    const url = typeof input === 'string' ? input : input.url;
+    const m = /\.(wasm|pck)(\?.*)?$/.exec(url);
+    if (!m || !('DecompressionStream' in window)) return orig(input, init);
+    const res = await orig(url.replace(/index\.(wasm|pck)/, m[1] === 'wasm' ? 'engine.gz.wasm' : 'data.gz.wasm'), init);
+    if (!res.ok) throw new Error('Não foi possível baixar ' + url + ' (' + res.status + ')');
+    const body = res.body.pipeThrough(new DecompressionStream('gzip'));
+    const type = m[1] === 'wasm' ? 'application/wasm' : 'application/octet-stream';
+    return new Response(body, { status: 200, headers: { 'Content-Type': type } });
+  };
+})();
+</script>
+<script src="index.js"></script>
+<script>
+(function () {
+  const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":1721456,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+  const status = document.getElementById('status');
+  const fill = document.getElementById('fill');
+  const label = document.getElementById('label');
+  const error = document.getElementById('error');
+  document.getElementById('demo').addEventListener('click', function () {
+    setTimeout(function () { location.reload(); }, 50);
+  });
+  function fail(err) {
+    console.error(err);
+    error.style.display = 'block';
+    error.textContent = 'O jogo não conseguiu iniciar neste navegador: ' + (err && err.message ? err.message : err) +
+      '. Abra o projeto na Godot 4.7 (pasta isorpg da branch claude/isometric-rpg-mvp).';
+    label.textContent = 'Falhou.';
+  }
+  if (typeof Engine === 'undefined') { fail('o arquivo index.js não carregou'); return; }
+  const missing = Engine.getMissingFeatures({ threads: false });
+  if (missing.length) { fail('faltam recursos: ' + missing.join(', ')); return; }
+  const engine = new Engine(GODOT_CONFIG);
+  engine.startGame({
+    onProgress: function (cur, total) {
+      if (cur > 0 && total > 0) {
+        const pct = Math.min(100, Math.round(cur / total * 100));
+        fill.style.width = pct + '%';
+        label.textContent = 'Carregando… ' + pct + '%';
+      }
+    },
+  }).then(function () { status.remove(); }, fail);
+})();
+</script>
