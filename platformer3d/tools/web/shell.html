@@ -1,0 +1,85 @@
+<title>Bolo &amp; Pip</title>
+<style>
+/* Layout: one full-bleed canvas; a soft vinyl loading card centred over it until the engine starts. */
+:root {
+  --sky: #cfe9ff;
+  --ink: #3a2a55;
+  --muted: #6b5d86;
+  --rust: #c9562c;
+  --cream: #f4e6cc;
+  --bat: #6d4ba3;
+  --display: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Nunito", system-ui, sans-serif;
+  color-scheme: light;
+}
+html, body { height: 100%; }
+body { margin: 0; background: var(--sky); color: var(--ink); overflow: hidden; touch-action: none; font-family: var(--body); }
+#canvas { display: block; width: 100%; height: 100%; outline: none; }
+#status { position: absolute; inset: 0; display: grid; place-items: center; padding-inline: 16px; background: linear-gradient(var(--sky), #eef7ff); }
+.card { display: grid; gap: 12px; width: min(380px, 100%); text-align: center; }
+.card h1 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 2.6rem; color: var(--rust); letter-spacing: 0.01em; text-shadow: 0 3px 0 var(--cream); }
+.card h1 span { color: var(--bat); }
+.card p { margin: 0; color: var(--muted); font-size: 0.9rem; line-height: 1.45; }
+.bar { height: 14px; border-radius: 999px; background: #fff; box-shadow: inset 0 0 0 2px var(--ink); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0%; background: var(--rust); border-radius: 999px; transition: width 0.2s ease-out; }
+.error { display: none; color: #b0302a; font-size: 0.85rem; }
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@800&family=Nunito:wght@400;700&display=swap">
+
+<canvas id="canvas" tabindex="0"></canvas>
+<div id="status">
+  <div class="card">
+    <h1>Bolo <span>&amp; Pip</span></h1>
+    <p>Plataforma 3D · MVP em Godot 4.7 · personagens modelados e animados no Blender por script</p>
+    <div class="bar" role="progressbar" aria-label="Carregando"><i id="fill"></i></div>
+    <p id="label">Carregando (≈ 14 MB)…</p>
+    <p><b>Celular:</b> esquerda move, botão PULO pula (de novo no ar: pulo duplo; segure caindo: planar), arraste à direita gira a câmera. Melhor com o celular deitado.</p>
+    <p class="error" id="error"></p>
+  </div>
+</div>
+
+<script>
+(function () {
+  const orig = window.fetch.bind(window);
+  window.fetch = async function (input, init) {
+    const url = typeof input === 'string' ? input : input.url;
+    const m = /\.(wasm|pck)(\?.*)?$/.exec(url);
+    if (!m || !('DecompressionStream' in window)) return orig(input, init);
+    const res = await orig(url.replace(/index\.(wasm|pck)/, m[1] === 'wasm' ? 'engine.gz.wasm' : 'data.gz.wasm'), init);
+    if (!res.ok) throw new Error('Não foi possível baixar ' + url + ' (' + res.status + ')');
+    const body = res.body.pipeThrough(new DecompressionStream('gzip'));
+    const type = m[1] === 'wasm' ? 'application/wasm' : 'application/octet-stream';
+    return new Response(body, { status: 200, headers: { 'Content-Type': type } });
+  };
+})();
+</script>
+<script src="index.js"></script>
+<script>
+(function () {
+  const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":0,"index.wasm":0},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+  const status = document.getElementById('status');
+  const fill = document.getElementById('fill');
+  const label = document.getElementById('label');
+  const error = document.getElementById('error');
+  function fail(err) {
+    console.error(err);
+    error.style.display = 'block';
+    error.textContent = 'O jogo não conseguiu iniciar neste navegador: ' + (err && err.message ? err.message : err);
+    label.textContent = 'Falhou.';
+  }
+  if (typeof Engine === 'undefined') { fail('o arquivo index.js não carregou'); return; }
+  const missing = Engine.getMissingFeatures({ threads: false });
+  if (missing.length) { fail('faltam recursos: ' + missing.join(', ')); return; }
+  const engine = new Engine(GODOT_CONFIG);
+  engine.startGame({
+    onProgress: function (cur, total) {
+      if (cur > 0 && total > 0) {
+        const pct = Math.min(100, Math.round(cur / total * 100));
+        fill.style.width = pct + '%';
+        label.textContent = 'Carregando… ' + pct + '%';
+      }
+    },
+  }).then(function () { status.remove(); }, fail);
+})();
+</script>
