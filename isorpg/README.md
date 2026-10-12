@@ -18,7 +18,19 @@ Todas as animações do mago (S, E, N, O e SE): [docs/contact_mage.png](docs/con
 | 4 / R | Lança de Gelo | `thrust`: estocada a duas mãos | lança de cristal que atravessa a linha inteira. 2 de dano e congela por 2,6 s |
 
 - Acertar um inimigo **congelado** estilhaça o gelo e causa +1 de dano. Combo: Lança de Gelo e depois Cometa.
-- No PC, a tecla lança a magia na posição do cursor. No celular, toque no ícone da barra e depois no alvo (o Anel de Fogo sai na hora).
+- No PC, a tecla lança a magia na posição do cursor.
+
+### Controles de toque (celular/tablet)
+
+Aparecem sozinhos no primeiro toque, ou desde o início em telas de toque.
+
+- **Toque no chão**: andar. **Segure**: o mago segue o dedo.
+- **Toque num slime**: atacar com a Seta Arcana até ele morrer.
+- **Botões de magia** em arco no canto inferior direito (o maior é a Seta Arcana):
+  - **toque rápido** = mira automática no slime mais próximo ao alcance;
+  - **segure e arraste** = mira manual, com prévia no chão (linha, área do Cometa, raio do Anel de Fogo). A distância do arraste controla o alcance. Solte para lançar.
+- **Multitoque**: um polegar segura o chão para andar enquanto o outro lança magias.
+- **AUTO** (canto superior direito): o mago luta sozinho e usa todas as magias. **LENTO**: câmera lenta para ver as animações.
 - Cada magia tem seu próprio círculo rúnico sob os pés e uma luz na cor do elemento, que ilumina o mago pelo normal map.
 - O efeito começa no evento `release` da animação, um frame lógico congelado no contrato.
 
@@ -27,7 +39,7 @@ Todas as animações do mago (S, E, N, O e SE): [docs/contact_mage.png](docs/con
 - **Clique esquerdo no chão**: andar. Segurar o botão faz o personagem seguir o cursor.
 - **Clique esquerdo num slime**: o mago anda até ficar no alcance e ataca até o slime morrer.
 - **1-4 ou Q W E R**: magias (veja acima). **Clique direito**: lança a magia armada, ou a Seta Arcana.
-- No celular (versão web), toque para andar, toque no slime para atacar e use a barra de magias embaixo.
+- No celular (versão web), veja **Controles de toque** acima.
 - Abrir com `?demo` ou `#demo` na URL (e `#slow` para câmera lenta) (ou `--demo` na linha de comando) faz o mago lutar sozinho, para testar.
 
 O mago tem 6 de vida. Os slimes perseguem quando você chega perto e reaparecem depois de alguns segundos.
@@ -49,6 +61,7 @@ isorpg/
     fire_ring.gd     Anel de Fogo
     ice_lance.gd     Lança de Gelo
     fx_anim.gd, damage_number.gd   efeitos de uma vez só e números de dano em pixel
+    aim_layer.gd     prévia de mira no chão enquanto se arrasta um botão de magia
     iso.gd           conversão grid <-> tela 2:1 e direção (8)
   assets/gen/        tudo aqui é gerado pelo tools/spritegen, não edite à mão
   tools/spritegen/   o pipeline de sprites

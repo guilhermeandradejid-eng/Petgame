@@ -43,6 +43,13 @@ var demo := false
 ## #slow runs the game at a quarter speed, for capturing effects frame by frame.
 var time_base := 1.0
 var demo_t := 0.0
+## Fingers on screen: index -> {kind: "move" | "spell" | "tap", pos, ...}. Lets one thumb walk
+## while the other aims a spell.
+var touches := {}
+var last_touch := -100000
+var aim_layer: Node2D
+const AIM_DEADZONE := 14.0
+const AIM_DRAG := 70.0
 
 
 func _ready() -> void:
@@ -64,6 +71,9 @@ func _ready() -> void:
 	add_child(floor_layer)
 	fx_layer = Node2D.new()
 	add_child(fx_layer)
+	aim_layer = preload("res://scripts/aim_layer.gd").new()
+	aim_layer.world = self
+	add_child(aim_layer)
 	entities = Node2D.new()
 	entities.y_sort_enabled = true
 	add_child(entities)
@@ -207,6 +217,20 @@ func _enemy_at(screen: Vector2) -> Node2D:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		_on_touch(event)
+		return
+	if event is InputEventScreenDrag:
+		if touches.has(event.index):
+			touches[event.index].pos = event.position
+		return
+	if event is InputEventMouseButton and Time.get_ticks_msec() - last_touch < 600:
+		return  # the browser's compatibility click after a touch
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		var tg: String = hud.toggle_at(event.position)
+		if tg != "":
+			_toggle(tg)
+			return
 	if event is InputEventKey and event.pressed and not event.echo:
 		for i in Spells.LIST.size():
 			if event.keycode in Spells.LIST[i].keys:
@@ -254,12 +278,101 @@ func _on_slot(i: int) -> void:
 		_cast(i, player.g + Vector2(0.5, 0.5))
 
 
+# ---------------------------------------------------------------- touch
+
+func _screen_to_world(p: Vector2) -> Vector2:
+	return get_canvas_transform().affine_inverse() * p
+
+
+func _on_touch(e: InputEventScreenTouch) -> void:
+	last_touch = Time.get_ticks_msec()
+	hud.touch_mode = true
+	if e.pressed:
+		var tg: String = hud.toggle_at(e.position)
+		if tg != "":
+			_toggle(tg)
+			return
+		var b: int = hud.touch_button_at(e.position)
+		if b >= 0:
+			touches[e.index] = {"kind": "spell", "slot": b, "start": hud.touch_button_center(b), "pos": e.position}
+			return
+		var wp := _screen_to_world(e.position)
+		var en := _enemy_at(wp)
+		if en != null:
+			player.attack(en)
+			touches[e.index] = {"kind": "tap", "pos": e.position}
+			return
+		var g := Iso.to_grid(wp)
+		if walkable(g):
+			floor_layer.show_marker(g)
+			player.move_to(g)
+		touches[e.index] = {"kind": "move", "pos": e.position, "t": 0.25}
+	else:
+		var t = touches.get(e.index)
+		touches.erase(e.index)
+		if t != null and t.kind == "spell":
+			_cast(t.slot, touch_aim(t))
+
+
+func is_auto(t: Dictionary) -> bool:
+	return (t.pos - t.start).length() < AIM_DEADZONE
+
+
+## Where a spell button finger is aiming: a short tap auto-targets, a drag aims by direction
+## and distance from the button.
+func touch_aim(t: Dictionary) -> Vector2:
+	var sp: Dictionary = Spells.LIST[t.slot]
+	if not sp.aim:
+		return player.g
+	if is_auto(t):
+		var e := auto_enemy(t.slot)
+		if e != null:
+			return e.g
+		return player.g + _facing_vec() * float(sp.range) * 0.6
+	var d: Vector2 = t.pos - t.start
+	var k: float = clamp(d.length() / AIM_DRAG, 0.15, 1.0)
+	return player.g + Iso.to_grid(d).normalized() * float(sp.range) * k
+
+
+func auto_enemy(slot: int) -> Node2D:
+	var r: float = float(Spells.LIST[slot].range) + 1.0
+	var best: Node2D = null
+	for e in enemies:
+		if e.alive() and e.visible and e.g.distance_to(player.g) < r and line_clear(player.g, e.g):
+			if best == null or e.g.distance_to(player.g) < best.g.distance_to(player.g):
+				best = e
+	return best
+
+
+func _facing_vec() -> Vector2:
+	var a := deg_to_rad(-90.0 + 45.0 * player.spr.dir)
+	return Iso.to_grid(Vector2(cos(a), -sin(a) * 0.5)).normalized()
+
+
+func _toggle(name: String) -> void:
+	if name == "auto":
+		demo = not demo
+		if not demo:
+			player.target = null
+	elif name == "slow":
+		time_base = 0.35 if time_base >= 1.0 else 1.0
+		Engine.time_scale = time_base
+
+
 func _cast(i: int, g: Vector2) -> void:
 	if not player.cast_spell(i, g):
 		hud.deny(i)
 
 
 func _process(delta: float) -> void:
+	for t in touches.values():
+		if t.kind == "move":
+			t.t -= delta
+			if t.t <= 0.0:
+				t.t = 0.15
+				var tg := Iso.to_grid(_screen_to_world(t.pos))
+				if walkable(tg) and tg.distance_to(player.g) > 0.3:
+					player.move_to(tg)
 	if holding:
 		hold_t -= delta
 		if hold_t <= 0.0:
