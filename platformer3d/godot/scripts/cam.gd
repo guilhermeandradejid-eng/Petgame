@@ -15,7 +15,7 @@ var shake := 0.0
 
 func _ready() -> void:
 	arm = SpringArm3D.new()
-	arm.spring_length = 6.2
+	arm.spring_length = 5.0
 	arm.margin = 0.25
 	var shape := SphereShape3D.new()
 	shape.radius = 0.25

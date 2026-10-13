@@ -9,9 +9,10 @@ const SKY := Color("6fb6f0")
 const LEMON := Color("ffd45e")
 
 var bolo: Bolo
-var pip: Pip
+var pip: Owl
 var cam: OrbitCam
 var checker: Texture2D
+var cam_dist := 0.0
 
 
 func _ready() -> void:
@@ -31,6 +32,9 @@ func _ready() -> void:
 		var h := str(JavaScriptBridge.eval("location.hash"))
 		if h.contains("debug"):
 			bolo.debug = true
+		var ci := h.find("cam=")
+		if ci >= 0:
+			cam_dist = float(h.substr(ci + 4).split(";")[0])
 		var i := h.find("at=")
 		if i >= 0:
 			at = h.substr(i + 3).split(";")[0]
@@ -43,7 +47,9 @@ func _ready() -> void:
 	cam.target = bolo
 	bolo.cam = cam
 	add_child(cam)
-	pip = Pip.new()
+	if cam_dist > 0.0:
+		cam.arm.spring_length = cam_dist
+	pip = Owl.new()
 	pip.bolo = bolo
 	bolo.pip = pip
 	add_child(pip)

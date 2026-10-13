@@ -4,7 +4,7 @@ extends CharacterBody3D
 ## jump height, a 3-frame jump squat that matches the animation's anticipation, double jump off
 ## Pip, gliding, skids, heavy landings and ledge grabs.
 
-const SCALE := 0.6                 # Blender units -> metres
+const SCALE := 1.0                 # Bolo B is modelled in metres
 const RUN := 7.2
 const ACCEL := 34.0
 const DECEL := 40.0
@@ -21,10 +21,12 @@ const COYOTE := 0.12
 const BUFFER := 0.12
 const SQUAT := 0.05
 const HEAVY_DROP := 4.0
-# Measured on the rig in Blender (bolo_anims.py): hands on the ledge while hanging.
-const HAND_H := 1.56 * SCALE
-const HANG_FRONT := 0.36 * SCALE + 0.03
-const CLIMB_FWD := 0.75 * SCALE
+# Measured on the rig in Blender by build_b.py (assets/bolo_b.json): grip height while hanging,
+# front of the face, and how far the climb animation steps forward.
+var HAND_H := 0.85
+var HANG_FRONT := 0.32
+var CLIMB_FWD := 0.55
+var HEAD_TOP := 1.22
 
 var cam: OrbitCam
 var pip: Node3D
@@ -69,17 +71,24 @@ var _last_sig := ""
 func _ready() -> void:
 	var col := CollisionShape3D.new()
 	var cap := CapsuleShape3D.new()
-	cap.radius = 0.34
-	cap.height = 1.15
+	cap.radius = 0.3
+	cap.height = 1.1
 	col.shape = cap
-	col.position.y = 0.575
+	col.position.y = 0.55
+	var f := FileAccess.open("res://assets/bolo_b.json", FileAccess.READ)
+	if f:
+		var meas: Dictionary = JSON.parse_string(f.get_as_text())
+		HAND_H = float(meas.hang_hand_z)
+		HANG_FRONT = -float(meas.hang_front_y) + 0.03
+		CLIMB_FWD = float(meas.climb_forward)
+		HEAD_TOP = float(meas.height)
 	add_child(col)
 	floor_snap_length = 0.3
 	floor_max_angle = deg_to_rad(50)
 
 	visual = Node3D.new()
 	add_child(visual)
-	model = load("res://assets/bolo.glb").instantiate()
+	model = load("res://assets/bolo_b.glb").instantiate()
 	model.scale = Vector3.ONE * SCALE
 	model.rotation.y = PI  # glTF faces +Z, the game faces -Z
 	visual.add_child(model)
@@ -88,7 +97,7 @@ func _ready() -> void:
 	for n in ["idle", "walk", "run", "fall", "glide", "ledge_hang"]:
 		anim.get_animation(n).loop_mode = Animation.LOOP_LINEAR
 	anim.animation_finished.connect(_on_anim_finished)
-	Look.vinylize(model)
+	Look.dress(model, 0.045)
 
 	shadow = MeshInstance3D.new()
 	var q := QuadMesh.new()
