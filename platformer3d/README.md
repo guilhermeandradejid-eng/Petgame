@@ -1,4 +1,16 @@
-# Bolo & Pip: plataforma 3D (MVP)
+# Bolo e a corujinha: plataforma 3D (MVP)
+
+> **Versão atual (v2):** Bolo redesenhado como panda-vermelho barrigudinho, com pelo e materiais nobres. A corujinha substitui o morcego. Os arquivos estão em `blender/hero/`:
+> - `hero_b.py`: render do modelo;
+> - `game_b.py`, `anims_b.py`, `owl_game.py`, `build_b.py`: versão de jogo.
+>
+> Na Godot, o pelo é feito em camadas (shell fur, `godot/shaders/fur.gdshader`): 18 camadas no PC e 7 na web. Folha do modelo: `docs/v2/b_sheet.png`. Poses: `docs/v2/bolo_b_poses.png`.
+>
+> A corujinha pousa na cabeça do Bolo quando ele está parado ou andando. Ela levanta voo quando ele corre ou pula, dá o impulso do pulo duplo e o carrega no planar.
+>
+> O texto abaixo descreve a v1 (vinil); a mecânica e os controles continuam os mesmos.
+
+# v1: Bolo & Pip
 
 Personagem de plataforma 3D em terceira pessoa, com co-op previsto, nas linhas de Banjo-Kazooie, Donkey Kong 64 e Mario. **Bolo**, o panda-vermelho, é o jogável; **Pip**, o morceguinho, voa em volta dele como a Navi e entra nas mecânicas.
 
