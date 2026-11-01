@@ -42,6 +42,7 @@ func _draw_hud() -> void:
 	_c.draw_string(font, Vector2(vs.x - 190, 30), "Defeated: %d" % Game.kills, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(1, 0.95, 0.7))
 	var role := Net.mode.to_upper()
 	_c.draw_string(font, Vector2(vs.x - 190, 52), "%s  (%d players)" % [role, ps.size()], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.8, 0.85, 1))
-	_c.draw_string(font, Vector2(20, vs.y - 16),
-		"Move WASD / stick   Attack J / X   Jump K / A   Dash L / B   Ice Lance I / Y",
-		HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1, 1, 1, 0.75))
+	if not Game.touch_mode:
+		_c.draw_string(font, Vector2(20, vs.y - 16),
+			"Move WASD / stick   Attack J / X   Jump K / A   Dash L / B   Ice Lance I / Y",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1, 1, 1, 0.75))

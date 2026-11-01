@@ -29,6 +29,8 @@ func _ready() -> void:
 	add_child(cam)
 	add_child(preload("res://ui/postfx.gd").new())
 	add_child(preload("res://ui/hud.gd").new())
+	if Game.touch_mode:
+		add_child(preload("res://ui/touch_controls.gd").new())
 	multiplayer.peer_disconnected.connect(_on_peer_left)
 	Net.host_lost.connect(func(): get_tree().change_scene_to_file("res://ui/title.tscn"))
 	if multiplayer.is_server():
@@ -39,8 +41,8 @@ func _ready() -> void:
 		_spawn_i = 3
 	else:
 		rpc_id(1, "rpc_client_ready")
-	if Game.args.has("autotest"):
-		var at := preload("res://tests/autotest.gd").new()
+	if Game.args.has("autotest") and ResourceLoader.exists("res://tests/autotest.gd"):
+		var at: Node = load("res://tests/autotest.gd").new()   # not preloaded: tests/ is excluded from exports
 		at.name = "AutoTest"
 		add_child(at)
 
@@ -71,7 +73,7 @@ func _environment() -> void:
 	sun.light_color = Color(1.0, 0.92, 0.78)
 	sun.light_energy = 1.0
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 45.0
+	sun.directional_shadow_max_distance = 28.0 if Game.low_quality else 45.0
 	sun.shadow_bias = 0.06
 	sun.shadow_normal_bias = 1.0
 	add_child(sun)

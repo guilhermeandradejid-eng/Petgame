@@ -10,12 +10,13 @@ func _ready() -> void:
 	bg.color = Color(0.09, 0.12, 0.2)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(center)
 	var box := VBoxContainer.new()
-	box.set_anchors_preset(Control.PRESET_CENTER)
-	box.custom_minimum_size = Vector2(360, 0)
-	box.position = Vector2(-180, -140)
-	box.add_theme_constant_override("separation", 12)
-	add_child(box)
+	box.custom_minimum_size = Vector2(420 if Game.touch_mode else 360, 0)
+	box.add_theme_constant_override("separation", 14)
+	center.add_child(box)
 	var t := Label.new()
 	t.text = "AURELIA"
 	t.add_theme_font_size_override("font_size", 64)
@@ -28,8 +29,18 @@ func _ready() -> void:
 	sub.modulate = Color(1, 1, 1, 0.7)
 	box.add_child(sub)
 	box.add_child(_button("Solo", _on_solo))
-	box.add_child(_button("Host co-op game", _on_host))
 	_addr = LineEdit.new()
+	if OS.has_feature("web"):
+		# browsers cannot open UDP sockets: ENet host/join needs the desktop build
+		var note := Label.new()
+		note.text = "Online co-op needs the desktop build.\nThis web build is solo-only (great for testing touch controls)."
+		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		note.modulate = Color(1, 1, 1, 0.65)
+		box.add_child(note)
+		_status = Label.new()
+		box.add_child(_status)
+		return
+	box.add_child(_button("Host co-op game", _on_host))
 	_addr.text = "127.0.0.1"
 	_addr.placeholder_text = "host address"
 	box.add_child(_addr)
@@ -52,7 +63,8 @@ func _ready() -> void:
 func _button(text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.custom_minimum_size = Vector2(0, 40)
+	b.custom_minimum_size = Vector2(0, 64 if Game.touch_mode else 40)
+	b.add_theme_font_size_override("font_size", 26 if Game.touch_mode else 16)
 	b.pressed.connect(cb)
 	return b
 

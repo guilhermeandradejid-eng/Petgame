@@ -21,6 +21,23 @@ Title screen: **Solo**, **Host co-op game**, or **Join** an IP (ENet, UDP port 2
 | Dash (i-frames, cancels attack recovery) | L / Shift | B |
 | Ice Lance (20 MP) | I / C | Y |
 
+### Tablet / phone (touch) and HTML5
+
+Touch controls appear automatically on touch devices (or with `-- --touch`, where the mouse acts as a finger):
+a floating stick on the left half of the screen, **ATK / JMP / DSH / ICE** buttons on the right, **MENU** top-right.
+They feed the same input actions as keyboard/gamepad, and multi-touch works (move + attack at once).
+
+The HTML5 build is **solo only** (browsers cannot open UDP sockets, so ENet co-op needs the desktop build) and
+uses a lighter quality preset (less grass, shorter shadows). It is exported single-threaded, so any static
+host works (no special COOP/COEP headers).
+
+```sh
+aurelia/tools/serve_web.sh          # export + serve on your LAN -> open http://<your-ip>:8060/ on the tablet
+```
+
+Needs Godot 4.4.1 with its **Web export templates** installed (Editor → Manage Export Templates).
+Tips: on iPad add the page to the Home Screen for fullscreen; sound starts after your first tap.
+
 Command-line shortcuts: `-- --solo`, `-- --host`, `-- --join=127.0.0.1` (everything after `--` goes to the game).
 
 ## Tests

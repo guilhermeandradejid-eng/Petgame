@@ -278,7 +278,7 @@ func _grass() -> void:
 	q.size = Vector2(0.36, 0.34)
 	q.center_offset = Vector3(0, 0.17, 0)
 	mm.mesh = q
-	var n := 2200
+	var n := 900 if Game.low_quality else 2200
 	mm.instance_count = n
 	for i in n:
 		var p := Vector3(rng.randf_range(-30, 30), 0, rng.randf_range(-30, 26))

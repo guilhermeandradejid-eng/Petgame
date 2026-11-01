@@ -10,6 +10,8 @@ var kills: int = 0
 var args: Dictionary = {}       # parsed "--key=value" user args
 var event_log: Array = []       # test hooks: [{ "t": tick, "e": name, ... }]
 var tick: int = 0
+var touch_mode := false           # on-screen controls (tablet/phone or --touch)
+var low_quality := false          # web / mobile: fewer props, lighter shadows
 var world: Node = null            # the active World (spawning spells, enemies)
 
 
@@ -19,6 +21,11 @@ func _ready() -> void:
 		var kv := s.split("=", true, 1)
 		args[kv[0]] = kv[1] if kv.size() > 1 else "1"
 	process_physics_priority = -100
+	var web := OS.has_feature("web")
+	touch_mode = DisplayServer.is_touchscreen_available() or args.has("touch")
+	if web and not touch_mode:
+		touch_mode = bool(JavaScriptBridge.eval("(navigator.maxTouchPoints || 0) > 0 || ('ontouchstart' in window)"))
+	low_quality = web or OS.has_feature("mobile") or args.has("lowq")
 
 
 func _physics_process(_d: float) -> void:
