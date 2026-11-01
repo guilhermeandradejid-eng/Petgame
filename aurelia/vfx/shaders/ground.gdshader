@@ -2,9 +2,9 @@
 shader_type spatial;
 render_mode cull_back;
 
-uniform vec4 grass_a : source_color = vec4(0.22, 0.46, 0.22, 1.0);
-uniform vec4 grass_b : source_color = vec4(0.34, 0.58, 0.26, 1.0);
-uniform vec4 dirt : source_color = vec4(0.52, 0.4, 0.26, 1.0);
+uniform vec4 grass_a : source_color = vec4(0.13, 0.33, 0.16, 1.0);
+uniform vec4 grass_b : source_color = vec4(0.24, 0.46, 0.17, 1.0);
+uniform vec4 dirt : source_color = vec4(0.42, 0.31, 0.2, 1.0);
 uniform vec4 flowers : source_color = vec4(1.0, 0.85, 0.45, 1.0);
 
 varying vec3 wpos;

@@ -12,7 +12,7 @@ var _done_at := -1
 
 func _ready() -> void:
 	role = {"offline": "solo", "host": "host", "client": "client"}.get(Net.mode, "solo")
-	if role == "solo":
+	if role == "solo" and not Game.args.has("shot"):
 		Engine.time_scale = 3.0
 	print("[autotest] role=", role)
 
@@ -30,7 +30,31 @@ func _nearest_enemy() -> Enemy:
 	return best
 
 
+func _showcase(tick: int) -> Dictionary:
+	## Fixed choreography for screenshots: walk up beside the dummy, cast, then a 3-hit combo.
+	var out := {"move": Vector2.ZERO, "press": 0}
+	if tick < 50:
+		out["move"] = Vector2(0, -1)
+	elif tick < 53:
+		out["move"] = Vector2(1, 0)
+	elif tick == 56:
+		out["press"] = InputFrame.CAST
+	elif tick >= 100 and tick < 104:
+		out["move"] = Vector2(1, 0)
+	elif tick >= 104 and tick < 125:
+		out["move"] = Vector2(0.2, 0)
+		if tick in [110, 122, 134]:
+			out["press"] = InputFrame.ATTACK
+	elif tick >= 126:
+		out["move"] = Vector2(0.2, 0)
+		if tick in [134, 148]:
+			out["press"] = InputFrame.ATTACK
+	return out
+
+
 func _drive(tick: int) -> Dictionary:
+	if Game.args.has("showcase"):
+		return _showcase(tick)
 	var out := {"move": Vector2.ZERO, "press": 0}
 	var t := _nearest_enemy()
 	_cast_cd -= 1
@@ -59,8 +83,26 @@ func _drive(tick: int) -> Dictionary:
 	return out
 
 
+func _shots() -> void:
+	## --shot=<dir>: save viewport screenshots at fixed ticks (needs a real renderer, e.g. xvfb).
+	var dir: String = Game.args["shot"]
+	var list: Array = [60, 200, 330, 420, 520, 640]
+	if Game.args.has("shot_ticks"):
+		list = Array(String(Game.args["shot_ticks"]).split(",")).map(func(x): return int(x))
+	for t in list:
+		if ticks == t:
+			DirAccess.make_dir_recursive_absolute(dir)
+			var img := get_viewport().get_texture().get_image()
+			img.save_png("%s/shot_%04d.png" % [dir, t])
+			print("[autotest] saved shot ", t, " player=", _me.global_position if _me else null, " focus=", Game.world.cam.focus, " cam=", Game.world.cam.cam.global_position, " dist=", Game.world.cam.dist)
+	if ticks > int(list.max()) + 10:
+		get_tree().quit(0)
+
+
 func _physics_process(_d: float) -> void:
 	ticks += 1
+	if Game.args.has("shot"):
+		_shots()
 	if _me == null or not is_instance_valid(_me):
 		for p in get_tree().get_nodes_in_group("players"):
 			if p.is_multiplayer_authority():

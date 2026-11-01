@@ -107,9 +107,13 @@ func _process(delta: float) -> void:
 	# critically-damped-ish spring for squash & stretch
 	var k := 260.0
 	var c := 16.0
-	var acc := (Vector2.ONE - _squash) * k - _squash_vel * c
-	_squash_vel += acc * delta
-	_squash += _squash_vel * delta
+	var steps := clampi(int(ceil(delta / 0.008)), 1, 8)
+	var h := minf(delta, 0.05) / steps          # stable even when the frame rate tanks
+	for i in steps:
+		var acc := (Vector2.ONE - _squash) * k - _squash_vel * c
+		_squash_vel += acc * h
+		_squash += _squash_vel * h
+	_squash = _squash.clamp(Vector2(0.4, 0.4), Vector2(1.8, 1.8))
 	mat.set_shader_parameter("squash", _squash)
 	_flash = maxf(0.0, _flash - delta * 9.0)
 	mat.set_shader_parameter("flash", clampf(_flash, 0.0, 1.0))

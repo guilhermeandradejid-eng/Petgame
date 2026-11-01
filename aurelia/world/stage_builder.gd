@@ -275,10 +275,10 @@ func _grass() -> void:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	var q := QuadMesh.new()
-	q.size = Vector2(0.6, 0.55)
-	q.center_offset = Vector3(0, 0.27, 0)
+	q.size = Vector2(0.36, 0.34)
+	q.center_offset = Vector3(0, 0.17, 0)
 	mm.mesh = q
-	var n := 1300
+	var n := 2200
 	mm.instance_count = n
 	for i in n:
 		var p := Vector3(rng.randf_range(-30, 30), 0, rng.randf_range(-30, 26))
