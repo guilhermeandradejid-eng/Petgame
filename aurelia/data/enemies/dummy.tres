@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://combat/enemy_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "dummy"
+sprite_id = "capmook"
+max_hp = 999999
+radius_m = 0.55
+dummy = true

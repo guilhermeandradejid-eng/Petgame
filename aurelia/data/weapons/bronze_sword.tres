@@ -1,0 +1,57 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://combat/weapon_data.gd" id="1"]
+[ext_resource type="Script" path="res://combat/attack_data.gd" id="2"]
+
+[sub_resource type="Resource" id="a1"]
+script = ExtResource("2")
+id = "sword.1"
+anim = "sword.1"
+damage = 12
+knockback = 3.5
+reach_px = 22.0
+radius_px = 20.0
+lunge = 3.2
+hitstop = 4
+shake = 0.22
+trail_color = Color(0.75, 0.95, 1, 1)
+sfx = "swing"
+hit_sfx = "hit"
+
+[sub_resource type="Resource" id="a2"]
+script = ExtResource("2")
+id = "sword.2"
+anim = "sword.2"
+damage = 14
+knockback = 4.0
+reach_px = 24.0
+radius_px = 22.0
+lunge = 3.4
+hitstop = 5
+shake = 0.28
+trail_color = Color(0.8, 1, 0.95, 1)
+sfx = "swing"
+hit_sfx = "hit"
+
+[sub_resource type="Resource" id="a3"]
+script = ExtResource("2")
+id = "sword.3"
+anim = "sword.3"
+damage = 24
+knockback = 7.0
+launch_height_px = 26.0
+reach_px = 26.0
+radius_px = 28.0
+lunge = 4.4
+hitstop = 9
+shake = 0.6
+trail_color = Color(1, 0.9, 0.55, 1)
+sfx = "swing_heavy"
+hit_sfx = "hit_heavy"
+
+[resource]
+script = ExtResource("1")
+id = "bronze_sword"
+display_name = "Bronze Sword"
+weapon_class = "sword"
+combo = [SubResource("a1"), SubResource("a2"), SubResource("a3")]

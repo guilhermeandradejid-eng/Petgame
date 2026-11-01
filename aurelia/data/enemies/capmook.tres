@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://combat/enemy_data.gd" id="1"]
+[ext_resource type="Script" path="res://combat/attack_data.gd" id="2"]
+
+[sub_resource type="Resource" id="hb"]
+script = ExtResource("2")
+id = "capmook.headbutt"
+anim = "headbutt"
+damage = 9
+knockback = 5.5
+reach_px = 18.0
+radius_px = 20.0
+lunge = 5.0
+hitstop = 5
+shake = 0.3
+trail_color = Color(1, 0.6, 0.25, 1)
+sfx = "swing"
+hit_sfx = "hit"
+
+[resource]
+script = ExtResource("1")
+id = "capmook"
+sprite_id = "capmook"
+max_hp = 60
+speed = 2.6
+aggro_m = 7.0
+attack_range_m = 1.7
+windup_ticks = 22
+recover_ticks = 34
+radius_m = 0.5
+attack = SubResource("hb")

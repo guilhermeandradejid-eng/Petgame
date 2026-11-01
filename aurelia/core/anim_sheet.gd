@@ -1,0 +1,115 @@
+class_name AnimSheet
+extends RefCounted
+## Runtime view of a generated sprite sheet + its frozen contract.
+## Gameplay only ever reasons about *logical* frames (ticks from the contract);
+## sub-frames are picked here purely for smoothness.
+
+static var _cache: Dictionary = {}
+
+var id: String
+var cell: int = 64
+var cols: int = 16
+var rows: int = 1
+var tex: Texture2D
+var ntex: Texture2D
+var anims: Dictionary = {}
+
+
+static func get_sheet(char_id: String) -> AnimSheet:
+	if _cache.has(char_id):
+		return _cache[char_id]
+	var s := AnimSheet.new()
+	s._load(char_id)
+	_cache[char_id] = s
+	return s
+
+
+static func _tex(path: String) -> Texture2D:
+	var t = load(path)
+	if t is Texture2D:
+		return t
+	# Not imported yet (fresh clone / headless): read the PNG straight from disk.
+	var img := Image.load_from_file(ProjectSettings.globalize_path(path))
+	if img == null:
+		push_error("AnimSheet: cannot load " + path)
+		return null
+	return ImageTexture.create_from_image(img)
+
+
+func _load(char_id: String) -> void:
+	id = char_id
+	var base := "res://art/chars/%s/" % char_id
+	var f := FileAccess.open(base + "sheet.json", FileAccess.READ)
+	if f == null:
+		push_error("AnimSheet: missing " + base + "sheet.json")
+		return
+	var d: Dictionary = JSON.parse_string(f.get_as_text())
+	cell = int(d["cell"])
+	cols = int(d["cols"])
+	rows = int(ceil(float(d["frames"]) / cols))
+	tex = _tex(base + "sheet.png")
+	ntex = _tex(base + "normal.png")
+	for name in d["anims"]:
+		var a: Dictionary = d["anims"][name]
+		var ticks: Array = a["ticks"]
+		var starts: Array = []
+		var acc := 0
+		for t in ticks:
+			starts.append(acc)
+			acc += int(t)
+		var mains: Array = []
+		var subs: Dictionary = {}
+		for fr in a["frames"]:
+			if fr["sub"]:
+				subs[int(fr["logical"])] = fr
+			else:
+				mains.append(fr)
+		anims[name] = {
+			"loop": a["loop"], "ticks": ticks, "starts": starts, "total": acc,
+			"contact": a["contact"], "hold": a["hold"], "mains": mains, "subs": subs,
+		}
+
+
+func has_anim(name: String) -> bool:
+	return anims.has(name)
+
+
+func total_ticks(name: String) -> int:
+	return anims[name]["total"] if anims.has(name) else 0
+
+
+## Returns { "i": sheet index, "logical": int, "anchors": Dictionary } for a tick.
+func at(name: String, tick: int) -> Dictionary:
+	var a: Dictionary = anims[name]
+	var total: int = a["total"]
+	if a["loop"]:
+		tick = posmod(tick, total)
+	else:
+		tick = clampi(tick, 0, total - 1)
+	var starts: Array = a["starts"]
+	var l := starts.size() - 1
+	while l > 0 and starts[l] > tick:
+		l -= 1
+	var within: int = tick - int(starts[l])
+	var t: int = a["ticks"][l]
+	var fr: Dictionary = a["mains"][l]
+	if a["subs"].has(l) and within >= int(ceil(t / 2.0)):
+		fr = a["subs"][l]
+	return {"i": int(fr["i"]), "logical": l, "anchors": fr["anchors"]}
+
+
+## [start, end) ticks of the first contact run, or Vector2i(-1, -1).
+func contact_range(name: String) -> Vector2i:
+	var a: Dictionary = anims[name]
+	var c: Array = a["contact"]
+	if c.is_empty():
+		return Vector2i(-1, -1)
+	var l := int(c[0])
+	var s: int = a["starts"][l]
+	return Vector2i(s, s + int(a["ticks"][l]))
+
+
+func uv_rect(i: int) -> Vector4:
+	var cx := i % cols
+	var cy := i / cols
+	return Vector4(float(cx) / cols, float(cy) / rows, 1.0 / cols, 1.0 / rows)
