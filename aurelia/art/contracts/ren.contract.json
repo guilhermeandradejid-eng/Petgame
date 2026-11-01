@@ -1,7 +1,7 @@
 {
   "id": "ren",
   "cell": 64,
-  "target_height_px": 46,
+  "target_height_px": 50,
   "note": "FROZEN. The renderer may redraw poses and add sub-frames, never change this file.",
   "anims": {
     "idle":    {"loop": true,  "ticks": [10, 10, 10, 10]},

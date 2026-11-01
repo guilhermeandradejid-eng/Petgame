@@ -1,0 +1,73 @@
+{
+ "id": "capmook",
+ "cell": 64,
+ "target_height_px": 38,
+ "note": "FROZEN. The renderer may redraw poses and add sub-frames, never change this file.",
+ "anims": {
+  "idle": {
+   "loop": true,
+   "ticks": [
+    10,
+    10,
+    10,
+    10
+   ]
+  },
+  "walk": {
+   "loop": true,
+   "ticks": [
+    7,
+    7,
+    7,
+    7
+   ]
+  },
+  "windup": {
+   "loop": false,
+   "ticks": [
+    6,
+    6,
+    10
+   ],
+   "hold": [
+    2
+   ]
+  },
+  "headbutt": {
+   "loop": false,
+   "ticks": [
+    3,
+    3,
+    6,
+    6,
+    8
+   ],
+   "contact": [
+    2
+   ],
+   "hold": [
+    2
+   ]
+  },
+  "hurt": {
+   "loop": false,
+   "ticks": [
+    4,
+    10
+   ]
+  },
+  "death": {
+   "loop": false,
+   "ticks": [
+    5,
+    5,
+    6,
+    6,
+    30
+   ],
+   "hold": [
+    4
+   ]
+  }
+ }
+}
