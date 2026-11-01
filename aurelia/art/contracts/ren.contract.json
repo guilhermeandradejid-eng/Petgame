@@ -1,0 +1,19 @@
+{
+  "id": "ren",
+  "cell": 64,
+  "target_height_px": 46,
+  "note": "FROZEN. The renderer may redraw poses and add sub-frames, never change this file.",
+  "anims": {
+    "idle":    {"loop": true,  "ticks": [10, 10, 10, 10]},
+    "walk":    {"loop": true,  "ticks": [6, 6, 6, 6, 6, 6]},
+    "run":     {"loop": true,  "ticks": [5, 5, 5, 5, 5, 5]},
+    "dash":    {"loop": false, "ticks": [2, 4, 4, 6], "hold": [1]},
+    "jump":    {"loop": false, "ticks": [3, 6, 5], "hold": [1]},
+    "sword.1": {"loop": false, "ticks": [4, 3, 6, 5, 6], "contact": [2], "hold": [2]},
+    "sword.2": {"loop": false, "ticks": [3, 3, 6, 5, 7], "contact": [2], "hold": [2]},
+    "sword.3": {"loop": false, "ticks": [5, 4, 3, 8, 8, 10], "contact": [3], "hold": [3]},
+    "cast":    {"loop": false, "ticks": [5, 5, 8, 6, 6], "contact": [2], "hold": [2]},
+    "hurt":    {"loop": false, "ticks": [4, 10]},
+    "death":   {"loop": false, "ticks": [4, 6, 6, 8, 30], "hold": [4]}
+  }
+}
