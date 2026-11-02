@@ -1,0 +1,66 @@
+; Engine configuration file.
+; Godot 4.7
+
+config_version=5
+
+[application]
+
+config/name="Lumi & Bolota: Jardins Orbitais"
+config/description="Plataforma 3D cooperativo local com puzzles."
+config/version="0.1.0"
+run/main_scene="res://scenes/title.tscn"
+config/features=PackedStringArray("4.7", "Forward Plus")
+config/icon="res://icon.svg"
+boot_splash/bg_color=Color(0.996, 0.82, 0.62, 1)
+
+[autoload]
+
+Game="*res://scripts/autoload/game.gd"
+Sfx="*res://scripts/autoload/sfx.gd"
+Juice="*res://scripts/autoload/juice.gd"
+Vfx="*res://scripts/autoload/vfx.gd"
+Transition="*res://scripts/autoload/transition.gd"
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=900
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[gui]
+
+theme/custom_font="res://assets/fonts/lilita_one_regular.ttf"
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=false
+
+[physics]
+
+common/physics_ticks_per_second=60
+3d/default_gravity=30.0
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=1
+anti_aliasing/quality/msaa_3d=2
+anti_aliasing/quality/screen_space_aa=1
+lights_and_shadows/directional_shadow/size=4096
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=3
+environment/defaults/default_clear_color=Color(0.55, 0.78, 0.98, 1)
+
+[shader_globals]
+
+player_pos_a={
+"type": "vec3",
+"value": Vector3(0, -1000, 0)
+}
+player_pos_b={
+"type": "vec3",
+"value": Vector3(0, -1000, 0)
+}
+wind_time={
+"type": "float",
+"value": 0.0
+}
