@@ -200,10 +200,14 @@ a precisão, a frequência de smash, o mergulho e a leitura de bola que vai sair
 Design de som feito do zero em `tools/gen_audio.py` (numpy + scipy), com camadas de impactos
 gravados da Kenney (CC0, em `tools/kenney/`), e um mixer dinâmico em `scripts/audio.gd`:
 
-- **Raquete**: síntese modal do quadro de carbono/EVA, clique do impacto e "pop" da bola de
-  borracha, mais uma camada gravada. Há variações para cada golpe (forte, lob, curta, bloqueio),
-  smash com estalo, sub-grave e reverb de praia, e o super com subida e pancada gigante.
-- **Raquete no ar**: whoosh com filtro varrendo a frequência na batida (mais grave no smash e no gancho).
+- **Raquete**: "póc" limpo da pá de EVA (modos com leve queda de afinação, clique curto e o
+  "pop" da bola de borracha), sem distorção e sem reverb de sala, só um eco curto de praia aberta.
+  Cada golpe tem o seu: forte mais brilhante, lob mais macio, curta abafada, **defesa** seca e
+  amortecida, smash com estalo e pancada grave curta, e o especial com impacto e brilho mágico.
+- **Sincronia**: todo som de batida tem o pico no primeiro milésimo (toca junto com o contato), e a
+  animação da batida começa já no ponto de impacto quando a bola encosta na raquete. O vento da
+  raquete é discreto e só aparece nas pancadas (smash, gancho, especial) e no golpe no vazio.
+- **Especial armado**: subida curta e brilhante na hora de apertar o botão.
 - **Areia**: síntese granular (milhares de grãos) para os passos, a bola caindo, o mergulho e o pulo.
 - **Rede**: chicote da malha, ressonância da corda e bola amortecida.
 - **Apito de juiz** com "ervilha" (trinado irregular perto de 3 kHz).
@@ -214,10 +218,10 @@ gravados da Kenney (CC0, em `tools/kenney/`), e um mixer dinâmico em `scripts/a
   apito de samba) e um refrão grudento de **steel drum** com eco, com ponte de arpejos e metais.
   Três camadas sincronizadas: a base toca sempre, a batucada e um pouco do refrão entram no rali e o
   refrão completo nos ralis longos, com o especial pronto e no menu. Na pausa e no replay a música fica abafada.
-- **Mixagem**: buses de Música, Efeitos (reverb), Torcida e Interface, com compressor e limitador no
-  master. Golpes, areia e rede soam em 3D, de onde acontecem, e a torcida cresce com a emoção do rali.
+- **Mixagem**: buses de Música, Efeitos, Torcida e Interface, com compressor leve e limitador no
+  master e 28 vozes 3D (os passos não cortam mais as batidas). Golpes, areia e rede soam em 3D, de onde acontecem, e a torcida cresce com a emoção do rali.
 
-Amostra: [`docs/audio-amostra.m4a`](docs/audio-amostra.m4a) (14 s do jogo, gravado com o Movie Maker do Godot).
+Amostra: [`docs/audio-amostra.m4a`](docs/audio-amostra.m4a) (18 s do jogo, gravado com o Movie Maker do Godot).
 
 ## Estrutura
 

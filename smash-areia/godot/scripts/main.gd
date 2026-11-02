@@ -957,7 +957,7 @@ func _do_toss(type: int) -> void:
 	if type == Shots.SMASH:
 		server.jump_timer = 0.32
 	hud.set_hint("")
-	sfx_at("swing", server.global_position + Vector3(0, 2, 0), -10.0, 0.05, 0.8)
+	sfx_at("swing", server.global_position + Vector3(0, 2, 0), -26.0, 0.05, 0.7)
 
 
 func _serve_hit() -> void:
@@ -977,7 +977,7 @@ func _serve_hit() -> void:
 		Shots.SMASH:
 			shot = Shots.SMASH
 			quality = 0.7
-	server._start_swing(Shots.SMASH, ball.position, "smash")
+	server._start_swing(Shots.SMASH, ball.position, "smash", true)
 	var err := 1.0 if server.is_human else float(GameData.DIFFICULTIES[GameData.difficulty]["error"])
 	var res := Shots.compute(shot, ball.position, -server.side, aim, quality,
 			float(server.data["power"]), float(server.data["control"]), err * 0.8, rng)
@@ -1314,7 +1314,7 @@ func _player_super(p: Player) -> void:
 		p.jump_boost = 1.45
 		if p.jump_timer < 0.0:
 			p.jump_timer = 0.05
-	sfx("swing_smash", -4.0, 0.0, 1.4)
+	sfx("special_arm", -6.0, 0.0)
 
 
 func _player_dive(p: Player) -> void:
@@ -1748,7 +1748,7 @@ func _start_replay() -> void:
 	var b0: Vector3 = rec[replay_from]["b"]
 	replay_cam = Vector3(-10.4, 2.7, clampf(b0.z * 0.7, -6.0, 6.0))
 	cam_cut = true
-	sfx("swing_smash", -4.0, 0.0, 0.6)
+	sfx("swing_smash", -14.0, 0.0, 0.6)
 	world.cheer(0.6)
 
 

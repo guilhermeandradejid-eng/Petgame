@@ -482,19 +482,24 @@ func try_contact(ball: Ball, delta: float) -> Dictionary:
 		var shot := pending_shot
 		var ch := charge()
 		var st := classify(ball.global_position, shot, fast or ball.special != "")
-		_start_swing(shot, ball.global_position, st)
+		_start_swing(shot, ball.global_position, st, true)
 		return {"type": shot, "quality": q, "charge": ch, "style": st}
 	best_dist = minf(best_dist, d)
 	return {}
 
 
-func _start_swing(type: int, ball_pos: Vector3, st := "") -> void:
+## at_contact: a batida já está acontecendo (a bola está na raquete), então a
+## animação começa perto do ponto de impacto para casar com o som e a bola.
+func _start_swing(type: int, ball_pos: Vector3, st := "", at_contact := false) -> void:
 	if game and type >= 0:
 		var big := type == Shots.SMASH or type == Shots.SPECIAL or st == "gancho"
-		game.sfx_at("swing_smash" if big else "swing", global_position + Vector3(0, 1.4, 0),
-				-6.0 if big else -11.0, 0.08, 1.0 + last_charge * 0.15)
+		# vento da raquete discreto: só se destaca nas pancadas e no golpe no vazio
+		if big:
+			game.sfx_at("swing_smash", global_position + Vector3(0, 1.4, 0), -15.0, 0.08, 1.0 + last_charge * 0.1)
+		elif not at_contact:
+			game.sfx_at("swing", global_position + Vector3(0, 1.4, 0), -20.0, 0.08)
 	swing_type = type
-	swing_t = 0.0
+	swing_t = 0.28 if at_contact else 0.0
 	last_charge = charge()
 	pending_shot = -1
 	trail_pts.clear()
@@ -656,7 +661,7 @@ func _update_normal(dt: float) -> void:
 			if game:
 				if spd > 3.0:
 					game.sand_burst(global_position, 2)
-				game.sfx_at("step", global_position, -18.0 + minf(spd, 6.0) * 1.2, 0.1)
+				game.sfx_at("step", global_position, -21.0 + minf(spd, 6.0) * 1.0, 0.1)
 				var side_off := Vector3.UP.cross(vel.normalized()) * 0.11 * foot_side
 				game.world.footprint(global_position + side_off, atan2(vel.x, vel.z))
 

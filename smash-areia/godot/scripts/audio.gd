@@ -37,7 +37,7 @@ func _ready() -> void:
 	listener = AudioListener3D.new()
 	add_child(listener)
 	listener.make_current()
-	for i in 18:
+	for i in 28:
 		var p := AudioStreamPlayer3D.new()
 		p.bus = "SFX"
 		p.unit_size = 22.0
@@ -79,7 +79,7 @@ func _setup_buses() -> void:
 	comp.ratio = 3.0
 	comp.attack_us = 2000.0
 	comp.release_ms = 180.0
-	comp.gain = 6.0
+	comp.gain = 3.0
 	AudioServer.add_bus_effect(0, comp)
 	var lim := AudioEffectHardLimiter.new()
 	lim.ceiling_db = -0.8
@@ -88,11 +88,12 @@ func _setup_buses() -> void:
 	lp_music = AudioEffectLowPassFilter.new()
 	lp_music.cutoff_hz = 20000.0
 	AudioServer.add_bus_effect(bus_music, lp_music)
-	bus_sfx = _add_bus("SFX", 5.0)
+	bus_sfx = _add_bus("SFX", 3.0)
+	# praia aberta: quase sem reverb (só um ar), o eco curto já vem no próprio som
 	var rv := AudioEffectReverb.new()
-	rv.room_size = 0.35
-	rv.damping = 0.6
-	rv.wet = 0.08
+	rv.room_size = 0.2
+	rv.damping = 0.7
+	rv.wet = 0.03
 	rv.dry = 1.0
 	AudioServer.add_bus_effect(bus_sfx, rv)
 	bus_crowd = _add_bus("Crowd", -5.0)

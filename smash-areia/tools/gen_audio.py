@@ -231,80 +231,100 @@ K_LAND = load_ogg("land.ogg")
 K_KILL = load_ogg("kill.ogg")
 
 
-def paddle(hardness=1.0, size=1.0, ball=1.0):
-    """Raquete de beach tennis (pá de carbono/EVA) acertando a bola de borracha:
-    clique do impacto + modos do quadro + 'pop' da bola."""
-    dur = 0.35
-    click = hp(noise(0.004), 2500) * env_exp(0.004, 0.0012)
-    s = rng.uniform(0.94, 1.06) / size
-    body = modal([410 * s, 930 * s, 1580 * s, 2470 * s, 3900 * s],
-                 [0.055, 0.035, 0.022, 0.014, 0.008],
-                 [1.0, 0.7, 0.45, 0.3, 0.15], dur, detune=0.03)
-    ballpop = np.sin(np.cumsum(2 * np.pi * (230 * ball + 140 * np.exp(-T(dur) * 60)) / SR)) * env_exp(dur, 0.022)
-    thump = lp(noise(dur), 600) * env_exp(dur, 0.012) * 0.6
-    k = pad(K_HIT * rng.uniform(0.25, 0.4), int(SR * dur))
-    x = mix(click * 1.4 * hardness, body * 0.55 * (0.6 + 0.4 * hardness), ballpop * 0.9, thump, k)
-    x = sat(x * 1.2, 1.5)
-    return reverb(x, IR_ROOM, 0.07)
+def slap(x, delay=0.075, db=-22.0):
+    """Eco curto de praia aberta (reflexo na areia/arquibancada), sem sala."""
+    out = pad(x, len(x) + int(SR * delay))
+    out[int(SR * delay):] += x * 10 ** (db / 20)
+    return out
 
 
-def whoosh(dur=0.28, f0=500, f1=2600, f2=800, power=1.0):
+def pock(f, decay, glide=0.08):
+    """Modo principal da pá de EVA: senoide com leve queda de afinação."""
+    t = T(decay * 7)
+    ff = f * (1 + glide * np.exp(-t * 90))
+    return np.sin(2 * np.pi * np.cumsum(ff) / SR) * np.exp(-t / decay)
+
+
+def paddle(hardness=1.0, size=1.0, ball=1.0, mute=0.0):
+    """Raquete de beach tennis acertando a bola: 'póc' limpo e curto.
+    Ataque imediato (o pico cai no instante do contato), sem distorção e sem
+    reverb de sala: é uma praia aberta. mute = quanto a bola é "amortecida"."""
+    s = rng.uniform(0.96, 1.04) / size
+    click = bp(noise(0.003), 3500, 9000) * env_exp(0.003, 0.0008) * (0.35 + 0.5 * hardness)
+    body = mix(pock(1050 * s, 0.016 * (1 + mute)), pock(1980 * s, 0.008, 0.05) * 0.35 * hardness,
+               pock(330 * s, 0.028 * (1 + mute), 0.12) * 0.55)
+    ballpop = pock(210 * ball, 0.018 * (1 + mute * 0.5), 0.3) * 0.5
+    x = mix(click, body, ballpop)
+    if mute > 0:
+        x = lp(x, 4200 - 2600 * mute)
+    x = fade(x, 0.0003, 0.02)
+    return slap(x, rng.uniform(0.065, 0.085), -24)
+
+
+def whoosh(dur=0.2, f0=600, f1=2400, f2=900, power=1.0):
+    """Raquete cortando o ar: ataque rápido e cauda curta (o pico fica no
+    começo, então soa junto com a batida e não depois dela)."""
     n = noise(dur, "pink")
     t = T(dur)
     k = t / dur
-    fc = np.where(k < 0.55, f0 + (f1 - f0) * (k / 0.55) ** 1.4, f1 + (f2 - f1) * ((k - 0.55) / 0.45))
+    fc = np.where(k < 0.3, f0 + (f1 - f0) * (k / 0.3), f1 + (f2 - f1) * ((k - 0.3) / 0.7))
     out = np.zeros_like(n)
-    # filtro passa-banda variando no tempo (em blocos)
     blk = 256
     zi = None
     for i in range(0, len(n), blk):
         c = float(fc[min(i, len(fc) - 1)])
-        so = sos("bp", (c * 0.7, c * 1.4), 2)
+        so = sos("bp", (c * 0.75, c * 1.3), 2)
         if zi is None or zi.shape != (so.shape[0], 2):
             zi = np.zeros((so.shape[0], 2))
         y, zi = signal.sosfilt(so, n[i:i + blk], zi=zi)
         out[i:i + blk] = y
-    amp = np.sin(np.pi * np.clip(k, 0, 1)) ** 1.6
-    tone = np.sin(np.cumsum(2 * np.pi * (fc * 0.5) / SR)) * 0.08
-    return (out * 1.0 + tone) * amp * power
+    amp = np.minimum(1.0, k / 0.08) * np.exp(-np.maximum(k - 0.08, 0) * 5.5)
+    return out * amp * power
+
+
+def sparkle(dur=0.9, base=1760):
+    """Brilho mágico do especial: notas agudas que caem e somem."""
+    x = np.zeros(int(SR * dur))
+    for i, f in enumerate((base, base * 1.26, base * 1.5, base * 2.0, base * 2.52)):
+        t = T(dur - i * 0.05)
+        v = np.sin(2 * np.pi * f * t) * np.exp(-t * 7) * 0.12
+        place(x, v, i * 0.05)
+    return x
 
 
 def build_hits():
     for i in range(4):
         sfx(f"hit_drive_{i}", paddle(1.0, 1.0, 1.0))
     for i in range(3):
-        sfx(f"hit_lob_{i}", paddle(0.7, 1.08, 0.85) * 0.9, -2)
+        sfx(f"hit_lob_{i}", paddle(0.6, 1.06, 0.85, 0.15) * 0.9, -2)
     for i in range(3):
-        x = paddle(0.45, 1.15, 1.25)
-        sfx(f"hit_drop_{i}", x, -4)
-    for i in range(2):
-        x = mix(paddle(0.6, 1.2, 0.7), lp(noise(0.2), 400) * env_exp(0.2, 0.03) * 0.8)
-        sfx(f"hit_block_{i}", x, -2)
+        sfx(f"hit_drop_{i}", paddle(0.35, 1.12, 1.2, 0.55), -5)
+    # defesa: bloqueio seco e abafado ("tóc" curto), sem cauda
     for i in range(3):
-        dur = 0.9
-        crack = hp(noise(0.03), 1800) * env_exp(0.03, 0.006) * 1.5
-        boom = sweep_sine(140, 48, dur, 2.5) * env_exp(dur, 0.16) * 1.2
-        k = pad(K_IMPACT * 0.9, int(SR * dur))
-        x = mix(paddle(1.4, 0.95, 1.1) * 1.3, crack, boom, k * 0.8)
-        x = sat(x, 2.2)
-        sfx(f"hit_smash_{i}", reverb(x, IR_BEACH[:, 0], 0.22))
-    # super: riser + pancada gigante + cauda brilhante
-    dur = 1.6
-    riser = whoosh(0.55, 300, 5000, 5000, 1.0)
-    boom = sweep_sine(110, 35, dur, 1.6) * env_exp(dur, 0.35) * 1.4
-    crack = hp(noise(0.05), 1500) * env_exp(0.05, 0.01) * 1.6
-    shimmer = sum(np.sin(2 * np.pi * f * T(dur)) * env_exp(dur, 0.5) * 0.08 for f in (1760, 2217, 2637, 3520))
-    hitpart = mix(crack, boom, pad(K_IMPACT, int(SR * dur)), paddle(1.5, 0.9, 1.0) * 1.2, shimmer)
-    x = np.zeros(int(SR * 2.3))
-    place(x, riser, 0.0)
-    place(x, sat(hitpart, 2.5), 0.5)
-    sfx("hit_super", reverb(x, IR_HALL[:, 0], 0.3))
-    # rajadas de ar da raquete
+        x = mix(paddle(0.5, 1.22, 0.75, 0.8), lp(noise(0.06), 500) * env_exp(0.06, 0.012) * 0.5)
+        sfx(f"hit_block_{i}", x, -3)
+    # smash: estalo + póc forte + pancada grave curta
+    for i in range(3):
+        dur = 0.35
+        crack = bp(noise(0.012), 2000, 9000) * env_exp(0.012, 0.003) * 0.9
+        thump = sweep_sine(120, 55, dur, 3.0) * env_exp(dur, 0.06) * 0.8
+        x = mix(paddle(1.3, 0.95, 1.1) * 1.1, crack, thump)
+        sfx(f"hit_smash_{i}", slap(x, 0.08, -18))
+    # especial: o impacto vem no instante do contato e depois o brilho
+    dur = 1.2
+    crack = bp(noise(0.02), 1500, 9000) * env_exp(0.02, 0.005) * 1.0
+    boom = sweep_sine(100, 38, dur, 2.0) * env_exp(dur, 0.18) * 1.0
+    x = mix(paddle(1.4, 0.9, 1.0) * 1.1, crack, boom, sparkle(1.0) * 1.2)
+    sfx("hit_super", slap(x, 0.09, -16))
+    # especial armado: subida curta e brilhante (toca ao apertar o botão)
+    riser = whoosh(0.4, 400, 5200, 5200, 0.7)[::-1] * 0.6
+    sfx("special_arm", mix(riser, sparkle(0.5, 2093) * 0.8), -6)
+    # rajadas de ar da raquete (curtas e discretas)
     for i in range(4):
-        sfx(f"swing_{i}", whoosh(rng.uniform(0.22, 0.3), rng.uniform(400, 600), rng.uniform(2200, 3000), 900, 1.0), -6)
-    sfx("swing_smash", whoosh(0.38, 300, 3800, 700, 1.0), -3)
-    sfx("charge_full", mix(*[np.sin(2 * np.pi * f * T(0.5)) * env_exp(0.5, 0.15) * a
-                             for f, a in ((1318.5, 0.6), (1975.5, 0.4), (2637, 0.25))]), -8)
+        sfx(f"swing_{i}", whoosh(rng.uniform(0.14, 0.18), rng.uniform(500, 700), rng.uniform(2000, 2600), 900, 1.0), -12)
+    sfx("swing_smash", whoosh(0.24, 400, 3200, 800, 1.0), -8)
+    sfx("charge_full", mix(*[np.sin(2 * np.pi * f * T(0.4)) * env_exp(0.4, 0.1) * a
+                             for f, a in ((1318.5, 0.6), (1975.5, 0.4), (2637, 0.25))]), -12)
 
 
 # ---------------------------------------------------------------- areia, rede, corpo
