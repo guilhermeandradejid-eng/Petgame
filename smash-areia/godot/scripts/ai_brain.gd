@@ -41,8 +41,14 @@ static func intercept(pl: Player, ball: Ball, react: float) -> Dictionary:
 			break
 		if bp.z * pl.side < 0.45 or bp.y > 3.25:
 			continue
-		var stand := Vector3(bp.x, 0.0, bp.z) - nd * 0.3
-		var dist := maxf(Vector2(stand.x, stand.z).distance_to(here) - 0.5, 0.0)
+		var left := Vector3.UP.cross(nd)
+		var base := Vector3(bp.x, 0.0, bp.z) - nd * 0.3
+		var s_fore := base + left * 0.5     # bola fica do lado direito (raquete)
+		var s_back := base - left * 0.45    # bola fica do lado esquerdo (backhand)
+		var df := Vector2(s_fore.x, s_fore.z).distance_to(here)
+		var db := Vector2(s_back.x, s_back.z).distance_to(here)
+		var stand := s_fore if df < db + 0.35 else s_back
+		var dist := maxf(Vector2(stand.x, stand.z).distance_to(here) - 0.25, 0.0)
 		var need := react + dist / speed + (0.1 if dist > 0.4 else 0.0)
 		var high := bp.y > Player.TOP_REACH - 0.1
 		if high:
@@ -171,7 +177,9 @@ func choose_shot(contact: Vector3, ball: Ball, game: Node) -> int:
 	if contact.y > Player.TOP_REACH - 0.2 and close_net and roll < float(diff["smash"]):
 		return Shots.SMASH
 	if ball.speed_at_hit > 17.0 or ball.special != "":
-		return Shots.LOB if roll < 0.55 else Shots.DRIVE
+		if roll < 0.4:
+			return Shots.DEFENSE
+		return Shots.LOB if roll < 0.75 else Shots.DRIVE
 	roll = rng.randf()
 	if avg_z < 3.6:
 		if roll < 0.5:

@@ -25,9 +25,9 @@ void vertex() {
 
 void fragment() {
 	float n = noise(wpos.xz * 0.35) * 0.6 + noise(wpos.xz * 1.3) * 0.4;
-	vec3 col = mix(sand.rgb, sand_dark.rgb, step(0.62, n) * 0.6);
+	vec3 col = mix(sand.rgb, sand_dark.rgb, smoothstep(0.55, 0.75, n) * 0.35);
 	float speck = step(0.93, hash(floor(wpos.xz * 9.0)));
-	col = mix(col, sand_dark.rgb * 0.92, speck * 0.5);
+	col = mix(col, sand_dark.rgb * 0.95, speck * 0.2);
 	// dunas: listras suaves
 	float dune = smoothstep(0.45, 0.5, fract(wpos.z * 0.08 + noise(wpos.xz * 0.05) * 1.5));
 	col *= mix(1.0, 0.97, dune);

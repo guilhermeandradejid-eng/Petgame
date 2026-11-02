@@ -186,9 +186,10 @@ static func compute(type: int, from: Vector3, side: float, aim_in: Vector2, qual
 			margin = 0.26 - net_err
 			err = 1.0
 		DEFENSE:
-			target.z = side * (5.0 + rng.randf_range(-1.2, 1.2))
-			target.x = rng.randf_range(-2.4, 2.4)
-			style = {"apex": 4.6 + quality * 1.2}
+			# defesa: bola alta, funda e segura no meio da quadra
+			target.z = side * (5.8 + depth * 0.6 + rng.randf_range(-0.6, 0.6))
+			target.x = clampf(target.x * 0.6 + rng.randf_range(-1.0, 1.0), -2.6, 2.6)
+			style = {"apex": 4.8 + quality * 1.3}
 			top = -18.0
 			margin = 0.5
 			err = 0.9

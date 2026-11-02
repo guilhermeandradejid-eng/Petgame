@@ -47,6 +47,7 @@ func _ready() -> void:
 	_props()
 	_stands()
 	_boards()
+	_land_side()
 
 
 func _process(dt: float) -> void:
@@ -128,9 +129,9 @@ func _environment() -> void:
 func _ground() -> void:
 	var sand := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
-	pm.size = Vector2(300, 120)
+	pm.size = Vector2(700, 520)
 	sand.mesh = pm
-	sand.position = Vector3(0, 0, SHORE_Z + 60.0)
+	sand.position = Vector3(0, 0, SHORE_Z + 260.0)
 	var m := ShaderMaterial.new()
 	m.shader = preload("res://shaders/sand.gdshader")
 	m.set_shader_parameter("shore_z", SHORE_Z)
@@ -336,57 +337,46 @@ func _place(scene: PackedScene, pos: Vector3, rot_y := 0.0, s := 1.0, opts: Dict
 
 
 func _props() -> void:
-	var palm_spots := [
-		Vector3(-15, 0, -19), Vector3(16, 0, -20), Vector3(-21, 0, -7), Vector3(22, 0, -9),
-		Vector3(-25, 0, 6), Vector3(26, 0, 4), Vector3(-9, 0, -24), Vector3(11, 0, -24.5),
-		Vector3(-31, 0, -16), Vector3(32, 0, -17), Vector3(-19, 0, 18), Vector3(20, 0, 20),
-	]
-	for p in palm_spots:
-		_place(PALM, p, rng.randf_range(0, TAU), rng.randf_range(1.1, 1.5), {"outline": 0.035})
-	var umb_spots := [Vector3(-13.5, 0, -12), Vector3(14, 0, -13), Vector3(-6, 0, -20), Vector3(7, 0, -19.5)]
-	for p in umb_spots:
-		var u := _place(UMBRELLA, p, rng.randf_range(0, TAU), 1.2)
-		u.rotation.z = rng.randf_range(-0.12, 0.12)
-		_place(CHAIR, p + Vector3(rng.randf_range(-1.2, 1.2), 0, 1.3), rng.randf_range(2.5, 3.8), 1.3)
-	_place(KIOSK, Vector3(-17, 0, -13), 0.4, 1.3)
-	_place(TOWER, Vector3(19, 0, -16), -0.5, 1.4)
-	_place(SURFBOARD, Vector3(12.5, 0, -17), 0.3, 1.3).rotation.x = -0.15
-	_place(SURFBOARD, Vector3(13.6, 0, -16.6), -0.2, 1.2).rotation.x = -0.1
-	_place(SURFBOARD, Vector3(-12, 0, -17.5), 0.6, 1.25).rotation.x = -0.2
+	# composição limpa: poucas palmeiras emoldurando o fundo, sem objetos
+	# competindo com a quadra
+	var palm_spots := [Vector3(-16, 0, -21), Vector3(17, 0, -22), Vector3(-26, 0, -12), Vector3(27, 0, -13),
+		Vector3(-8, 0, -26), Vector3(9, 0, -26.5)]
+	for k in palm_spots.size():
+		_place(PALM, palm_spots[k], 0.7 * k, 1.3 + 0.08 * (k % 3), {"outline": 0.035})
+	for p in [Vector3(-11, 0, -19), Vector3(11.5, 0, -19.5)]:
+		_place(UMBRELLA, p, 0.4, 1.2)
+		_place(CHAIR, p + Vector3(0.9, 0, 1.2), 3.0, 1.3)
+	_place(TOWER, Vector3(21, 0, -19), -0.5, 1.4)
 	# horizonte: morros, ilhas, nuvens, veleiros, gaivotas
 	_place(MOUNTAINS, Vector3(-210, -1, -330), 0.3, 2.6, {"outline": 0.0, "halftone": 0.0, "rim": 0.0})
 	_place(MOUNTAINS, Vector3(230, -1, -360), PI - 0.2, 2.2, {"outline": 0.0, "halftone": 0.0, "rim": 0.0})
-	for i in 4:
-		_place(ISLAND, Vector3(rng.randf_range(-140, 140), -0.5, rng.randf_range(-300, -220)), rng.randf_range(0, TAU),
-				rng.randf_range(2.5, 4.0), {"outline": 0.0, "halftone": 0.0})
-	for i in 9:
-		var c := _place(CLOUD, Vector3(rng.randf_range(-180, 180), rng.randf_range(35, 70), rng.randf_range(-280, -160)),
-				0.0, rng.randf_range(6.0, 12.0), {"outline": 0.0, "halftone": 0.0, "rim": 0.0})
-		clouds.append(c)
-	for i in 4:
-		var b := _place(SAILBOAT, Vector3(rng.randf_range(-200, 200), 0, rng.randf_range(-150, -60)),
-				PI * 0.5, rng.randf_range(1.4, 2.2), {"outline": 0.0, "halftone": 0.0})
-		boats.append({"node": b, "speed": rng.randf_range(1.0, 2.5), "ph": rng.randf() * 10.0})
+	for i in 3:
+		_place(ISLAND, Vector3(-120 + i * 120 + rng.randf_range(-20, 20), -0.5, rng.randf_range(-300, -240)),
+				rng.randf_range(0, TAU), rng.randf_range(2.5, 3.5), {"outline": 0.0, "halftone": 0.0})
 	for i in 6:
+		var c := _place(CLOUD, Vector3(-170 + i * 65 + rng.randf_range(-15, 15), rng.randf_range(40, 70),
+				rng.randf_range(-280, -180)), 0.0, rng.randf_range(7.0, 11.0), {"outline": 0.0, "halftone": 0.0, "rim": 0.0})
+		clouds.append(c)
+	for i in 3:
+		var b := _place(SAILBOAT, Vector3(-150 + i * 140, 0, rng.randf_range(-150, -80)),
+				PI * 0.5, rng.randf_range(1.6, 2.2), {"outline": 0.0, "halftone": 0.0})
+		boats.append({"node": b, "speed": rng.randf_range(1.0, 2.0), "ph": rng.randf() * 10.0})
+	for i in 3:
 		var g := Node3D.new()
 		add_child(g)
-		var body := _box(Vector3(0.14, 0.12, 0.45), Vector3.ZERO, Color("ffffff"), 0.015, g)
-		body.name = "Body"
+		_box(Vector3(0.14, 0.12, 0.45), Vector3.ZERO, Color("ffffff"), 0.015, g)
 		var wl := Node3D.new()
 		g.add_child(wl)
 		_box(Vector3(0.6, 0.03, 0.2), Vector3(0.32, 0, 0), Color("f2f2f2"), 0.012, wl)
 		var wr := Node3D.new()
 		g.add_child(wr)
 		_box(Vector3(0.6, 0.03, 0.2), Vector3(-0.32, 0, 0), Color("f2f2f2"), 0.012, wr)
-		g.scale = Vector3.ONE * 1.4
-		gulls.append({"node": g, "wl": wl, "wr": wr, "center": Vector3(rng.randf_range(-30, 30), rng.randf_range(16, 26),
-			rng.randf_range(-60, -30)), "r": rng.randf_range(8, 18), "speed": rng.randf_range(0.2, 0.4) * (1 if i % 2 else -1),
+		g.scale = Vector3.ONE * 1.3
+		gulls.append({"node": g, "wl": wl, "wr": wr, "center": Vector3(rng.randf_range(-30, 30), rng.randf_range(20, 28),
+			rng.randf_range(-70, -45)), "r": rng.randf_range(10, 18), "speed": rng.randf_range(0.2, 0.35) * (1 if i % 2 else -1),
 			"ph": rng.randf() * TAU})
-	for i in 4:
-		var crab := _place(CRAB, Vector3(rng.randf_range(-12, 12), 0, rng.randf_range(-23, -15)), 0.0, 1.5, {"outline": 0.012})
-		crabs.append({"node": crab, "x": crab.position.x, "t": rng.randf_range(0, 10)})
-	# bandeirinhas nos cantos
-	for corner in [Vector3(-6.5, 0, -10.5), Vector3(6.5, 0, -10.5), Vector3(-6.5, 0, 10.5), Vector3(6.5, 0, 10.5)]:
+	# duas bandeiras só no fundo
+	for corner in [Vector3(-6.8, 0, -11.2), Vector3(6.8, 0, -11.2)]:
 		_box(Vector3(0.06, 3.6, 0.06), corner + Vector3(0, 1.8, 0), Color("ffffff"), 0.012)
 		var flag := MeshInstance3D.new()
 		var fq := QuadMesh.new()
@@ -397,8 +387,8 @@ func _props() -> void:
 		var fm := ShaderMaterial.new()
 		fm.shader = preload("res://shaders/flag.gdshader")
 		fm.set_shader_parameter("phase", rng.randf() * TAU)
-		fm.set_shader_parameter("color_a", GameData.TEAMS[0]["shirt"] if corner.z > 0 else GameData.TEAMS[1]["shirt"])
-		fm.set_shader_parameter("color_b", Color("ffd23f"))
+		fm.set_shader_parameter("color_a", GameData.TEAMS[0]["shirt"] if corner.x < 0 else GameData.TEAMS[1]["shirt"])
+		fm.set_shader_parameter("color_b", Color("ffffff"))
 		flag.material_override = fm
 		flag.rotation.y = PI * 0.5
 		add_child(flag)
@@ -407,8 +397,9 @@ func _props() -> void:
 func _stands() -> void:
 	crowd_mat = ShaderMaterial.new()
 	crowd_mat.shader = preload("res://shaders/crowd.gdshader")
-	var shirts := [Color("ff4b3e"), Color("2f8cff"), Color("ffd23f"), Color("35e0a1"), Color("ff5fa2"),
-		Color("ffffff"), Color("9b5de5"), Color("ff9f1c"), Color("1f2a44"), Color("19d3ff")]
+	# torcida com as cores dos times + branco e amarelo (menos ruído visual)
+	var shirts := [Color("2f8cff"), Color("2f8cff"), Color("ff4b3e"), Color("ff4b3e"), Color("ffffff"),
+		Color("ffffff"), Color("ffd23f"), Color("5fb8ff")]
 	# só nas laterais: o fundo fica livre para ver o mar
 	var stands := [
 		{"pos": Vector3(-11.6, 0, -0.5), "rot": PI * 0.5, "rows": 5},
@@ -453,33 +444,48 @@ func _stands() -> void:
 
 
 func _boards() -> void:
-	# placas de publicidade fictícias em volta da quadra
-	var texts := ["SMASH NA AREIA", "RÁDIO PRAIA FM", "AÇAÍ DO ZÉ", "COCO GELADO", "PROTETOR 50+", "PICOLÉ TROPICAL"]
-	var colors := [Color("ff4b3e"), Color("2f8cff"), Color("9b5de5"), Color("35e0a1"), Color("ff9f1c"), Color("ff5fa2")]
-	var spots := []
-	for i in 5:
-		spots.append({"pos": Vector3(-8.0 + i * 4.0, 0.45, -10.6), "rot": 0.0})
-	for i in 5:
-		spots.append({"pos": Vector3(-8.5, 0.45, -8.0 + i * 4.0), "rot": PI * 0.5})
-		spots.append({"pos": Vector3(8.5, 0.45, -8.0 + i * 4.0), "rot": -PI * 0.5})
-	for i in spots.size():
-		var sp: Dictionary = spots[i]
+	# três placas baixas e iguais atrás do fundo da quadra (laterais ficam com a arquibancada)
+	var texts := ["SMASH NA AREIA", "BEACH TENNIS", "SMASH NA AREIA"]
+	for i in 3:
 		var holder := Node3D.new()
-		holder.position = sp["pos"]
-		holder.rotation.y = sp["rot"]
+		holder.position = Vector3(-5.2 + i * 5.2, 0.4, -11.0)
 		add_child(holder)
-		var c: Color = colors[i % colors.size()]
-		_box(Vector3(3.8, 0.9, 0.12), Vector3.ZERO, c, 0.015, holder)
-		_box(Vector3(3.8, 0.1, 0.14), Vector3(0, 0.45, 0), Color("ffffff"), 0.0, holder)
+		_box(Vector3(5.0, 0.8, 0.12), Vector3.ZERO, Color("ffffff"), 0.012, holder)
+		_box(Vector3(5.0, 0.09, 0.14), Vector3(0, -0.36, 0), Color("1f6bff"), 0.0, holder)
 		var l := Label3D.new()
-		l.text = texts[i % texts.size()]
+		l.text = texts[i]
 		l.font = FONT
 		l.font_size = 96
-		l.pixel_size = 0.0055
-		l.outline_size = 18
-		l.outline_modulate = Color(0.07, 0.04, 0.12)
-		l.modulate = Color("ffffff")
-		l.position = Vector3(0, 0, 0.07)
+		l.pixel_size = 0.005
+		l.outline_size = 0
+		l.modulate = Color("1f6bff")
+		l.position = Vector3(0, 0.04, 0.07)
 		l.shaded = false
 		l.double_sided = false
 		holder.add_child(l)
+
+
+## Lado da terra (visto pela câmera do J2 no VS): calçadão, palmeiras, prédios e morros
+func _land_side() -> void:
+	_box(Vector3(260, 0.12, 5.0), Vector3(0, 0.06, 31.0), Color("f4efe6"), 0.0)
+	for k in 26:
+		_box(Vector3(5.0, 0.13, 0.5), Vector3(-130 + k * 10.4, 0.065, 31.0 + (0.9 if k % 2 == 0 else -0.9)), Color("2b2b33"), 0.0)
+	_box(Vector3(260, 0.25, 1.2), Vector3(0, 0.12, 34.0), Color("4fbf6b"), 0.0)
+	for k in 12:
+		_place(PALM, Vector3(-55 + k * 10.0, 0, 34.0 + (k % 2) * 1.2), 0.5 * k, 1.35, {"outline": 0.035})
+	var cols := [Color("ffd9b8"), Color("bfe8d8"), Color("bfdcff"), Color("e5d1ff"), Color("fff1c2"), Color("ffc9c9")]
+	var r2 := RandomNumberGenerator.new()
+	r2.seed = 77
+	var x := -190.0
+	while x < 190.0:
+		var w := r2.randf_range(10.0, 18.0)
+		var h := r2.randf_range(9.0, 24.0)
+		var c: Color = cols[r2.randi() % cols.size()]
+		var bld := _box(Vector3(w, h, 10.0), Vector3(x + w * 0.5, h * 0.5, r2.randf_range(118.0, 132.0)), c, 0.08)
+		bld.material_override = Toon.make(c, {"outline": 0.08, "halftone": 0.0, "rim": 0.0, "shadow": Color(0.86, 0.82, 0.92)})
+		# faixas de janelas
+		for j in int(h / 4.0):
+			_box(Vector3(w * 0.86, 0.9, 0.2), Vector3(0, -h * 0.5 + 2.5 + j * 4.0, -5.05) / Vector3(1, 1, 1), Color(c.darkened(0.22)), 0.0, bld)
+		x += w + r2.randf_range(1.0, 4.0)
+	_place(MOUNTAINS, Vector3(-140, -1, 330), PI + 0.4, 2.4, {"outline": 0.0, "halftone": 0.0, "rim": 0.0})
+	_place(MOUNTAINS, Vector3(170, -1, 360), 0.2, 2.0, {"outline": 0.0, "halftone": 0.0, "rim": 0.0})

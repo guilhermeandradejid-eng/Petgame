@@ -95,9 +95,9 @@ def build_refchair():
 def build_bleachers():
     B.reset_scene()
     frame = B.material("BleachFrame", "#dfe6f2")
-    seat_a = B.material("BleachSeatA", "#2f8cff")
-    seat_b = B.material("BleachSeatB", "#ffd23f")
-    skirt = B.material("BleachSkirt", "#ff4b3e")
+    seat_a = B.material("BleachSeatA", "#5fb8ff")
+    seat_b = B.material("BleachSeatB", "#5fb8ff")
+    skirt = B.material("BleachSkirt", "#1f3a8a")
     b = B.Builder("Bleachers")
     rows = 5
     length = 15.0

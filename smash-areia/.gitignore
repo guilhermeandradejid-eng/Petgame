@@ -1,3 +1,4 @@
 godot/.godot/
 builds/*.keystore
 builds/*.idsig
+blender/__pycache__/

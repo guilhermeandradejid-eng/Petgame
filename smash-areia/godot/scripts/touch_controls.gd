@@ -6,6 +6,7 @@ extends Control
 signal shot(type: int)
 signal dive
 signal super_pressed
+signal defense_pressed
 signal jump
 
 const FONT := preload("res://assets/fonts/Bangers.woff")
@@ -40,7 +41,8 @@ func _layout() -> void:
 		{"id": "smash", "type": Shots.SMASH, "pos": c + Vector2(d, 0), "r": r, "label": "SMASH", "color": Shots.COLORS[Shots.SMASH]},
 		{"id": "drop", "type": Shots.DROP, "pos": c + Vector2(0, d), "r": r, "label": "CURTA", "color": Shots.COLORS[Shots.DROP]},
 		{"id": "drive", "type": Shots.DRIVE, "pos": c + Vector2(-d, 0), "r": r, "label": "FORTE", "color": Shots.COLORS[Shots.DRIVE]},
-		{"id": "dive", "type": -1, "pos": Vector2(vs.x - 412.0 * u, vs.y - 78.0 * u), "r": 52.0 * u, "label": "PEIXINHO", "color": Color("ffffff")},
+		{"id": "defense", "type": Shots.DEFENSE, "pos": c + Vector2(-d * 2.15, d * 0.55), "r": 54.0 * u, "label": "DEFESA", "color": Color("e8e2d4")},
+		{"id": "dive", "type": -1, "pos": c + Vector2(-d * 3.25, d * 0.95), "r": 48.0 * u, "label": "PEIXINHO", "color": Color("ffffff")},
 		{"id": "super", "type": -2, "pos": c + Vector2(-d * 1.2, -d * 1.2), "r": 50.0 * u, "label": "SUPER", "color": Color("ffe14d")},
 	]
 
@@ -96,6 +98,8 @@ func _fire(b: Dictionary) -> void:
 	pressed[b["id"]] = 0.18
 	if b["id"] == "dive":
 		dive.emit()
+	elif b["id"] == "defense":
+		defense_pressed.emit()
 	elif b["id"] == "super":
 		super_pressed.emit()
 	else:

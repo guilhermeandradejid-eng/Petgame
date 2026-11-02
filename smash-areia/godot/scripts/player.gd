@@ -25,6 +25,11 @@ var team := 0
 var side := 1.0               # +1 = lado z>0 (time da câmera), -1 = lado adversário
 var home_x := 1.8
 var is_human := false
+var pid := 0              # 0 = IA, 1 = J1, 2 = J2
+var pad := -1             # -1 toque/teclado J1, -3 teclado J2, >= 0 controle
+var pad_also_kb := false
+var stick := Vector2.ZERO
+var tag: Label3D
 var data: Dictionary = {}
 var game: Node = null
 var brain: AIBrain = null
@@ -83,6 +88,15 @@ var last_style := "fore"
 var style_t := 0.0
 var loco := "idle"        # idle, run, shuffle, back
 var split_t := -1.0
+var smash_wait := false
+var smash_check := 0.0
+var racket_prev := Vector3.ZERO
+var racket_n := Vector3.FORWARD
+var i_hand := -1
+var i_low := -1
+var lh_w := 0.0            # peso da mão livre segurando a garganta da raquete (IK)
+var racket_grip := Vector3.ZERO
+var racket_axis := Vector3.UP
 
 
 func setup(char_data: Dictionary, team_index: int, human: bool) -> void:
@@ -112,13 +126,12 @@ static func make_model(char_data: Dictionary, team_data: Dictionary) -> Dictiona
 			{"Skin": soft, "Cheek": flat, "Mouth": flat, "Pupil": flat, "EyeShine": flat,
 			"Hair": {"halftone": 0.0, "rim": 0.5}, "Band": {"halftone": 0.0}})
 	var r := Rig.new(sk)
-	var att := BoneAttachment3D.new()
-	att.bone_name = "Hand.R"
-	sk.add_child(att)
+	# a raquete é orientada por código a cada frame (cabeça para cima na espera,
+	# face virada para onde o golpe vai), sem depender da torção dos ossos
 	var rk: Node3D = RACKET.instantiate()
-	Toon.apply(rk, {"Racket": char_data.get("racket", Color.WHITE)}, {"outline": 0.014, "rim": 0.5})
-	att.add_child(rk)
-	rk.transform = r.local_to_bone("Hand.R", Transform3D(Basis(), Vector3(-0.285, 0.89, 0.0)))
+	Toon.apply(rk, {"Racket": char_data.get("racket", Color.WHITE)}, {"outline": 0.014, "rim": 0.5, "halftone": 0.0})
+	rk.top_level = true
+	m.add_child(rk)
 	return {"model": m, "rig": r, "racket": rk, "skeleton": sk}
 
 
@@ -140,6 +153,8 @@ func _build_model() -> void:
 	rig = mm["rig"]
 	racket = mm["racket"]
 	body.add_child(model)
+	i_hand = rig.bones.get("Hand.R", -1)
+	i_low = rig.bones.get("LowerArm.R", -1)
 
 	shadow = Toon.blob(1.0, Color(0.3, 0.12, 0.2, 0.42))
 	shadow.top_level = true
@@ -173,6 +188,24 @@ func _build_model() -> void:
 	bubble.position = Vector3(0, 2.4, 0)
 	bubble.visible = false
 	add_child(bubble)
+
+
+## Marcador "J1"/"J2" em cima do jogador no multiplayer
+func show_tag(on: bool) -> void:
+	if tag == null:
+		tag = Label3D.new()
+		tag.font = FONT
+		tag.font_size = 44
+		tag.outline_size = 14
+		tag.pixel_size = 0.005
+		tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		tag.no_depth_test = true
+		tag.outline_modulate = Color(0.07, 0.04, 0.12)
+		tag.position = Vector3(0, 2.25, 0)
+		add_child(tag)
+	tag.text = "J%d" % pid
+	tag.modulate = Color("ffd23f") if pid == 1 else Color("4fe0ff")
+	tag.visible = on and pid > 0
 
 
 func net_dir() -> Vector3:
@@ -217,14 +250,21 @@ func request_shot(type: int) -> void:
 	pending_age = 0.0
 	best_dist = INF
 	trail_color = Shots.COLORS[type]
+	smash_wait = false
 	if (type == Shots.SMASH or (type == Shots.SPECIAL and data.get("special", "") == "meteoro")) \
-			and game != null and on_ground():
-		var tc: float = game.predict_high_contact(self)
-		if tc >= 0.0:
-			jump_timer = maxf(tc - 0.3, 0.0)
-			pending_t = tc + 0.25
-		elif not serve_mode and type == Shots.SMASH:
-			jump_timer = 0.0
+			and game != null and on_ground() and not serve_mode:
+		# do fundo da quadra não pula: vira um smash de chão / gancho
+		if absf(position.z) < 6.3:
+			var tc: float = game.predict_high_contact(self)
+			if tc >= 0.0:
+				jump_timer = maxf(tc - 0.3, 0.0)
+				pending_t = tc + 0.25
+			else:
+				# bola ainda muito alta: espera ela descer em vez de pular antes da hora
+				var td: float = game.time_until_reachable(self)
+				if td > 0.0:
+					smash_wait = true
+					pending_t = minf(td + 0.5, 1.8)
 
 
 func request_jump(boost := 1.0) -> void:
@@ -308,7 +348,8 @@ func reach_center() -> Vector3:
 ## Retorna {in, dist, quality, high}
 func reach_info(p: Vector3, fast := false) -> Dictionary:
 	var c := reach_center()
-	var reach := REACH * (0.74 if fast else 1.0)
+	var defending := pending_shot == Shots.DEFENSE
+	var reach := REACH * (0.74 if fast and not defending else 1.0) * (1.2 if defending else 1.0)
 	var d := Vector2(p.x - c.x, p.z - c.z).length()
 	var rel := p.y - y
 	var ok := false
@@ -318,7 +359,8 @@ func reach_info(p: Vector3, fast := false) -> Dictionary:
 		q = clampf(1.0 - d / 1.5, 0.2, 0.9)
 	elif state == State.NORMAL:
 		ok = d < reach and p.y > 0.12 and rel < TOP_REACH + 0.25
-		var qd := 1.0 - clampf((d - 0.45) / (reach - 0.5), 0.0, 1.0)
+		# ponto ideal: bola ao lado do corpo, ~0,5 m do centro de alcance
+		var qd := 1.0 - clampf((absf(d - 0.5) - 0.15) / 0.6, 0.0, 1.0)
 		var qh := 1.0
 		if rel < 0.45:
 			qh = 0.55
@@ -331,8 +373,10 @@ func reach_info(p: Vector3, fast := false) -> Dictionary:
 			if dh < 0.95:
 				ok = true
 				q = 0.72
-		if fast:
+		if fast and not defending:
 			q *= 0.8
+		if defending:
+			q = maxf(q, 0.55)
 	return {"in": ok, "dist": d, "quality": q, "high": p.y > 2.0}
 
 
@@ -513,6 +557,15 @@ func _update_normal(dt: float) -> void:
 		pending_t -= dt
 		pending_age += dt
 		style_t -= dt
+		if smash_wait and on_ground() and game != null:
+			smash_check -= dt
+			if smash_check <= 0.0:
+				smash_check = 0.04
+				var tc: float = game.predict_high_contact(self)
+				if tc >= 0.0:
+					smash_wait = false
+					jump_timer = maxf(tc - 0.3, 0.0)
+					pending_t = tc + 0.25
 		if style_t <= 0.0:
 			style_t = 0.08
 			_predict_style()
@@ -586,24 +639,24 @@ func _animate(dt: float) -> void:
 	var bk := moving if loco == "back" else 0.0
 	var ready := 1.0 - run
 	var p := {
-		"Spine": Vector3(0.12 + lean.y * 0.25 + breathe - bk * 0.15, 0.0, -lean.x * 0.18),
+		"Spine": Vector3(0.12 + 0.08 * ready + lean.y * 0.25 + breathe - bk * 0.15, 0.0, -lean.x * 0.18),
 		"Chest": Vector3(0.06 * ready + 0.12 * run, 0.0, 0.0),
 		"Neck": Vector3(-0.08, 0.0, 0.0),
 		"Head": Vector3(-0.1 - 0.1 * run, 0.0, 0.0),
-		"UpperArm.R": Vector3(-0.6 * ready + (-0.3 - s * 0.6) * run, 0.25 * ready, -0.3 - shuf * 0.15),
-		"LowerArm.R": Vector3(-1.05 * ready - 1.3 * run, 0.0, 0.0),
+		"UpperArm.R": Vector3(-0.72 * ready + (-0.3 - s * 0.6) * run, 0.5 * ready, -0.18 - shuf * 0.15),
+		"LowerArm.R": Vector3(-1.15 * ready - 1.3 * run, 0.0, 0.0),
 		"Hand.R": Vector3(0.25, 0.0, 0.0),
 		"UpperArm.L": Vector3(-0.45 * ready + (-0.2 + s * 0.8) * run, 0.0, 0.3 + shuf * 0.15),
 		"LowerArm.L": Vector3(-0.95 * ready - 1.4 * run, 0.0, 0.0),
 	}
 	# pernas: base atlética + corrida + passo lateral + recuo
 	var L := {
-		"tr": -0.45 * ready + (-0.3 + 0.85 * s) * run + 0.35 * s * bk,
-		"tl": -0.45 * ready + (-0.3 - 0.85 * s) * run - 0.35 * s * bk,
-		"kr": 0.8 * ready + (0.45 + 1.2 * maxf(0.0, s)) * run + 0.4 * maxf(0.0, -s) * bk,
-		"kl": 0.8 * ready + (0.45 + 1.2 * maxf(0.0, -s)) * run + 0.4 * maxf(0.0, s) * bk,
-		"zr": -0.08 - shuf * (0.12 + 0.22 * maxf(0.0, s)),
-		"zl": 0.08 + shuf * (0.12 + 0.22 * maxf(0.0, -s)),
+		"tr": -0.5 * ready + (-0.3 + 0.85 * s) * run + 0.35 * s * bk,
+		"tl": -0.5 * ready + (-0.3 - 0.85 * s) * run - 0.35 * s * bk,
+		"kr": 0.95 * ready + (0.45 + 1.2 * maxf(0.0, s)) * run + 0.4 * maxf(0.0, -s) * bk,
+		"kl": 0.95 * ready + (0.45 + 1.2 * maxf(0.0, -s)) * run + 0.4 * maxf(0.0, s) * bk,
+		"zr": -0.08 - 0.07 * ready * (1.0 - shuf) - shuf * (0.12 + 0.22 * maxf(0.0, s)),
+		"zl": 0.08 + 0.07 * ready * (1.0 - shuf) + shuf * (0.12 + 0.22 * maxf(0.0, -s)),
 		"crouch": 0.0, "tilt": 0.0,
 	}
 	if split_t >= 0.0:
@@ -627,6 +680,13 @@ func _animate(dt: float) -> void:
 		L["kr"] = 1.3
 		L["tl"] = 0.2
 		L["kl"] = 0.6
+		if swing_t < 1.0 and (style == "smash" or style == "gancho"):
+			# tesoura: as pernas trocam no ar durante a cravada
+			var e2 := 1.0 - pow(1.0 - swing_t, 2.0)
+			L["tr"] = lerpf(-0.9, 0.45, e2)
+			L["kr"] = lerpf(1.3, 0.7, e2)
+			L["tl"] = lerpf(0.2, -0.9, e2)
+			L["kl"] = lerpf(0.6, 1.2, e2)
 		if serve_mode or style == "smash" or pending_shot == Shots.SMASH:
 			if not (swing_t < 1.0):
 				p["UpperArm.L"] = Vector3(-2.7, 0.0, 0.25)
@@ -708,8 +768,81 @@ func _animate(dt: float) -> void:
 	squash += squash_v * dt
 	var sq := clampf(squash, 0.78, 1.25)
 	body.scale = Vector3(1.0 / sqrt(sq), sq, 1.0 / sqrt(sq))
+	_update_racket(dt)
 	_update_trail()
 	_update_decals(dt)
+
+
+func _update_racket(dt: float) -> void:
+	if racket == null or i_hand < 0 or not racket.visible:
+		return
+	var sk := rig.sk
+	var xf := sk.global_transform
+	var wrist := xf * sk.get_bone_global_pose(i_hand).origin
+	var elbow := xf * sk.get_bone_global_pose(i_low).origin
+	var fore := (wrist - elbow).normalized()
+	var sc := GameData.CHAR_SCALE
+	var grip := wrist + fore * 0.07 * sc
+	var fwd := body.global_transform.basis.z.normalized()
+	# quanto a cabeça da raquete "sobe" em relação ao antebraço
+	var k := 1.3
+	var push := 0.1
+	if pending_shot >= 0:
+		k = 0.5
+		push = 0.0
+	if swing_t < 1.0:
+		k = 0.3
+		push = 0.0
+	if style.begins_with("low") or style.begins_with("lunge"):
+		k = 0.05
+	if pending_shot >= 0 and (style == "smash" or serve_mode) and pending_shot != Shots.DEFENSE:
+		k = -0.75   # raquete caída atrás das costas (pose do troféu)
+	if state == State.DIVE or state == State.RECOVER:
+		k = 0.1
+	var axis := (fore + Vector3.UP * k + fwd * push).normalized()
+	var head := grip + axis * 0.42 * sc
+	var hv := (head - racket_prev) / maxf(dt, 0.001)
+	racket_prev = head
+	# na espera e na preparação a raquete fica reta, com as faces viradas para as
+	# laterais (o perfil aponta para a rede); na batida a face segue o golpe
+	var lateral := body.global_transform.basis.x.normalized()
+	var n0 := lateral
+	if swing_t < 1.0 and hv.length() > 2.5:
+		n0 = hv.normalized()
+	n0 = n0 - axis * n0.dot(axis)
+	if n0.length() < 0.05:
+		n0 = lateral - axis * lateral.dot(axis)
+	n0 = n0.normalized()
+	racket_n = racket_n.slerp(n0, 1.0 - exp(-22.0 * dt)) if racket_n.dot(n0) > -0.95 else n0
+	var zz := (racket_n - axis * racket_n.dot(axis)).normalized()
+	var yy := -axis
+	var xx := yy.cross(zz).normalized()
+	racket.global_transform = Transform3D(Basis(xx * sc, yy * sc, zz * sc), grip)
+	racket_grip = grip
+	racket_axis = axis
+	_left_hand_ik(dt)
+
+
+## Mão livre apoiando a garganta da raquete na espera e na preparação do backhand
+## (como nas fotos de posição de base do beach tennis); solta na batida.
+func _left_hand_ik(dt: float) -> void:
+	var target_w := 0.0
+	if state == State.NORMAL and on_ground() and swing_t >= 1.0:
+		if pending_shot < 0 and loco != "run":
+			target_w = 1.0
+		elif pending_shot >= 0 and (style == "back" or style == "low_back" or style == "block"):
+			target_w = 1.0
+	lh_w = lerpf(lh_w, target_w, 1.0 - exp(-(14.0 if target_w > lh_w else 22.0) * dt))
+	if lh_w < 0.02:
+		return
+	var sk := rig.sk
+	var inv := sk.global_transform.affine_inverse()
+	var sc := GameData.CHAR_SCALE
+	var throat := racket_grip + racket_axis * 0.2 * sc
+	var b := body.global_transform.basis
+	var chest := sk.global_transform * sk.get_bone_global_pose(rig.bones["Chest"]).origin
+	var pole := chest + b.x.normalized() * 0.5 + Vector3.DOWN * 0.6 - b.z.normalized() * 0.2
+	rig.ik_arm("UpperArm.L", "LowerArm.L", inv * throat, inv * pole, lh_w)
 
 
 func _update_decals(dt: float) -> void:
@@ -756,7 +889,8 @@ func _update_trail() -> void:
 	if trail_pts.size() < 2:
 		return
 	var m := trail_mi.material_override as ShaderMaterial
-	m.set_shader_parameter("color", trail_color.lerp(Color.WHITE, 0.45))
+	# smear neutro (branco); colorido só no super golpe
+	m.set_shader_parameter("color", trail_color if swing_type == Shots.SPECIAL else Color(1, 1, 1))
 	trail_im.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
 	var n := trail_pts.size()
 	for i in n:
@@ -806,12 +940,15 @@ func _lunge_legs(L: Dictionary, to_left: bool) -> void:
 func _windup_pose(type: int, st: String, r: Dictionary, L: Dictionary) -> void:
 	match st:
 		"fore", "low_fore":
-			r["UpperArm.R"] = Vector3(-1.1 if type != Shots.LOB else 0.35, -1.3, -0.3)
-			r["LowerArm.R"] = Vector3(-0.6, 0.0, 0.0)
-			r["UpperArm.L"] = Vector3(-1.2, 0.45, 0.25)
-			r["LowerArm.L"] = Vector3(-0.4, 0.0, 0.0)
-			r["Chest"] = Vector3(0.08, -0.7, 0.0)
-			r["Spine"] = Vector3(0.14, -0.3, 0.0)
+			# preparação curta de voleio, braço livre apontando a bola, passo com o pé esquerdo
+			r["UpperArm.R"] = Vector3(-1.15 if type != Shots.LOB else 0.35, -1.05, -0.35)
+			r["LowerArm.R"] = Vector3(-0.75, 0.0, 0.0)
+			r["UpperArm.L"] = Vector3(-1.3, 0.55, 0.2)
+			r["LowerArm.L"] = Vector3(-0.3, 0.0, 0.0)
+			r["Chest"] = Vector3(0.1, -0.65, 0.0)
+			r["Spine"] = Vector3(0.18, -0.3, 0.0)
+			L["tl"] = -0.65
+			L["kl"] = 0.95
 			if st == "low_fore":
 				_low_legs(L)
 				r["Spine"] = Vector3(0.45, -0.3, 0.0)
@@ -860,14 +997,14 @@ func _windup_pose(type: int, st: String, r: Dictionary, L: Dictionary) -> void:
 			r["Spine"] = Vector3(-0.3, 0.2, 0.0)
 			r["Chest"] = Vector3(-0.15, 0.5, 0.0)
 			r["Head"] = Vector3(-0.55, 0.0, 0.0)
-		_:   # smash / super
-			r["UpperArm.R"] = Vector3(-2.9, -0.45, -0.3)
-			r["LowerArm.R"] = Vector3(-1.9, 0.0, 0.0)
-			r["UpperArm.L"] = Vector3(-2.7, 0.0, 0.2)
-			r["LowerArm.L"] = Vector3(-0.2, 0.0, 0.0)
-			r["Spine"] = Vector3(-0.25, -0.2, 0.0)
-			r["Chest"] = Vector3(-0.15, -0.45, 0.0)
-			r["Head"] = Vector3(-0.45, 0.0, 0.0)
+		_:   # smash / super: "pose do troféu"
+			r["UpperArm.R"] = Vector3(-2.55, -0.55, -0.75)   # cotovelo alto e aberto
+			r["LowerArm.R"] = Vector3(-2.15, 0.0, 0.0)       # raquete caída atrás das costas
+			r["UpperArm.L"] = Vector3(-2.85, 0.15, 0.1)      # braço livre aponta a bola
+			r["LowerArm.L"] = Vector3(-0.1, 0.0, 0.0)
+			r["Spine"] = Vector3(-0.28, -0.25, 0.0)
+			r["Chest"] = Vector3(-0.15, -0.8, 0.0)           # de lado para a rede
+			r["Head"] = Vector3(-0.5, 0.0, 0.0)
 
 
 func _strike_pose(type: int, st: String, t: float, r: Dictionary, L: Dictionary) -> void:

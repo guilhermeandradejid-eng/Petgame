@@ -9,7 +9,7 @@ smash com pulo e onomatopeias de quadrinho.
 (Android 7+, arm64 e armv7). Baixe no celular, permita "instalar apps
 desconhecidos" e abra. O jogo roda deitado (paisagem).
 
-| Menu | Rali | Rali | Replay em câmera lenta |
+| Menu | 1 jogador | VS em tela dividida | VS em tela dividida |
 |---|---|---|---|
 | ![menu](docs/menu.jpg) | ![smash](docs/smash.jpg) | ![chance](docs/chance.jpg) | ![comemoracao](docs/comemoracao.jpg) |
 
@@ -17,13 +17,32 @@ desconhecidos" e abra. O jogo roda deitado (paisagem).
 
 [![partida](docs/smash.jpg)](docs/partida-1min.mp4)
 
-[`docs/partida-1min.mp4`](docs/partida-1min.mp4) foi gravado direto do jogo com o Movie Maker do Godot
-(vídeo e som do próprio jogo), com o computador jogando pelas duas duplas:
+[`docs/partida-1min.mp4`](docs/partida-1min.mp4) mostra o **modo VS em tela dividida**. Foi gravado
+direto do jogo com o Movie Maker do Godot (vídeo e som do próprio jogo), com o computador jogando pelas duas duplas:
 
 ```sh
-godot --path godot --resolution 1280x720 --write-movie partida.avi --fixed-fps 30 --quit-after 1830 -- --autoplay
+godot --path godot --resolution 1280x720 --write-movie partida.avi --fixed-fps 30 --quit-after 1830 -- --autoplay --mode=vs
 ffmpeg -i partida.avi -vf scale=1024:-2 -c:v libx264 -crf 30 -c:a aac docs/partida-1min.mp4
 ```
+
+## Modos e multiplayer local
+
+| Modo | Como funciona |
+|---|---|
+| **1 JOGADOR** | Você + parceiro da IA contra uma dupla da IA. Toque, teclado ou controle. |
+| **VS (2P)** | J1 contra J2, cada um com um parceiro da IA, em **tela dividida**: cada jogador tem a sua câmera atrás da própria dupla. |
+| **CO-OP (2P)** | J1 e J2 na mesma dupla contra a IA, numa tela só. |
+
+- **Controles (gamepad)**: com 2 controles conectados, cada jogador usa um. Com 1 controle, o J2 fica
+  com ele e o J1 joga no teclado (ou toque no modo co-op). No celular, o VS precisa de dois
+  controles Bluetooth, porque os botões de toque somem na tela dividida.
+- Mapeamento do controle: **A** forte, **X** lob, **B** curta, **Y** smash, **RT** defesa,
+  **RB** super, **LB** (ou LT) peixinho, **Start** pausa, analógico ou D-pad para correr e mirar.
+- O J2 também pode jogar no teclado: setas, `N` forte, `M` lob, `,` curta, `.` smash, `/` defesa,
+  `B` super e `V` peixinho.
+- Os menus funcionam no controle (D-pad + A). Cada jogador humano tem um marcador "J1"/"J2" em cima.
+- O controle **vibra** nas batidas (mais forte no smash, no super e quando você é empurrado), e dá
+  para conectar ou desconectar controles no meio da partida: os jogadores são redistribuídos na hora.
 
 ## Como jogar
 
@@ -44,6 +63,7 @@ As regras são de beach tennis:
 | **LOB** | Bola alta com topspin que cai no fundo, boa para tirar a dupla da rede. |
 | **CURTA** | **Slice**: flutua, faz curva e morre perto da rede. |
 | **SMASH** | Com a bola alta, o boneco **pula e crava** no tempo certo. Com a bola baixa vira uma pancada. Perto da rede é quase indefensável, do fundo sai mais lento. |
+| **DEFESA** | Devolve uma bola alta, funda e segura no meio da quadra. Alcança mais longe e aguenta pancada (bloqueio). |
 | **PEIXINHO** | Mergulho para salvar bola longe. Rebate sozinho uma defesa alta. |
 | **SUPER** | Acende quando a barra de energia enche: solta o super golpe do seu personagem. |
 
@@ -83,6 +103,28 @@ pela posição da bola:
 - Entre os golpes: **split-step** (pulinho de preparação quando o adversário bate),
   **passo lateral** de frente para a rede, **recuo de costas** para o lob e corrida.
 
+### Poses de beach tennis
+
+- **Posição de espera**: base larga, joelhos flexionados, tronco para a frente e raquete em pé na
+  frente do corpo, de perfil para a rede, com a **mão livre apoiando a garganta da raquete**
+  (cinemática inversa de dois ossos no braço esquerdo).
+- **Backhand** preparado com as duas mãos na raquete (giro de ombro), soltando a mão livre na batida.
+- **Forehand de voleio** com preparação curta, braço livre apontando a bola e passo com o pé esquerdo.
+- **Smash e saque** na "pose do troféu": braço livre apontando a bola, cotovelo alto, raquete
+  caída atrás das costas, corpo de lado e **chute de tesoura** no pulo.
+
+### Detalhes de jogo
+
+- **Raquete sempre na posição certa**: a raquete é orientada por código a cada quadro. Na espera
+  fica de pé na frente do corpo, e na batida a face vira para a direção do golpe.
+- **Recepção do saque**: quem recebe fica na diagonal de quem saca, no meio-fundo, e o parceiro
+  fica perto da rede. A IA se posiciona para pegar a bola ao lado do corpo, no forehand ou no
+  backhand, o que estiver mais perto.
+- **Smash no tempo certo**: com a bola muito alta, o boneco espera ela descer antes de pular. Do
+  fundo da quadra ele não pula (vira smash de chão ou gancho).
+- **Bola de borracha**: amassa no impacto com a raquete e na areia e estica conforme a velocidade.
+  Os rastros são neutros, e só os super golpes têm cor.
+
 ### Outras dicas
 
 - Aperte o golpe **um pouco antes** da bola chegar: o boneco prepara o movimento e
@@ -93,8 +135,8 @@ pela posição da bola:
 - **Saque:** com a bola na mão, escolha o golpe. FORTE é saque chapado, LOB é saque alto,
   CURTA é saque curto e SMASH é o **saque viagem** (pulando), mais forte e mais arriscado.
 
-No PC: WASD/setas movem, `J` forte, `K` lob, `L` curta, `I` smash, `U` super, `Espaço` pula,
-`Shift` peixinho e `Esc` pausa.
+No PC (J1): WASD move, `J` forte, `K` lob, `L` curta, `I` smash, `O` defesa, `U` super,
+`Espaço` pula, `Shift` peixinho e `Esc` pausa.
 
 ### Personagens
 
@@ -184,6 +226,7 @@ O jogo aceita argumentos depois de `--` para testes sem tela:
 ```sh
 godot --headless --path godot --fixed-fps 60 -- --sim         # 300 pontos IA x IA, imprime estatísticas
 godot --headless --path godot --fixed-fps 60 -- --keytest     # aperta teclas como um jogador
+godot --headless --path godot --fixed-fps 60 -- --inputtest --mode=vs   # teclado do J1 e do J2, sem IA
 godot --path godot -- --autoplay --shots=/tmp/fotos           # joga sozinho e tira screenshots
 ```
 

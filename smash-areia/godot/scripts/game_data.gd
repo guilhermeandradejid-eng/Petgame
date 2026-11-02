@@ -49,6 +49,8 @@ const LENGTHS := [
 const POINT_NAMES := ["0", "15", "30", "40"]
 
 static var char_index := 0
+static var char_index_p2 := 2
+static var mode := "solo"      # solo, vs (tela dividida), coop
 static var difficulty := 1
 static var length_index := 0
 static var music_on := true

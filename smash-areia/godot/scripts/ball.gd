@@ -30,6 +30,10 @@ var traj := PackedVector3Array()
 var traj_i := 0
 
 var mesh: MeshInstance3D
+var squash_node: Node3D
+var sq := 0.0          # mola do squash & stretch (negativo = amassada)
+var sq_v := 0.0
+var sq_dir := Vector3.UP
 var shadow: MeshInstance3D
 var trail_mesh: MeshInstance3D
 var trail_im: ImmediateMesh
@@ -37,6 +41,7 @@ var trail_mat: ShaderMaterial
 var trail_points: Array[Vector3] = []
 var trail_width := 1.0
 var fx: CPUParticles3D
+var trail_cam: Camera3D
 var fx_mat: ShaderMaterial
 
 
@@ -48,8 +53,10 @@ func _ready() -> void:
 	sm.radial_segments = 16
 	sm.rings = 10
 	mesh.mesh = sm
-	mesh.material_override = Toon.make(Color("ffe14d"), {"rim": 0.6, "spec": 0.6, "outline": 0.016})
-	add_child(mesh)
+	mesh.material_override = Toon.make(Color("ffe14d"), {"rim": 0.6, "spec": 0.6, "outline": 0.016, "halftone": 0.0})
+	squash_node = Node3D.new()
+	add_child(squash_node)
+	squash_node.add_child(mesh)
 	# duas faixas cruzadas: deixam a rotação do efeito bem visível
 	for i in 2:
 		var band := MeshInstance3D.new()
@@ -126,13 +133,18 @@ func launch(v: Vector3, w: Vector3, team: int, hitter: Node3D, shot: int, sp := 
 	speed_at_hit = v.length()
 	flight_t = 0.0
 	trail_points.clear()
-	var col: Color = Shots.COLORS[shot] if shot >= 0 else Color.WHITE
+	# rastros neutros; só os super golpes têm cor
+	var col := Color(1.0, 0.98, 0.92, 0.75)
 	trail_width = 1.0
 	if sp != "":
 		col = Shots.SPECIALS[sp]["color"]
 		trail_width = 2.2
 	elif shot == Shots.SMASH:
-		trail_width = 1.5
+		trail_width = 1.4
+	# amassa na raquete
+	sq = -0.42 - clampf(v.length() / 60.0, 0.0, 0.3)
+	sq_v = 0.0
+	sq_dir = v.normalized()
 	trail_mat.set_shader_parameter("color", col)
 	_set_fx(sp)
 	_rebuild_traj()
@@ -224,6 +236,9 @@ func step(dt: float) -> void:
 		position.y = RADIUS
 		flying = false
 		vel = Vector3.ZERO
+		sq = -0.55
+		sq_v = 0.0
+		sq_dir = Vector3.UP
 		_set_fx("")
 		landed.emit(position)
 	_update_visuals(dt)
@@ -233,8 +248,19 @@ func _update_visuals(dt: float) -> void:
 	# rotação visível do efeito (em câmera lenta para não "piscar")
 	if spin.length() > 0.5:
 		mesh.rotate(spin.normalized(), spin.length() * dt * 0.3)
-	var squash := clampf(vel.length() / 30.0, 0.0, 0.35)
-	mesh.scale = Vector3.ONE * (1.0 + squash * 0.25)
+	# squash & stretch: mola que amassa no impacto e estica com a velocidade
+	sq_v += (-sq) * 260.0 * dt
+	sq_v *= exp(-9.0 * dt)
+	sq += sq_v * dt
+	var speed := vel.length()
+	if speed > 1.0 and flying:
+		sq_dir = sq_dir.slerp(vel / speed, 1.0 - exp(-20.0 * dt))
+	var stretch := clampf(speed / 26.0, 0.0, 0.5) if flying else 0.0
+	var along := clampf(1.0 + stretch + sq, 0.45, 1.8)
+	var perp := 1.0 / sqrt(along)
+	var up := Vector3.UP if absf(sq_dir.dot(Vector3.UP)) < 0.98 else Vector3.RIGHT
+	var b := Basis.looking_at(sq_dir, up)
+	squash_node.global_basis = b.scaled_local(Vector3(perp, perp, along))
 	shadow.global_position = Vector3(global_position.x, 0.02, global_position.z)
 	var h := clampf(global_position.y / 6.0, 0.0, 1.0)
 	shadow.scale = Vector3.ONE * lerpf(1.0, 0.55, h)
@@ -252,7 +278,7 @@ func _draw_trail() -> void:
 	trail_im.clear_surfaces()
 	if trail_points.size() < 3:
 		return
-	var cam := get_viewport().get_camera_3d()
+	var cam := trail_cam if trail_cam else get_viewport().get_camera_3d()
 	if cam == null:
 		return
 	var cam_pos := cam.global_position

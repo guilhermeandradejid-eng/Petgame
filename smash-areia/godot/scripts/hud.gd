@@ -36,6 +36,14 @@ var theme_main: Theme
 
 var score := {"points": [0, 0], "games": [0, 0], "serving": 0, "golden": false, "target": 2}
 var energy := [0.0, 0.0]
+var play_btn: Button
+var mode_buttons: Array[Button] = []
+var p2_box: Control
+var p2_name: Label
+var pads_label: Label
+var split_line: ColorRect
+var again_btn: Button
+var cont_btn: Button
 var sfx_cb: Callable
 
 
@@ -131,7 +139,18 @@ func _button(text: String, size: int, col: Color) -> Button:
 	var b := Button.new()
 	b.text = text
 	b.theme = theme_main
-	b.focus_mode = Control.FOCUS_NONE
+	# navegável com controle (D-pad + A) nos menus
+	b.focus_mode = Control.FOCUS_ALL
+	var fs := StyleBoxFlat.new()
+	fs.draw_center = false
+	fs.border_color = Color("ffd23f")
+	fs.set_border_width_all(6)
+	fs.set_corner_radius_all(20)
+	fs.expand_margin_left = 4
+	fs.expand_margin_right = 4
+	fs.expand_margin_top = 4
+	fs.expand_margin_bottom = 4
+	b.add_theme_stylebox_override("focus", fs)
 	b.add_theme_font_size_override("font_size", size)
 	b.add_theme_color_override("font_color", INK)
 	b.add_theme_color_override("font_hover_color", INK)
@@ -289,6 +308,8 @@ func _build_menu() -> void:
 	play.rotation = -0.03
 	play.pressed.connect(func(): play_pressed.emit())
 	menu.add_child(play)
+	play_btn = play
+	_build_modes()
 	var how := _button("COMO JOGAR", 32, YELLOW)
 	how.position = Vector2(400, 618)
 	how.custom_minimum_size = Vector2(230, 70)
@@ -316,12 +337,83 @@ func _build_menu() -> void:
 		"• ESTRELA de chance no chão: pare em cima e use o golpe da mesma cor = CHANCE!\n" + \
 		"• Bons golpes enchem a barra de energia. Cheia: aperte SUPER para o golpe\n" + \
 		"   especial do seu personagem. Quem recebe um super é empurrado para trás!\n" + \
-		"• Teclado: WASD, J forte, K lob, L curta, I smash, U super, Espaço, Shift."
+		"• DEFESA: bola alta e segura, alcança mais e aguenta pancada.\n" + \
+		"• Controle: A forte, X lob, B curta, Y smash, RT defesa, RB super, LB peixinho.\n" + \
+		"• Teclado: WASD, J forte, K lob, L curta, I smash, O defesa, U super, Shift."
 	hv.add_child(txt)
 	var close := _button("FECHAR", 28, YELLOW)
 	close.pressed.connect(func(): help_panel.visible = false)
 	hv.add_child(close)
 	_refresh_menu()
+
+
+## Modos: 1 jogador, VS com tela dividida ou co-op (2 jogadores na mesma dupla)
+func _build_modes() -> void:
+	var mp := _panel(Color("fff4e0"))
+	mp.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	mp.position = Vector2(-560, -250)
+	menu.add_child(mp)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	mp.add_child(v)
+	v.add_child(_label("MODO", 24, INK, 0))
+	var row := HBoxContainer.new()
+	v.add_child(row)
+	var modes := [["solo", "1 JOGADOR"], ["vs", "VS (2P)"], ["coop", "CO-OP (2P)"]]
+	for m in modes:
+		var b := _button(m[1], 24, Color.WHITE)
+		b.custom_minimum_size = Vector2(160, 50)
+		var id: String = m[0]
+		b.pressed.connect(func(): _set_mode(id))
+		row.add_child(b)
+		mode_buttons.append(b)
+	p2_box = HBoxContainer.new()
+	p2_box.add_theme_constant_override("separation", 10)
+	v.add_child(p2_box)
+	p2_box.add_child(_label("J2:", 30, Color("1f9fd6"), 0))
+	var pv := _button("<", 28, Color("4fc3ff"))
+	pv.custom_minimum_size = Vector2(52, 50)
+	pv.pressed.connect(func(): _change_p2(-1))
+	p2_box.add_child(pv)
+	p2_name = _label("", 34, Color("1f9fd6"), 8)
+	p2_name.custom_minimum_size = Vector2(150, 0)
+	p2_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	p2_box.add_child(p2_name)
+	var nx := _button(">", 28, Color("4fc3ff"))
+	nx.custom_minimum_size = Vector2(52, 50)
+	nx.pressed.connect(func(): _change_p2(1))
+	p2_box.add_child(nx)
+	pads_label = _label("", 20, INK, 0)
+	v.add_child(pads_label)
+
+
+func _set_mode(m: String) -> void:
+	GameData.mode = m
+	_refresh_menu()
+
+
+func _change_p2(d: int) -> void:
+	GameData.char_index_p2 = posmod(GameData.char_index_p2 + d, GameData.CHARACTERS.size())
+	if GameData.char_index_p2 == GameData.char_index:
+		GameData.char_index_p2 = posmod(GameData.char_index_p2 + d, GameData.CHARACTERS.size())
+	_refresh_menu()
+
+
+func set_split(on: bool) -> void:
+	if split_line == null:
+		split_line = ColorRect.new()
+		split_line.color = INK
+		split_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		split_line.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		add_child(split_line)
+		move_child(split_line, 0)
+	var vs := get_viewport().get_visible_rect().size
+	split_line.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	split_line.size = Vector2(8, vs.y)
+	split_line.position = Vector2(vs.x * 0.5 - 4, 0)
+	split_line.visible = on
+	if not menu.visible:
+		touch.visible = not on and not end_panel.visible
 
 
 func _change_char(d: int) -> void:
@@ -354,6 +446,22 @@ func _refresh_menu() -> void:
 	for i in len_buttons.size():
 		var on := i == GameData.length_index
 		len_buttons[i].add_theme_stylebox_override("normal", _style(YELLOW if on else Color("ffffff"), 5 if on else 3))
+	var ids := ["solo", "vs", "coop"]
+	for i in mode_buttons.size():
+		var on2: bool = ids[i] == GameData.mode
+		mode_buttons[i].add_theme_stylebox_override("normal", _style(YELLOW if on2 else Color("ffffff"), 5 if on2 else 3))
+	if p2_box:
+		if GameData.char_index_p2 == GameData.char_index:
+			GameData.char_index_p2 = (GameData.char_index + 2) % GameData.CHARACTERS.size()
+		p2_box.visible = GameData.mode != "solo"
+		p2_name.text = GameData.CHARACTERS[GameData.char_index_p2]["name"]
+		var n := Input.get_connected_joypads().size()
+		var t := "Controles conectados: %d" % n
+		if GameData.mode == "vs":
+			t += "  (VS: J1 teclado/controle, J2 controle)"
+		elif GameData.mode == "coop":
+			t += "  (CO-OP: J2 no controle)"
+		pads_label.text = t
 	if preview_player:
 		preview_player.queue_free()
 	preview_player = Player.new()
@@ -395,6 +503,7 @@ func _build_pause() -> void:
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(t)
 	var cont := _button("CONTINUAR", 40, Color("35e0a1"))
+	cont_btn = cont
 	cont.pressed.connect(_on_pause)
 	v.add_child(cont)
 	var mus := _button("MÚSICA: SIM", 32, Color("4fc3ff"))
@@ -423,6 +532,10 @@ func _on_pause() -> void:
 	get_tree().paused = p
 	pause_panel.visible = p
 	touch.reset()
+	if p and cont_btn:
+		cont_btn.grab_focus()
+	elif not p:
+		get_viewport().gui_release_focus()
 
 
 func _build_end() -> void:
@@ -442,6 +555,7 @@ func _build_end() -> void:
 	end_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(end_sub)
 	var again := _button("REVANCHE!", 44, Color("35e0a1"))
+	again_btn = again
 	again.pressed.connect(func(): rematch_pressed.emit())
 	v.add_child(again)
 	var m := _button("MENU", 40, Color("4fc3ff"))
@@ -462,24 +576,33 @@ func show_menu() -> void:
 	banner.visible = false
 	banner_sub.visible = false
 	_refresh_menu()
+	if play_btn:
+		play_btn.grab_focus.call_deferred()
 
 
 func show_game() -> void:
 	menu.visible = false
 	help_panel.visible = false
-	touch.visible = true
+	get_viewport().gui_release_focus()
+	touch.visible = GameData.mode != "vs"
 	touch.reset()
 	pause_btn.visible = true
 	score_panel.visible = true
 	end_panel.visible = false
 
 
-func show_end(won: bool, games: Array) -> void:
+func show_end(won: bool, games: Array, vs := false) -> void:
 	touch.visible = false
 	pause_btn.visible = false
 	end_panel.visible = true
-	end_title.text = "VITÓRIA!" if won else "DERROTA!"
-	end_title.add_theme_color_override("font_color", YELLOW if won else Color("ff4b3e"))
+	if vs:
+		end_title.text = "J1 VENCEU!" if won else "J2 VENCEU!"
+		end_title.add_theme_color_override("font_color", YELLOW if won else Color("4fe0ff"))
+	else:
+		end_title.text = "VITÓRIA!" if won else "DERROTA!"
+		end_title.add_theme_color_override("font_color", YELLOW if won else Color("ff4b3e"))
+	if again_btn:
+		again_btn.grab_focus.call_deferred()
 	end_sub.text = "%s  %d  x  %d  %s" % [GameData.TEAMS[0]["name"], games[0], games[1], GameData.TEAMS[1]["name"]]
 
 
@@ -518,7 +641,7 @@ func set_replay(on: bool) -> void:
 		move_child(replay_layer, 1)
 	replay_layer.visible = on
 	if not menu.visible:
-		touch.visible = not on
+		touch.visible = not on and GameData.mode != "vs"
 		score_panel.visible = not on
 	if on:
 		hint.text = ""
