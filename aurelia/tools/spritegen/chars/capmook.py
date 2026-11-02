@@ -1,26 +1,30 @@
-"""Capmook v2 - a grumpy walking toadstool. ~38 px tall. Faces right (mirrored in-engine).
+"""Capmook v3 - a grumpy walking toadstool, arcade hi-bit. ~34 px tall. Faces right (mirrored in-engine).
 
-Body = two ellipses (bulb + neck) pivoting around the foot contact point, so squash, lean and
-crouch stay planted on the ground. The cap is a spring particle (jiggle) and can be knocked off.
+Construction: one egg-shaped stem pivoting around the planted feet (squash, lean and crouch never lift
+the feet off the floor) with a cap that sits ON the stem and jiggles on a spring. Two stubby boots.
+Hand-authored 5-tone ramps with hue shifts (warm lights, violet shadows). No glow, smear or dither is
+drawn here: the engine adds telegraphs and the windup tint.
 """
 import math
 
-from engine import Canvas, Mask, simulate_chain, hexc
-from chars._cute import eyes, put, DARK
+from engine import Canvas, Mask, simulate_chain
+from chars._cute import eyes, put
 
 CELL = 64
-HOLD_PULSE = 0            # the cap spring would swing it out of the cell during held frames
+HOLD_PULSE = 0            # held frames stay exactly on their key (springs would swing the cap)
 G = (32.0, 59.0)
-CAP = "#D8403A"
-HOT = "#FF9A2E"
+CAP_RX, CAP_RY = 12.6, 8.8
 MATERIALS = {
-    "stem": ("#EDDDB8", False), "cap": (CAP, True), "spot": ("#FBF1D8", False),
-    "gills": ("#C9A27A", False), "foot": ("#7A4A34", False),
+    "stem": ("#E9D6B4", False, ["#4F3454", "#9C7C86", "#E9D6B4", "#F8EAD0", "#FFFAF0"]),
+    "cap": ("#D03C40", True, ["#3F1030", "#862236", "#D03C40", "#EE6A4C", "#FFB890"]),
+    "spot": ("#F8ECD6", False, ["#7E5E78", "#CDB1B0", "#F8ECD6", "#FFF6E4", "#FFFFFF"]),
+    "gills": ("#B98263", False, ["#36202E", "#744C4E", "#B98263", "#D9A67A", "#EFC896"]),
+    "foot": ("#8A5038", False, ["#261430", "#523040", "#8A5038", "#B07050", "#D89A70"]),
 }
-NO_SEAM = {("cap", "gills"), ("gills", "body"), ("cap", "spots"), ("footF", "body"), ("footB", "body"), ("neck", "body")}
+NO_SEAM = {("cap", "gills"), ("gills", "body"), ("cap", "spots"), ("footF", "body"), ("footB", "body")}
 
-DEFAULT = dict(hx=0.0, lift=0.0, lean=0.0, bw=7.4, bh=9.4, nr=5.8, nk=4.2, ff=(3.0, 0.0), bf=(-3.4, 0.0),
-               capoff=(0.0, 0.0), capabs=(0.0, 0.0), capfree=0.0, caprot=0.0, glow=0.0, expr="neutral", mouth="smile", wind=0.0)
+DEFAULT = dict(hx=0.0, lift=0.0, lean=0.0, bw=6.6, bh=10.6, ff=(3.0, 0.0), bf=(-3.2, 0.0),
+               capoff=(0.0, 0.0), capabs=(0.0, 0.0), capfree=0.0, caprot=0.0, expr="neutral", mouth="smile")
 
 
 def P(**kw):
@@ -40,70 +44,63 @@ def _foot(t, stride, lift):
 
 def poses(anim, n):
     if anim == "idle":
-        # breathing: bulb widens as the stem shortens, cap bobs, one blink
-        v = [(0.0, 7.4, 9.4), (0.2, 7.55, 9.25), (0.5, 7.75, 9.0), (0.7, 7.8, 8.9), (0.35, 7.65, 9.1), (0.1, 7.5, 9.3)]
-        return [P(bw=b, bh=h, nk=4.2 - d, expr="blink" if i == 4 else "neutral", lean=(-1.0 if i in (2, 3) else 0.0))
-                for i, (d, b, h) in enumerate(v)][:n]
-    if anim == "walk":
+        # slow breathing: stem swells while it shortens, cap bobs a touch behind, one slow blink
+        v = [(0.0, 6.6, 10.6), (0.2, 6.75, 10.45), (0.55, 6.95, 10.2), (0.7, 7.0, 10.1), (0.4, 6.85, 10.3), (0.1, 6.7, 10.5)]
+        return [P(bw=b, bh=h, lean=(-1.2 if i in (2, 3) else 0.0), expr="blink" if i == 4 else "neutral",
+                  capoff=(0.0, 0.25 * d * 4)) for i, (d, b, h) in enumerate(v)][:n]
+    if anim == "walk":     # waddle: lean into each step, body drops on contact, boots planted
         out = []
         for i in range(n):
             t = i / n
-            ff, bf = _foot(t, 3.4, 2.6), _foot(t + 0.5, 3.4, 2.6)
-            out.append(P(lean=5.0 * math.sin(2 * math.pi * t), lift=0.0, bw=7.4 + 0.35 * math.cos(4 * math.pi * t),
-                         bh=9.4 - 0.5 * math.cos(4 * math.pi * t), ff=ff, bf=bf, hx=0.6 * math.sin(2 * math.pi * t)))
+            ff, bf = _foot(t, 3.4, 2.4), _foot(t + 0.5, 3.4, 2.4)
+            down = 0.5 + 0.5 * math.cos(4 * math.pi * t)          # 1 at foot contact
+            out.append(P(lean=5.5 * math.sin(2 * math.pi * t), bw=6.6 + 0.4 * down, bh=10.6 - 0.8 * down,
+                         ff=ff, bf=bf, hx=0.7 * math.sin(2 * math.pi * t), capoff=(0.0, 0.5 * down),
+                         expr="neutral"))
         return out
-    if anim == "windup":      # squat + shake + cap heats up
+    if anim == "windup":    # squat, shake and glare
         return [
-            P(bw=8.2, bh=8.0, nk=3.6, lean=-5, glow=0.3, expr="angry", ff=(3.2, 0), bf=(-3.6, 0)),
-            P(bw=8.9, bh=7.0, nk=3.0, lean=-11, glow=0.6, expr="angry", hx=-1.0, ff=(3.6, 0), bf=(-4.0, 0), capoff=(0, 0.5)),
-            P(bw=9.4, bh=6.3, nk=2.6, lean=-15, glow=0.9, expr="angry", hx=1.0, ff=(3.9, 0), bf=(-4.3, 0), capoff=(-0.5, 1.0), mouth="grit"),
-            P(bw=9.7, bh=6.0, nk=2.4, lean=-18, glow=1.0, expr="angry", ff=(4.1, 0), bf=(-4.5, 0), capoff=(-1.0, 1.4), mouth="grit"),
+            P(bw=7.4, bh=9.2, lean=-5, expr="angry", ff=(3.3, 0), bf=(-3.5, 0), capoff=(0, 0.6), mouth="grit", ease="inout"),
+            P(bw=8.2, bh=8.0, lean=-10, hx=-0.9, expr="angry", ff=(3.7, 0), bf=(-3.9, 0), capoff=(0.0, 1.2), mouth="grit"),
+            P(bw=8.7, bh=7.3, lean=-13, hx=0.9, expr="angry", ff=(4.0, 0), bf=(-4.2, 0), capoff=(-0.4, 1.6), mouth="grit"),
+            P(bw=8.9, bh=7.0, lean=-15, hx=-0.5, expr="angry", ff=(4.1, 0), bf=(-4.3, 0), capoff=(-0.6, 1.8), mouth="grit"),
         ][:n]
     if anim == "headbutt":
         return [
-            P(bw=9.7, bh=6.0, nk=2.4, lean=-22, glow=1.0, expr="angry", hx=-1.0, ff=(4.2, 0), bf=(-4.6, 0), capoff=(-1.5, 1.6), mouth="grit", ease="in"),
-            P(bw=9.9, bh=5.7, nk=2.2, lean=-26, glow=1.0, expr="angry", hx=-2.5, ff=(4.4, 0), bf=(-4.8, 0), capoff=(-2.5, 1.8), mouth="grit", stop=True, ease="in"),
-            P(bw=6.6, bh=10.4, nk=5.0, lean=14, glow=1.0, expr="angry", hx=2.0, lift=3.0, ff=(5.5, -1.5), bf=(-3.5, -2.5), mouth="open", ease="snap"),
-            P(bw=6.8, bh=10.0, nk=5.0, lean=27, glow=1.0, expr="angry", hx=3.5, lift=1.0, ff=(7.0, 0), bf=(-2.5, -0.5), capoff=(1.6, 0.6), mouth="open"),
-            P(bw=7.6, bh=9.0, nk=4.0, lean=18, glow=0.5, expr="angry", hx=3.5, ff=(6.0, 0), bf=(-3.0, 0), capoff=(1.0, 0.5), mouth="open"),
-            P(bw=8.6, bh=7.4, nk=3.0, lean=7, glow=0.15, expr="neutral", hx=2.5, ff=(4.5, 0), bf=(-3.5, 0), mouth="grit"),
-            P(bw=7.8, bh=8.6, nk=3.8, lean=1, hx=1.0, expr="neutral"),
+            P(bw=8.9, bh=7.0, lean=-19, hx=-1.2, expr="angry", ff=(4.1, 0), bf=(-4.4, 0), capoff=(-1.0, 1.8), mouth="grit", ease="in"),
+            P(bw=9.2, bh=6.6, lean=-24, hx=-2.6, expr="angry", ff=(4.3, 0), bf=(-4.6, 0), capoff=(-1.8, 2.0), mouth="grit", stop=True, ease="in"),
+            P(bw=6.0, bh=11.6, lean=12, hx=1.8, lift=3.2, expr="angry", ff=(5.2, -1.6), bf=(-3.4, -2.6), mouth="open", ease="snap"),
+            P(bw=6.2, bh=11.0, lean=26, hx=3.8, lift=1.0, expr="angry", ff=(7.0, 0), bf=(-2.4, -0.6), capoff=(2.2, 1.2), mouth="open"),
+            P(bw=7.2, bh=9.6, lean=18, hx=3.8, expr="angry", ff=(6.0, 0), bf=(-3.0, 0), capoff=(1.4, 0.8), mouth="open"),
+            P(bw=8.2, bh=8.0, lean=8, hx=2.6, expr="neutral", ff=(4.6, 0), bf=(-3.6, 0), capoff=(0.4, 1.2), mouth="grit"),
+            P(bw=7.2, bh=9.8, lean=1, hx=1.0, expr="neutral", ff=(3.4, 0), bf=(-3.4, 0)),
         ][:n]
     if anim == "hurt":
         return [
-            P(bw=6.6, bh=10.0, nk=4.8, lean=-20, hx=-2.0, lift=0.8, expr="hurt", capoff=(-1.0, -0.3), ff=(3.5, -0.5), bf=(-4, 0), mouth="o"),
-            P(bw=8.2, bh=7.8, nk=3.2, lean=-14, hx=-2.5, expr="hurt", capoff=(-1.0, 0.6), mouth="o"),
-            P(bw=7.7, bh=8.8, nk=3.8, lean=-5, hx=-1.0, expr="hurt", mouth="o"),
+            P(bw=6.0, bh=11.2, lean=-20, hx=-2.2, lift=0.8, expr="hurt", capoff=(-1.2, -0.4), ff=(3.6, -0.5), bf=(-4.2, 0), mouth="o", ease="snap"),
+            P(bw=8.0, bh=8.6, lean=-14, hx=-2.6, expr="hurt", capoff=(-1.0, 0.8), mouth="o"),
+            P(bw=7.2, bh=9.8, lean=-4, hx=-1.0, expr="hurt", mouth="o"),
         ][:n]
     if anim == "death":
         return [
-            P(bw=6.6, bh=10.0, nk=4.8, lean=-20, hx=-2.0, expr="hurt", capoff=(-1.0, -0.3), mouth="o"),
-            P(bw=8.4, bh=7.0, nk=2.6, lean=-8, hx=-2.0, expr="dead", capfree=1, capabs=(2.0, -33.0), caprot=-45.0, mouth="o"),
-            P(bw=9.4, bh=5.2, nk=1.4, lean=0, hx=-2.0, expr="dead", capfree=1, capabs=(5.0, -40.0), caprot=60.0, mouth="o"),
-            P(bw=10.2, bh=4.4, nk=0.8, lean=0, hx=-2.5, expr="dead", capfree=1, capabs=(9.0, -26.0), caprot=210.0, mouth="o"),
-            P(bw=10.6, bh=4.0, nk=0.5, lean=0, hx=-3.0, expr="dead", capfree=1, capabs=(11.0, -9.0), caprot=330.0, mouth="o"),
-            P(bw=10.8, bh=3.8, nk=0.4, lean=0, hx=-3.0, expr="dead", capfree=1, capabs=(11.0, -7.0), caprot=345.0, mouth="o"),
+            P(bw=6.0, bh=11.2, lean=-20, hx=-2.2, expr="hurt", capoff=(-1.2, -0.4), mouth="o", ease="snap"),
+            P(bw=7.4, bh=8.4, lean=-9, hx=-2.2, expr="dead", capfree=1, capabs=(2.0, -30.0), caprot=-40.0, mouth="o"),
+            P(bw=8.4, bh=6.4, lean=-2, hx=-2.4, expr="dead", capfree=1, capabs=(6.0, -37.0), caprot=55.0, mouth="o"),
+            P(bw=9.4, bh=5.0, hx=-2.6, expr="dead", capfree=1, capabs=(10.0, -24.0), caprot=170.0, mouth="o"),
+            P(bw=10.0, bh=4.2, hx=-3.0, expr="dead", capfree=1, capabs=(12.0, -9.0), caprot=305.0, mouth="o"),
+            P(bw=10.2, bh=3.9, hx=-3.0, expr="dead", capfree=1, capabs=(12.0, -7.4), caprot=348.0, mouth="o"),
         ][:n]
     raise KeyError(anim)
-
-
-def _rot(v, deg):
-    a = math.radians(deg)
-    return (v[0] * math.cos(a) - v[1] * math.sin(a), v[0] * math.sin(a) + v[1] * math.cos(a))
 
 
 def skeleton(p):
     lr = math.radians(p["lean"])
     td = (math.sin(lr), -math.cos(lr))
-    pivot = (G[0] + p["hx"], G[1] - p["lift"] - 1.8)   # body hovers a hair above the planted stubby feet
+    pivot = (G[0] + p["hx"], G[1] - p["lift"] - 1.6)       # the egg rests just above the planted boots
     bulb = (pivot[0] + td[0] * p["bh"], pivot[1] + td[1] * p["bh"])
-    neck_len = p["bh"] + p["nk"]
-    neck = (pivot[0] + td[0] * neck_len, pivot[1] + td[1] * neck_len)
-    top = (pivot[0] + td[0] * (neck_len + p["nr"] * 0.7), pivot[1] + td[1] * (neck_len + p["nr"] * 0.7))
-    face_h = p["bh"] * 0.95
-    off = _rot((0.0, 0.0), p["lean"])
-    face = (pivot[0] + td[0] * face_h + off[0], pivot[1] + td[1] * face_h + off[1])
-    return {"pivot": pivot, "bulb": bulb, "neck": neck, "top": top, "face": face, "lean": p["lean"],
+    top = (pivot[0] + td[0] * 2 * p["bh"], pivot[1] + td[1] * 2 * p["bh"])
+    face = (pivot[0] + td[0] * p["bh"] * 0.98, pivot[1] + td[1] * p["bh"] * 0.98)
+    return {"pivot": pivot, "bulb": bulb, "top": top, "face": face, "lean": p["lean"],
             "footn": (G[0] + p["ff"][0], G[1] + p["ff"][1]), "footf": (G[0] + p["bf"][0], G[1] + p["bf"][1])}
 
 
@@ -113,64 +110,54 @@ def simulate(sks, poses_, loop):
         lr = math.radians(s["lean"])
         a = s["top"]
         anchors.append(a)
-        rests.append([(a[0] + math.sin(lr) * 7.6, a[1] - math.cos(lr) * 7.6)])
-    res = simulate_chain(anchors, rests, stiffness=0.20, damping=0.70, gravity=0.38, loop=loop)
+        rests.append([(a[0] + math.sin(lr) * 1.0, a[1] - math.cos(lr) * 1.0)])    # cap rests right on the stem
+    res = simulate_chain(anchors, rests, stiffness=0.22, damping=0.72, gravity=0.06, loop=loop)
     return [{"cap": r} for r in res]
 
 
-def _mix(a, b, t):
-    return "#%02X%02X%02X" % tuple(int(round(x + (y - x) * t)) for x, y in zip(hexc(a), hexc(b)))
-
-
 def draw(sk, chains, p):
-    mats = dict(MATERIALS)
-    mats["cap"] = (_mix(CAP, HOT, p["glow"]), True)
-    cv = Canvas(CELL, mats)
+    cv = Canvas(CELL, MATERIALS)
     xs, ys = cv.xs, cv.ys
-    piv, bulb, neck, top = sk["pivot"], sk["bulb"], sk["neck"], sk["top"]
-    # stubby feet (planted): drawn first so the body overlaps them
+    piv, bulb, top = sk["pivot"], sk["bulb"], sk["top"]
+    # planted boots first so the body overlaps them
     for tag, grp in (("footf", "footB"), ("footn", "footF")):
         f = sk[tag]
-        cv.paint("foot", Mask(CELL).ellipse((f[0] + 0.6, f[1] - 1.8), 3.0, 2.0), group=grp, k=3, deep=True)
-    # body: bulb + neck
+        cv.paint("foot", Mask(CELL).ellipse((f[0] + 0.7, f[1] - 1.9), 3.1, 2.0), group=grp, k=3, deep=True)
     body = Mask(CELL).ellipse(bulb, p["bw"], p["bh"], sk["lean"])
     cv.paint("stem", body, group="body", k=5)
-    nk = Mask(CELL).ellipse(neck, p["bw"] * 0.86, p["nr"], sk["lean"])
-    cv.paint("stem", nk.array(), group="body", k=5)
-    # cap (spring driven, or flying free when knocked off)
+    # cap: spring-driven, or flying free when knocked off
     if p["capfree"] >= 0.5:
         cx, cy = G[0] + p["capabs"][0], G[1] + p["capabs"][1]
         tilt = p["caprot"]
     else:
         cp = chains["cap"][1]
         cx, cy = cp[0] + p["capoff"][0], cp[1] + p["capoff"][1]
-        spring = math.degrees(math.atan2(cp[0] - top[0], -(cp[1] - top[1])))
-        tilt = sk["lean"] * 0.45 + max(-14.0, min(14.0, (spring - sk["lean"]) * 0.6)) + p["caprot"]
+        spring = math.degrees(math.atan2(cp[0] - top[0], -(cp[1] - top[1]) + 1e-6))
+        tilt = sk["lean"] * 0.55 + max(-10.0, min(10.0, spring * 0.4)) + p["caprot"]
     t = math.radians(tilt)
-    reach = 14.2 * abs(math.cos(t)) + 9.8 * abs(math.sin(t)) + 1.6          # keep the cap inside the cell (1px outline + margin)
-    cx = max(reach + 1.0, min(CELL - 1.0 - reach, cx))
+    reach = CAP_RX * abs(math.cos(t)) + CAP_RY * abs(math.sin(t)) + 1.8
+    cx = max(reach, min(CELL - reach, cx))
     dx, dy = xs - cx, ys - cy
     lx = dx * math.cos(t) + dy * math.sin(t)
     ly = -dx * math.sin(t) + dy * math.cos(t)
-    cap = ((lx / 14.2) ** 2 + (ly / 9.8) ** 2 <= 1.0) & (ly < 1.4)
-    gills = ((lx / 12.9) ** 2 + ((ly - 0.8) / 3.6) ** 2 <= 1.0) & (ly >= -0.6)
+    cap = ((lx / CAP_RX) ** 2 + (ly / CAP_RY) ** 2 <= 1.0) & (ly < 1.5)
+    gills = ((lx / (CAP_RX - 1.3)) ** 2 + ((ly - 0.9) / 3.4) ** 2 <= 1.0) & (ly >= -0.6)
     cv.paint("gills", gills & ~cap, group="gills", k=3, deep=True, hi=False)
-    # a lip: darker rim row under the cap edge reads as thickness
     cv.paint("cap", cap, group="cap", k=6, cast=4)
-    spots = (Mask(CELL).array() & False)
-    for (sx, sy, r) in ((-7.0, -4.5, 2.5), (-1.0, -7.2, 2.1), (4.2, -6.0, 3.0), (9.6, -2.2, 1.9), (-9.5, -0.6, 1.4), (1.6, -2.0, 1.3)):
+    spots = Mask(CELL).array() & False
+    for (sx, sy, r) in ((-6.6, -3.6, 2.2), (-1.2, -6.2, 1.9), (3.8, -5.0, 2.6), (8.6, -1.6, 1.6), (-9.0, -0.4, 1.2), (1.4, -1.4, 1.1)):
         gx = cx + sx * math.cos(t) - sy * math.sin(t)
         gy = cy + sx * math.sin(t) + sy * math.cos(t)
         spots |= Mask(CELL).circle((gx, gy), r).array()
     cv.paint("spot", spots & cap, group="cap", k=3, deep=False)
     buf = cv.finish(NO_SEAM)
-    # ---- face (painted at final resolution on the stem) ----
+    # ---- face (painted at final resolution on the stem, below the cap rim) ----
     ok = {cv.matidx["stem"]}
     fx, fy = int(round(sk["face"][0])), int(round(sk["face"][1])) - 1
     eyes(buf, ok, fx, fy, p["expr"], 3, 4, 4)
-    mouth = p["mouth"]
     my = fy + 5
-    pink, dark = (214, 112, 120), (96, 40, 52)
+    pink, dark = (222, 118, 126), (92, 38, 52)
+    mouth = p["mouth"]
     if p["expr"] in ("neutral", "blink"):
         for dx, dy in ((-1, 0), (0, 1), (1, 1), (2, 0)):
             put(buf, fx + dx, my + dy - 1, dark, ok)
@@ -198,8 +185,8 @@ def draw(sk, chains, p):
 
 
 def anchors(sk):
-    cx, cy, tilt = sk.get("_cap", (sk["top"][0], sk["top"][1] - 7, 0.0))
+    cx, cy, tilt = sk.get("_cap", (sk["top"][0], sk["top"][1] - 3, 0.0))
     t = math.radians(tilt)
-    tip = (cx + 12.5 * math.cos(t), cy + 12.5 * math.sin(t) - 1.0)
+    tip = (cx + (CAP_RX - 1.0) * math.cos(t), cy + (CAP_RX - 1.0) * math.sin(t) - 1.0)
     return {"hand": sk["top"], "hand_dir": (math.cos(t), math.sin(t)), "off_hand": sk["pivot"], "head": (cx, cy),
             "chest": sk["bulb"], "weapon_tip": tip}

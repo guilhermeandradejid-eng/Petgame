@@ -1,4 +1,4 @@
-"""Hopkin - a round bunny-blob that hops and pounces. ~30 px tall with ears. Faces right.
+"""Hopkin v3 - a round bunny-blob that hops and pounces, arcade hi-bit. ~28 px tall with ears. Faces right.
 
 Body = one squashable ellipse pivoting around the ground contact, two floppy spring-chain ears,
 tiny planted feet, a cream belly and a cotton tail. Big painted eyes, angry when it attacks.
@@ -10,11 +10,14 @@ from chars._cute import eyes, put
 
 CELL = 64
 G = (32.0, 59.0)
-FUR = "#B8A3EC"
-RAGE = "#EE8FC2"
-MATERIALS = {
-    "fur": (FUR, False), "belly": ("#FFE6CC", False), "ear": ("#A28AE0", False),
-    "earin": ("#F9B6CB", False), "foot": ("#7A5FC2", False), "tail": ("#FFF6EA", False),
+S = 0.86                  # global size factor vs v2 (target idle height ~28 px incl. ears)
+MATERIALS = {             # hand-authored 5-tone ramps: violet shadows, warm lights
+    "fur": ("#9A8AE6", False, ["#2C2A6A", "#5E58B0", "#9A8AE6", "#C4B6FB", "#E8E0FF"]),
+    "belly": ("#FFD4B8", False, ["#7A4C6A", "#D09AA0", "#FFD4B8", "#FFEADB", "#FFF8F0"]),
+    "ear": ("#9A88EA", False, ["#32286E", "#5F52B8", "#9A88EA", "#BFB0FA", "#E0D8FF"]),
+    "earin": ("#FF98B4", False, ["#82305A", "#CF5F8E", "#FF98B4", "#FFC0D0", "#FFE6EE"]),
+    "foot": ("#6A5CC8", False, ["#1E1A52", "#3E3890", "#6A5CC8", "#8C80E4", "#B0A8F6"]),
+    "tail": ("#FFF0E4", False, ["#7A6A90", "#C4B4C8", "#FFF0E4", "#FFFAF2", "#FFFFFF"]),
 }
 NO_SEAM = {("body", "tail"), ("earA", "body"), ("earB", "body"), ("earA", "earinA"), ("earB", "earinB"),
            ("footF", "body"), ("footB", "body"), ("body", "belly")}
@@ -26,6 +29,10 @@ DEFAULT = dict(hx=0.0, lift=0.0, lean=0.0, bw=11.0, bh=9.5, ff=(4.6, 0.0), bf=(-
 def P(**kw):
     d = dict(DEFAULT)
     d.update(kw)
+    for k in ("bw", "bh", "hx", "lift"):
+        d[k] = d[k] * S
+    for k in ("ff", "bf"):
+        d[k] = (d[k][0] * S, d[k][1] * S)
     return d
 
 
@@ -105,8 +112,8 @@ def _ear_rest(sk, which):
     ang = sk["lean"] + (-sk["earback"] * (45 if which == "A" else 70))
     out = []
     for (bx, by), (fx, fy) in zip(base, flat):
-        v = _rot((bx, by), ang)
-        v = (v[0] * (1 - d) + fx * d, v[1] * (1 - d) + fy * d)
+        v = _rot((bx * S, by * S), ang)
+        v = (v[0] * (1 - d) + fx * S * d, v[1] * (1 - d) + fy * S * d)
         out.append(v)
     return out
 
@@ -115,7 +122,7 @@ def _ear_anchor(sk, which):
     bw, bh = sk["bw"], sk["bh"]
     c = sk["c"]
     lr = sk["lean"]
-    off = _rot((-3.4 if which == "A" else 2.8, -bh * 0.82), lr)
+    off = _rot((-3.0 if which == "A" else 2.5, -bh * 0.82), lr)
     return (c[0] + off[0], c[1] + off[1])
 
 
@@ -137,9 +144,7 @@ def _mix(a, b, t):
 
 
 def draw(sk, chains, p):
-    mats = dict(MATERIALS)
-    mats["fur"] = (_mix(FUR, RAGE, p["rage"]), False)
-    cv = Canvas(CELL, mats)
+    cv = Canvas(CELL, MATERIALS)
     c, bw, bh, lean = sk["c"], p["bw"], p["bh"], sk["lean"]
     # ears behind the head
     cv.paint("ear", Mask(CELL).ribbon(chains["earA"], 3.5, 1.8), group="earA", k=3, deep=True, hi=False)

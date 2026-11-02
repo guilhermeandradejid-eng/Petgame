@@ -1,36 +1,36 @@
 {
  "id": "hopkin",
  "cell": 64,
- "target_height_px": 30,
- "version": 2,
- "note": "FROZEN (v2). A round hopping bunny-blob.",
+ "target_height_px": 28,
+ "version": 3,
+ "note": "FROZEN (v3). Smaller, slower. A round hopping bunny-blob.",
  "anims": {
   "idle": {
    "loop": true,
    "ticks": [
-    8,
-    8,
-    8,
-    8
+    10,
+    10,
+    10,
+    10
    ]
   },
   "walk": {
    "loop": true,
    "ticks": [
-    6,
-    6,
-    6,
-    6,
-    6,
-    6
+    8,
+    8,
+    8,
+    8,
+    8,
+    8
    ]
   },
   "windup": {
    "loop": false,
    "ticks": [
-    5,
-    5,
-    8
+    6,
+    6,
+    10
    ],
    "hold": [
     2
@@ -39,12 +39,12 @@
   "pounce": {
    "loop": false,
    "ticks": [
-    3,
-    3,
-    3,
+    4,
+    4,
+    4,
+    8,
     6,
-    5,
-    6
+    8
    ],
    "contact": [
     3
@@ -57,19 +57,19 @@
   "hurt": {
    "loop": false,
    "ticks": [
-    3,
-    3,
-    8
+    4,
+    4,
+    10
    ]
   },
   "death": {
    "loop": false,
    "ticks": [
-    4,
-    5,
     5,
     6,
-    30
+    6,
+    8,
+    40
    ],
    "hold": [
     4

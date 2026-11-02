@@ -1,39 +1,39 @@
 {
  "id": "capmook",
  "cell": 64,
- "target_height_px": 38,
- "version": 2,
- "note": "FROZEN (v2).",
+ "target_height_px": 34,
+ "version": 3,
+ "note": "FROZEN (v3). Smaller, slower.",
  "anims": {
   "idle": {
    "loop": true,
    "ticks": [
-    10,
-    10,
-    10,
-    10,
-    10,
-    10
+    12,
+    12,
+    12,
+    12,
+    12,
+    12
    ]
   },
   "walk": {
    "loop": true,
    "ticks": [
-    6,
-    6,
-    6,
-    6,
-    6,
-    6
+    8,
+    8,
+    8,
+    8,
+    8,
+    8
    ]
   },
   "windup": {
    "loop": false,
    "ticks": [
-    5,
-    5,
-    5,
-    8
+    7,
+    7,
+    7,
+    10
    ],
    "hold": [
     3
@@ -42,13 +42,13 @@
   "headbutt": {
    "loop": false,
    "ticks": [
+    4,
+    4,
     3,
-    3,
-    2,
-    6,
-    6,
     8,
-    8
+    8,
+    10,
+    10
    ],
    "contact": [
     3
@@ -60,20 +60,20 @@
   "hurt": {
    "loop": false,
    "ticks": [
-    3,
-    3,
-    8
+    4,
+    4,
+    10
    ]
   },
   "death": {
    "loop": false,
    "ticks": [
-    4,
-    5,
     5,
     6,
     6,
-    30
+    8,
+    8,
+    40
    ],
    "hold": [
     5
