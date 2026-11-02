@@ -13,6 +13,18 @@ desconhecidos" e abra. O jogo roda deitado (paisagem).
 |---|---|---|
 | ![menu](docs/menu.jpg) | ![smash](docs/smash.jpg) | ![curtinha](docs/curtinha.jpg) |
 
+### Gameplay
+
+| Lob, smash, peixinho e defesa | Saque viagem |
+|---|---|
+| ![rali](docs/gifs/rali-smash-mergulho.gif) | ![saque](docs/gifs/saque-viagem.gif) |
+| **Curtinha e smash** | **Nossa dupla cravando** |
+| ![curtinha](docs/gifs/curtinha-e-smash.gif) | ![smash](docs/gifs/nosso-smash.gif) |
+
+Os GIFs saem do próprio jogo: `godot --path godot --fixed-fps 30 -- --autoplay --shots=/tmp/rec --shotdt=0 --shotmax=2400`
+grava um frame por quadro (e imprime no terminal os eventos `EVT` com o número do frame de cada golpe),
+depois o `ffmpeg` recorta os trechos.
+
 ## Como jogar
 
 As regras são de beach tennis:

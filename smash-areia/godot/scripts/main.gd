@@ -519,6 +519,8 @@ func _launch(p: Player, shot: int, res: Dictionary, quality: float) -> void:
 	ball.is_serve = false
 	ball.launch(res["velocity"], p.team, p, shot)
 	rally_hits += 1
+	if shot_dir != "":
+		print("EVT ", shot_n, " ", res["label"], " team=", p.team, " human=", p.is_human, " q=", snappedf(quality, 0.01))
 	_stat("shot_" + Shots.NAMES[shot] + ("_serve" if state == S.SERVE else ""))
 	announced_hit = -1
 	assign_t = 0.0
@@ -845,6 +847,8 @@ func _on_ball_landed(pos: Vector3) -> void:
 
 
 func _award_point(team: int, _reason: String) -> void:
+	if shot_dir != "":
+		print("EVT ", shot_n, " PONTO ", _reason, " team=", team)
 	state = S.POINT
 	point_timer = 2.3
 	sfx("whistle", -8.0)

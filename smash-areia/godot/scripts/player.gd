@@ -196,6 +196,8 @@ func request_dive(dir: Vector3) -> void:
 	pending_shot = -1
 	facing = atan2(dive_dir.x, dive_dir.z)
 	if game:
+		if game.shot_dir != "":
+			print("EVT ", game.shot_n, " MERGULHO team=", team)
 		game.sfx("dive", -2.0)
 		game.sand_burst(global_position, 10)
 
