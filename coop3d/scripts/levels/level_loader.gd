@@ -3,7 +3,7 @@ extends Node
 ## recording progress with Game.trace() (so a GPU-driver crash can be
 ## pinpointed and worked around on the next launch), then builds the level.
 
-const WARM := ["sky", "toon", "outline", "terrain", "glow", "grass", "cloud_sea", "ghost", "portal", "shockwave", "beam", "bubble"]
+const WARM := ["sky", "toon", "outline", "terrain", "glow", "grass", "cloud_sea", "ghost", "portal", "shockwave", "beam", "bubble", "water"]
 
 var _label: Label
 

@@ -22,14 +22,17 @@ func _ready() -> void:
 	level = get_tree().current_scene.get_node("Level")
 	lumi = level.players[0]
 	bolota = level.players[1]
-	if which == 0:
-		await _run0()
-	elif which == 1:
-		await _run()
-	elif which == 2:
-		await _run2()
-	else:
-		await _run3()
+	match which:
+		0:
+			await _run_valley()
+		1:
+			await _run0()
+		2:
+			await _run()
+		3:
+			await _run2()
+		_:
+			await _run3()
 	print("PLAYTEST DONE, failures: ", fails)
 	get_tree().quit(1 if fails else 0)
 
@@ -437,3 +440,103 @@ func _run0() -> void:
 	place(bolota, Vector3(1, 9.6, -144))
 	await frames(30)
 	check("T: goal completes", level.done)
+
+
+func _run_valley() -> void:
+	var v = level
+	check("V: spawn on ground", lumi.is_on_floor(), "p=%s" % lumi.global_position)
+	# river: plates extend the bridge, then walk across
+	place(lumi, v.at(-5, -25, 0.4))
+	place(bolota, v.at(5, -25, 0.4))
+	await frames(30)
+	check("V: river bridge latched", level.channel("river"))
+	place(bolota, v.at(0, -28, 0.4))
+	place(lumi, v.at(1.2, -28, 0.4))
+	press(0, "fwd")
+	press(1, "fwd")
+	await frames(230)
+	release(0, "fwd")
+	release(1, "fwd")
+	check("V: both crossed the river", lumi.global_position.z < -50.0 and bolota.global_position.z < -50.0 and not lumi.state == "bubble",
+			"l=%s b=%s" % [lumi.global_position, bolota.global_position])
+	await frames(20)
+	# falling in the river makes a bubble
+	place(lumi, Vector3(-10, -1.0, -40))
+	await frames(40)
+	check("V: river is a hazard", lumi.state == "bubble", lumi.state)
+	await frames(260)
+	# cliff 1: throw Lumi up, she holds the elevator plate, Bolota rides up
+	place(bolota, v.at(-4, -59.6, 0.4))
+	place(lumi, v.at(-4.5, -59.0, 0.4))
+	bolota.facing = Vector3.FORWARD
+	await frames(10)
+	await tap(1, "grab")
+	await frames(5)
+	await tap(1, "grab")
+	await frames(16)
+	press(0, "fwd")
+	await frames(14)
+	await tap(0, "jump")
+	await frames(30)
+	release(0, "fwd")
+	await frames(30)
+	check("V: lumi thrown up the cliff", lumi.global_position.y > 4.0, "p=%s" % lumi.global_position)
+	place(lumi, v.at(-4, -68, 0.4))
+	place(bolota, v.at(6, -58.9, 0.6))
+	await frames(160)
+	check("V: elevator lifts bolota", bolota.global_position.y > 4.3, "p=%s" % bolota.global_position)
+	press(1, "fwd")
+	await frames(60)
+	release(1, "fwd")
+	check("V: bolota walks onto the plateau", bolota.global_position.z < -63.0 and bolota.global_position.y > 4.0, "p=%s" % bolota.global_position)
+	# forest gate with a crate on the heavy plate
+	var cr: Crate = of_type(Crate).filter(func(c): return not c.breakable)[0]
+	place(bolota, cr.global_position + Vector3(0, 0, 1.2))
+	await frames(10)
+	await tap(1, "grab")
+	await frames(5)
+	place(bolota, v.at(7, -84.6, 0.4))
+	bolota.facing = Vector3.FORWARD
+	await frames(5)
+	await tap(1, "grab")
+	await frames(90)
+	check("V: crate holds the heavy plate", level.channel("heavy"), "c=%s" % cr.global_position)
+	place(lumi, v.at(0, -88, 0.4))
+	press(0, "fwd")
+	await frames(60)
+	release(0, "fwd")
+	check("V: walk through the open forest gate", lumi.global_position.z < -95.0, "p=%s" % lumi.global_position)
+	# cliff 2: fan + tether
+	place(bolota, v.at(0, -97, 0.4))
+	place(lumi, v.at(0, -100, 1.0))
+	press(0, "jump")
+	await frames(10)
+	release(0, "jump")
+	await frames(20)
+	press(0, "jump")
+	await frames(130)
+	press(0, "fwd")
+	await frames(60)
+	release(0, "fwd")
+	release(0, "jump")
+	await frames(60)
+	check("V: lumi on the upper plateau", lumi.global_position.y > 8.5 and lumi.is_on_floor(), "p=%s" % lumi.global_position)
+	await tap(0, "grab")
+	await frames(70)
+	check("V: tether pulls bolota up", bolota.global_position.y > 8.0, "p=%s" % bolota.global_position)
+	# ravine timed bridge
+	var sw: PoundSwitch = of_type(PoundSwitch)[0]
+	place(lumi, v.at(0, -117, 0.4))
+	place(bolota, sw.global_position + Vector3(0, 3, 0))
+	await frames(3)
+	await tap(1, "pound")
+	await frames(10)
+	press(0, "fwd")
+	await frames(170)
+	release(0, "fwd")
+	check("V: crossed the ravine", lumi.global_position.z < -134.0 and lumi.global_position.y > 8.0, "p=%s" % lumi.global_position)
+	# goal
+	place(lumi, v.at(0, -152, 0.6))
+	place(bolota, v.at(1, -152, 0.6))
+	await frames(30)
+	check("V: goal completes", level.done)

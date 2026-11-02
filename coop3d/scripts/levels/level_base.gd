@@ -34,6 +34,8 @@ var sky_colors := {}
 var music_seed := 0
 ## Phones/tablets get lighter scenery (fewer grass blades, cheaper effects).
 var low_spec := OS.has_feature("mobile") or OS.has_feature("web")
+## false for grounded worlds (no sea of clouds / floating islets).
+var floating_world := true
 
 var _channels := {}  # name -> {source_id: bool}
 var _channel_colors := {}
@@ -92,6 +94,20 @@ func and_gate(out: String, inputs: Array) -> void:
 			all = all and channel(c)
 		if all != channel(out):
 			set_channel(out, src, all))
+
+
+## Latch: `out` turns on (for good) the first time every input is on.
+func latch_gate(out: String, inputs: Array) -> void:
+	var src := Node.new()
+	add_child(src)
+	channel_changed.connect(func(_n, _v):
+		if channel(out):
+			return
+		for c in inputs:
+			if not channel(c):
+				return
+		set_channel(out, src, true)
+		Sfx.play("fanfare", 1.3, -6.0))
 
 
 ## Shared toggle (every toggle switch on a channel flips the same state).
@@ -386,6 +402,9 @@ func _build_environment() -> void:
 	_sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if low_spec else DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	add_child(_sun)
 
+	if not floating_world:
+		_distant_mountains(c)
+		return
 	_sea = MeshInstance3D.new()
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(900, 900)
@@ -413,6 +432,28 @@ func _build_environment() -> void:
 		m.position = Vector3(cos(a) * d, _rng.randf_range(-15.0, 25.0), sin(a) * d)
 		add_child(m)
 		Mats.stylize(m, 0.0)
+
+
+## Ring of big soft mountains on the horizon for grounded worlds.
+func _distant_mountains(c: Dictionary) -> void:
+	var n := 10 if low_spec else 18
+	for i in n:
+		var a := TAU * i / float(n) + _rng.randf() * 0.2
+		var d := _rng.randf_range(170.0, 240.0)
+		var mi := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		var r := _rng.randf_range(45.0, 80.0)
+		cm.top_radius = r * _rng.randf_range(0.05, 0.25)
+		cm.bottom_radius = r
+		cm.height = _rng.randf_range(40.0, 75.0)
+		cm.radial_segments = 9
+		cm.rings = 2
+		mi.mesh = cm
+		var col: Color = (c["ground"] as Color).lerp(c["horizon"], _rng.randf_range(0.2, 0.5))
+		mi.material_override = Mats.toon(col, {"rim_amount": 0.2, "spec_amount": 0.0})
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.position = Vector3(cos(a) * d, cm.height * 0.5 - 12.0, -70.0 + sin(a) * d)
+		add_child(mi)
 
 
 # --------------------------------------------------------------- builders

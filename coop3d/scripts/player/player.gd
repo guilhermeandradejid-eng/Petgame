@@ -258,7 +258,7 @@ func _move_normal(delta: float, wish: Vector3) -> void:
 	else:
 		a = air_accel if wish.length() > 0.05 else air_decel
 		if state == "thrown":
-			a *= 0.5
+			a *= 0.8
 	v_tan = v_tan.move_toward(target, a * delta)
 
 	# --- jumps

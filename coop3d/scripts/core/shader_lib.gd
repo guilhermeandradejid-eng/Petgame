@@ -18,6 +18,7 @@ const REAL := {
 	"grass": "res://shaders/grass.gdshader",
 	"cloud_sea": "res://shaders/cloud_sea.gdshader",
 	"sky": "res://shaders/sky.gdshader",
+	"water": "res://shaders/water.gdshader",
 }
 const SAFE := {
 	"toon": "res://shaders/safe/toon.gdshader",
@@ -32,6 +33,7 @@ const SAFE := {
 	"grass": "res://shaders/safe/grass.gdshader",
 	"cloud_sea": "res://shaders/safe/cloud_sea.gdshader",
 	"sky": "res://shaders/safe/sky.gdshader",
+	"water": "res://shaders/safe/water.gdshader",
 }
 
 static var _cache := {}

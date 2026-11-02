@@ -17,10 +17,11 @@ Os dois têm dash, pulo longo (dash + pulo) e ground pound. Quem cai do mapa vir
 
 ## Fases
 
-0. **Campo de Treino** (demo): todas as mecânicas numa fase compacta.
-1. **Prado das Lanternas** (tutorial coop): duas placas abrem um portão; o Bolota arremessa a Lumi numa torre enquanto segura uma placa pesada; um caixote faz o papel de um herói; Espinhudos; corrente de ar para a Lumi planar e Elo de Luz para puxar o Bolota.
-2. **Jardim Orbital**: planetoides com gravidade esférica. Placas em lados opostos de um planeta, corrida contra um interruptor temporizado em volta de outro, e luas gêmeas cujos campos de gravidade se tocam.
-3. **Ruínas da Fenda**: ponte de luz temporizada, fendas mantidas abertas pelos dois lados, escadaria de **blocos de maré** (um alterna, o outro sobe) e placas em ilhas distantes.
+0. **Vale do Riacho** (demo): um mundo contínuo, no chão, sem ilhas flutuantes nem planetas. O terreno é gerado por função de altura (`scripts/world/terrain.gd`), com rio, cascata, dois penhascos, floresta murada, desfiladeiro e colina. Os puzzles usam a geografia: placas que estendem uma ponte sobre o rio, arremesso + elevador de placa no penhasco, portão de placa pesada com caixote, ventilador + Elo de Luz, ponte temporizada sobre o desfiladeiro e blocos de maré.
+1. **Campo de Treino**: todas as mecânicas numa fase compacta.
+2. **Prado das Lanternas** (tutorial coop): duas placas abrem um portão; o Bolota arremessa a Lumi numa torre enquanto segura uma placa pesada; um caixote faz o papel de um herói; Espinhudos; corrente de ar para a Lumi planar e Elo de Luz para puxar o Bolota.
+3. **Jardim Orbital**: planetoides com gravidade esférica. Placas em lados opostos de um planeta, corrida contra um interruptor temporizado em volta de outro, e luas gêmeas cujos campos de gravidade se tocam.
+4. **Ruínas da Fenda**: ponte de luz temporizada, fendas mantidas abertas pelos dois lados, escadaria de **blocos de maré** (um alterna, o outro sobe) e placas em ilhas distantes.
 
 Cada fase tem 3 **Sementes Estelares** escondidas e faíscas para coletar.
 
@@ -51,7 +52,7 @@ O projeto usa o renderizador Forward+ e cai para Compatibility/OpenGL automatica
 
 O APK da demo fica em [`build/LumiBolota-demo.apk`](../build/LumiBolota-demo.apk). Ele é arm64, tem cerca de 37 MB e é assinado com uma chave de debug (v2/v3).
 
-- Começa no **Campo de Treino**, uma fase compacta com todas as mecânicas: pulo, pulo duplo e planar; dash e pulo longo; duas placas e um portão; arremesso até a torre com placa pesada; caixote; Espinhudo; cogumelo; ponte temporizada; fenda; ventilador com Elo de Luz; blocos de maré; planetinha com anéis de lançamento; Flor Estelar.
+- Começa no **Vale do Riacho** (mundo contínuo); o **Campo de Treino** também está no menu, uma fase compacta com todas as mecânicas: pulo, pulo duplo e planar; dash e pulo longo; duas placas e um portão; arremesso até a torre com placa pesada; caixote; Espinhudo; cogumelo; ponte temporizada; fenda; ventilador com Elo de Luz; blocos de maré; planetinha com anéis de lançamento; Flor Estelar.
 - **Controles de toque:** joystick flutuante à esquerda; botões Pular, Dash, Erguer/Elo, Pound e Trocar à direita; arrastar no lado direito gira a câmera.
 - No celular o modo solo vem primeiro (o botão Trocar alterna entre Lumi e Bolota). Com dois controles Bluetooth dá para jogar em coop.
 - O renderizador é Compatibility (OpenGL ES 3), com grama, sombras e cenário reduzidos para rodar em mais aparelhos.
@@ -107,7 +108,7 @@ O rig depende dos nomes dos pivôs (`Hips`, `Head`, `ArmL`, `EarL`, `Tail1`, `Ca
 # compila todos os scripts
 godot --headless --path coop3d res://tools/check.tscn
 # testa as mecânicas de cada fase com entradas simuladas
-godot --headless --path coop3d -- --playtest --level=0   # 0 = Campo de Treino, 1..3 = fases
+godot --headless --path coop3d -- --playtest --level=0   # 0 = Vale do Riacho, 1 = Campo de Treino, 2..4 = fases
 # screenshot de uma fase depois de N frames
 godot --path coop3d -- --shot=2 --out=/tmp/fase2.png --frames=120 [--touch]
 ```

@@ -25,6 +25,7 @@ const CHARACTERS := [
 ]
 
 const LEVELS := [
+	{"title": "Vale do Riacho", "script": "res://scripts/levels/level_valley.gd", "sub": "Um vale inteiro para atravessar juntos"},
 	{"title": "Campo de Treino", "script": "res://scripts/levels/level_test.gd", "sub": "Todas as mecânicas numa fase só"},
 	{"title": "Prado das Lanternas", "script": "res://scripts/levels/level_1.gd", "sub": "Aprendam a se ajudar"},
 	{"title": "Jardim Orbital", "script": "res://scripts/levels/level_2.gd", "sub": "Pequenos planetas, grandes saltos"},
