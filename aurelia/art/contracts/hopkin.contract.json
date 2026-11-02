@@ -1,0 +1,79 @@
+{
+ "id": "hopkin",
+ "cell": 64,
+ "target_height_px": 30,
+ "version": 2,
+ "note": "FROZEN (v2). A round hopping bunny-blob.",
+ "anims": {
+  "idle": {
+   "loop": true,
+   "ticks": [
+    8,
+    8,
+    8,
+    8
+   ]
+  },
+  "walk": {
+   "loop": true,
+   "ticks": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6
+   ]
+  },
+  "windup": {
+   "loop": false,
+   "ticks": [
+    5,
+    5,
+    8
+   ],
+   "hold": [
+    2
+   ]
+  },
+  "pounce": {
+   "loop": false,
+   "ticks": [
+    3,
+    3,
+    3,
+    6,
+    5,
+    6
+   ],
+   "contact": [
+    3
+   ],
+   "hold": [
+    1,
+    3
+   ]
+  },
+  "hurt": {
+   "loop": false,
+   "ticks": [
+    3,
+    3,
+    8
+   ]
+  },
+  "death": {
+   "loop": false,
+   "ticks": [
+    4,
+    5,
+    5,
+    6,
+    30
+   ],
+   "hold": [
+    4
+   ]
+  }
+ }
+}
