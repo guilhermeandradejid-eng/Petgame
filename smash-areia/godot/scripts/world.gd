@@ -11,6 +11,9 @@ const UMBRELLA := preload("res://assets/models/umbrella.glb")
 const CHAIR := preload("res://assets/models/chair.glb")
 const TOWER := preload("res://assets/models/tower.glb")
 const CLOUD := preload("res://assets/models/cloud.glb")
+const CLOUDS := [preload("res://assets/models/cloud.glb"), preload("res://assets/models/cloud_puff.glb"),
+	preload("res://assets/models/cloud_long.glb")]
+const CLOUD_SHADER := preload("res://shaders/cloud.gdshader")
 const POST := preload("res://assets/models/post.glb")
 const BLEACHERS := preload("res://assets/models/bleachers.glb")
 const SURFBOARD := preload("res://assets/models/surfboard.glb")
@@ -63,7 +66,7 @@ func _process(dt: float) -> void:
 		crowd_mat.set_shader_parameter("ball_pos", ball_pos)
 		crowd_mat.set_shader_parameter("ola_t", ola_t)
 	for c in clouds:
-		c.position.x += dt * 0.6
+		c.position.x += dt * float(c.get_meta("speed", 0.6))
 		if c.position.x > 180.0:
 			c.position.x = -180.0
 	for crab in crabs:
@@ -430,9 +433,26 @@ func _props() -> void:
 	for i in 3:
 		_place(ISLAND, Vector3(-120 + i * 120 + rng.randf_range(-20, 20), -0.5, rng.randf_range(-300, -240)),
 				rng.randf_range(0, TAU), rng.randf_range(2.5, 3.5), {"outline": 0.0, "halftone": 0.0})
-	for i in 6:
-		var c := _place(CLOUD, Vector3(-170 + i * 65 + rng.randf_range(-15, 15), rng.randf_range(40, 70),
-				rng.randf_range(-280, -180)), 0.0, rng.randf_range(7.0, 11.0), {"outline": 0.0, "halftone": 0.0, "rim": 0.0})
+	# nuvens em camadas (mais longe = mais claras e alaranjadas), dos dois lados
+	for i in 11:
+		var far := i < 8
+		var x := -190.0 + (i % 8) * 54.0 + rng.randf_range(-14, 14)
+		var z := rng.randf_range(-300, -170) if far else rng.randf_range(190, 260)
+		var y := rng.randf_range(34, 78)
+		var kind := i % 3
+		var sc := rng.randf_range(6.5, 10.5) * (1.25 if kind == 2 else 1.0)
+		var c: Node3D = (CLOUDS[kind] as PackedScene).instantiate()
+		c.position = Vector3(x, y, z)
+		c.rotation.y = rng.randf_range(-0.25, 0.25) + (PI if not far else 0.0)
+		c.scale = Vector3(sc, sc * rng.randf_range(0.85, 1.05), sc)
+		add_child(c)
+		var m := ShaderMaterial.new()
+		m.shader = CLOUD_SHADER
+		m.set_shader_parameter("haze", clampf((absf(z) - 170.0) / 140.0, 0.0, 1.0) * 0.35 + (y - 34.0) / 44.0 * 0.05)
+		for mi in c.find_children("*", "MeshInstance3D", true, false):
+			(mi as MeshInstance3D).material_override = m
+			(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		c.set_meta("speed", rng.randf_range(0.4, 1.1))
 		clouds.append(c)
 	for i in 3:
 		var b := _place(SAILBOAT, Vector3(-150 + i * 140, 0, rng.randf_range(-150, -80)),

@@ -41,19 +41,22 @@ const DIFFICULTIES := [
 	{"name": "DIFÍCIL", "reaction": 0.14, "speed": 0.98, "error": 0.45, "smash": 0.95, "judge": 0.95, "dive": 1.0},
 ]
 
+## Partidas: as curtas vão até N games; o SET OFICIAL segue a regra da ITF
+## (6 games com 2 de vantagem, tie-break até 7 no 6-6, ponto de ouro no 40-40).
 const LENGTHS := [
-	{"name": "RÁPIDA", "games": 2},
-	{"name": "NORMAL", "games": 4},
+	{"name": "RÁPIDA", "games": 2, "official": false},
+	{"name": "NORMAL", "games": 4, "official": false},
+	{"name": "SET OFICIAL", "games": 6, "official": true},
 ]
 
 ## Roupas: peças visíveis do modelo (a cor vem da paleta do time)
 const OUTFITS := [
 	{"name": "CAMISETA", "parts": ["Shirt", "Shorts"]},
 	{"name": "REGATA", "parts": ["Tank", "Shorts"]},
-	{"name": "LISTRADA", "parts": ["Shirt", "Stripe0", "Stripe1", "Bermuda", "BermudaBand.R", "BermudaBand.L"]},
-	{"name": "ATLETA", "parts": ["Tank", "Stripe1", "Bermuda", "BermudaBand.R", "BermudaBand.L"]},
+	{"name": "LISTRADA", "parts": ["Shirt", "Stripe0", "Stripe1", "Bermuda", "BermudaBand_R", "BermudaBand_L"]},
+	{"name": "ATLETA", "parts": ["Tank", "Stripe1", "Bermuda", "BermudaBand_R", "BermudaBand_L"]},
 ]
-const CLOTH_PARTS := ["Shirt", "Tank", "Stripe0", "Stripe1", "Shorts", "Bermuda", "BermudaBand.R", "BermudaBand.L"]
+const CLOTH_PARTS := ["Shirt", "Tank", "Stripe0", "Stripe1", "Shorts", "Bermuda", "BermudaBand_R", "BermudaBand_L"]
 
 ## Paletas de cada time (camisa, detalhe, short): sempre no tom do time
 const PALETTES := [

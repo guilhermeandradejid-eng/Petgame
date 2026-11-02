@@ -82,7 +82,7 @@ def skin_mesh(name, joints, radii, edges, root, subsurf=2):
     layer = me.skin_vertices[0].data
     for n in names:
         layer[idx[n]].radius = radii[n]
-        layer[idx[n]].use_root = (n == root)
+        layer[idx[n]].use_root = (n in root) if isinstance(root, (list, tuple)) else (n == root)
     sub = ob.modifiers.new("sub", "SUBSURF")
     sub.levels = subsurf
     sub.render_levels = subsurf
@@ -231,59 +231,132 @@ def clothing(M, name, joints, radii, edges, root, mat):
     return ob, smooth_weights(me, segs, skip=("Head",))
 
 
-def player_clothes(M):
-    J = PLAYER_J
-    shirt_j = {"hem": (0, 0, 0.98), "spine": J["spine"], "chest": J["chest"], "collar": (0, 0, 1.47)}
-    shirt_r = {"hem": (0.19, 0.15), "spine": (0.166, 0.128), "chest": (0.205, 0.146), "collar": (0.085, 0.082)}
-    edges = [("hem", "spine"), ("spine", "chest"), ("chest", "collar")]
+def leg_plane(bone, t):
+    """Plano perpendicular ao osso, na fração t do comprimento."""
+    for bn, h, tl, _ in PLAYER_BONES:
+        if bn == bone:
+            a, b = Vector(PLAYER_J[h]), Vector(PLAYER_J[tl])
+            return (a + (b - a) * t, (b - a).normalized())
+    raise KeyError(bone)
+
+
+def body_shell(name, body_me, body_w, mat, keep, offset, cuts=()):
+    """Roupa feita de uma "casca" do próprio corpo: copia as faces escolhidas,
+    afasta pela normal e herda exatamente os pesos de cada vértice do corpo.
+    Assim o tecido deforma igual à pele e nada atravessa, em qualquer pose.
+    keep(centro, osso, t_no_osso) -> bool; offset(osso) -> distância."""
+    segs = bone_segments(PLAYER_J, PLAYER_BONES)
+    seg_by = {bn: (a, b) for bn, a, b in segs}
+    bm = bmesh.new()
+    bm.from_mesh(body_me)
+    bm.normal_update()
+    # pesos por posição: vértices originais mantêm o peso exato; os criados
+    # pelos cortes misturam os vizinhos originais mais próximos (KD-tree)
+    from mathutils import kdtree
+    kd = kdtree.KDTree(len(body_me.vertices))
+    for i, v in enumerate(body_me.vertices):
+        kd.insert(v.co, i)
+    kd.balance()
+    for co, no in cuts:
+        bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=co, plane_no=no)
+
+    def weight_at(p):
+        hits = kd.find_n(p, 3)
+        if hits[0][2] < 1e-6:
+            return body_w[hits[0][1]]
+        acc, tot = {}, 0.0
+        for _, i, d in hits[:2]:
+            k = 1.0 / max(d, 1e-6)
+            tot += k
+            for bn, w in body_w[i].items():
+                acc[bn] = acc.get(bn, 0.0) + w * k
+        return {bn: w / tot for bn, w in acc.items()}
+
+    bm.normal_update()
+    kill = []
+    for f in bm.faces:
+        c = f.calc_center_median()
+        bn, _ = nearest_bone(c, segs, skip=("Head",))
+        a, b = seg_by[bn]
+        ab = b - a
+        t = (c - a).dot(ab) / max(ab.length_squared, 1e-9)
+        if not keep(c, bn, t):
+            kill.append(f)
+    bmesh.ops.delete(bm, geom=kill, context="FACES")
+    bm.verts.index_update()
+    weights = [weight_at(v.co) for v in bm.verts]
+    for v in bm.verts:
+        bn, _ = nearest_bone(v.co, segs, skip=("Head",))
+        v.co += v.normal * offset(bn)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    me.materials.clear()
+    me.materials.append(mat)
+    for poly in me.polygons:
+        poly.material_index = 0
+        poly.use_smooth = True
+    ob = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(ob)
+    return ob, weights
+
+
+TORSO = ("Hips", "Spine", "Chest")
+
+
+def player_clothes(M, body_me, body_w):
+    UP = Vector((0, 0, 1))
+    X = Vector((1, 0, 0))
+
+    def torso_off(bn):
+        return 0.042 if bn in TORSO else 0.03
+
+    def shirt(c, bn, t):
+        if bn in TORSO:
+            return 1.0 <= c.z <= 1.455
+        return bn.startswith("UpperArm") and t <= 0.4
+
+    shirt_cuts = [(Vector((0, 0, 1.0)), UP), (Vector((0, 0, 1.455)), UP),
+                  leg_plane("UpperArm.R", 0.4), leg_plane("UpperArm.L", 0.4)]
+
+    def tank(c, bn, t):
+        if bn not in TORSO or not (1.0 <= c.z <= 1.42):
+            return False
+        return not (abs(c.x) > 0.13 and c.z > 1.3)   # cava da regata
+
+    tank_cuts = [(Vector((0, 0, 1.0)), UP), (Vector((0, 0, 1.42)), UP), (Vector((0, 0, 1.3)), UP),
+                 (Vector((0.13, 0, 0)), X), (Vector((-0.13, 0, 0)), X)]
+
+    def band(z0, z1):
+        return (lambda c, bn, t: bn in TORSO and z0 <= c.z <= z1), [(Vector((0, 0, z0)), UP), (Vector((0, 0, z1)), UP)]
+
+    def shorts(length):
+        def k(c, bn, t):
+            if bn == "Hips":
+                return c.z <= 1.05
+            return bn.startswith("UpperLeg") and t <= length
+        return k, [(Vector((0, 0, 1.05)), UP), leg_plane("UpperLeg.R", length), leg_plane("UpperLeg.L", length)]
+
+    def legs_off(bn):
+        return 0.034 if bn == "Hips" else 0.028
+
+    s0, c0 = band(1.09, 1.15)
+    s1, c1 = band(1.23, 1.29)
+    sk, sc = shorts(0.55)
+    bk, bc = shorts(0.84)
+    out = [
+        body_shell("Shirt", body_me, body_w, M["shirt"], shirt, torso_off, shirt_cuts),
+        body_shell("Tank", body_me, body_w, M["shirt"], tank, torso_off, tank_cuts),
+        body_shell("Stripe0", body_me, body_w, M["trim"], s0, lambda bn: 0.05, c0),
+        body_shell("Stripe1", body_me, body_w, M["trim"], s1, lambda bn: 0.05, c1),
+        body_shell("Shorts", body_me, body_w, M["shorts"], sk, legs_off, sc),
+        body_shell("Bermuda", body_me, body_w, M["shorts"], bk, legs_off, bc),
+    ]
     for sd in (".R", ".L"):
-        shirt_j["sh" + sd] = J["shoulder" + sd]
-        shirt_j["sl" + sd] = _lerp(J["shoulder" + sd], J["elbow" + sd], 0.42)
-        shirt_r["sh" + sd] = (0.088, 0.088)
-        shirt_r["sl" + sd] = (0.074, 0.074)
-        edges += [("chest", "sh" + sd), ("sh" + sd, "sl" + sd)]
-    out = [clothing(M, "Shirt", shirt_j, shirt_r, edges, "hem", M["shirt"])]
-    sj = {"waist": (0, 0, 0.95)}
-    sr = {"waist": (0.15, 0.114)}
-    se = []
-    for sd in (".R", ".L"):
-        sj["hp" + sd] = J["hip" + sd]
-        sj["lg" + sd] = _lerp(J["hip" + sd], J["knee" + sd], 0.55)
-        sr["hp" + sd] = (0.1, 0.1)
-        sr["lg" + sd] = (0.096, 0.096)
-        se += [("waist", "hp" + sd), ("hp" + sd, "lg" + sd)]
-    out.append(clothing(M, "Shorts", sj, sr, se, "waist", M["shorts"]))
-    # regata: sem mangas, gola mais aberta
-    tank_j = {k: shirt_j[k] for k in ("hem", "spine", "chest")}
-    tank_j["collar"] = (0, 0, 1.43)
-    tank_r = {"hem": (0.188, 0.148), "spine": (0.164, 0.126), "chest": (0.2, 0.142), "collar": (0.13, 0.1)}
-    out.append(clothing(M, "Tank", tank_j, tank_r, [("hem", "spine"), ("spine", "chest"), ("chest", "collar")],
-                        "hem", M["shirt"]))
-    # listras da camiseta: anéis finos um pouco maiores que o tecido
-    for i, z in enumerate((1.12, 1.26)):
-        kz = (z - 0.98) / (1.36 - 0.98)
-        rx = 0.19 + (0.205 - 0.19) * kz + 0.01
-        ry = 0.15 + (0.146 - 0.15) * kz + 0.01
-        sj2 = {"a": (0, 0, z - 0.045), "b": (0, 0, z + 0.045)}
-        sr2 = {"a": (rx, ry), "b": (rx, ry)}
-        out.append(clothing(M, "Stripe%d" % i, sj2, sr2, [("a", "b")], "a", M["trim"]))
-    # bermuda: perna mais longa, até perto do joelho
-    bj = {"waist": (0, 0, 0.95)}
-    br = {"waist": (0.152, 0.116)}
-    be = []
-    for sd in (".R", ".L"):
-        bj["hp" + sd] = J["hip" + sd]
-        bj["lg" + sd] = _lerp(J["hip" + sd], J["knee" + sd], 0.86)
-        br["hp" + sd] = (0.102, 0.102)
-        br["lg" + sd] = (0.088, 0.088)
-        be += [("waist", "hp" + sd), ("hp" + sd, "lg" + sd)]
-    out.append(clothing(M, "Bermuda", bj, br, be, "waist", M["shorts"]))
-    # faixa da bermuda (cor de detalhe)
-    for sd in (".R", ".L"):
-        c = _lerp(J["hip" + sd], J["knee" + sd], 0.8)
-        d = _lerp(J["hip" + sd], J["knee" + sd], 0.86)
-        out.append(clothing(M, "BermudaBand" + sd, {"a": c, "b": d}, {"a": (0.093, 0.093), "b": (0.093, 0.093)},
-                            [("a", "b")], "a", M["trim"]))
+        bone = "UpperLeg" + sd
+        keep = (lambda bnm: lambda c, bn, t: bn == bnm and 0.76 <= t <= 0.84)(bone)
+        out.append(body_shell("BermudaBand" + sd, body_me, body_w, M["trim"], keep, lambda bn: 0.036,
+                              [leg_plane(bone, 0.76), leg_plane(bone, 0.84)]))
     return out
 
 
@@ -344,7 +417,7 @@ def build_player():
     arm = make_armature("Rig", PLAYER_J, PLAYER_BONES)
     body, w = player_body(M)
     bind(body, arm, w)
-    for ob, cw in player_clothes(M):
+    for ob, cw in player_clothes(M, body.data, w):
         bind(ob, arm, cw)
     head = player_head(M)
     bind(head, arm, rigid_weights(head.data, "Head"))

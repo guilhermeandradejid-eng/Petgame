@@ -55,6 +55,7 @@ var in_game := false
 var replay_on := false
 var split_on := false
 var pad_mode := false        # controle em uso pelo J1: esconde os botões de toque
+var last_input_pad := false
 
 # menu
 var menu: Control
@@ -791,6 +792,8 @@ func _toggle_help() -> void:
 	help_panel.visible = not help_panel.visible
 	if help_panel.visible:
 		(help_panel.get_meta("close") as Button).grab_focus.call_deferred()
+	elif pause_panel.visible:
+		(pause_panel.get_meta("ctl") as Button).grab_focus.call_deferred()
 	else:
 		help_btn.grab_focus.call_deferred()
 
@@ -800,7 +803,7 @@ func _refresh_menu() -> void:
 		return
 	diff_btn.text = "CPU: %s" % GameData.DIFFICULTIES[GameData.difficulty]["name"]
 	var L: Dictionary = GameData.LENGTHS[GameData.length_index]
-	len_btn.text = "PARTIDA: %s (%d)" % [L["name"], L["games"]]
+	len_btn.text = "PARTIDA: OFICIAL" if L.get("official", false) else "PARTIDA: %s (%d)" % [L["name"], L["games"]]
 	music_btn.text = "MÚSICA: %s" % ("SIM" if GameData.music_on else "NÃO")
 	if GameData.char_index_p2 == GameData.char_index:
 		GameData.char_index_p2 = (GameData.char_index + 2) % GameData.CHARACTERS.size()
@@ -818,6 +821,13 @@ func _refresh_menu() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# lembra se o último toque nos menus veio do controle ou da tela
+	if event is InputEventJoypadButton and event.is_pressed():
+		last_input_pad = true
+	elif event is InputEventJoypadMotion and absf((event as InputEventJoypadMotion).axis_value) > 0.5:
+		last_input_pad = true
+	elif event is InputEventScreenTouch and event.is_pressed():
+		last_input_pad = false
 	if not menu.visible:
 		return
 	if screen == "title" and screen_t > 0.35:
@@ -892,11 +902,6 @@ func _draw_title() -> void:
 	ci.draw_arc(bc + Vector2(40, 0), 32, PI - 0.9, PI + 0.9, 12, Color.WHITE, 5.0)
 	ci.draw_circle(bc + Vector2(-12, -14), 7, Color(1, 1, 1, 0.7))
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	# faixa
-	var rb := Rect2(c.x - 240, c.y + 150, 480, 54)
-	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	_comic_poly(ci, _para(rb, 18), Color("2f8cff"), 0.14, 5.0)
-	_txt(ci, rb.get_center(), "BEACH TENNIS DE GIBI", 36, Color.WHITE, 10)
 	# aviso pulsante
 	var prompt := "APERTE ENTER PARA JOGAR"
 	if Input.get_connected_joypads().size() > 0:
@@ -1077,9 +1082,9 @@ func _build_help() -> void:
 		["LOB (alto, fundo)", "X", "K", "LOB"],
 		["CURTA (slice)", "B", "L", "CURTA"],
 		["SMASH (bola alta)", "Y", "I", "SMASH"],
-		["DEFESA", "RT", "O", "DEFESA"],
+		["DEFESA (escudo azul)", "LB  ou  RT", "O", "DEFESA"],
 		["ESPECIAL (barra cheia)", "RB", "U", "ESTRELA ESPECIAL"],
-		["PEIXINHO", "LB", "SHIFT", "PEIXINHO"],
+		["PEIXINHO", "LT  ou  L3", "SHIFT", "PEIXINHO"],
 		["PAUSA", "START", "ESC", "II"],
 	]
 	for ri in rows.size():
@@ -1201,6 +1206,10 @@ func _build_pause() -> void:
 	var mus := _button("MÚSICA: SIM", 32, CYAN)
 	mus.pressed.connect(_toggle_music.bind(mus))
 	v.add_child(mus)
+	var ctl := _button("CONTROLES", 32, YELLOW)
+	ctl.pressed.connect(_toggle_help)
+	v.add_child(ctl)
+	pause_panel.set_meta("ctl", ctl)
 	var quit := _button("MENU", 40, RED)
 	quit.pressed.connect(_quit_to_menu)
 	v.add_child(quit)
@@ -1222,6 +1231,7 @@ func _on_pause() -> void:
 	var p := not get_tree().paused
 	get_tree().paused = p
 	pause_panel.visible = p
+	help_panel.visible = false
 	touch.reset()
 	_sfx("pause_on" if p else "pause_off")
 	if p and cont_btn:
@@ -1271,11 +1281,11 @@ func show_menu() -> void:
 	_update_touch()
 	# na primeira vez abre no título; depois de uma partida volta para os personagens
 	_go_screen("char" if booted else "title")
-	booted = true
 
 
 func show_game() -> void:
 	in_game = true
+	booted = true   # depois de uma partida, o menu volta direto para os personagens
 	menu.visible = false
 	help_panel.visible = false
 	get_viewport().gui_release_focus()
@@ -1325,9 +1335,15 @@ func set_hint(text: String) -> void:
 ## Aviso de especial pronto, com o botão certo para cada jeito de jogar
 func super_ready_hint(pad: bool, who := "") -> void:
 	var how := "APERTE RB" if pad else ("TOQUE NA ESTRELA" if touch.visible else "APERTE U")
-	super_hint.text = "%sESPECIAL PRONTO!  %s" % [(who + ": ") if who != "" else "", how]
+	flash_tip("%sESPECIAL PRONTO!  %s" % [(who + ": ") if who != "" else "", how], 3.2)
+
+
+## Aviso pulsante embaixo da tela
+func flash_tip(text: String, time := 3.0, col := YELLOW) -> void:
+	super_hint.text = text
+	super_hint.add_theme_color_override("font_color", col)
 	super_hint.visible = true
-	super_hint_t = 3.2
+	super_hint_t = time
 
 
 ## Destaque no placar da dupla que fez o ponto
@@ -1381,9 +1397,9 @@ func set_energy(e: Array) -> void:
 	score_panel.queue_redraw()
 
 
-func set_score(points: Array, games: Array, serving: int, target: int) -> void:
+func set_score(points: Array, games: Array, serving: int, target: int, tiebreak := false) -> void:
 	score = {"points": points.duplicate(), "games": games.duplicate(), "serving": serving,
-		"golden": points[0] == 3 and points[1] == 3, "target": target}
+		"golden": points[0] == 3 and points[1] == 3 and not tiebreak, "target": target, "tiebreak": tiebreak}
 	score_panel.queue_redraw()
 
 
@@ -1420,7 +1436,7 @@ func _draw_score() -> void:
 		var box := Rect2(bx, top + 6, bw, ph - 12)
 		ci.draw_rect(box.grow(3), INK)
 		ci.draw_rect(box, Color.WHITE.lerp(YELLOW, pop))
-		var ps: String = GameData.POINT_NAMES[mini(pts[side], 3)]
+		var ps: String = str(pts[side]) if score.get("tiebreak", false) else GameData.POINT_NAMES[mini(pts[side], 3)]
 		var s := 1.0 + 0.6 * pop * pop
 		ci.draw_set_transform(box.get_center(), 0.0, Vector2.ONE * s)
 		_txt(ci, Vector2(0, -2), ps, 48, RED.darkened(0.3) if golden else INK, 0)
@@ -1434,8 +1450,10 @@ func _draw_score() -> void:
 		var tw := FONT.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		_txt(ci, Vector2(nx if side == 0 else nx - tw, top + 22), nm, fs, Color.WHITE, 9, false)
 		var target: int = score["target"]
+		if int(score["games"][side]) > target:
+			target = int(score["games"][side])
 		for g in target:
-			var gx: float = nx + 10.0 + g * 24.0 if side == 0 else nx - 10.0 - g * 24.0
+			var gx: float = nx + 10.0 + g * 21.0 if side == 0 else nx - 10.0 - g * 21.0
 			var gp := Vector2(gx, top + 48)
 			ci.draw_circle(gp, 9, INK)
 			ci.draw_circle(gp, 6.5, YELLOW if g < int(score["games"][side]) else Color(1, 1, 1, 0.3))
@@ -1465,8 +1483,11 @@ func _draw_score() -> void:
 	# centro
 	var mid := Rect2(cx - 24, top + 14, 48, 36)
 	ci.draw_rect(mid.grow(3), INK)
-	ci.draw_rect(mid, RED if golden else YELLOW)
-	_txt(ci, mid.get_center(), "x", 30, INK, 0)
+	var tb: bool = score.get("tiebreak", false)
+	ci.draw_rect(mid, RED if golden or tb else YELLOW)
+	_txt(ci, mid.get_center(), "TB" if tb else "x", 26 if tb else 30, INK, 0)
+	if tb:
+		_txt(ci, Vector2(cx, top + ph + 44), "TIE-BREAK ATÉ 7", 26, YELLOW, 9)
 	if golden:
 		var a := 0.6 + 0.4 * sin(t * 8.0)
 		_txt(ci, Vector2(cx, top + ph + 44), "PONTO DE OURO!", 28, Color(1, 0.85, 0.3, a), 9, true, Color(INK, a))

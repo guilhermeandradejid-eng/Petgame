@@ -28,6 +28,8 @@ desconhecidos" e abra. O jogo roda deitado (paisagem).
    - **cor da raquete**: a do personagem ou uma de 8 cores.
 
    Os parceiros e adversários da CPU sorteiam roupa, cores e raquete a cada partida.
+   As roupas são uma "casca" copiada do próprio corpo no Blender (cortes retos com bisect) e herdam
+   os mesmos pesos dos ossos, então a pele nunca atravessa o tecido em nenhuma pose.
 
 Tudo funciona no toque, no mouse, no teclado e no controle (D-pad + A, B volta).
 
@@ -55,8 +57,12 @@ ffmpeg -i partida.avi -vf scale=1024:-2 -c:v libx264 -crf 30 -c:a aac docs/parti
 - **Controles (gamepad)**: com 2 controles conectados, cada jogador usa um. Com 1 controle, o J2 fica
   com ele e o J1 joga no teclado (ou toque no modo co-op). No celular, o VS precisa de dois
   controles Bluetooth, porque os botões de toque somem na tela dividida.
-- Mapeamento do controle: **A** forte, **X** lob, **B** curta, **Y** smash, **RT** defesa,
-  **RB** especial, **LB** (ou LT) peixinho, **Start** pausa, analógico ou D-pad para correr e mirar.
+- Mapeamento do controle: **A** forte, **X** lob, **B** curta, **Y** smash, **LB** (ou RT/R3) defesa,
+  **RB** especial, **LT** (ou L3) peixinho, **Start** pausa, analógico ou D-pad para correr e mirar.
+  Os gatilhos também são lidos como botão (alguns controles no Android não mandam eixo), e o
+  mapa aparece na tela no começo da partida e em PAUSA > CONTROLES.
+- Apertar o ESPECIAL com a barra incompleta mostra a % acima do jogador (o botão respondeu, só falta
+  carregar). Com a barra cheia ele fica **armado** até a próxima bola sua, sem desperdiçar.
 - O J2 também pode jogar no teclado: setas, `N` forte, `M` lob, `,` curta, `.` smash, `/` defesa,
   `B` especial e `V` peixinho.
 - Os menus funcionam no controle (D-pad + A). Cada jogador humano tem um marcador "J1"/"J2" em cima.
@@ -71,7 +77,11 @@ As regras são de beach tennis:
 - **Um toque por dupla.** Você ou o parceiro rebate, e a bola tem que passar a rede.
 - Bola que cai **fora** é ponto de quem não bateu por último. Bola na rede é ponto do outro lado.
 - **Saque único**, sem segunda chance.
-- Contagem de tênis (0, 15, 30, 40) com **ponto de ouro** no 40-40. A partida vai até 2 games (rápida) ou 4 games (normal).
+- Contagem oficial do beach tennis (ITF): **0, 15, 30, 40** e game, com **ponto de ouro** no 40-40
+  (sem vantagem).
+- Tamanho da partida: **RÁPIDA** (quem fizer 2 games), **NORMAL** (4 games) ou **SET OFICIAL**:
+  6 games com 2 de vantagem e, no 6-6, **tie-break** até 7 pontos (2 de vantagem). No tie-break o
+  placar conta 1, 2, 3... e o saque troca depois do 1º ponto e depois a cada 2.
 - **Saque em rodízio**: as duplas alternam o saque a cada game, e dentro da dupla os dois jogadores
   se revezam (no seu time, você e o parceiro sacam em games alternados).
 - **Placar**: cada dupla mostra os próprios pontos em destaque (pisca quando pontua), os games
@@ -87,7 +97,7 @@ As regras são de beach tennis:
 | **LOB** | Bola alta com topspin que cai no fundo, boa para tirar a dupla da rede. |
 | **CURTA** | **Slice**: flutua, faz curva e morre perto da rede. |
 | **SMASH** | Com a bola alta, o boneco **pula e crava** no tempo certo. Com a bola baixa vira uma pancada. Perto da rede é quase indefensável, do fundo sai mais lento. |
-| **DEFESA** | Devolve uma bola alta, funda e segura no meio da quadra. Alcança mais longe e aguenta pancada (bloqueio). |
+| **DEFESA** | Devolve uma bola alta, funda e segura no meio da quadra. Alcança mais longe e aguenta pancada (bloqueio). Enquanto está armada aparece um **escudo azul** na frente do jogador e "DEFESA!" em cima; o escudo pisca quando pega a bola. |
 | **PEIXINHO** | Mergulho para salvar bola longe. Rebate sozinho uma defesa alta. |
 | **ESPECIAL** (estrela grande acima do losango) | Enche junto com a barra ESPECIAL do placar (mostra a %) e pulsa com "PRONTO!" quando está cheia: solta o golpe especial do seu personagem. Também aparece um aviso na tela dizendo qual botão apertar (RB, U ou a estrela). |
 
@@ -252,6 +262,10 @@ smash-areia/
   palmas) com cores sorteadas, só nas arquibancadas laterais (o fundo fica livre para ver o mar).
   Eles viram o corpo seguindo a bola e fazem a **ola** quando a sua
   dupla pontua. O juiz na cadeira acompanha a bola com a cabeça e levanta o braço no apito.
+- **Céu de gibi**: degradê em faixas suaves, sol com contorno e halos em anel, raios girando e
+  fiapos de cirros. **Nuvens** em três formatos com base achatada, topo branco, barriga rosada e
+  borda dourada contra o sol, em camadas que ficam mais claras com a distância e andam devagar.
+- **Batidas**: estrela de impacto + **onda de choque** com traços de velocidade (dupla nas pancadas).
 - **Areia viva**: pegadas que somem com o tempo, marca do mergulho, onda de areia quando a bola
   cai, confete nos pontos (chuva maior no game) e vinheta suave de cinema nas bordas.
 - **Controles de toque** compactos e semitransparentes (acendem ao tocar), com o losango de golpes no

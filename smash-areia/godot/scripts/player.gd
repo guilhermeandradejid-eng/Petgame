@@ -75,6 +75,9 @@ var bubble_t := 0.0
 var shadow: MeshInstance3D
 var zone_ring: MeshInstance3D
 var aura: MeshInstance3D
+var shield: Node3D             # escudo azul na frente do corpo enquanto a DEFESA está armada
+var shield_mats: Array[StandardMaterial3D] = []
+var shield_flash := 0.0
 var hittable := false
 var footstep_t := 0.0
 var foot_side := 1.0
@@ -178,6 +181,7 @@ func _build_model() -> void:
 	aura = Toon.blob(1.7, Color(1, 1, 1, 0.0), true)
 	aura.top_level = true
 	add_child(aura)
+	_make_shield()
 	if is_human:
 		zone_ring = Toon.blob(REACH * 2.1, Color(1.0, 0.95, 0.3, 0.0), true)
 		zone_ring.top_level = true
@@ -600,7 +604,10 @@ func _update_normal(dt: float) -> void:
 			style_t = 0.08
 			_predict_style()
 		if pending_t <= 0.0:
-			_start_swing(pending_shot, global_position + net_dir(), style)
+			if pending_shot == Shots.SPECIAL and game != null and not game.is_replay():
+				pending_t = 0.25   # especial fica armado até a bola chegar (não gasta à toa)
+			else:
+				_start_swing(pending_shot, global_position + net_dir(), style)
 	if jump_timer >= 0.0:
 		jump_timer -= dt
 		if jump_timer < 0.0:
@@ -700,7 +707,7 @@ func _animate(dt: float) -> void:
 	var sharp := 14.0
 	var body_rot := Vector3.ZERO
 
-	if state == State.NORMAL and pending_shot >= 0:
+	if state == State.NORMAL and pending_shot >= 0 and not (pending_shot == Shots.SPECIAL and pending_age > PENDING_WINDOW + 0.5 and pending_t <= 0.3):
 		_windup_pose(pending_shot, style, p, L)
 		var ch := charge()
 		L["crouch"] = float(L["crouch"]) + 0.03 + ch * 0.05
@@ -881,7 +888,59 @@ func _left_hand_ik(dt: float) -> void:
 	rig.ik_arm("UpperArm.L", "LowerArm.L", inv * throat, inv * pole, lh_w)
 
 
+func _make_shield() -> void:
+	shield = Node3D.new()
+	shield.position = Vector3(0, 1.0, 0.62)
+	add_child(shield)
+	var disc := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.6
+	cm.bottom_radius = 0.6
+	cm.height = 0.01
+	cm.radial_segments = 32
+	disc.mesh = cm
+	disc.rotation.x = PI * 0.5
+	var ring := MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = 0.56
+	tm.outer_radius = 0.66
+	tm.rings = 32
+	ring.mesh = tm
+	ring.rotation.x = PI * 0.5
+	for pair in [[disc, Color(0.45, 0.8, 1.0, 0.25)], [ring, Color(0.85, 0.96, 1.0, 0.85)]]:
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		m.albedo_color = pair[1]
+		(pair[0] as MeshInstance3D).material_override = m
+		(pair[0] as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		shield.add_child(pair[0])
+		shield_mats.append(m)
+	shield.visible = false
+
+
+## Flash do escudo quando a defesa pega a bola
+func shield_hit() -> void:
+	shield_flash = 1.0
+
+
+func _update_shield(dt: float) -> void:
+	if shield == null:
+		return
+	shield_flash = maxf(0.0, shield_flash - dt * 2.4)
+	var armed := pending_shot == Shots.DEFENSE and state == State.NORMAL
+	var a := (0.65 + 0.25 * sin(anim_time * 14.0)) if armed else 0.0
+	a = maxf(a, shield_flash)
+	shield.visible = a > 0.02
+	if shield.visible:
+		shield_mats[0].albedo_color.a = 0.28 * a + 0.3 * shield_flash
+		shield_mats[1].albedo_color.a = 0.9 * a
+		shield.scale = Vector3.ONE * (0.8 + 0.2 * a + 0.45 * shield_flash)
+
+
 func _update_decals(dt: float) -> void:
+	_update_shield(dt)
 	shadow.global_position = Vector3(global_position.x + 0.12, 0.015, global_position.z + 0.08)
 	shadow.scale = Vector3.ONE * lerpf(1.0, 0.6, clampf(y / 1.2, 0.0, 1.0))
 	var am := aura.material_override as ShaderMaterial

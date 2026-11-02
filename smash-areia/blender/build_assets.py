@@ -272,16 +272,26 @@ def build_tower():
 
 
 def build_cloud():
-    reset_scene()
-    w = material("Cloud", "#ffffff")
-    s = material("CloudShade", "#dfe9ff")
-    b = Builder("Cloud")
-    blobs = [((0, 0, 0), 1.2), ((1.3, 0.1, -0.2), 0.95), ((-1.3, 0, -0.25), 0.9),
-             ((0.6, 0.2, 0.6), 0.85), ((-0.5, -0.1, 0.5), 0.8), ((2.3, 0, -0.45), 0.6), ((-2.2, 0.1, -0.45), 0.55)]
-    for i, (c, r) in enumerate(blobs):
-        b.sphere(c, r, w if i % 3 else s, scale=(1, 0.8, 0.85), seg=14, rings=10)
-    b.build()
-    export("cloud")
+    """Cúmulos de gibi: base larga e achatada + montinhos redondos por cima.
+    O sombreado (topo claro, base lilás, borda dourada do pôr do sol) é feito
+    no shader de nuvem do jogo."""
+    variants = {
+        "cloud": [((0, 0, 0.55), 1.15), ((1.25, 0.1, 0.3), 0.9), ((-1.2, 0, 0.25), 0.85), ((0.45, 0.25, 1.15), 0.75),
+                  ((-0.55, -0.1, 1.0), 0.7), ((2.2, 0, 0.05), 0.6), ((-2.1, 0.1, 0.0), 0.55)],
+        "cloud_puff": [((0, 0, 0.45), 0.85), ((0.85, 0, 0.2), 0.6), ((-0.8, 0.05, 0.18), 0.55), ((0.25, 0.1, 0.85), 0.5)],
+        "cloud_long": [((x * 1.05, (x % 2) * 0.15, 0.2 + 0.25 * (1 - abs(x) / 3.0)), 0.75 - 0.08 * abs(x))
+                       for x in (-3, -2, -1, 0, 1, 2, 3)],
+    }
+    for name, blobs in variants.items():
+        reset_scene()
+        w = material("Cloud", "#ffffff")
+        b = Builder("Cloud")
+        span = max(abs(c[0]) + r for c, r in blobs)
+        b.sphere((0, 0, 0.0), 1.0, w, scale=(span * 0.92, 1.1, 0.32), seg=24, rings=10)
+        for c, r in blobs:
+            b.sphere(c, r, w, scale=(1, 0.85, 0.9), seg=16, rings=10)
+        b.build()
+        export(name)
 
 
 def build_post():

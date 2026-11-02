@@ -27,6 +27,9 @@ var marker: MeshInstance3D
 var points := [0, 0]
 var games := [0, 0]
 var games_to_win := 2
+var official := false        # set oficial: 6 games com 2 de vantagem e tie-break no 6-6
+var tiebreak := false
+var start_games := 0         # teste: começa a partida com este placar de games
 var serving_team := 0
 var server_turn := [0, 0]
 var server: Player = null
@@ -83,6 +86,7 @@ var sand_i := 0
 var sparks: Array[CPUParticles3D] = []
 var spark_i := 0
 var impacts: Array[Dictionary] = []
+var waves: Array[Dictionary] = []   # ondas de choque das batidas
 
 # depuração / testes automáticos (argumentos depois de "--")
 var autoplay := false
@@ -174,6 +178,10 @@ func _ready() -> void:
 		elif a.begins_with("--outfit="):
 			GameData.looks[0]["outfit"] = int(a.substr(9))
 			GameData.looks[0]["racket"] = int(a.substr(9)) % 3
+		elif a.begins_with("--startgames="):
+			start_games = int(a.substr(13))
+		elif a.begins_with("--len="):
+			GameData.length_index = int(a.substr(6))
 		elif a.begins_with("--menu="):
 			hud._go_screen.call_deferred(a.substr(7))
 		elif a.begins_with("--portrait="):
@@ -255,15 +263,23 @@ func _portrait(path: String) -> void:
 	we.environment.background_mode = Environment.BG_CLEAR_COLOR
 	var p := Player.new()
 	add_child(p)
-	p.setup(GameData.CHARACTERS[GameData.char_index], 0, false)
+	p.setup(GameData.CHARACTERS[GameData.char_index], 0, false, GameData.looks[0] if not path.contains("card") else {})
 	p.side = -1.0
 	p.reset_state()
 	p.shadow.visible = false
+	var body_cam := path.contains("body")
+	if path.contains("swing"):
+		p.request_shot(Shots.DRIVE)
 	var card := path.contains("card")
 	for i in 20:
 		p.update(1.0 / 30.0)
 	cam.h_offset = 0.0
-	if card:
+	if body_cam:
+		cam.fov = 32
+		var ang := float(path.get_slice("body", 1).to_int()) * 0.0174533
+		var dist := 2.2 if path.contains("zoom") else 4.2
+		cam.look_at_from_position(Vector3(sin(ang) * dist, 1.2, cos(ang) * dist), Vector3(0.0, 0.95, 0.0))
+	elif card:
 		# retrato do card: 3/4 para mostrar o cabelo de cada personagem
 		cam.fov = 30
 		cam.look_at_from_position(Vector3(-1.9, 1.5, 3.0), Vector3(0.0, 1.12, 0.0))
@@ -468,6 +484,19 @@ func _setup_particles() -> void:
 		mi.visible = false
 		add_child(mi)
 		impacts.append({"node": mi, "t": 1.0, "life": 0.18})
+	for i in 6:
+		var mi := MeshInstance3D.new()
+		var q := QuadMesh.new()
+		q.size = Vector2(1, 1)
+		mi.mesh = q
+		var m := ShaderMaterial.new()
+		m.shader = preload("res://shaders/shockwave.gdshader")
+		m.render_priority = 3
+		mi.material_override = m
+		mi.visible = false
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi)
+		waves.append({"node": mi, "t": 1.0, "life": 0.3})
 
 
 var confetti_fx: Array[CPUParticles3D] = []
@@ -537,6 +566,10 @@ func impact(pos: Vector3, color: Color, size := 1.0) -> void:
 	s.amount = int(8 + 8 * size)
 	s.restart()
 	s.emitting = true
+	# onda de choque (maior e com traços nas pancadas)
+	_wave(pos, color, size)
+	if size >= 1.4:
+		_wave(pos, Color(1, 1, 1, 0.8), size * 0.6, 0.06)
 	for d in impacts:
 		if float(d["t"]) >= 1.0:
 			var n: MeshInstance3D = d["node"]
@@ -551,7 +584,30 @@ func impact(pos: Vector3, color: Color, size := 1.0) -> void:
 			return
 
 
+func _wave(pos: Vector3, color: Color, size: float, delay := 0.0) -> void:
+	for d in waves:
+		if float(d["t"]) >= 1.0:
+			var n: MeshInstance3D = d["node"]
+			n.global_position = pos
+			n.scale = Vector3.ONE * (1.1 + 1.1 * size)
+			var m := n.material_override as ShaderMaterial
+			m.set_shader_parameter("color", Color(color.lightened(0.2), color.a))
+			m.set_shader_parameter("seed", rng.randf() * 10.0)
+			m.set_shader_parameter("lines", 1.0 if size >= 0.85 else 0.0)
+			m.set_shader_parameter("t", 0.0)
+			d["t"] = -delay / (0.22 + 0.08 * size)
+			d["life"] = 0.22 + 0.08 * size
+			n.visible = delay <= 0.0
+			return
+
+
 func _update_impacts(dt: float) -> void:
+	for d in waves:
+		if float(d["t"]) < 1.0:
+			d["t"] = minf(float(d["t"]) + dt / float(d["life"]), 1.0)
+			var n: MeshInstance3D = d["node"]
+			n.visible = float(d["t"]) >= 0.0 and float(d["t"]) < 1.0
+			(n.material_override as ShaderMaterial).set_shader_parameter("t", maxf(float(d["t"]), 0.0))
 	for d in impacts:
 		if float(d["t"]) < 1.0:
 			d["t"] = minf(float(d["t"]) + dt / float(d["life"]), 1.0)
@@ -593,25 +649,34 @@ func start_match() -> void:
 	demo = false
 	_spawn_players(true)
 	_layout_views()
-	_reset_score(GameData.LENGTHS[GameData.length_index]["games"])
+	var L: Dictionary = GameData.LENGTHS[GameData.length_index]
+	_reset_score(L["games"], bool(L.get("official", false)))
+	games = [start_games, start_games]
 	hud.show_game()
-	hud.set_pad_mode(human != null and human.pad >= 0)
+	# começou no controle: os botões de toque ficam escondidos (voltam ao tocar na tela)
+	var pad_on := human != null and (human.pad >= 0 or (humans.size() == 1 and
+		(hud.last_input_pad or Input.get_connected_joypads().size() > 0)))
+	hud.set_pad_mode(pad_on)
+	if pad_on:
+		hud.flash_tip("CONTROLE:  LB DEFESA  •  RB ESPECIAL  •  LT PEIXINHO", 5.0, Color.WHITE)
 	hud.show_banner("VAI COMEÇAR!", "%s x %s" % [GameData.TEAMS[0]["name"], GameData.TEAMS[1]["name"]], Color("ffd23f"), 1.8)
 	sfx("whistle", -6.0)
 	intro_t = 0.0
 	_begin_serve()
 
 
-func _reset_score(target: int) -> void:
+func _reset_score(target: int, is_official := false) -> void:
 	points = [0, 0]
 	games = [0, 0]
 	energy = [0.0, 0.0]
 	games_to_win = target
+	official = is_official
+	tiebreak = false
 	serving_team = 0
 	server_turn = [0, 0]
 	match_over = false
 	pts_reason = ""
-	hud.set_score(points, games, serving_team, games_to_win)
+	hud.set_score(points, games, serving_team, games_to_win, tiebreak)
 	hud.set_energy(energy)
 
 
@@ -816,7 +881,7 @@ func _begin_serve() -> void:
 	ball.reset_to(server.position + Vector3(0, 1.2, 0))
 	ball.held_by = server
 	ball.last_team = serving_team
-	if points[0] == 3 and points[1] == 3:
+	if points[0] == 3 and points[1] == 3 and not tiebreak:
 		hud.show_banner("PONTO DE OURO!", "quem fizer leva o game", Color("ff4b3e"), 1.6)
 	if not demo:
 		var who := ""
@@ -827,7 +892,7 @@ func _begin_serve() -> void:
 			hud.set_hint("SAQUE: %s (%s)" % [String(server.data["name"]).to_upper(), GameData.TEAMS[server.team]["name"]])
 		if points[0] + points[1] == 0:
 			server.say("MEU SAQUE!", Color("ffd23f"))
-	hud.set_score(points, games, serving_team, games_to_win)
+	hud.set_score(points, games, serving_team, games_to_win, tiebreak)
 
 
 func _hand_pos(p: Player) -> Vector3:
@@ -954,6 +1019,7 @@ func _launch(p: Player, shot: int, res: Dictionary, quality: float, charge: floa
 			sfx_at("hit_drop", pos, -3.0)
 			impact(pos, col, 0.7)
 		Shots.DEFENSE:
+			p.shield_hit()
 			sfx_at("hit_block", pos, -1.0)
 			impact(pos, col, 0.9)
 			world.cheer(0.4)
@@ -1077,7 +1143,7 @@ func _input(event: InputEvent) -> void:
 		hud.set_pad_mode(false)
 	elif (event is InputEventJoypadButton and event.is_pressed()) or \
 			(event is InputEventJoypadMotion and absf((event as InputEventJoypadMotion).axis_value) > 0.5):
-		if human and human.pad == event.device:
+		if human and (human.pad == event.device or humans.size() == 1):
 			hud.set_pad_mode(true)
 
 
@@ -1088,8 +1154,10 @@ func _pad_edge(p: Player, key: String, down: bool) -> bool:
 	return down and not was
 
 
-## Controle: A forte, X lob, B curta, Y smash, gatilho direito defesa,
-## RB super, LB peixinho, Start pausa.
+## Controle: A forte, X lob, B curta, Y smash, LB (ou RT) defesa,
+## RB especial, LT (ou L3) peixinho, Start pausa.
+## Os gatilhos também são lidos como botão (L2/R2 = 15/16 no Android), porque
+## alguns controles não mandam os gatilhos como eixo.
 func _poll_pad_buttons(p: Player) -> void:
 	var d := p.pad
 	if _pad_edge(p, "start", Input.is_joy_button_pressed(d, JOY_BUTTON_START)) and not demo and state != S.END:
@@ -1100,11 +1168,16 @@ func _poll_pad_buttons(p: Player) -> void:
 	for pr in pairs:
 		if _pad_edge(p, "b%d" % pr[0], Input.is_joy_button_pressed(d, pr[0])):
 			_player_shot(p, pr[1])
-	if _pad_edge(p, "rt", Input.get_joy_axis(d, JOY_AXIS_TRIGGER_RIGHT) > 0.5 or Input.is_joy_button_pressed(d, JOY_BUTTON_RIGHT_STICK)):
+	var def_down := Input.is_joy_button_pressed(d, JOY_BUTTON_LEFT_SHOULDER) \
+		or Input.get_joy_axis(d, JOY_AXIS_TRIGGER_RIGHT) > 0.5 \
+		or Input.is_joy_button_pressed(d, JOY_BUTTON_PADDLE1) or Input.is_joy_button_pressed(d, JOY_BUTTON_RIGHT_STICK)
+	if _pad_edge(p, "def", def_down):
 		_player_shot(p, Shots.DEFENSE)
 	if _pad_edge(p, "rb", Input.is_joy_button_pressed(d, JOY_BUTTON_RIGHT_SHOULDER)):
 		_player_super(p)
-	if _pad_edge(p, "lb", Input.is_joy_button_pressed(d, JOY_BUTTON_LEFT_SHOULDER) or Input.get_joy_axis(d, JOY_AXIS_TRIGGER_LEFT) > 0.5):
+	var dive_down := Input.get_joy_axis(d, JOY_AXIS_TRIGGER_LEFT) > 0.5 \
+		or Input.is_joy_button_pressed(d, JOY_BUTTON_MISC1) or Input.is_joy_button_pressed(d, JOY_BUTTON_LEFT_STICK)
+	if _pad_edge(p, "dive", dive_down):
 		_player_dive(p)
 
 
@@ -1177,14 +1250,21 @@ func _player_shot(p: Player, type: int) -> void:
 	if state != S.RALLY:
 		return
 	p.request_shot(type)
+	if type == Shots.DEFENSE and p.pending_shot == Shots.DEFENSE:
+		p.say("DEFESA!", Color("8fd8ff"))
 
 
 func _player_super(p: Player) -> void:
 	if intro_t < 0.4 and not demo:
 		return   # o botão que confirmou o menu não vale como golpe
-	if demo or p == null or state != S.RALLY or energy[p.team] < 1.0:
+	if demo or p == null or state != S.RALLY:
+		return
+	if energy[p.team] < 1.0:
+		# o botão funcionou, só falta carregar: mostra quanto falta
+		p.say("ESPECIAL %d%%" % int(energy[p.team] * 100.0), Color(1, 1, 1, 0.85))
 		return
 	p.request_shot(Shots.SPECIAL)
+	p.say("ESPECIAL ARMADO!", Color("ffe14d"))
 	if p.data.get("special", "") == "meteoro" and p.on_ground():
 		p.jump_boost = 1.45
 		if p.jump_timer < 0.0:
@@ -1533,7 +1613,10 @@ func _award_point(team: int, reason: String) -> void:
 	if demo:
 		celeb = null
 	points[team] += 1
+	var other := 1 - team
 	var game_won: bool = points[team] >= 4
+	if tiebreak:
+		game_won = points[team] >= 7 and points[team] - points[other] >= 2
 	if not demo or game_won:
 		var side_z := 6.0 if team == 0 else -6.0
 		confetti(Vector3(0, 0.5, side_z), game_won)
@@ -1544,10 +1627,19 @@ func _award_point(team: int, reason: String) -> void:
 	if game_won:
 		games[team] += 1
 		points = [0, 0]
+		var was_tb := tiebreak
+		tiebreak = false
 		# o sacador deste game passa a vez para o parceiro no próximo game da dupla
 		server_turn[serving_team] += 1
 		serving_team = 1 - serving_team
-		if games[team] >= games_to_win:
+		var set_won: bool = games[team] >= games_to_win
+		if official:
+			set_won = (games[team] >= 6 and games[team] - games[other] >= 2) or was_tb
+		if official and not set_won and games[0] == 6 and games[1] == 6:
+			tiebreak = true
+			title = "TIE-BREAK!"
+			sub = "6 x 6: quem fizer 7 pontos (2 de vantagem) leva o set"
+		elif set_won:
 			match_over = true
 			point_timer = 3.0
 			title = "GAME, SET E MATCH!"
@@ -1559,11 +1651,19 @@ func _award_point(team: int, reason: String) -> void:
 		if GameData.mode == "vs" and humans.size() > 1:
 			title = "PONTO DO J%d!" % (1 if team == 0 else 2)
 		sub = pts_reason
-		if points[0] == 3 and points[1] == 3:
+		if tiebreak:
+			sub = pts_reason + "  •  TIE-BREAK %d x %d" % [points[0], points[1]]
+			# no tie-break o saque troca depois do 1º ponto e depois a cada 2
+			if (points[0] + points[1]) % 2 == 1:
+				server_turn[serving_team] += 1
+				serving_team = 1 - serving_team
+		elif points[0] == 3 and points[1] == 3:
 			sub = pts_reason + "  •  40-40: PONTO DE OURO!"
+	if sim and (game_won or tiebreak):
+		print("SCORE games=", games, " pts=", points, " tb=", tiebreak, " serve=", serving_team, " over=", match_over, " ", title)
 	if not demo:
 		hud.show_banner(title, sub, Color("ffd23f") if team == 0 else Color("ff4b3e"), 2.0)
-	hud.set_score(points, games, serving_team, games_to_win)
+	hud.set_score(points, games, serving_team, games_to_win, tiebreak)
 	hud.score_pop(team)
 
 
