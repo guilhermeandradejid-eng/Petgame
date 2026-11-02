@@ -150,6 +150,28 @@ No PC (J1): WASD move, `J` forte, `K` lob, `L` curta, `I` smash, `O` defesa, `U`
 A IA tem 3 níveis (fácil, médio e difícil). O nível muda o tempo de reação, a velocidade,
 a precisão, a frequência de smash, o mergulho e a leitura de bola que vai sair ("FORA!", "DEIXA!").
 
+## Som
+
+Design de som feito do zero em `tools/gen_audio.py` (numpy + scipy), com camadas de impactos
+gravados da Kenney (CC0, em `tools/kenney/`), e um mixer dinâmico em `scripts/audio.gd`:
+
+- **Raquete**: síntese modal do quadro de carbono/EVA, clique do impacto e "pop" da bola de
+  borracha, mais uma camada gravada. Há variações para cada golpe (forte, lob, curta, bloqueio),
+  smash com estalo, sub-grave e reverb de praia, e o super com subida e pancada gigante.
+- **Raquete no ar**: whoosh com filtro varrendo a frequência na batida (mais grave no smash e no gancho).
+- **Areia**: síntese granular (milhares de grãos) para os passos, a bola caindo, o mergulho e o pulo.
+- **Rede**: chicote da malha, ressonância da corda e bola amortecida.
+- **Apito de juiz** com "ervilha" (trinado irregular perto de 3 kHz).
+- **Torcida**: murmúrio de dezenas de vozes por formantes, aplauso feito de centenas de palmas
+  individuais, assobios, "uhhh!" nos lances perigosos e "aaah..." na decepção.
+- **Música adaptativa** (104 bpm, bossa/praia): violão em Karplus-Strong, baixo, percussão e melodia
+  em três camadas sincronizadas. A base toca sempre, a percussão entra no rali e a melodia nos ralis
+  longos ou com o super pronto. Na pausa e no replay a música fica abafada.
+- **Mixagem**: buses de Música, Efeitos (reverb), Torcida e Interface, com compressor e limitador no
+  master. Golpes, areia e rede soam em 3D, de onde acontecem, e a torcida cresce com a emoção do rali.
+
+Amostra: [`docs/audio-amostra.m4a`](docs/audio-amostra.m4a) (14 s do jogo, gravado com o Movie Maker do Godot).
+
 ## Estrutura
 
 ```
@@ -158,7 +180,8 @@ smash-areia/
 │   ├── build_assets.py       # ponto de entrada + cenário (palmeira, guarda-sol, cadeira, posto, nuvem...)
 │   ├── characters.py         # jogador com esqueleto (corpo único via modificador Skin), raquete, torcedores
 │   └── props.py              # morros, veleiro, quiosque, cadeira do juiz, arquibancada
-├── tools/gen_audio.py        # sintetiza todos os sons e a música (WAV)
+├── tools/gen_audio.py        # design de som: efeitos, torcida e música adaptativa (WAV/OGG)
+├── tools/kenney/             # impactos gravados da Kenney (CC0) usados como camadas
 ├── tools/build_apk.sh        # gera assets e exporta o APK
 ├── builds/SmashNaAreia-demo.apk
 └── godot/
@@ -189,7 +212,9 @@ smash-areia/
   pernas dobram), o tronco gira nos golpes e a raquete deixa um rastro ("smear").
 - **Cel-shading** com retícula de gibi nas sombras, **contraluz dourada** do sol de fim de tarde,
   **névoa de distância** e **contorno preto** em tudo.
-- **Câmera de TV** com movimento suave (mola amortecida) que antecipa para onde a bola vai:
+- **Câmera de TV** viva: avança quando a bola vem e recua quando ela vai, aperta conforme o rali
+  esquenta, inclina de leve com a jogada, balança um pouco (câmera na mão), dá um empurrão no smash e
+  inclina forte (ângulo holandês) no super. O movimento é suave (mola amortecida) e antecipa para onde a bola vai:
   baixa e atrás do fundo da quadra no rali (estilo tênis arcade, com o lado adversário
   "comprimido"), close da comemoração pela lateral, por cima do ombro no saque, entrada cinematográfica, zoom no smash e no
   super e close na comemoração. Pontos decididos por super, gancho, smash depois de rali ou rali
@@ -239,5 +264,6 @@ godot --path godot -- --autoplay --shots=/tmp/fotos           # joga sozinho e t
 
 - Fonte **Bangers** (SIL Open Font License, ver `godot/assets/fonts/OFL.txt`).
 - Modelos, sons e música feitos por código neste repositório.
+- Camadas de impacto gravadas: Kenney (kenney.nl), "Impact Sounds", CC0 1.0 (`tools/kenney/CC0-1.0.txt`).
 - O APK da demo é assinado com uma chave de debug. Para publicar na loja, gere com a sua keystore
   (`GODOT_ANDROID_KEYSTORE_RELEASE_PATH/USER/PASSWORD`).

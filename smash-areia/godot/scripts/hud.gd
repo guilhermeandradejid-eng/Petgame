@@ -324,7 +324,11 @@ func _build_menu() -> void:
 	play.position = Vector2(40, 600)
 	play.custom_minimum_size = Vector2(330, 96)
 	play.rotation = -0.03
-	play.pressed.connect(func(): play_pressed.emit())
+	play.pressed.connect(func():
+		if sfx_cb.is_valid():
+			sfx_cb.call("ui_start")
+		play_pressed.emit()
+	)
 	menu.add_child(play)
 	play_btn = play
 	_build_modes()
@@ -550,6 +554,8 @@ func _on_pause() -> void:
 	get_tree().paused = p
 	pause_panel.visible = p
 	touch.reset()
+	if sfx_cb.is_valid():
+		sfx_cb.call("pause_on" if p else "pause_off")
 	if p and cont_btn:
 		cont_btn.grab_focus()
 	elif not p:

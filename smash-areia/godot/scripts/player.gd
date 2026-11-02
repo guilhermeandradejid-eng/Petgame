@@ -273,7 +273,7 @@ func request_jump(boost := 1.0) -> void:
 		vy = JUMP_V * boost
 		squash_v = 3.5
 		if game:
-			game.sfx("jump", -6.0)
+			game.sfx_at("jump", global_position, -8.0)
 
 
 func request_dive(dir: Vector3) -> void:
@@ -291,12 +291,16 @@ func request_dive(dir: Vector3) -> void:
 	if game:
 		if game.shot_dir != "":
 			print("EVT ", game.shot_n, " MERGULHO team=", team)
-		game.sfx("dive", -2.0)
+		game.sfx_at("dive", global_position, 0.0)
+		if randf() < 0.5:
+			game.sfx("ooh", -9.0)
 		game.sand_burst(global_position, 10)
 
 
 ## Empurrado para trás ao receber um super golpe.
 func knockback(dir: Vector3, power: float) -> void:
+	if game:
+		game.sfx_at("knock", global_position, 0.0)
 	dir.y = 0.0
 	state = State.KNOCK
 	state_t = 0.0
@@ -464,6 +468,10 @@ func try_contact(ball: Ball, delta: float) -> Dictionary:
 
 
 func _start_swing(type: int, ball_pos: Vector3, st := "") -> void:
+	if game and type >= 0:
+		var big := type == Shots.SMASH or type == Shots.SPECIAL or st == "gancho"
+		game.sfx_at("swing_smash" if big else "swing", global_position + Vector3(0, 1.4, 0),
+				-6.0 if big else -11.0, 0.08, 1.0 + last_charge * 0.15)
 	swing_type = type
 	swing_t = 0.0
 	last_charge = charge()
@@ -499,7 +507,7 @@ func update(dt: float) -> void:
 				state_t = 0.0
 				if game:
 					game.sand_burst(global_position + dive_dir * 1.2, 12)
-					game.sfx("sand", -4.0)
+					game.sfx_at("land", global_position, -4.0)
 					game.world.sand_ring(global_position + dive_dir * 0.8, 0.9)
 					game.world.footprint(global_position + dive_dir * 0.7, atan2(dive_dir.x, dive_dir.z), 4.5)
 		State.RECOVER:
@@ -525,6 +533,7 @@ func update(dt: float) -> void:
 			squash_v = -4.5 if split_t < 0.0 else -2.5
 			if game:
 				game.sand_burst(global_position, 5)
+				game.sfx_at("land" if split_t < 0.0 else "step", global_position, -8.0 if split_t < 0.0 else -16.0)
 	var pos := position + vel * dt
 	if side > 0.0:
 		pos.z = clampf(pos.z, 0.35, 11.5)
@@ -558,7 +567,10 @@ func _style_yaw(st: String) -> float:
 func _update_normal(dt: float) -> void:
 	if pending_shot >= 0:
 		pending_t -= dt
+		var was_full := charge() >= 1.0
 		pending_age += dt
+		if not was_full and charge() >= 1.0 and is_human and game:
+			game.sfx_at("charge_full", global_position + Vector3(0, 1.2, 0), -10.0, 0.0)
 		style_t -= dt
 		if smash_wait and on_ground() and game != null:
 			smash_check -= dt
@@ -620,6 +632,7 @@ func _update_normal(dt: float) -> void:
 			if game:
 				if spd > 3.0:
 					game.sand_burst(global_position, 2)
+				game.sfx_at("step", global_position, -18.0 + minf(spd, 6.0) * 1.2, 0.1)
 				var side_off := Vector3.UP.cross(vel.normalized()) * 0.11 * foot_side
 				game.world.footprint(global_position + side_off, atan2(vel.x, vel.z))
 

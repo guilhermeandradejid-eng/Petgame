@@ -59,6 +59,8 @@ var intro_t := 10.0
 var celeb: Player = null
 var cam_vel := Vector3.ZERO
 var look_vel := Vector3.ZERO
+var cam_punch := 0.0        # empurrão para a frente no smash
+var cam_dutch := 0.0        # inclinação forte no super
 
 # replay em câmera lenta dos lances bonitos
 const REC_MAX := 150
@@ -73,11 +75,7 @@ var replay_cam := Vector3.ZERO
 var replay_ok := false
 var replay_cool := 0
 
-var sfx_players: Array[AudioStreamPlayer] = []
-var sfx_next := 0
-var sounds := {}
-var music: AudioStreamPlayer
-var waves: AudioStreamPlayer
+var audio: GameAudio
 var sand_small: Array[CPUParticles3D] = []
 var sand_big: Array[CPUParticles3D] = []
 var sand_i := 0
@@ -131,6 +129,10 @@ func _ready() -> void:
 	hud.sfx_cb = func(n: String):
 		if n == "music_toggle":
 			_update_music()
+		elif n == "pause_on":
+			audio.set_muffle(0.85)
+		elif n == "pause_off":
+			audio.set_muffle(0.0)
 		else:
 			sfx(n, -4.0)
 	hud.play_pressed.connect(start_match)
@@ -327,50 +329,64 @@ func _setup_input() -> void:
 # ---------------------------------------------------------------- áudio / fx
 
 func _setup_audio() -> void:
-	for n in ["hit", "drop", "lob", "smash", "defense", "sand", "dive", "net", "jump", "swoosh",
-			"whistle", "click", "tick", "cheer", "aww", "point", "lose_point", "win", "lose"]:
-		sounds[n] = load("res://assets/audio/%s.wav" % n)
-	for i in 10:
-		var p := AudioStreamPlayer.new()
-		p.process_mode = Node.PROCESS_MODE_ALWAYS
-		add_child(p)
-		sfx_players.append(p)
-	music = AudioStreamPlayer.new()
-	music.stream = _looped(load("res://assets/audio/music.wav"))
-	music.volume_db = -9.0
-	add_child(music)
-	waves = AudioStreamPlayer.new()
-	waves.stream = _looped(load("res://assets/audio/waves.wav"))
-	waves.volume_db = -14.0
-	add_child(waves)
-	waves.play()
+	audio = GameAudio.new()
+	add_child(audio)
 	_update_music()
 
 
-func _looped(s: AudioStreamWAV) -> AudioStreamWAV:
-	var w := s.duplicate() as AudioStreamWAV
-	w.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	w.loop_begin = 0
-	w.loop_end = int(w.get_length() * w.mix_rate)
-	return w
-
-
 func _update_music() -> void:
-	if GameData.music_on and not music.playing:
-		music.play()
-	elif not GameData.music_on:
-		music.stop()
+	audio.set_music_enabled(GameData.music_on)
 
 
-func sfx(n: String, db := 0.0, pitch_var := 0.08, pitch := 1.0) -> void:
-	if not sounds.has(n):
+# nomes antigos -> bancos novos (com variações)
+const SFX_MAP := {
+	"hit": "hit_drive", "drop": "hit_drop", "lob": "hit_lob", "smash": "hit_smash", "defense": "hit_block",
+	"sand": "ball_sand", "swoosh": "swing", "click": "ui_click", "tick": "chance", "point": "sting_point",
+	"lose_point": "sting_lose", "win": "sting_win", "lose": "sting_defeat",
+}
+const CROWD_EVENTS := ["cheer", "aww", "ooh", "applause"]
+
+
+## Som sem posição (interface, vinhetas, torcida)
+func sfx(n: String, db := 0.0, pitch_var := 0.04, pitch := 1.0) -> void:
+	if audio == null:
 		return
-	var p := sfx_players[sfx_next]
-	sfx_next = (sfx_next + 1) % sfx_players.size()
-	p.stream = sounds[n]
-	p.volume_db = db
-	p.pitch_scale = pitch + rng.randf_range(-pitch_var, pitch_var)
-	p.play()
+	if n in CROWD_EVENTS:
+		audio.crowd(n, db)
+		return
+	audio.play(SFX_MAP.get(n, n), db, pitch_var, pitch)
+
+
+## Som posicionado no mundo
+func sfx_at(n: String, pos: Vector3, db := 0.0, pitch_var := 0.06, pitch := 1.0) -> void:
+	if audio:
+		audio.play3d(SFX_MAP.get(n, n), pos, db, pitch_var, pitch)
+
+
+## Mixagem dinâmica: a música cresce com o rali e a torcida com a emoção
+func _update_audio_mix() -> void:
+	if audio == null:
+		return
+	audio.follow(views[0]["cam"])
+	var level := 0.0
+	match state:
+		S.RALLY:
+			level = 1.0
+			if rally_hits >= 6 or ball.special != "" or float(energy[0]) >= 1.0 or float(energy[1]) >= 1.0:
+				level = 2.0
+		S.POINT:
+			level = 1.0
+		S.SERVE:
+			level = 0.35
+		S.REPLAY:
+			level = 1.0
+		S.END:
+			level = 0.0
+	if demo:
+		level = 1.4
+	audio.set_intensity(level)
+	audio.set_muffle(0.8 if state == S.REPLAY else 0.0)
+	audio.set_crowd(0.25 + world.crowd_excite * 0.6 + clampf(rally_hits / 14.0, 0.0, 0.3))
 
 
 func _setup_particles() -> void:
@@ -811,7 +827,7 @@ func _do_toss(type: int) -> void:
 	if type == Shots.SMASH:
 		server.jump_timer = 0.32
 	hud.set_hint("")
-	sfx("swoosh", -10.0)
+	sfx_at("swing", server.global_position + Vector3(0, 2, 0), -10.0, 0.05, 0.8)
 
 
 func _serve_hit() -> void:
@@ -878,42 +894,49 @@ func _launch(p: Player, shot: int, res: Dictionary, quality: float, charge: floa
 			gain += 0.1
 		if shot == Shots.SMASH:
 			gain += 0.015
+		var was := float(energy[p.team])
 		energy[p.team] = minf(1.0, energy[p.team] + gain)
+		if was < 1.0 and energy[p.team] >= 1.0 and team_human(p.team) != null:
+			sfx("super_ready", -4.0)
 	hud.set_energy(energy)
+	var power := clampf(ball.vel.length() / 22.0, 0.3, 1.2)
 	match shot:
 		Shots.SPECIAL:
 			col = Shots.SPECIALS.get(sp, {"color": col})["color"]
-			sfx("smash", 2.0, 0.02, 0.8)
-			sfx("swoosh", 0.0)
+			sfx_at("hit_super", pos, 3.0, 0.02)
+			sfx("ooh", -6.0)
 			shake = 0.6
 			hitstop = 0.16
 			fov_kick = -12.0
+			cam_punch = 0.8
+			cam_dutch = 0.12 * (1.0 if rng.randf() < 0.5 else -1.0)
 			hud.fx.smash_lines(screen_pos(pos))
 			hud.fx.do_flash(0.5)
 			comic(head + Vector3(0, 0.3, 0), res["label"], col, 0.75)
 			world.cheer(1.0)
 			impact(pos, col, 2.2)
 		Shots.SMASH:
-			sfx("smash", 0.0)
+			sfx_at("hit_smash", pos, 1.0)
 			shake = 0.4
 			hitstop = 0.06
 			fov_kick = -6.0
+			cam_punch = 0.5
 			if p.is_human or rng.randf() < 0.5:
 				comic(head, "POW!" if res["label"] == "SMASH" else res["label"], col, 0.6)
 			world.cheer(0.6)
 			impact(pos, col, 1.5)
 		Shots.LOB:
-			sfx("lob", -2.0)
+			sfx_at("hit_lob", pos, -2.0)
 			impact(pos, col, 0.7)
 		Shots.DROP:
-			sfx("drop", -2.0)
+			sfx_at("hit_drop", pos, -3.0)
 			impact(pos, col, 0.7)
 		Shots.DEFENSE:
-			sfx("defense", 0.0)
+			sfx_at("hit_block", pos, -1.0)
 			impact(pos, col, 0.9)
 			world.cheer(0.4)
 		_:
-			sfx("hit", 0.0)
+			sfx_at("hit_drive", pos, linear_to_db(power) + charge * 2.0)
 			impact(pos, col, 0.9 + charge * 0.5)
 	if chance_shot:
 		comic(head + Vector3(0, 0.35, 0), "CHANCE!", Color("ffe14d"), 0.55)
@@ -1135,7 +1158,7 @@ func _player_super(p: Player) -> void:
 		p.jump_boost = 1.45
 		if p.jump_timer < 0.0:
 			p.jump_timer = 0.05
-	sfx("swoosh", -2.0, 0.0, 1.3)
+	sfx("swing_smash", -4.0, 0.0, 1.4)
 
 
 func _player_dive(p: Player) -> void:
@@ -1282,6 +1305,7 @@ func _physics_process(delta: float) -> void:
 		chance_star.visible = false
 	_update_marker()
 	_update_camera(dt)
+	_update_audio_mix()
 
 
 func _update_serve(dt: float) -> void:
@@ -1376,7 +1400,9 @@ func _on_net(pos: Vector3) -> void:
 	if sim and stats.get("netlog", 0) < 12:
 		stats["netlog"] = int(stats.get("netlog", 0)) + 1
 		print("NET ", ball.get_meta("dbg", ""), " at ", pos)
-	sfx("net", 0.0)
+	sfx_at("net", pos, 0.0)
+	if rng.randf() < 0.6:
+		sfx("ooh", -8.0)
 	comic(pos + Vector3(0, 0.8, 0), "REDE!", Color("ffffff"), 0.5)
 
 
@@ -1384,7 +1410,11 @@ func _on_ball_landed(pos: Vector3) -> void:
 	if state != S.RALLY:
 		return
 	sand_burst(pos, 14)
-	sfx("sand", 0.0)
+	sfx_at("ball_sand", pos, 0.0)
+	# bola quase na linha: "uhhh" da torcida
+	var near_line := minf(absf(absf(pos.x) - GameData.COURT_HALF_W), absf(absf(pos.z) - GameData.COURT_HALF_L))
+	if near_line < 0.5:
+		sfx("ooh", -5.0)
 	world.sand_ring(pos, 1.0)
 	world.footprint(pos, 0.0, 1.6)
 	var in_bounds := absf(pos.x) <= GameData.COURT_HALF_W + 0.06 and absf(pos.z) <= GameData.COURT_HALF_L + 0.06
@@ -1432,17 +1462,19 @@ func _award_point(team: int, reason: String) -> void:
 		print("EVT ", shot_n, " PONTO ", reason, " team=", team)
 	state = S.POINT
 	point_timer = 2.6
-	sfx("whistle", -8.0)
+	sfx("whistle", -6.0)
 	world.whistle()
+	if rally_hits >= 8:
+		sfx("applause", -4.0)
 	world.cheer(1.0)
 	if not demo:
 		if team == 0:
-			sfx("point", -3.0)
-			sfx("cheer", -6.0)
+			sfx("point", -4.0)
+			sfx("cheer", -3.0)
 			world.ola()
 		else:
-			sfx("lose_point", -4.0)
-			sfx("aww", -8.0)
+			sfx("lose_point", -6.0)
+			sfx("aww" if team_human(1) == null else "cheer", -5.0)
 	energy[team] = minf(1.0, energy[team] + 0.04)
 	hud.set_energy(energy)
 	for p in players:
@@ -1526,7 +1558,7 @@ func _start_replay() -> void:
 	var b0: Vector3 = rec[replay_from]["b"]
 	replay_cam = Vector3(-10.4, 2.7, clampf(b0.z * 0.7, -6.0, 6.0))
 	cam_cut = true
-	sfx("swoosh", -6.0, 0.0, 0.7)
+	sfx("swing_smash", -4.0, 0.0, 0.6)
 	world.cheer(0.6)
 
 
@@ -1577,9 +1609,11 @@ func _finish_match() -> void:
 		start_match.call_deferred()
 		return
 	var won: bool = games[0] > games[1]
-	sfx("win" if won else "lose", -2.0)
-	if won:
-		sfx("cheer", -4.0)
+	sfx("win" if won else "lose", -1.0)
+	sfx("whistle_long", -4.0)
+	if won or GameData.mode == "vs":
+		sfx("cheer", -2.0)
+		sfx("applause", -3.0)
 		world.ola()
 	hud.show_end(won, games, GameData.mode == "vs" and humans.size() > 1)
 	for p in players:
@@ -1604,6 +1638,8 @@ func _smooth(cur: Vector3, target: Vector3, v: Vector3, smooth_time: float, dt: 
 
 func _update_camera(dt: float) -> void:
 	fov_kick = lerpf(fov_kick, 0.0, 1.0 - exp(-5.0 * dt))
+	cam_punch = move_toward(cam_punch, 0.0, dt * 2.5)
+	cam_dutch = lerpf(cam_dutch, 0.0, 1.0 - exp(-2.5 * dt))
 	var off := Vector3.ZERO
 	if shake > 0.0:
 		shake = maxf(shake - dt, 0.0)
@@ -1686,18 +1722,26 @@ func _update_view(v: Dictionary, viewer: Player, dt: float, off: Vector3, split:
 		if ball.is_live():
 			ahead = ball.global_position.lerp(ball.predict(0.45), 0.6)
 		ahead = _mirror(ahead, s)
-		var fx := clampf(lerpf(hp.x, ahead.x, 0.4), -3.5, 3.5)
+		var fx := clampf(lerpf(hp.x, ahead.x, 0.5), -3.6, 3.6)
 		var lift := clampf((ahead.y - 3.5) * 0.28, 0.0, 1.6)
 		var back := clampf((hp.z - 3.5) / 5.0, 0.0, 1.0)
+		# bola vindo para o nosso lado: a câmera avança; indo embora: recua
+		var bv := _mirror(ball.vel, s)
+		var approach := clampf(bv.z / 18.0, -1.0, 1.0) if ball.is_live() else 0.0
+		var tension := clampf(float(rally_hits) / 12.0, 0.0, 1.0)
 		v["back"] = lerpf(float(v["back"]), back, 1.0 - exp(-2.5 * dt))
 		var cb: float = v["back"]
 		var far_side := clampf(-ahead.z / 8.0, 0.0, 1.0) if ahead.z < 0.0 else 0.0
 		# câmera baixa atrás do fundo da quadra (estilo tênis arcade): pega os jogadores
 		# grandes de costas e "comprime" o lado adversário
-		var zz := lerpf(12.6, 15.0, cb) + (1.2 if split else 0.0)
-		target_pos = _mirror(Vector3(fx * 0.5, lerpf(3.7, 4.4, cb) + lift * 0.7 + (0.4 if split else 0.0), zz), s)
-		target_look = _mirror(Vector3(fx * 0.4, lerpf(1.25, 1.05, cb) + lift * 0.5,
+		var zz := lerpf(12.6, 15.0, cb) + (1.2 if split else 0.0) - approach * 0.7 - tension * 0.8 - cam_punch * 1.2
+		var sway := Vector3(sin(time * 0.7) * 0.08, sin(time * 1.1) * 0.05, 0.0)
+		target_pos = _mirror(Vector3(fx * 0.7, lerpf(3.7, 4.4, cb) + lift * 0.7 + (0.4 if split else 0.0)
+				- tension * 0.2, zz) + sway, s)
+		target_look = _mirror(Vector3(fx * 0.55, lerpf(1.25, 1.05, cb) + lift * 0.5,
 				lerpf(-4.0, -3.0, cb) - far_side * 1.0), s)
+		v["roll_t"] = -clampf((ahead.x - hp.x) * 0.012, -0.05, 0.05)
+		smooth_t = lerpf(0.35, 0.26, tension)
 		base_fov = 50.0 - far_side * 1.5
 		if intro_t < 2.4:
 			var k := smoothstep(0.0, 2.4, intro_t)
@@ -1722,3 +1766,7 @@ func _update_view(v: Dictionary, viewer: Player, dt: float, off: Vector3, split:
 	v["lvel"] = r2[1]
 	c.fov = lerpf(c.fov, base_fov + fov_kick, 1.0 - exp(-10.0 * dt))
 	c.look_at_from_position((v["pos"] as Vector3) + off, (v["look"] as Vector3) + off * 0.5)
+	# inclinação: acompanha a jogada de leve e fica forte ("dutch") no super
+	var roll_t: float = float(v.get("roll_t", 0.0)) if state == S.RALLY else 0.0
+	v["roll"] = lerpf(float(v.get("roll", 0.0)), roll_t + cam_dutch, 1.0 - exp(-4.0 * dt))
+	c.rotate_object_local(Vector3(0, 0, 1), float(v["roll"]))
