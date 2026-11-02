@@ -10,14 +10,15 @@ extends CharacterBody3D
 
 enum S { IDLE, DASH, JUMP, ATTACK, SPECIAL, CAST, HURT, DEAD, VICTORY }
 
-const WALK := 2.3
-const RUN := 4.7
+const WALK := 1.8
+const RUN := 3.4
 const REF_WALK := 1.7          # ground speed (m/s) at which the walk cycle's feet do not slide
 const REF_RUN := 2.8
-const DASH_SPEED := 17.0
-const DASH_MOVE_TICKS := 10
+const DASH_SPEED := 12.0
+const DASH_START := 3          # anticipation ticks before the burst
+const DASH_MOVE_TICKS := 12    # ...burst lasts until this tick (i-frames cover it)
 const BUFFER := 8
-const JUMP_V := 8.6
+const JUMP_V := 7.4
 const SP_MAX := 100.0
 
 var peer_id := 1
@@ -93,7 +94,7 @@ func _ready() -> void:
 	sprite.name = "Sprite"
 	add_child(sprite)
 	sprite.setup("ren", 1.1)
-	sprite.play("idle")
+	sprite.play("sword.idle" if sprite.sheet.has_anim("sword.idle") else "idle")
 	_name_label = Label3D.new()
 	_name_label.text = "P%d" % (peer_id if peer_id < 10 else 0)
 	_name_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -154,17 +155,27 @@ func _swap_weapon() -> void:
 	_set_weapon(weapon_idx + 1)
 	combo = 0
 	Sfx.play("swap", -4.0)
-	Juice.ring(global_position + Vector3(0, 0.9, 0.2), weapon.color, 1.5, 0.3)
-	Juice.sparks(global_position + Vector3(0, 0.9, 0.2), Vector3.UP, weapon.color, 10, 4.0)
-	sprite.squash(Vector2(1.15, 0.88))
-	Juice.popup(global_position + Vector3(0, 1.9, 0), weapon.display_name, weapon.color)
+	sprite.squash(Vector2(1.08, 0.94))
 
 
 func _swap_spell() -> void:
 	_set_spell(spell_idx + 1)
 	Sfx.play("swap", -4.0, 1.3)
-	Juice.ring(global_position + Vector3(0, 0.9, 0.2), spell.color, 1.5, 0.3)
-	Juice.popup(global_position + Vector3(0, 1.9, 0), spell.display_name, spell.color)
+
+
+
+## Basic animations exist per weapon ("spear.run"); death/cast are weapon-independent.
+func _b(base: String) -> String:
+	return _a("%s.%s" % [weapon.weapon_key, base])
+
+
+static func base_of(an: String) -> String:
+	for w in ["sword.", "spear.", "axe."]:
+		if an.begins_with(w):
+			var rest := an.trim_prefix(w)
+			if rest in ["idle", "ready", "walk", "run", "dash", "jump", "hurt", "victory"]:
+				return rest
+	return an
 
 
 ## Fall back to a close animation while art is being replaced.
@@ -172,6 +183,9 @@ func _a(n: String) -> String:
 	var sh := sprite.sheet
 	if sh.has_anim(n):
 		return n
+	for w in ["sword.", "spear.", "axe."]:       # weapon-specific basic animation missing: use the neutral one
+		if n.begins_with(w) and sh.has_anim(n.trim_prefix(w)):
+			return n.trim_prefix(w)
 	var alt := {"ready": "idle", "victory": "idle", "cast.ring": "cast", "cast.sky": "cast"}
 	if alt.has(n) and sh.has_anim(alt[n]):
 		return alt[n]
@@ -235,10 +249,11 @@ func _physics_process(delta: float) -> void:
 ## logical contact frames of the run/walk cycles.
 func _advance_sprite() -> void:
 	var an := sprite.anim
+	var base := base_of(an)
 	var prev_logical := sprite.logical
-	if state == S.IDLE and (an == "run" or an == "walk"):
+	if state == S.IDLE and (base == "run" or base == "walk"):
 		var v := Vector2(velocity.x, velocity.z).length()
-		var ref := sprite.sheet.ref_speed(an, REF_RUN if an == "run" else REF_WALK)
+		var ref := sprite.sheet.ref_speed(an, REF_RUN if base == "run" else REF_WALK)
 		sprite.advance_rate(clampf(v / ref, 0.35, 1.9))
 		if sprite.logical != prev_logical and (sprite.logical == 0 or sprite.logical == 4) and v > 1.0:
 			Sfx.play("step", -13.0, 0.9 + 0.2 * randf())
@@ -371,7 +386,7 @@ func _tick_free(f: InputFrame, _delta: float) -> void:
 		_set_state(S.JUMP)
 		_airborne = false
 		_land_t = 0
-		sprite.play(_a("jump"), true)
+		sprite.play(_b("jump"), true)
 		velocity = Vector3(velocity.x * 0.5, 0, velocity.z * 0.5)
 		return
 	var mag := dir.length()
@@ -385,10 +400,10 @@ func _tick_free(f: InputFrame, _delta: float) -> void:
 			Sfx.play("step", -8.0, 0.7)
 		_accel_to(want, 0.55)
 		_face_to(dir.x)
-		sprite.play("run" if spd >= RUN * 0.9 else "walk")
+		sprite.play(_b("run") if spd >= RUN * 0.9 else _b("walk"))
 	else:
 		_accel_to(Vector3.ZERO, 0.75)
-		sprite.play(_a("ready") if battle else "idle")
+		sprite.play(_b("ready") if battle else _b("idle"))
 	_apply_physics()
 
 
@@ -406,25 +421,24 @@ func _start_dash(f: InputFrame) -> void:
 	_face_to(_dash_dir.x)
 	_set_state(S.DASH)
 	dash_cd = 24
-	iframes = DASH_MOVE_TICKS
-	sprite.play(_a("dash"), true)
+	iframes = DASH_MOVE_TICKS + 1
+	sprite.play(_b("dash"), true)
 	sprite.squash(Vector2(0.78, 1.18))
 	Sfx.play("dash", -4.0)
-	Juice.ring(global_position + Vector3(0, 0.05, 0), Color(0.5, 1, 0.9), 1.8, 0.3, true)
-	Juice.dust(global_position, 8)
-	Juice.shake(0.08)
-	Juice.speed_lines(0.35)
+	Juice.dust(global_position, 3)
 	_trail = null
 	Game.log_event("dash", {"peer": peer_id})
 
 
 func _tick_dash(f: InputFrame, _delta: float) -> void:
-	if st < DASH_MOVE_TICKS:
-		var k := 1.0 - float(st) / DASH_MOVE_TICKS * 0.4
+	if st < DASH_START:
+		_accel_to(Vector3.ZERO, 1.0)
+	elif st < DASH_MOVE_TICKS:
+		var k := 1.0 - float(st - DASH_START) / float(DASH_MOVE_TICKS - DASH_START) * 0.45
 		velocity.x = _dash_dir.x * DASH_SPEED * k
 		velocity.z = _dash_dir.z * DASH_SPEED * k
-		if st % 3 == 0:
-			Juice.dust(global_position, 2)
+		if st == DASH_START:
+			Juice.dust(global_position, 3)
 	else:
 		_accel_to(Vector3.ZERO, 1.6)
 		if _consume(InputFrame.ATTACK):   # dash cancels into attack from the recovery (Mana: abilities extend combos)
@@ -472,8 +486,7 @@ func _tick_jump(f: InputFrame, _delta: float) -> void:
 			_land_t = 0
 			sprite.tick = land
 			sprite.squash(Vector2(1.3, 0.72))
-			Juice.dust(global_position, 8)
-			Juice.ring(global_position + Vector3(0, 0.05, 0), Color(0.9, 0.85, 0.7), 1.4, 0.25, true)
+			Juice.dust(global_position, 4)
 			Sfx.play("step", -4.0, 0.8)
 	elif st > rise + 4:
 		_land_t += 1
@@ -519,13 +532,13 @@ func _tick_attack(f: InputFrame, _delta: float) -> void:
 	if st == maxi(w0.x - 2, 0):
 		# the step into the strike starts just before the contact frame, so body and blade arrive together
 		var assist: Vector3 = get_meta("assist", Vector3(facing, 0, 0))
-		velocity.x = assist.x * a.lunge
-		velocity.z = assist.z * a.lunge
+		velocity.x = assist.x * a.lunge * 0.8
+		velocity.z = assist.z * a.lunge * 0.8
 	if st == w0.x:
 		Sfx.play(a.sfx, -3.0, 1.0 + 0.06 * combo)
 		sprite.squash(Vector2(1.18, 0.9))
 		Juice.dust(global_position, 3)
-		Juice.shake(0.05 + 0.04 * combo)
+		Juice.shake(0.02 + 0.02 * combo)
 	if _win_at(st) >= 0:
 		var centre := Combat.attack_centre(global_position, facing, a)
 		_strike(centre, a.radius_px * Game.PX, {
@@ -602,8 +615,7 @@ func gain_sp(v: float) -> void:
 	for th in [40.0, 70.0, 100.0]:
 		if before < th and sp >= th:
 			Sfx.play("sp_ready", -6.0, 0.9 + th / 200.0)
-			Juice.ring(global_position + Vector3(0, 0.9, 0.2), Color(1, 0.9, 0.4), 1.6, 0.35)
-			Juice.sparks(global_position + Vector3(0, 1.0, 0.2), Vector3.UP, Color(1, 0.9, 0.4), 12, 4.5)
+			Juice.sparks(global_position + Vector3(0, 1.0, 0.2), Vector3.UP, Color(1, 0.9, 0.4), 5, 3.0)
 
 
 # ---------------------------------------------------------------- specials
@@ -637,8 +649,7 @@ func _start_special(i: int, f: InputFrame) -> bool:
 		var t := tgt.global_position
 		_dive_to = Vector3(t.x - facing * 0.4, 0, t.z)
 	Sfx.play("special_call", -3.0)
-	Juice.popup(global_position + Vector3(0, 1.9, 0), sd.display_name, sd.color)
-	Juice.shake(0.12)
+	Juice.shake(0.05)
 	Game.log_event("special", {"peer": peer_id, "id": sd.id})
 	return true
 
@@ -731,11 +742,9 @@ func _tick_dive(base: Dictionary) -> void:
 func _slam_fx() -> void:
 	var p := global_position
 	Sfx.play("quake", 0.0, 0.8)
-	Juice.shake(0.9)
-	Juice.chroma = 1.0
-	Juice.fov_punch = -4.0
-	Juice.crater(p, cur_special.color, 2.6)
-	Juice.rumble(0.8, 1.0, 220)
+	Juice.shake(0.45)
+	Juice.fov_punch = -1.5
+	Juice.crater(p, cur_special.color, 2.2)
 	sprite.squash(Vector2(1.5, 0.6))
 
 
@@ -793,7 +802,7 @@ func _tick_dead(_f: InputFrame, _delta: float) -> void:
 		reset_physics_interpolation()
 		iframes = 100
 		_set_state(S.IDLE)
-		sprite.play("idle", true)
+		sprite.play(_b("idle"), true)
 		Juice.ring(global_position, Color(0.6, 1, 0.9), 2.2, 0.5, true)
 		Game.log_event("respawn", {"peer": peer_id})
 
@@ -815,7 +824,7 @@ func start_victory() -> void:
 	_victory_t = 0
 	velocity = Vector3.ZERO
 	hitstop = 0
-	sprite.play(_a("victory"), true)
+	sprite.play(_b("victory"), true)
 	sprite.squash(Vector2(0.85, 1.25))
 	Sfx.play("victory", -2.0)
 
@@ -841,7 +850,7 @@ func receive_hit(dmg: int, dir: Vector3, kb: float, _from_pos: Vector3) -> void:
 	## Called on the authoritative peer (directly, or via the host's RPC).
 	if state == S.DEAD or iframes > 0:
 		return
-	if state == S.DASH and st < DASH_MOVE_TICKS:
+	if state == S.DASH and st < DASH_MOVE_TICKS + 1:
 		return
 	hp = maxi(0, hp - dmg)
 	iframes = 55
@@ -867,7 +876,7 @@ func receive_hit(dmg: int, dir: Vector3, kb: float, _from_pos: Vector3) -> void:
 		Game.log_event("player_dead", {"peer": peer_id})
 	else:
 		_set_state(S.HURT)
-		sprite.play("hurt", true)
+		sprite.play(_b("hurt"), true)
 
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -909,9 +918,9 @@ func _anim_fx() -> void:
 	var atk := Registry.attack_for_anim(an)
 	var spc := Registry.special_for_anim(an)
 	var wins := sprite.sheet.contact_ranges(an)
-	if an == "dash":
-		if cur < DASH_MOVE_TICKS and cur % 2 == 0 and prev != cur:
-			sprite.afterimage(Color(0.3, 1.0, 0.85))
+	if base_of(an) == "dash":
+		if cur >= DASH_START and cur < DASH_MOVE_TICKS and cur % 4 == 0 and prev != cur:
+			sprite.afterimage(Color(0.5, 0.9, 0.9), 0.18)
 		return
 	if atk != null and not wins.is_empty():
 		var w0: Vector2i = wins[0]
@@ -924,9 +933,6 @@ func _anim_fx() -> void:
 		elif _trail != null and cur > w0.y + 1:
 			_trail.done = true
 			_trail = null
-		if crossed.call(w0.x):
-			var idx := int(an.split(".")[1]) - 1
-			Juice.slash_arc(global_position, facing, idx, atk.trail_color, weapon.weapon_key)
 		return
 	if spc != null and not wins.is_empty():
 		var first: Vector2i = wins[0]
@@ -945,7 +951,6 @@ func _anim_fx() -> void:
 				if crossed.call(leap):
 					_clear_aura()
 					_aura = Juice.meteor_aura(self, spc.color, float(first.x - leap) / 60.0)
-					Juice.ring(global_position + Vector3(0, 0.05, 0), spc.color, 2.2, 0.3, true)
 				if cur >= leap and cur < first.x:
 					if _trail == null or not is_instance_valid(_trail):
 						_trail = WeaponTrail.new()
@@ -955,12 +960,8 @@ func _anim_fx() -> void:
 				elif _trail != null and cur >= first.x:
 					_trail.done = true
 					_trail = null
-			"javelin":
-				if crossed.call(first.x):
-					Juice.ring(sprite.anchor_world("hand"), spc.color, 1.4, 0.25)
-			"fissure":
-				if crossed.call(first.x - 5):
-					Juice.sparks(global_position + Vector3(facing * 0.5, 0.1, 0), Vector3.UP, spc.color, 10, 4.0)
+			"javelin", "fissure":
+				pass
 		return
 	if an.begins_with("cast"):
 		if prev < 0 or crossed.call(0):

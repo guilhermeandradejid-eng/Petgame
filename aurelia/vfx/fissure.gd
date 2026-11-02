@@ -33,7 +33,7 @@ func _ready() -> void:
 	add_child(_mesh)
 	if dir.x < 0.0:
 		rotation.y = PI
-	Juice.shake(0.5)
+	Juice.shake(0.2)
 
 
 func _physics_process(_delta: float) -> void:
@@ -44,9 +44,9 @@ func _physics_process(_delta: float) -> void:
 		_mat.set_shader_parameter("fade", clampf(1.0 - float(age - TICKS) / 40.0, 0.0, 1.0))
 	var head := LENGTH * t
 	if age % 2 == 0 and age <= TICKS:
-		Juice.shake(0.08)
+		Juice.shake(0.03)
 		var p := global_position + dir * head
-		Juice.rock_burst(p, special.color, 1 + age % 2)
+		Juice.rock_burst(p, special.color, 1)
 		if age % 4 == 0:
 			Sfx.play("step", -6.0, 0.6)
 	if owner_peer == multiplayer.get_unique_id() and age <= TICKS + 2:

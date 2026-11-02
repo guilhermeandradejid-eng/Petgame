@@ -71,8 +71,12 @@ func _test_data() -> void:
 		_check(e != null and AnimSheet.get_sheet(e.sprite_id).has_anim(e.attack_anim), "%s attack animation '%s' exists" % [eid, e.attack_anim])
 		_check(AnimSheet.get_sheet(e.sprite_id).has_anim("windup") and AnimSheet.get_sheet(e.sprite_id).has_anim("walk"), "%s has windup + walk" % eid)
 	_check(Registry.enemy("dummy").dummy, "training dummy flagged")
-	for a in ["ready", "victory", "death", "hurt", "jump", "dash", "run", "walk", "idle"]:
+	for w in ["sword", "spear", "axe"]:
+		for a in ["idle", "ready", "walk", "run", "dash", "jump", "hurt", "victory"]:
+			_check(ren.has_anim("%s.%s" % [w, a]), "ren has weapon-specific '%s.%s'" % [w, a])
+	for a in ["death", "cast", "cast.ring", "cast.sky"]:
 		_check(ren.has_anim(a), "ren has '%s'" % a)
+	_check(ren.ground.y > 0 and ren.cell >= 64, "ren sheet reports cell %d and ground %s" % [ren.cell, ren.ground])
 
 
 func _test_combat_math() -> void:

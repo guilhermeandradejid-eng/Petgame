@@ -37,7 +37,6 @@ static func deal(e: Enemy, owner_peer: int, from: Vector3, dir: Vector3, d: Dict
 	var power := clampf(float(dmg) / 28.0, 0.2, 1.0)
 	var col: Color = d["col"]
 	Juice.hit(e.global_position + Vector3(0, 0.8, 0.2), dir, col, power, d["sh"])
-	Juice.hit_slash(e.global_position + Vector3(0, 0.9, 0.3), dir, col, power)
 	Sfx.play(d.get("sfx", "hit"), -2.0)
 	e.predict_hit(int(d["hs"]))
 	var a := AttackData.new()

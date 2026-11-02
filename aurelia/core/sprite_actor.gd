@@ -31,8 +31,8 @@ func setup(char_id: String, shadow_width: float = 1.1) -> void:
 	var q := QuadMesh.new()
 	var size := sheet.cell * Game.PX
 	q.size = Vector2(size, size)
-	# feet are 5 sprite px above the cell bottom (ground row 59 of 64)
-	q.center_offset = Vector3(0, size * 0.5 - 5.0 * Game.PX, 0)
+	# the feet sit on the sheet's ground row (e.g. row 74 of an 80 px cell)
+	q.center_offset = Vector3((sheet.cell * 0.5 - sheet.ground.x) * Game.PX, size * 0.5 - (sheet.cell - sheet.ground.y) * Game.PX, 0)
 	mesh_inst = MeshInstance3D.new()
 	mesh_inst.mesh = q
 	mat = ShaderMaterial.new()
@@ -146,8 +146,8 @@ func anchor_world(name: String) -> Vector3:
 	if _frame.is_empty():
 		return global_position
 	var a: Array = _frame["anchors"][name]
-	var dx := (float(a[0]) - sheet.cell * 0.5) * Game.PX * facing
-	var dy := (59.0 - float(a[1])) * Game.PX
+	var dx := (float(a[0]) - sheet.ground.x) * Game.PX * facing
+	var dy := (float(sheet.ground.y) - float(a[1])) * Game.PX
 	return global_position + Vector3(dx, dy + position.y * 0.0, 0.02)
 
 

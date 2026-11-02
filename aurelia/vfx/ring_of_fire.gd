@@ -35,7 +35,7 @@ func _ready() -> void:
 	_torus.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_torus)
 	_embers = CPUParticles3D.new()
-	_embers.amount = 90
+	_embers.amount = 40
 	_embers.lifetime = 0.6
 	_embers.local_coords = false
 	_embers.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING
@@ -63,13 +63,12 @@ func _ready() -> void:
 	_light = OmniLight3D.new()
 	_light.light_color = spell.color
 	_light.omni_range = 7.0
-	_light.light_energy = 2.5
+	_light.light_energy = 1.2
 	_light.position.y = 0.5
 	add_child(_light)
 	position.y = 0.35
 	Sfx.play("fire_ring", -1.0)
-	Juice.shake(0.35)
-	Juice.ring(Vector3(global_position.x, 0.05, global_position.z), spell.color, 2.4, 0.4, true)
+	Juice.shake(0.15)
 
 
 func _radius(t: float) -> float:
@@ -82,7 +81,7 @@ func _physics_process(_delta: float) -> void:
 	var r := _radius(t)
 	_torus.scale = Vector3(r, r * 0.55, r)
 	_embers.emission_ring_radius = r
-	_light.light_energy = 2.5 * (1.0 - t)
+	_light.light_energy = 1.2 * (1.0 - t)
 	_mat.set_shader_parameter("t", age / 60.0)
 	_mat.set_shader_parameter("fade", 1.0 - smoothstep(0.7, 1.0, t))
 	if owner_peer == multiplayer.get_unique_id():

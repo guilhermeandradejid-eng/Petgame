@@ -7,8 +7,8 @@ extends Node3D
 
 const PITCH_EXPLORE := 35.0
 const PITCH_BATTLE := 39.0
-const DIST_EXPLORE := 11.3          # one sprite pixel is ~4 screen pixels at 720p
-const DIST_BATTLE := 14.6
+const DIST_EXPLORE := 15.0          # one sprite pixel is ~3 screen pixels at 720p (52 px hero ~ 22% of the screen)
+const DIST_BATTLE := 16.6
 const FOV := 28.0
 const DEAD_ZONE := 0.45
 

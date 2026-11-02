@@ -191,6 +191,8 @@ func alert(pos: Vector3) -> void:
 
 
 func magic_circle(pos: Vector3, color: Color, life: float = 0.7, size: float = 2.6) -> void:
+	size *= 0.75
+	color.a = 0.6
 	var m := MeshInstance3D.new()
 	var q := QuadMesh.new()
 	q.size = Vector2(size, size)
@@ -213,28 +215,23 @@ func magic_circle(pos: Vector3, color: Color, life: float = 0.7, size: float = 2
 
 # ---------------------------------------------------------------- composites
 
-## A confirmed melee/spell hit. power: 0.2 light .. 1.0 finisher.
+## A confirmed melee/spell hit. power: 0.2 light .. 1.0 finisher. Kept deliberately small: a few
+## sparks and a little shake; only heavy hits get a ring / camera punch.
 func hit(pos: Vector3, dir: Vector3, color: Color, power: float, shake_amt: float) -> void:
 	Game.log_event("hit_fx", {"p": power})
-	shake(shake_amt)
-	kick(dir, 0.10 + 0.22 * power)
-	sparks(pos, dir + Vector3.UP * 0.4, color, int(8 + 10 * power), 5.0 + 5.0 * power)
-	ring(pos, color.lerp(Color.WHITE, 0.5), 1.1 + power * 1.6, 0.28)
-	flash_light(pos + Vector3(0, 0.4, 0.4), color, 2.5 + power * 3.0)
-	rumble(0.3 * power, 0.6 * power + 0.15, 90)
+	shake(shake_amt * 0.45)
+	kick(dir, 0.03 + 0.08 * power)
+	sparks(pos, dir + Vector3.UP * 0.4, color, int(3 + 5 * power), 3.0 + 2.5 * power)
+	rumble(0.2 * power, 0.45 * power + 0.1, 70)
 	if power >= 0.7:
-		fov_punch = -2.5
-		chroma = 1.0
-		screen_flash = 0.5
+		ring(pos, color.lerp(Color.WHITE, 0.5), 0.9 + power * 0.7, 0.22)
+		fov_punch = -1.5
 
 
 func death_burst(pos: Vector3, color: Color) -> void:
-	shake(0.35)
-	sparks(pos + Vector3(0, 0.5, 0), Vector3.UP, color, 22, 7.5)
-	ring(pos + Vector3(0, 0.4, 0), color, 2.6, 0.5)
-	ring(pos + Vector3(0, 0.05, 0), color, 3.2, 0.6, true)
-	flash_light(pos + Vector3(0, 0.6, 0.4), color, 5.0, 0.25)
-	chroma = 0.7
+	shake(0.15)
+	sparks(pos + Vector3(0, 0.5, 0), Vector3.UP, color, 9, 4.5)
+	ring(pos + Vector3(0, 0.05, 0), color, 1.8, 0.4, true)
 
 
 # ============================================================ round-2 juice
@@ -259,6 +256,8 @@ func hurt_flash() -> void:
 
 func popup(pos: Vector3, text: String, color: Color = Color.WHITE) -> void:
 	pos.y -= 0.35
+	if not (text.begins_with("LEVEL")):
+		return          # weapon / technique names live in the HUD now
 	var l := Label3D.new()
 	l.text = text
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -281,6 +280,8 @@ func popup(pos: Vector3, text: String, color: Color = Color.WHITE) -> void:
 
 ## Crescent smear on the contact frame. idx = combo index (0,1,2).
 func slash_arc(pos: Vector3, facing: float, idx: int, color: Color, weapon_key: String = "sword") -> void:
+	if true:
+		return          # replaced by a thin weapon trail (too much effect otherwise)
 	var a0 := 2.3
 	var a1 := -0.5
 	var radius := 0.8
@@ -327,6 +328,8 @@ func slash_arc(pos: Vector3, facing: float, idx: int, color: Color, weapon_key: 
 
 ## Tiny random claw-mark flash where a hit lands.
 func hit_slash(pos: Vector3, dir: Vector3, color: Color, power: float) -> void:
+	if true:
+		return
 	var m := MeshInstance3D.new()
 	var q := QuadMesh.new()
 	q.size = Vector2(1.5, 1.5) * (0.7 + power * 0.7)
@@ -365,7 +368,7 @@ func cyclone(parent: Node3D, color: Color, duration: float, radius: float) -> No
 	root.position.y = 0.05
 	parent.add_child(root)
 	var mats: Array = []
-	for i in 2:
+	for i in 1:
 		var m := MeshInstance3D.new()
 		var cm := CylinderMesh.new()
 		cm.top_radius = radius * (1.0 - 0.18 * i)
@@ -380,7 +383,7 @@ func cyclone(parent: Node3D, color: Color, duration: float, radius: float) -> No
 		mat.set_shader_parameter("v_fade", 0.5)
 		mat.set_shader_parameter("rim_amt", 0.7)
 		mat.set_shader_parameter("stripe_amt", 0.8)
-		mat.set_shader_parameter("base_alpha", 0.05)
+		mat.set_shader_parameter("base_alpha", 0.02)
 		m.material_override = mat
 		m.position.y = cm.height * 0.5
 		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -392,7 +395,7 @@ func cyclone(parent: Node3D, color: Color, duration: float, radius: float) -> No
 	var blades := Node3D.new()
 	blades.position.y = 0.75
 	root.add_child(blades)
-	for i in 3:
+	for i in 0:
 		var bm := MeshInstance3D.new()
 		var bq := QuadMesh.new()
 		bq.size = Vector2(radius * 2.5, radius * 2.5)
@@ -422,8 +425,6 @@ func cyclone(parent: Node3D, color: Color, duration: float, radius: float) -> No
 			mt.set_shader_parameter("fade", v), 1.0, 0.0, 0.15)
 	tw.tween_callback(root.queue_free)
 	# leaves/dust flung outward
-	sparks(parent.global_position + Vector3(0, 0.4, 0), Vector3.UP, color, 14, 5.0)
-	ring(parent.global_position + Vector3(0, 0.05, 0), color, radius * 2.4, 0.35, true)
 	return root
 
 
@@ -489,13 +490,10 @@ func thrust_streak(pos: Vector3, facing: float, color: Color, length: float) -> 
 
 ## Ground crater: scorch mark, expanding hollow rings, flung rocks, embers.
 func crater(pos: Vector3, color: Color, radius: float) -> void:
-	ring(Vector3(pos.x, 0.05, pos.z), color, radius * 2.4, 0.5, true)
-	ring(Vector3(pos.x, 0.06, pos.z), Color.WHITE, radius * 1.6, 0.3, true)
-	ring(pos + Vector3(0, 0.6, 0), color, radius * 1.6, 0.35)
-	flash_light(pos + Vector3(0, 0.8, 0.4), color, 4.5, 0.25)
-	sparks(pos + Vector3(0, 0.2, 0), Vector3.UP, color, 26, 8.0)
-	rock_burst(pos, color, 9)
-	dust(pos, 14, Color(0.7, 0.62, 0.5, 0.85))
+	ring(Vector3(pos.x, 0.05, pos.z), color, radius * 2.0, 0.5, true)
+	sparks(pos + Vector3(0, 0.2, 0), Vector3.UP, color, 8, 5.0)
+	rock_burst(pos, color, 4)
+	dust(pos, 6, Color(0.7, 0.62, 0.5, 0.8))
 	var m := MeshInstance3D.new()
 	var q := QuadMesh.new()
 	q.size = Vector2(radius * 2.4, radius * 2.0)
@@ -561,18 +559,15 @@ func telegraph(pos: Vector3, radius: float, color: Color, life: float) -> void:
 
 ## Killing blow: a short global freeze, a zoom punch and a white flash.
 func last_hit_freeze(pos: Vector3) -> void:
-	Game.freeze_ticks = maxi(Game.freeze_ticks, 9)
-	fov_punch = -5.0
-	screen_flash = maxf(screen_flash, 0.7)
-	chroma = 1.0
-	shake(0.45)
-	ring(pos, Color(1, 1, 1), 3.0, 0.35)
+	Game.freeze_ticks = maxi(Game.freeze_ticks, 5)
+	fov_punch = -2.0
+	shake(0.2)
 	Game.log_event("last_hit")
 
 
 ## Orbs burst out, then home in on the player and restore a little HP/MP.
 func mana_orbs(pos: Vector3, player: Node3D, n: int, color: Color) -> void:
-	for i in n:
+	for i in mini(n, 2):
 		var m := MeshInstance3D.new()
 		var q := QuadMesh.new()
 		q.size = Vector2(0.38, 0.38)
@@ -596,12 +591,8 @@ func mana_orbs(pos: Vector3, player: Node3D, n: int, color: Color) -> void:
 
 
 func level_up(pos: Vector3) -> void:
-	for i in 3:
-		get_tree().create_timer(0.12 * i).timeout.connect(func():
-			ring(pos + Vector3(0, 0.3 + 0.5 * i, 0.2), Color(1, 0.95, 0.5), 2.2 + i * 0.4, 0.5, true))
-	sparks(pos + Vector3(0, 0.5, 0.2), Vector3.UP, Color(1, 0.95, 0.5), 30, 6.0)
-	flash_light(pos + Vector3(0, 1.0, 0.5), Color(1, 0.95, 0.6), 4.0, 0.4)
-	shake(0.3)
+	ring(pos + Vector3(0, 0.05, 0.2), Color(1, 0.95, 0.5), 2.0, 0.5, true)
+	sparks(pos + Vector3(0, 0.5, 0.2), Vector3.UP, Color(1, 0.95, 0.5), 10, 4.0)
 
 
 func confetti(center: Vector3) -> void:

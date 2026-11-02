@@ -88,13 +88,9 @@ func _impact() -> void:
 	Sfx.play("quake", 0.0, 0.7)
 	Sfx.play("fire_hit", -2.0, 0.7)
 	Juice.crater(target, spell.color, spell.radius_m)
-	Juice.shake(1.0)
-	Juice.chroma = 1.0
-	Juice.screen_flash = 0.8
-	Juice.fov_punch = -5.0
-	Juice.flash_light(target + Vector3(0, 1.0, 0.5), spell.color, 7.0, 0.35)
-	Juice.sparks(target + Vector3(0, 0.3, 0), Vector3.UP, spell.color, 40, 9.0)
-	Juice.rumble(0.9, 1.0, 260)
+	Juice.shake(0.5)
+	Juice.fov_punch = -2.0
+	Juice.sparks(target + Vector3(0, 0.3, 0), Vector3.UP, spell.color, 14, 6.0)
 	if owner_peer == multiplayer.get_unique_id():
 		for e in get_tree().get_nodes_in_group("enemies"):
 			if e.is_dead():

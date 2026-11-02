@@ -63,7 +63,7 @@ func _environment() -> void:
 	env.fog_light_color = Color(0.72, 0.82, 0.92)
 	env.fog_density = 0.0035
 	env.glow_enabled = true
-	env.glow_intensity = 0.38
+	env.glow_intensity = 0.2
 	env.glow_bloom = 0.08
 	env.glow_hdr_threshold = 1.3
 	env.adjustment_enabled = true

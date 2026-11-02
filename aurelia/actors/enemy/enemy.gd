@@ -329,19 +329,21 @@ func _tick_chase() -> void:
 ## Hopkin-style locomotion: squat, spring, glide on the arc, land (the "walk" cycle is 6 frames).
 func _tick_hop(dir: Vector3) -> void:
 	sprite.play("walk")
-	var cycle := 36
+	var cycle := sprite.sheet.total_ticks("walk")
+	var launch := sprite.sheet.frame_start("walk", 1)
+	var landing := sprite.sheet.frame_start("walk", 4)
 	var t := sprite.tick % cycle
-	if t == 6 and is_on_floor():
+	if t == launch and is_on_floor():
 		velocity.y = 4.6
 		sprite.squash(Vector2(0.8, 1.3))
-	if t >= 6 and t < 31 and not is_on_floor():
+	if t >= launch and t < landing and not is_on_floor():
 		var h := dir.normalized() * data.hop_speed if dir.length() > 0.05 else Vector3.ZERO
 		velocity.x = h.x
 		velocity.z = h.z
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, 0.8)
 		velocity.z = move_toward(velocity.z, 0.0, 0.8)
-	if t == 26 and is_on_floor():
+	if t == landing - 2 and is_on_floor():
 		sprite.squash(Vector2(1.3, 0.75))
 		Juice.dust(global_position, 3)
 	_move(Vector3(velocity.x, 0, velocity.z), 5.0)
@@ -520,7 +522,7 @@ func rpc_fx_die(col: Color, exp_value: int) -> void:
 	# mana orbs fly to every local player
 	for p in get_tree().get_nodes_in_group("players"):
 		if p.is_multiplayer_authority():
-			Juice.mana_orbs(global_position + Vector3(0, 0.5, 0), p, 4, col)
+			Juice.mana_orbs(global_position + Vector3(0, 0.5, 0), p, 2, col)
 			p.hp = mini(p.max_hp, p.hp + 2)
 			p.mp = minf(p.max_mp, p.mp + 4.0)
 			p.gain_sp(6.0)

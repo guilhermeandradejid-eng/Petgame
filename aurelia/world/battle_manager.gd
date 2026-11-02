@@ -141,10 +141,8 @@ func rpc_battle_start(center: Vector3, radius: float, names: Array) -> void:
 	world.fx.add_child(_arena)
 	_arena.global_position = Vector3(center.x, 0, center.z)
 	Sfx.play("battle_start")
-	Juice.shake(0.5)
-	Juice.fov_punch = -7.0
-	Juice.chroma = 1.0
-	Juice.screen_flash = 0.5
+	Juice.shake(0.2)
+	Juice.fov_punch = -3.0
 	Juice.ring(Vector3(center.x, 0.05, center.z), Color(1, 0.85, 0.4), radius * 2.0, 0.6, true)
 	if world.battle_ui != null:
 		world.battle_ui.battle_start()
@@ -169,7 +167,6 @@ func rpc_battle_end(win: bool, exp_value: int) -> void:
 	if win:
 		wins += 1
 		Sfx.play("victory_fanfare")
-		Juice.shake(0.3)
 		Juice.confetti(Game.arena_center)
 	if world.battle_ui != null:
 		world.battle_ui.battle_end(win, exp_value, lvl)

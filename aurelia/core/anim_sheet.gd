@@ -10,6 +10,7 @@ var id: String
 var cell: int = 64
 var cols: int = 16
 var rows: int = 1
+var ground := Vector2i(32, 59)       # feet position inside a cell (px)
 var tex: Texture2D
 var ntex: Texture2D
 var anims: Dictionary = {}
@@ -46,6 +47,9 @@ func _load(char_id: String) -> void:
 	var d: Dictionary = JSON.parse_string(f.get_as_text())
 	cell = int(d["cell"])
 	cols = int(d["cols"])
+	ground = Vector2i(cell / 2, cell - 5)
+	if d.has("ground"):
+		ground = Vector2i(int(d["ground"][0]), int(d["ground"][1]))
 	rows = int(ceil(float(d["frames"]) / cols))
 	tex = _tex(base + "sheet.png")
 	ntex = _tex(base + "normal.png")

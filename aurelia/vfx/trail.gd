@@ -2,7 +2,7 @@ class_name WeaponTrail
 extends MeshInstance3D
 ## Ribbon trail between two moving points (weapon base + tip). Thin, translucent, tapered.
 
-const LIFE := 0.22
+const LIFE := 0.18
 
 var color := Color(1, 1, 1, 1)
 var _samples: Array = []     # [{ "a": Vector3, "b": Vector3, "t": float }]
@@ -43,9 +43,9 @@ func _process(delta: float) -> void:
 			var s: Dictionary = pts[i]
 			var age := clampf(s["t"] / LIFE, 0.0, 1.0)
 			var head := float(i) / maxf(n - 1, 1)             # 1 = newest
-			var alpha := (1.0 - age) * (0.25 + 0.75 * head) * color.a
+			var alpha := (1.0 - age) * (0.2 + 0.8 * head) * color.a * 0.5
 			var c := Color(color.r, color.g, color.b, alpha * 0.9)
-			var mid: Vector3 = s["a"].lerp(s["b"], 0.18)       # taper: skip the hilt end
+			var mid: Vector3 = s["a"].lerp(s["b"], 0.78)       # thin ribbon along the last fifth of the blade
 			_im.surface_set_color(Color(c.r, c.g, c.b, 0.0))
 			_im.surface_add_vertex(to_local(mid))
 			_im.surface_set_color(c)

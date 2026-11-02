@@ -42,6 +42,6 @@ void fragment() {
 	col += vec3(1.0) * streak * smoothstep(0.28, 0.62, length(q)) * speed * 0.55;
 	// damage vignette
 	float edge = smoothstep(0.25, 0.75, length(q));
-	col = mix(col, vec3(0.9, 0.12, 0.15), edge * (hurt * 0.55 + lowhp * (0.18 + 0.12 * sin(TIME * 5.0))));
+	col = mix(col, vec3(0.9, 0.12, 0.15), edge * (hurt * 0.55 + lowhp * (0.12 + 0.05 * sin(TIME * 4.0))));
 	COLOR = vec4(col, 1.0);
 }
