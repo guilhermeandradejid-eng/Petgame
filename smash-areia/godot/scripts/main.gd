@@ -73,6 +73,7 @@ var replay_from := 0
 var replay_done := false
 var replay_cam := Vector3.ZERO
 var replay_ok := false
+var pts_reason := ""
 var replay_cool := 0
 
 var audio: GameAudio
@@ -170,6 +171,11 @@ func _ready() -> void:
 			GameData.mode = a.substr(7)
 		elif a.begins_with("--diff="):
 			GameData.difficulty = int(a.substr(7))
+		elif a.begins_with("--outfit="):
+			GameData.looks[0]["outfit"] = int(a.substr(9))
+			GameData.looks[0]["racket"] = int(a.substr(9)) % 3
+		elif a.begins_with("--menu="):
+			hud._go_screen.call_deferred(a.substr(7))
 		elif a.begins_with("--portrait="):
 			_portrait.call_deferred(a.substr(11))
 	if autoplay:
@@ -253,11 +259,17 @@ func _portrait(path: String) -> void:
 	p.side = -1.0
 	p.reset_state()
 	p.shadow.visible = false
+	var card := path.contains("card")
 	for i in 20:
 		p.update(1.0 / 30.0)
 	cam.h_offset = 0.0
-	cam.fov = 30
-	cam.look_at_from_position(Vector3(0.75, 1.62, 3.1), Vector3(0.02, 1.32, 0.0))
+	if card:
+		# retrato do card: 3/4 para mostrar o cabelo de cada personagem
+		cam.fov = 30
+		cam.look_at_from_position(Vector3(-1.9, 1.5, 3.0), Vector3(0.0, 1.12, 0.0))
+	else:
+		cam.fov = 30
+		cam.look_at_from_position(Vector3(0.75, 1.62, 3.1), Vector3(0.02, 1.32, 0.0))
 	for i in 6:
 		await get_tree().process_frame
 	(views[0]["sv"] as SubViewport).get_texture().get_image().save_png(path)
@@ -583,6 +595,7 @@ func start_match() -> void:
 	_layout_views()
 	_reset_score(GameData.LENGTHS[GameData.length_index]["games"])
 	hud.show_game()
+	hud.set_pad_mode(human != null and human.pad >= 0)
 	hud.show_banner("VAI COMEÇAR!", "%s x %s" % [GameData.TEAMS[0]["name"], GameData.TEAMS[1]["name"]], Color("ffd23f"), 1.8)
 	sfx("whistle", -6.0)
 	intro_t = 0.0
@@ -597,6 +610,7 @@ func _reset_score(target: int) -> void:
 	serving_team = 0
 	server_turn = [0, 0]
 	match_over = false
+	pts_reason = ""
 	hud.set_score(points, games, serving_team, games_to_win)
 	hud.set_energy(energy)
 
@@ -628,7 +642,12 @@ func _spawn_players(with_human: bool) -> void:
 		var p := Player.new()
 		add_child(p)
 		var is_h := with_human and (i == 0 or i == p2_index)
-		p.setup(GameData.CHARACTERS[order[i]], team, is_h)
+		# visual: humanos usam o que escolheram no vestiário; a CPU sorteia
+		var lk := {"outfit": rng.randi() % GameData.OUTFITS.size(), "palette": rng.randi() % 3,
+			"racket": rng.randi() % GameData.RACKETS.size(), "racket_color": -1}
+		if is_h:
+			lk = GameData.looks[0 if i == 0 else 1]
+		p.setup(GameData.CHARACTERS[order[i]], team, is_h, lk)
 		p.game = self
 		p.home_x = 1.8 if i % 2 == 0 else -1.8
 		if not is_h:
@@ -760,12 +779,9 @@ func _begin_serve() -> void:
 	chance_star.visible = false
 	celeb = null
 	cam_cut = true
+	# rodízio do beach tennis: a dupla que saca alterna o sacador a cada game seu
 	var tp := team_players(serving_team)
-	var th := team_human(serving_team) if not demo else null
-	if th != null:
-		server = th
-	else:
-		server = tp[server_turn[serving_team] % tp.size()]
+	server = tp[server_turn[serving_team] % tp.size()]
 	var lane := 1.0 if (points[0] + points[1]) % 2 == 0 else -1.0
 	var ss := 1.0 if serving_team == 0 else -1.0
 	var serve_x := lane * 1.6 * ss
@@ -806,7 +822,11 @@ func _begin_serve() -> void:
 		var who := ""
 		if server.is_human:
 			who = "SEU SAQUE" if humans.size() == 1 else "SAQUE DO J%d" % server.pid
-		hud.set_hint(who + ": escolha um golpe (SMASH = saque viagem)" if who != "" else "")
+			hud.set_hint(who + ": escolha um golpe (SMASH = saque viagem)")
+		else:
+			hud.set_hint("SAQUE: %s (%s)" % [String(server.data["name"]).to_upper(), GameData.TEAMS[server.team]["name"]])
+		if points[0] + points[1] == 0:
+			server.say("MEU SAQUE!", Color("ffd23f"))
 	hud.set_score(points, games, serving_team, games_to_win)
 
 
@@ -898,6 +918,8 @@ func _launch(p: Player, shot: int, res: Dictionary, quality: float, charge: floa
 		energy[p.team] = minf(1.0, energy[p.team] + gain)
 		if was < 1.0 and energy[p.team] >= 1.0 and team_human(p.team) != null:
 			sfx("super_ready", -4.0)
+			var th := team_human(p.team)
+			hud.super_ready_hint(th.pad >= 0 and (hud.pad_mode or th.pid == 2), ("J%d" % th.pid) if humans.size() > 1 else "")
 	hud.set_energy(energy)
 	var power := clampf(ball.vel.length() / 22.0, 0.3, 1.2)
 	match shot:
@@ -1048,6 +1070,15 @@ func _poll_inputs() -> void:
 		if v.length() > 1.0:
 			v = v.normalized()
 		p.stick = v
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch and event.is_pressed():
+		hud.set_pad_mode(false)
+	elif (event is InputEventJoypadButton and event.is_pressed()) or \
+			(event is InputEventJoypadMotion and absf((event as InputEventJoypadMotion).axis_value) > 0.5):
+		if human and human.pad == event.device:
+			hud.set_pad_mode(true)
 
 
 func _pad_edge(p: Player, key: String, down: bool) -> bool:
@@ -1432,6 +1463,16 @@ func _on_ball_landed(pos: Vector3) -> void:
 	if ball.is_serve and rally_hits == 1 and loser == ball.last_team:
 		reason = "FALTA!" if reason == "FORA!" else "SAQUE NA REDE!"
 	comic(pos + Vector3(0, 0.7, 0), reason, Color("ffffff") if not in_bounds else Color("ffd23f"), 0.7)
+	var lname: String = GameData.TEAMS[loser]["name"]
+	match reason:
+		"NA REDE!", "SAQUE NA REDE!":
+			pts_reason = "%s NA REDE" % lname
+		"FORA!", "FALTA!":
+			pts_reason = "%s MANDARAM FORA" % lname
+		"ACE!":
+			pts_reason = "ACE! %s NEM VIRAM" % lname
+		_:
+			pts_reason = "CAIU NA AREIA DOS %s" % lname
 	_stat("end_" + reason)
 	if ball.last_shot >= 0:
 		_stat("last_" + Shots.NAMES[ball.last_shot] + ("_in" if in_bounds else "_out"))
@@ -1503,8 +1544,9 @@ func _award_point(team: int, reason: String) -> void:
 	if game_won:
 		games[team] += 1
 		points = [0, 0]
-		serving_team = 1 - serving_team
+		# o sacador deste game passa a vez para o parceiro no próximo game da dupla
 		server_turn[serving_team] += 1
+		serving_team = 1 - serving_team
 		if games[team] >= games_to_win:
 			match_over = true
 			point_timer = 3.0
@@ -1513,16 +1555,16 @@ func _award_point(team: int, reason: String) -> void:
 			title = "GAME!"
 			sub = "%s  %d x %d  %s" % [GameData.TEAMS[0]["name"], games[0], games[1], GameData.TEAMS[1]["name"]]
 	else:
+		title = "PONTO DOS %s!" % GameData.TEAMS[team]["name"]
 		if GameData.mode == "vs" and humans.size() > 1:
-			title = "PONTO DO J1!" if team == 0 else "PONTO DO J2!"
-		else:
-			title = "PONTO NOSSO!" if team == 0 else "PONTO DELES!"
-		sub = "%s - %s" % [GameData.POINT_NAMES[mini(points[0], 3)], GameData.POINT_NAMES[mini(points[1], 3)]]
+			title = "PONTO DO J%d!" % (1 if team == 0 else 2)
+		sub = pts_reason
 		if points[0] == 3 and points[1] == 3:
-			sub = "40-40: PONTO DE OURO!"
+			sub = pts_reason + "  •  40-40: PONTO DE OURO!"
 	if not demo:
 		hud.show_banner(title, sub, Color("ffd23f") if team == 0 else Color("ff4b3e"), 2.0)
 	hud.set_score(points, games, serving_team, games_to_win)
+	hud.score_pop(team)
 
 
 func _after_point() -> void:

@@ -253,6 +253,37 @@ def player_clothes(M):
         sr["lg" + sd] = (0.096, 0.096)
         se += [("waist", "hp" + sd), ("hp" + sd, "lg" + sd)]
     out.append(clothing(M, "Shorts", sj, sr, se, "waist", M["shorts"]))
+    # regata: sem mangas, gola mais aberta
+    tank_j = {k: shirt_j[k] for k in ("hem", "spine", "chest")}
+    tank_j["collar"] = (0, 0, 1.43)
+    tank_r = {"hem": (0.188, 0.148), "spine": (0.164, 0.126), "chest": (0.2, 0.142), "collar": (0.13, 0.1)}
+    out.append(clothing(M, "Tank", tank_j, tank_r, [("hem", "spine"), ("spine", "chest"), ("chest", "collar")],
+                        "hem", M["shirt"]))
+    # listras da camiseta: anéis finos um pouco maiores que o tecido
+    for i, z in enumerate((1.12, 1.26)):
+        kz = (z - 0.98) / (1.36 - 0.98)
+        rx = 0.19 + (0.205 - 0.19) * kz + 0.01
+        ry = 0.15 + (0.146 - 0.15) * kz + 0.01
+        sj2 = {"a": (0, 0, z - 0.045), "b": (0, 0, z + 0.045)}
+        sr2 = {"a": (rx, ry), "b": (rx, ry)}
+        out.append(clothing(M, "Stripe%d" % i, sj2, sr2, [("a", "b")], "a", M["trim"]))
+    # bermuda: perna mais longa, até perto do joelho
+    bj = {"waist": (0, 0, 0.95)}
+    br = {"waist": (0.152, 0.116)}
+    be = []
+    for sd in (".R", ".L"):
+        bj["hp" + sd] = J["hip" + sd]
+        bj["lg" + sd] = _lerp(J["hip" + sd], J["knee" + sd], 0.86)
+        br["hp" + sd] = (0.102, 0.102)
+        br["lg" + sd] = (0.088, 0.088)
+        be += [("waist", "hp" + sd), ("hp" + sd, "lg" + sd)]
+    out.append(clothing(M, "Bermuda", bj, br, be, "waist", M["shorts"]))
+    # faixa da bermuda (cor de detalhe)
+    for sd in (".R", ".L"):
+        c = _lerp(J["hip" + sd], J["knee" + sd], 0.8)
+        d = _lerp(J["hip" + sd], J["knee" + sd], 0.86)
+        out.append(clothing(M, "BermudaBand" + sd, {"a": c, "b": d}, {"a": (0.093, 0.093), "b": (0.093, 0.093)},
+                            [("a", "b")], "a", M["trim"]))
     return out
 
 
@@ -322,21 +353,62 @@ def build_player():
     B.export("player")
 
 
+def _racket_handle(b, rim, grip):
+    b.cone((0, 0, 0.05), (0, 0, -1), 0.21, 0.024, 0.022, grip, seg=10)
+    b.cone((0, 0, -0.16), (0, 0, -1), 0.07, 0.028, 0.05, rim, seg=10)
+
+
+def _racket_holes(b, rim, pts, cz, step=0.055, y=0.035):
+    for ix, iz in pts:
+        for fy in (-1, 1):
+            b.sphere((ix * step, y * fy, cz + iz * step), 0.014, rim, seg=6, rings=4)
+
+
 def build_racket():
+    """Três modelos de raquete (mesmo cabo, cabeça centrada em z = -0.42)."""
+    holes = [(0, 0), (-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, 1), (-1, 1), (1, -1), (0, 2), (0, -2)]
+    # clássica: redonda
     B.reset_scene()
     racket = B.material("Racket", "#ff5fa2", 0.5)
     rim = B.material("RacketRim", "#1d1d2b", 0.5)
     grip = B.material("Grip", "#ffffff")
     b = B.Builder("Racket")
-    b.cone((0, 0, 0.05), (0, 0, -1), 0.21, 0.024, 0.022, grip, seg=10)
-    b.cone((0, 0, -0.16), (0, 0, -1), 0.07, 0.028, 0.05, rim, seg=10)
+    _racket_handle(b, rim, grip)
     b.sphere((0, 0, -0.42), 1.0, rim, scale=(0.15, 0.03, 0.19), seg=24, rings=10)
     b.sphere((0, 0, -0.42), 1.0, racket, scale=(0.14, 0.036, 0.178), seg=24, rings=10)
-    for ix, iz in [(0, 0), (-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, 1), (-1, 1), (1, -1), (0, 2), (0, -2)]:
-        for fy in (-1, 1):
-            b.sphere((ix * 0.055, 0.035 * fy, -0.42 + iz * 0.055), 0.014, rim, seg=6, rings=4)
+    _racket_holes(b, rim, holes, -0.42)
     b.build()
     B.export("racket")
+    # gota: cabeça mais longa e estreita, com detalhe claro (controle)
+    B.reset_scene()
+    racket = B.material("Racket", "#35e0a1", 0.5)
+    rim = B.material("RacketRim", "#1d1d2b", 0.5)
+    grip = B.material("Grip", "#ffffff")
+    deco = B.material("RacketDeco", "#ffffff", 0.5)
+    b = B.Builder("Racket")
+    _racket_handle(b, rim, grip)
+    b.sphere((0, 0, -0.44), 1.0, rim, scale=(0.13, 0.03, 0.215), seg=24, rings=10)
+    b.sphere((0, 0, -0.44), 1.0, racket, scale=(0.12, 0.036, 0.203), seg=24, rings=10)
+    b.sphere((0, 0, -0.3), 1.0, rim, scale=(0.07, 0.034, 0.06), seg=16, rings=8)
+    b.sphere((0, 0, -0.5), 1.0, deco, scale=(0.08, 0.038, 0.09), seg=20, rings=8)
+    _racket_holes(b, rim, [(0, 0), (0, 1), (0, -1), (0, 2), (-1, 0), (1, 0), (-1, 1), (1, 1), (0, -2), (0, 3)], -0.44,
+                  step=0.05)
+    b.build()
+    B.export("racket_gota")
+    # power: cabeça larga e mais grossa, aro duplo (força)
+    B.reset_scene()
+    racket = B.material("Racket", "#ff9f1c", 0.5)
+    rim = B.material("RacketRim", "#1d1d2b", 0.5)
+    grip = B.material("Grip", "#ffffff")
+    deco = B.material("RacketDeco", "#ffffff", 0.5)
+    b = B.Builder("Racket")
+    _racket_handle(b, rim, grip)
+    b.sphere((0, 0, -0.41), 1.0, rim, scale=(0.172, 0.036, 0.18), seg=28, rings=10)
+    b.sphere((0, 0, -0.41), 1.0, deco, scale=(0.162, 0.04, 0.17), seg=28, rings=10)
+    b.sphere((0, 0, -0.41), 1.0, racket, scale=(0.146, 0.044, 0.154), seg=28, rings=10)
+    _racket_holes(b, rim, holes + [(-2, 0), (2, 0)], -0.41, step=0.052, y=0.043)
+    b.build()
+    B.export("racket_power")
 
 
 # ---------------------------------------------------------------- plateia

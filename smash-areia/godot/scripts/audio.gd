@@ -203,9 +203,9 @@ func set_music_enabled(on: bool) -> void:
 		start_music()
 
 
-## Intensidade da música: 0 = só a base, 1 = percussão, 2 = tudo
+## Intensidade da música: 0 = só a base, 1 = percussão + um pouco do refrão, 2 = tudo
 func set_intensity(level: float) -> void:
-	stem_target = [1.0, clampf(level, 0.0, 1.0), clampf(level - 1.0, 0.0, 1.0)]
+	stem_target = [1.0, clampf(level, 0.0, 1.0), clampf((level - 0.5) / 1.5, 0.0, 1.0)]
 
 
 func set_crowd(level: float) -> void:

@@ -46,7 +46,8 @@ func _layout() -> void:
 		{"id": "smash", "type": Shots.SMASH, "pos": c + Vector2(d, 0), "r": r, "label": "SMASH", "color": Shots.COLORS[Shots.SMASH]},
 		{"id": "drop", "type": Shots.DROP, "pos": c + Vector2(0, d), "r": r, "label": "CURTA", "color": Shots.COLORS[Shots.DROP]},
 		{"id": "drive", "type": Shots.DRIVE, "pos": c + Vector2(-d, 0), "r": r, "label": "FORTE", "color": Shots.COLORS[Shots.DRIVE]},
-		{"id": "super", "type": -2, "pos": c + Vector2(-d * 1.55, -d * 1.3), "r": 36.0 * u, "label": "SUPER", "color": Color("ffe14d")},
+		# especial: botão grande de estrela logo acima do losango
+		{"id": "super", "type": -2, "pos": c + Vector2(0, -d * 2.3), "r": 48.0 * u, "label": "ESPECIAL", "color": Color("ffe14d")},
 		{"id": "defense", "type": Shots.DEFENSE, "pos": c + Vector2(-d * 2.15, -d * 0.05), "r": 36.0 * u, "label": "DEFESA", "color": Color("e8e2d4")},
 		{"id": "dive", "type": -1, "pos": c + Vector2(-d * 2.05, d * 1.1), "r": 34.0 * u, "label": "PEIXINHO", "color": Color("ffffff")},
 	]
@@ -168,24 +169,46 @@ func _text(center: Vector2, s: String, fs: int, col: Color, u: float, alpha := 1
 	draw_string(FONT, p, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
 
 
-## Botão do super golpe: enche com a barra de energia e brilha quando está pronto
+## Botão do especial: estrela que enche com a barra de energia e pulsa quando está pronto
 func _draw_super(b: Dictionary, u: float) -> void:
 	var p: Vector2 = b["pos"]
 	var r: float = b["r"]
 	var ready := super_fill >= 1.0
-	var a := PRESS_ALPHA if ready or pressed.has("super") else IDLE_ALPHA
-	var rr := r * (1.0 + (sin(t * 10.0) * 0.06 if ready else 0.0))
+	var lit := pressed.has("super")
+	var a := PRESS_ALPHA if ready or lit else IDLE_ALPHA + 0.1
+	var rr := r * (1.0 + (sin(t * 9.0) * 0.07 if ready else 0.0))
 	if ready:
-		var pts := PackedVector2Array()
-		for i in 20:
-			var ang := float(i) / 20.0 * TAU + t * 1.5
-			var k := 1.4 if i % 2 == 0 else 1.05
-			pts.append(p + Vector2(cos(ang), sin(ang)) * rr * k)
-		draw_colored_polygon(pts, Color(1.0, 0.9, 0.3, 0.45))
-	draw_circle(p, rr, Color(INK, 0.7 * a))
-	var base := Color("ffe14d") if ready else Color(0.56, 0.54, 0.64)
+		var rays := PackedVector2Array()
+		for i in 24:
+			var ang := float(i) / 24.0 * TAU + t * 1.2
+			var k := 1.55 if i % 2 == 0 else 1.08
+			rays.append(p + Vector2(cos(ang), sin(ang)) * rr * k)
+		draw_colored_polygon(rays, Color(1.0, 0.85, 0.25, 0.5))
+	draw_circle(p + Vector2(0, 4.0 * u), rr, Color(INK, 0.25 * a))
+	draw_circle(p, rr, Color(INK, 0.75 * a))
+	var base := Color("ff9f1c") if ready else Color(0.36, 0.33, 0.46)
 	base.a = a
 	draw_circle(p, rr - 3.5 * u, base)
-	if not ready and super_fill > 0.0:
-		draw_arc(p, rr - 7.0 * u, -PI * 0.5, -PI * 0.5 + TAU * super_fill, 32, Color(1.0, 0.88, 0.3, 0.9), 6.0 * u)
-	_text(p + Vector2(0, 2.0 * u), "SUPER", 16, Color(1, 1, 1, 0.95 if ready else 0.6), u, a)
+	# carga em volta
+	if not ready:
+		draw_arc(p, rr - 6.0 * u, -PI * 0.5, -PI * 0.5 + TAU * maxf(super_fill, 0.001), 40, Color(1.0, 0.88, 0.3, 0.95), 7.0 * u)
+	# estrela
+	var sc := p + Vector2(0, -7.0 * u)
+	var sr := rr * 0.62
+	var star := PackedVector2Array()
+	var outl := PackedVector2Array()
+	var rot := sin(t * 3.0) * 0.15 if ready else 0.0
+	for i in 10:
+		var ang := rot - PI * 0.5 + float(i) / 10.0 * TAU
+		var k := 1.0 if i % 2 == 0 else 0.45
+		star.append(sc + Vector2(cos(ang), sin(ang)) * sr * k)
+		outl.append(sc + Vector2(cos(ang), sin(ang)) * (sr * k + 3.5 * u))
+	draw_colored_polygon(outl, Color(INK, 0.8 * a))
+	var sf := Color("ffe14d") if ready else Color(1.0, 0.9, 0.5, 0.35 + 0.5 * super_fill)
+	sf.a *= a
+	draw_colored_polygon(star, sf)
+	_text(p + Vector2(0, rr * 0.62), "ESPECIAL", 15, Color(1, 1, 1, 1.0 if ready else 0.75), u, a)
+	if ready:
+		_text(p + Vector2(0, -rr - 14.0 * u), "PRONTO!", 20 + int(2.0 * sin(t * 9.0)), Color("ffe14d"), u, 1.0)
+	else:
+		_text(p + Vector2(0, -rr - 10.0 * u), "%d%%" % int(super_fill * 100.0), 15, Color(1, 1, 1, 0.6), u, 0.6)

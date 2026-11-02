@@ -563,20 +563,44 @@ def midi(m):
     return 440.0 * 2 ** ((m - 69) / 12)
 
 
+def steelpan(f, dur):
+    """Steel drum sintético: parciais quase harmônicas com decaimentos diferentes."""
+    t = T(dur)
+    f_t = f * (1 + 0.012 * np.exp(-t * 60))   # leve queda de afinação no ataque
+    ph = 2 * np.pi * np.cumsum(f_t) / SR
+    x = (np.sin(ph) * np.exp(-t * 3.2) + 0.55 * np.sin(2 * ph + 0.3) * np.exp(-t * 5.5)
+         + 0.28 * np.sin(3.01 * ph) * np.exp(-t * 9) + 0.12 * np.sin(4.03 * ph) * np.exp(-t * 14))
+    x += bp(noise(dur), 2000, 7000) * np.exp(-t * 90) * 0.15
+    return x * np.minimum(1, t / 0.003)
+
+
+def slap_bass(f, dur):
+    t = T(dur)
+    saw = signal.sawtooth(2 * np.pi * f * t) * 0.6 + np.sin(2 * np.pi * f * t)
+    # filtro que abre e fecha (ataque estalado)
+    bright = lp(saw, 2400, 2) * np.exp(-t * 18)
+    body = lp(saw, 600, 2)
+    return (body + bright * 0.8) * env_adsr(dur, 0.003, 0.12, 0.55, 0.06)
+
+
 def build_music():
-    bpm = 104
+    """Trilha de praia animada (samba-pop, 122 bpm, Fá maior) em 3 camadas:
+    base (uke, baixo, bumbo), perc (batucada do rali) e lead (refrão no steel drum)."""
+    bpm = 122
     beat = 60 / bpm
-    bars = 16
+    bars = 32
     dur = bars * 4 * beat
     n = int(SR * dur)
-    # progressão bossa/praia (I - vi - ii - V, com cor de 7ª e 9ª)
-    prog = [[60, 64, 67, 71, 74], [57, 60, 64, 67, 71], [62, 65, 69, 72, 76], [55, 59, 62, 65, 69]] * 2 + \
-           [[65, 69, 72, 76, 79], [64, 67, 71, 74, 77], [62, 65, 69, 72], [55, 59, 62, 65, 67]] * 2
-    roots = [36, 33, 38, 31] * 2 + [41, 40, 38, 31] * 2
+    F, C, Dm, Bb, Am, C7 = ([65, 69, 72], [64, 67, 72], [62, 65, 69], [62, 65, 70], [64, 69, 72], [64, 70, 72])
+    verse = [F, C, Dm, Bb] * 2
+    bridge = [Bb, C, Am, Dm, Bb, C, F, C7]
+    prog = verse + verse + bridge + verse
+    rmap = {id(F): 41, id(C): 36, id(Dm): 38, id(Bb): 34, id(Am): 33, id(C7): 36}
+    roots = [rmap[id(c)] for c in prog]
 
-    base_l, base_r = np.zeros(n + SR), np.zeros(n + SR)
-    perc_l, perc_r = np.zeros(n + SR), np.zeros(n + SR)
-    lead_l, lead_r = np.zeros(n + SR), np.zeros(n + SR)
+    base_l, base_r = np.zeros(n + SR * 2), np.zeros(n + SR * 2)
+    perc_l, perc_r = np.zeros(n + SR * 2), np.zeros(n + SR * 2)
+    lead_l, lead_r = np.zeros(n + SR * 2), np.zeros(n + SR * 2)
 
     def put(lbuf, rbuf, x, at, pan=0.0):
         s = max(0, int(at * SR))
@@ -584,67 +608,108 @@ def build_music():
         lbuf[s:e] += x[: e - s] * np.sqrt((1 - pan) / 2)
         rbuf[s:e] += x[: e - s] * np.sqrt((1 + pan) / 2)
 
-    # violão: batida de bossa (síncopas) com Karplus-Strong
-    comp = [0, 1.5, 2.5, 3.0]
     cache = {}
+
+    def uke(m, d=0.32):
+        key = ("u", m)
+        if key not in cache:
+            cache[key] = ks_string(midi(m), d, 0.990, 0.8) * env_adsr(d, 0.001, 0.08, 0.5, 0.12)
+        return cache[key]
+
+    def pan_note(m, d=0.9):
+        key = ("p", m)
+        if key not in cache:
+            cache[key] = steelpan(midi(m), d)
+        return cache[key]
+
+    kick_t = T(0.3)
+    KICK = np.sin(2 * np.pi * (50 + 110 * np.exp(-kick_t * 40)) * kick_t) * np.exp(-kick_t * 11)
+    KICK += bp(noise(0.3), 1500, 5000) * np.exp(-kick_t * 200) * 0.3
+    sn_t = T(0.2)
+    SNARE = bp(noise(0.2), 1200, 8000) * np.exp(-sn_t * 22) * 0.7 + np.sin(2 * np.pi * 190 * sn_t) * np.exp(-sn_t * 30) * 0.5
+
     for bar in range(bars):
+        b0 = bar * 4 * beat
         ch = prog[bar]
-        for hit_i, off in enumerate(comp):
-            strum = 0.012 if hit_i % 2 == 0 else 0.008
-            for k, m in enumerate(ch[1:]):
-                key = (m, hit_i % 2)
-                if key not in cache:
-                    cache[key] = ks_string(midi(m), 1.1, 0.994, 0.45) * env_adsr(1.1, 0.002, 0.3, 0.6, 0.3)
-                put(base_l, base_r, cache[key] * (0.16 if hit_i % 2 == 0 else 0.11), (bar * 4 + off) * beat + k * strum, -0.35)
-        # baixo
+        # cavaquinho/uke no contratempo (a "pegada" alegre)
+        for off in (0.5, 1.5, 2.5, 3.25, 3.5):
+            for k, m in enumerate(ch + [ch[0] + 12]):
+                put(base_l, base_r, uke(m) * (0.2 if off != 3.25 else 0.13), b0 + off * beat + k * 0.006, -0.4)
+        # baixo sincopado
         r = roots[bar]
-        for off, m, d in ((0, r, 1.4), (1.5, r + 7, 0.5), (2, r + 12 if bar % 2 else r, 1.0), (3.5, r + 7, 0.45)):
-            t = T(d)
-            f = midi(m)
-            b = (np.sin(2 * np.pi * f * t) + 0.35 * np.sin(4 * np.pi * f * t)) * env_adsr(d, 0.005, 0.15, 0.7, 0.1)
-            put(base_l, base_r, b * 0.42, (bar * 4 + off) * beat, 0.0)
-        # bumbo suave + aro
-        for off in (0, 2, 2.75):
-            t = T(0.25)
-            k = np.sin(2 * np.pi * (55 + 90 * np.exp(-t * 35)) * t) * np.exp(-t * 14)
-            put(base_l, base_r, k * 0.55, (bar * 4 + off) * beat)
+        for off, m, d in ((0, r, 0.42), (0.75, r + 12, 0.2), (1.5, r, 0.3), (2, r + 7, 0.4), (2.75, r + 12, 0.2),
+                          (3.5, r + 7 if bar % 2 else r + 4, 0.3)):
+            put(base_l, base_r, slap_bass(midi(m), d) * 0.34, b0 + off * beat)
+        # bumbo, caixa leve e chocalho
+        for off in (0, 1.75, 2):
+            put(base_l, base_r, KICK * (0.7 if off != 1.75 else 0.4), b0 + off * beat)
         for off in (1, 3):
-            rim = bp(noise(0.06), 1500, 5000) * env_exp(0.06, 0.008) + modal([1700], [0.02], [0.5], 0.06)
-            put(base_l, base_r, rim * 0.18, (bar * 4 + off) * beat, 0.2)
-    # percussão (camada de rali): chocalho, surdo, timbal e palmas
+            put(base_l, base_r, SNARE * 0.32, b0 + off * beat, 0.1)
+        for e8 in range(8):
+            sh = hp(noise(0.05), 7000) * env_exp(0.05, 0.01)
+            put(base_l, base_r, sh * (0.12 if e8 % 2 else 0.07), b0 + e8 * 0.5 * beat, 0.45)
+
+    # batucada do rali: surdo, tamborim, agogô, congas e palmas
+    TAMB = hp(bp(noise(0.06), 3000, 9000), 2500) * env_exp(0.06, 0.012) + modal([2600], [0.03], [0.4], 0.06)
+    tamb_pat = [1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0]
     for bar in range(bars):
-        for s16 in range(16):
-            at = (bar * 4 + s16 * 0.25) * beat
-            acc = 1.0 if s16 % 4 == 2 else (0.7 if s16 % 2 else 0.45)
-            sh = hp(noise(0.05), 6000) * env_exp(0.05, 0.012)
-            put(perc_l, perc_r, sh * 0.16 * acc, at + rng.uniform(-0.004, 0.004), 0.5)
-        for off, f in ((0, 70), (1, 90), (2, 70), (3.5, 90)):
-            t = T(0.5)
-            su = np.sin(2 * np.pi * f * t * (1 + 0.2 * np.exp(-t * 20))) * np.exp(-t * 6)
-            put(perc_l, perc_r, su * 0.42, (bar * 4 + off) * beat, -0.1)
-        for off in (0.75, 1.75, 2.5, 3.25, 3.75):
-            t = T(0.15)
-            tb = (np.sin(2 * np.pi * 320 * t) * np.exp(-t * 30) + bp(noise(0.15), 800, 3000) * np.exp(-t * 40) * 0.6)
-            put(perc_l, perc_r, tb * 0.2, (bar * 4 + off) * beat, -0.5)
+        b0 = bar * 4 * beat
+        for s16, on in enumerate(tamb_pat):
+            if on:
+                put(perc_l, perc_r, TAMB * (0.2 if s16 % 4 == 0 else 0.13), b0 + s16 * 0.25 * beat, 0.35)
+        for off, f, a in ((1, 62, 0.55), (3, 55, 0.7), (3.5, 62, 0.3)):
+            tt = T(0.55)
+            su = np.sin(2 * np.pi * f * tt * (1 + 0.25 * np.exp(-tt * 22))) * np.exp(-tt * 5)
+            put(perc_l, perc_r, su * a, b0 + off * beat, -0.1)
+        for off, f in ((0, 880), (0.75, 660), (1.5, 880), (2.5, 660), (3, 660)):
+            ag = fm_bell(f, 0.25, ratio=2.76, index=1.5) * 0.12
+            put(perc_l, perc_r, ag, b0 + off * beat, 0.55)
+        for off, f in ((0.5, 300), (1.25, 220), (2.5, 300), (3.25, 220), (3.75, 220)):
+            tt = T(0.16)
+            cg = np.sin(2 * np.pi * f * tt * (1 + 0.1 * np.exp(-tt * 40))) * np.exp(-tt * 24) + bp(noise(0.16), 500, 2500) * np.exp(-tt * 50) * 0.4
+            put(perc_l, perc_r, cg * 0.22, b0 + off * beat, -0.5)
         for off in (1, 3):
-            cl = sum(np.roll(pad(CLAPS[rng.integers(len(CLAPS))], int(SR * 0.05)), int(SR * j * 0.006)) for j in range(3))
-            put(perc_l, perc_r, cl * 0.35, (bar * 4 + off) * beat, 0.1)
-    # melodia (camada de clímax): marimba FM + metais curtos
-    mel = [76, None, 79, 81, None, 79, 76, None, 74, None, 76, None, 72, None, None, None,
-           77, None, 76, 74, None, 72, 74, None, 76, None, 74, 72, 71, None, 67, None]
-    for rep in range(bars // 4):
-        for i, m in enumerate(mel):
-            if m is None:
-                continue
-            at = (rep * 16 + i * 0.5) * beat
-            note = mix(fm_bell(midi(m), 0.7, ratio=4.0, index=1.2), 0.3 * fm_bell(midi(m + 12), 0.4, 4.0, 0.8))
-            put(lead_l, lead_r, note * 0.32, at, 0.25 if i % 2 else -0.25)
-        for bar_off in (3, 7, 11, 15):
-            at = (rep * 16 + bar_off) * beat
-            ch = prog[(rep * 4 + bar_off // 4) % bars]
-            t = T(0.35)
-            stab = sum(signal.sawtooth(2 * np.pi * midi(m) * t) for m in ch[1:4]) * env_adsr(0.35, 0.01, 0.1, 0.5, 0.15)
-            put(lead_l, lead_r, lp(stab, 2500) * 0.12, at, 0.0)
+            cl = sum(np.roll(pad(CLAPS[rng.integers(len(CLAPS))], int(SR * 0.05)), int(SR * j * 0.007)) for j in range(3))
+            put(perc_l, perc_r, cl * 0.3, b0 + off * beat, 0.05)
+        # virada de caixa e apito de samba no fim de cada parte
+        if bar % 8 == 7:
+            for s16 in range(8, 16):
+                put(perc_l, perc_r, SNARE * (0.12 + 0.03 * (s16 - 8)), b0 + s16 * 0.25 * beat, -0.15)
+            wh = pea_whistle(0.16, True)
+            for k in range(3):
+                put(perc_l, perc_r, wh * 0.22, b0 + (2 + k * 0.5) * beat, 0.2)
+
+    # refrão no steel drum (grudento) + metais na ponte
+    hook = [
+        [72, None, 72, 74, None, 77, None, 74, 72, None, 69, None, 72, 74, None, None],
+        [72, None, 72, 74, None, 77, None, 79, 81, None, 79, 77, None, 74, None, None],
+        [77, None, 76, 74, None, 72, None, 69, 70, None, 72, None, 74, None, 72, None],
+        [69, None, 72, None, 76, None, 79, 77, 77, None, None, None, None, None, 72, 74],
+    ]
+    def play_hook(start_bar, octave=0, vol=0.3):
+        for ph_i, ph in enumerate(hook):
+            for i, m in enumerate(ph):
+                if m is None:
+                    continue
+                at = ((start_bar + ph_i * 2) * 4 + i * 0.5) * beat
+                put(lead_l, lead_r, pan_note(m + octave) * vol, at, 0.2 if i % 2 else -0.2)
+                put(lead_l, lead_r, pan_note(m + octave) * vol * 0.35, at + beat * 0.75, 0.7)   # eco
+    play_hook(0, 0, 0.32)
+    play_hook(8, 0, 0.36)
+    play_hook(24, 0, 0.36)
+    for bar in range(16, 24):
+        ch = prog[bar]
+        b0 = bar * 4 * beat
+        # arpejo sincopado (3-3-2)
+        for k, off in enumerate((0, 0.75, 1.5, 2, 2.75, 3.5)):
+            m = (ch + [ch[0] + 12, ch[1] + 12])[k % 5] + 12
+            put(lead_l, lead_r, pan_note(m, 0.5) * 0.18, b0 + off * beat, -0.3 if k % 2 else 0.3)
+        # metais curtos
+        for off in (1.5, 3.5) if bar % 2 == 0 else (0.5, 2.5):
+            tt = T(0.22)
+            stab = sum(signal.sawtooth(2 * np.pi * midi(m) * tt) + signal.sawtooth(2 * np.pi * midi(m) * 1.005 * tt) for m in ch)
+            stab = lp(stab, 3200) * env_adsr(0.22, 0.008, 0.06, 0.6, 0.08)
+            put(lead_l, lead_r, stab * 0.07, b0 + off * beat, 0.0)
 
     def finish(lb, rb):
         x = np.stack([lb, rb], axis=1)

@@ -9,9 +9,27 @@ smash com pulo e onomatopeias de quadrinho.
 (Android 7+, arm64 e armv7). Baixe no celular, permita "instalar apps
 desconhecidos" e abra. O jogo roda deitado (paisagem).
 
-| Menu | 1 jogador | VS em tela dividida | VS em tela dividida |
+| Personagens | Vestiário | 1 jogador | VS em tela dividida |
 |---|---|---|---|
-| ![menu](docs/menu.jpg) | ![smash](docs/smash.jpg) | ![chance](docs/chance.jpg) | ![comemoracao](docs/comemoracao.jpg) |
+| ![personagens](docs/personagens.jpg) | ![vestiario](docs/vestiario.jpg) | ![smash](docs/smash.jpg) | ![comemoracao](docs/comemoracao.jpg) |
+
+## Menus
+
+1. **Título** com logo de gibi, raios girando e os quatro personagens. Qualquer toque ou botão entra.
+2. **Modo**: três painéis (1 JOGADOR, VERSUS, CO-OP) que mostram quem joga contra quem.
+3. **Personagens**: cards com retrato, atributos em barrinhas e o nome do especial. No 2P o J1
+   escolhe primeiro e depois o J2 (marcadores J1/J2 em cima dos cards). Na mesma tela: nível da CPU,
+   tamanho da partida e música.
+4. **Vestiário**: prévia 3D girando de cada jogador e a escolha de
+   - **roupa**: camiseta, regata, listrada (com bermuda) ou atleta;
+   - **cores**: 3 paletas por time, sempre no tom da dupla para não confundir em quadra;
+   - **raquete**: CLÁSSICA (equilibrada), GOTA (+ controle) ou POWER (+ força). Cada modelo tem
+     formato próprio (redonda, cabeça longa ou cabeça larga com aro duplo) e muda força e controle;
+   - **cor da raquete**: a do personagem ou uma de 8 cores.
+
+   Os parceiros e adversários da CPU sorteiam roupa, cores e raquete a cada partida.
+
+Tudo funciona no toque, no mouse, no teclado e no controle (D-pad + A, B volta).
 
 ### Vídeo: 1 minuto de partida (com som)
 
@@ -33,13 +51,14 @@ ffmpeg -i partida.avi -vf scale=1024:-2 -c:v libx264 -crf 30 -c:a aac docs/parti
 | **VS (2P)** | J1 contra J2, cada um com um parceiro da IA, em **tela dividida**: cada jogador tem a sua câmera atrás da própria dupla. |
 | **CO-OP (2P)** | J1 e J2 na mesma dupla contra a IA, numa tela só. |
 
+- **Botões de toque somem sozinhos** quando o J1 joga no controle e voltam ao tocar na tela.
 - **Controles (gamepad)**: com 2 controles conectados, cada jogador usa um. Com 1 controle, o J2 fica
   com ele e o J1 joga no teclado (ou toque no modo co-op). No celular, o VS precisa de dois
   controles Bluetooth, porque os botões de toque somem na tela dividida.
 - Mapeamento do controle: **A** forte, **X** lob, **B** curta, **Y** smash, **RT** defesa,
-  **RB** super, **LB** (ou LT) peixinho, **Start** pausa, analógico ou D-pad para correr e mirar.
+  **RB** especial, **LB** (ou LT) peixinho, **Start** pausa, analógico ou D-pad para correr e mirar.
 - O J2 também pode jogar no teclado: setas, `N` forte, `M` lob, `,` curta, `.` smash, `/` defesa,
-  `B` super e `V` peixinho.
+  `B` especial e `V` peixinho.
 - Os menus funcionam no controle (D-pad + A). Cada jogador humano tem um marcador "J1"/"J2" em cima.
 - O controle **vibra** nas batidas (mais forte no smash, no super e quando você é empurrado), e dá
   para conectar ou desconectar controles no meio da partida: os jogadores são redistribuídos na hora.
@@ -53,6 +72,11 @@ As regras são de beach tennis:
 - Bola que cai **fora** é ponto de quem não bateu por último. Bola na rede é ponto do outro lado.
 - **Saque único**, sem segunda chance.
 - Contagem de tênis (0, 15, 30, 40) com **ponto de ouro** no 40-40. A partida vai até 2 games (rápida) ou 4 games (normal).
+- **Saque em rodízio**: as duplas alternam o saque a cada game, e dentro da dupla os dois jogadores
+  se revezam (no seu time, você e o parceiro sacam em games alternados).
+- **Placar**: cada dupla mostra os próprios pontos em destaque (pisca quando pontua), os games
+  ganhos em bolinhas, a bolinha de SAQUE e a barra do especial. A cada ponto aparece o motivo
+  ("CAIU NA AREIA DOS SIRIS", "MANDARAM FORA", "NA REDE").
 
 ### Controles (toque)
 
@@ -65,7 +89,7 @@ As regras são de beach tennis:
 | **SMASH** | Com a bola alta, o boneco **pula e crava** no tempo certo. Com a bola baixa vira uma pancada. Perto da rede é quase indefensável, do fundo sai mais lento. |
 | **DEFESA** | Devolve uma bola alta, funda e segura no meio da quadra. Alcança mais longe e aguenta pancada (bloqueio). |
 | **PEIXINHO** | Mergulho para salvar bola longe. Rebate sozinho uma defesa alta. |
-| **SUPER** | Acende quando a barra de energia enche: solta o super golpe do seu personagem. |
+| **ESPECIAL** (estrela grande acima do losango) | Enche junto com a barra ESPECIAL do placar (mostra a %) e pulsa com "PRONTO!" quando está cheia: solta o golpe especial do seu personagem. Também aparece um aviso na tela dizendo qual botão apertar (RB, U ou a estrela). |
 
 ### Efeito, golpe carregado, chance e super (inspirado nos tênis arcade)
 
@@ -164,9 +188,11 @@ gravados da Kenney (CC0, em `tools/kenney/`), e um mixer dinâmico em `scripts/a
 - **Apito de juiz** com "ervilha" (trinado irregular perto de 3 kHz).
 - **Torcida**: murmúrio de dezenas de vozes por formantes, aplauso feito de centenas de palmas
   individuais, assobios, "uhhh!" nos lances perigosos e "aaah..." na decepção.
-- **Música adaptativa** (104 bpm, bossa/praia): violão em Karplus-Strong, baixo, percussão e melodia
-  em três camadas sincronizadas. A base toca sempre, a percussão entra no rali e a melodia nos ralis
-  longos ou com o super pronto. Na pausa e no replay a música fica abafada.
+- **Música adaptativa** (samba-pop de praia, 122 bpm, 1 minuto em loop): cavaquinho/uke no
+  contratempo em Karplus-Strong, baixo "slap", batucada (surdo, tamborim, agogô, congas, palmas,
+  apito de samba) e um refrão grudento de **steel drum** com eco, com ponte de arpejos e metais.
+  Três camadas sincronizadas: a base toca sempre, a batucada e um pouco do refrão entram no rali e o
+  refrão completo nos ralis longos, com o especial pronto e no menu. Na pausa e no replay a música fica abafada.
 - **Mixagem**: buses de Música, Efeitos (reverb), Torcida e Interface, com compressor e limitador no
   master. Golpes, areia e rede soam em 3D, de onde acontecem, e a torcida cresce com a emoção do rali.
 
@@ -198,7 +224,7 @@ smash-areia/
         ├── ball.gd           # bola com efeito, trajetória pré-simulada (previsão exata), rastros
         ├── world.gd          # praia, quadra, juiz, arquibancadas com torcida, placas, bandeiras, horizonte
         ├── hud.gd            # menu com prévia 3D, placar com barras de energia, pausa, fim de jogo
-        ├── touch_controls.gd # analógico flutuante e botões multi-touch (com SUPER)
+        ├── touch_controls.gd # analógico flutuante e botões multi-touch (com a estrela ESPECIAL)
         ├── comic_fx.gd       # letreiros pequenos, linhas de velocidade, flash
         └── toon.gd, game_data.gd
 ```
@@ -229,7 +255,7 @@ smash-areia/
 - **Areia viva**: pegadas que somem com o tempo, marca do mergulho, onda de areia quando a bola
   cai, confete nos pontos (chuva maior no game) e vinheta suave de cinema nas bordas.
 - **Controles de toque** compactos e semitransparentes (acendem ao tocar), com o losango de golpes no
-  canto e SUPER, DEFESA e PEIXINHO num arco ao lado.
+  canto, a estrela ESPECIAL logo acima e DEFESA e PEIXINHO ao lado.
 - Letreiros **pequenos e rápidos**, só nos lances especiais. Nas batidas comuns entram faíscas e
   uma estrela de impacto 3D da cor do golpe.
 
@@ -248,6 +274,12 @@ GODOT=/caminho/godot BLENDER_PY=python3 tools/build_apk.sh
 ```
 
 Para rodar no PC, abra `godot/project.godot` no editor e aperte F5.
+
+Retratos dos cards (`godot/assets/ui/char_N.png`), renderizados pelo próprio jogo e recortados:
+
+```sh
+godot --path godot --resolution 720x720 -- --char=N --portrait=/tmp/card_N.png   # "card" no nome = enquadramento 3/4
+```
 
 ### Testes automáticos
 

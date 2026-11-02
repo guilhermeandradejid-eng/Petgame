@@ -7,7 +7,8 @@ extends Node3D
 enum State { NORMAL, DIVE, RECOVER, CELEBRATE, SAD, KNOCK }
 
 const MODEL := preload("res://assets/models/player.glb")
-const RACKET := preload("res://assets/models/racket.glb")
+const RACKETS := [preload("res://assets/models/racket.glb"), preload("res://assets/models/racket_gota.glb"),
+	preload("res://assets/models/racket_power.glb")]
 const FONT := preload("res://assets/fonts/Bangers.woff")
 const BASE_SPEED := 6.4
 const REACH := 1.25
@@ -100,8 +101,12 @@ var racket_grip := Vector3.ZERO
 var racket_axis := Vector3.UP
 
 
-func setup(char_data: Dictionary, team_index: int, human: bool) -> void:
-	data = char_data
+var look := {}
+
+
+func setup(char_data: Dictionary, team_index: int, human: bool, look_data: Dictionary = {}) -> void:
+	look = look_data
+	data = GameData.with_racket(char_data, look)
 	team = team_index
 	side = 1.0 if team == 0 else -1.0
 	is_human = human
@@ -109,7 +114,7 @@ func setup(char_data: Dictionary, team_index: int, human: bool) -> void:
 
 
 ## Cria o boneco com a paleta de um personagem/time. Usado também pelo juiz e pela prévia.
-static func make_model(char_data: Dictionary, team_data: Dictionary) -> Dictionary:
+static func make_model(char_data: Dictionary, team_data: Dictionary, lk: Dictionary = {}, team_i := 0) -> Dictionary:
 	var m: Node3D = MODEL.instantiate()
 	m.scale = Vector3.ONE * GameData.CHAR_SCALE
 	var sk := _find_skeleton(m)
@@ -117,9 +122,17 @@ static func make_model(char_data: Dictionary, team_data: Dictionary) -> Dictiona
 		var n := m.find_child(h, true, false)
 		if n:
 			(n as Node3D).visible = (h == char_data.get("hair", ""))
+	# roupa e paleta escolhidas no vestiário
+	var outfit: Dictionary = GameData.OUTFITS[clampi(int(lk.get("outfit", 0)), 0, GameData.OUTFITS.size() - 1)]
+	for part in GameData.CLOTH_PARTS:
+		var cn := m.find_child(part, true, false)
+		if cn:
+			(cn as Node3D).visible = part in outfit["parts"]
+	var pals: Array = GameData.PALETTES[team_i]
+	var pal: Dictionary = pals[clampi(int(lk.get("palette", 0)), 0, pals.size() - 1)] if lk.has("palette") else team_data
 	var palette := {
 		"Skin": char_data["skin"], "Hair": char_data["hair_color"], "Band": char_data["accent"],
-		"Shirt": team_data["shirt"], "ShirtTrim": team_data["trim"], "Shorts": team_data["shorts"],
+		"Shirt": pal["shirt"], "ShirtTrim": pal["trim"], "Shorts": pal["shorts"],
 	}
 	var soft := {"halftone": 0.0, "shadow": Color(0.86, 0.72, 0.8), "rim": 0.45}
 	var flat := {"halftone": 0.0, "outline": 0.0, "rim": 0.0}
@@ -129,8 +142,10 @@ static func make_model(char_data: Dictionary, team_data: Dictionary) -> Dictiona
 	var r := Rig.new(sk)
 	# a raquete é orientada por código a cada frame (cabeça para cima na espera,
 	# face virada para onde o golpe vai), sem depender da torção dos ossos
-	var rk: Node3D = RACKET.instantiate()
-	Toon.apply(rk, {"Racket": char_data.get("racket", Color.WHITE)}, {"outline": 0.014, "rim": 0.5, "halftone": 0.0})
+	var rk: Node3D = (RACKETS[clampi(int(lk.get("racket", 0)), 0, RACKETS.size() - 1)] as PackedScene).instantiate()
+	var rc := GameData.racket_color(char_data, lk)
+	Toon.apply(rk, {"Racket": rc, "RacketDeco": rc.lightened(0.55) if rc.v < 0.9 else rc.darkened(0.4)},
+		{"outline": 0.014, "rim": 0.5, "halftone": 0.0})
 	rk.top_level = true
 	m.add_child(rk)
 	return {"model": m, "rig": r, "racket": rk, "skeleton": sk}
@@ -149,7 +164,7 @@ static func _find_skeleton(n: Node) -> Skeleton3D:
 func _build_model() -> void:
 	body = Node3D.new()
 	add_child(body)
-	var mm := make_model(data, GameData.TEAMS[team])
+	var mm := make_model(data, GameData.TEAMS[team], look, team)
 	model = mm["model"]
 	rig = mm["rig"]
 	racket = mm["racket"]

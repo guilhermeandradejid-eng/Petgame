@@ -46,6 +46,39 @@ const LENGTHS := [
 	{"name": "NORMAL", "games": 4},
 ]
 
+## Roupas: peças visíveis do modelo (a cor vem da paleta do time)
+const OUTFITS := [
+	{"name": "CAMISETA", "parts": ["Shirt", "Shorts"]},
+	{"name": "REGATA", "parts": ["Tank", "Shorts"]},
+	{"name": "LISTRADA", "parts": ["Shirt", "Stripe0", "Stripe1", "Bermuda", "BermudaBand.R", "BermudaBand.L"]},
+	{"name": "ATLETA", "parts": ["Tank", "Stripe1", "Bermuda", "BermudaBand.R", "BermudaBand.L"]},
+]
+const CLOTH_PARTS := ["Shirt", "Tank", "Stripe0", "Stripe1", "Shorts", "Bermuda", "BermudaBand.R", "BermudaBand.L"]
+
+## Paletas de cada time (camisa, detalhe, short): sempre no tom do time
+const PALETTES := [
+	[
+		{"name": "AZUL", "shirt": Color("2f8cff"), "trim": Color("ffffff"), "shorts": Color("ffd23f")},
+		{"name": "MARINHO", "shirt": Color("2346b8"), "trim": Color("4fe0ff"), "shorts": Color("ffffff")},
+		{"name": "CÉU", "shirt": Color("5cc8ff"), "trim": Color("1f3a8a"), "shorts": Color("1f3a8a")},
+	],
+	[
+		{"name": "VERMELHO", "shirt": Color("ff4b3e"), "trim": Color("ffe14d"), "shorts": Color("26304f")},
+		{"name": "LARANJA", "shirt": Color("ff7a2e"), "trim": Color("ffffff"), "shorts": Color("c81e3a")},
+		{"name": "CEREJA", "shirt": Color("d62246"), "trim": Color("ffd23f"), "shorts": Color("ffffff")},
+	],
+]
+
+## Raquetes: modelo + pequeno ajuste de força/controle
+const RACKETS := [
+	{"name": "CLÁSSICA", "desc": "EQUILIBRADA", "power": 1.0, "control": 1.0},
+	{"name": "GOTA", "desc": "+ CONTROLE", "power": 0.95, "control": 1.07},
+	{"name": "POWER", "desc": "+ FORÇA", "power": 1.07, "control": 0.95},
+]
+const RACKET_COLORS := [Color("ff5fa2"), Color("35e0a1"), Color("ffd23f"), Color("9b5de5"),
+	Color("ff9f1c"), Color("19d3ff"), Color("f4f1ea"), Color("2b2b3a")]
+const RACKET_COLOR_NAMES := ["ROSA", "VERDE", "AMARELA", "ROXA", "LARANJA", "CIANO", "BRANCA", "PRETA"]
+
 const POINT_NAMES := ["0", "15", "30", "40"]
 
 static var char_index := 0
@@ -54,3 +87,22 @@ static var mode := "solo"      # solo, vs (tela dividida), coop
 static var difficulty := 1
 static var length_index := 0
 static var music_on := true
+# visual escolhido no vestiário por J1 e J2: roupa, paleta, raquete e cor (-1 = cor do personagem)
+static var looks := [
+	{"outfit": 0, "palette": 0, "racket": 0, "racket_color": -1},
+	{"outfit": 1, "palette": 0, "racket": 1, "racket_color": -1},
+]
+
+
+static func racket_color(char_data: Dictionary, look: Dictionary) -> Color:
+	var i: int = look.get("racket_color", -1)
+	return RACKET_COLORS[i] if i >= 0 else char_data.get("racket", Color.WHITE)
+
+
+## Dados do personagem com o ajuste da raquete aplicado
+static func with_racket(char_data: Dictionary, look: Dictionary) -> Dictionary:
+	var d := char_data.duplicate()
+	var r: Dictionary = RACKETS[clampi(int(look.get("racket", 0)), 0, RACKETS.size() - 1)]
+	d["power"] = float(d["power"]) * float(r["power"])
+	d["control"] = float(d["control"]) * float(r["control"])
+	return d
