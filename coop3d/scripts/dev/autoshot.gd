@@ -23,7 +23,7 @@ func _ready() -> void:
 			steps = a.substr(8)
 	if target != "title":
 		Game.coop = true
-		Game.current_level = int(target) - 1
+		Game.current_level = int(target)
 		get_tree().change_scene_to_file.call_deferred("res://scenes/level.tscn")
 
 

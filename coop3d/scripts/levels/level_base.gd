@@ -35,6 +35,8 @@ var checkpoint_up := Vector3.UP
 var done := false
 var sky_colors := {}
 var music_seed := 0
+## Phones/tablets get lighter scenery (fewer grass blades, cheaper effects).
+var low_spec := OS.has_feature("mobile") or OS.has_feature("web")
 
 var _channels := {}  # name -> {source_id: bool}
 var _channel_colors := {}
@@ -61,6 +63,8 @@ func _ready() -> void:
 	hud.restart_requested.connect(func(): Game.play_level(Game.current_level))
 	hud.menu_requested.connect(func(): Game.to_title())
 	hud.next_requested.connect(_on_next)
+	if DisplayServer.is_touchscreen_available() or OS.has_feature("mobile") or "--touch" in OS.get_cmdline_user_args():
+		hud.add_child(TouchControls.new())
 	var info: Dictionary = Game.LEVELS[Game.current_level]
 	hud.title_card(info["title"], info["sub"])
 	for s in get_tree().get_nodes_in_group("spark"):
@@ -366,7 +370,7 @@ func _build_environment() -> void:
 	env.fog_density = 0.0022
 	env.fog_sky_affect = 0.0
 	env.fog_aerial_perspective = 0.25
-	env.ssao_enabled = true
+	env.ssao_enabled = not low_spec
 	env.ssao_intensity = 1.2
 	env.adjustment_enabled = true
 	env.adjustment_saturation = 1.12
@@ -381,15 +385,15 @@ func _build_environment() -> void:
 	_sun.light_energy = 1.25
 	_sun.shadow_enabled = true
 	_sun.shadow_blur = 1.5
-	_sun.directional_shadow_max_distance = 80.0
-	_sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+	_sun.directional_shadow_max_distance = 50.0 if low_spec else 80.0
+	_sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if low_spec else DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	add_child(_sun)
 
 	_sea = MeshInstance3D.new()
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(900, 900)
-	pm.subdivide_width = 150
-	pm.subdivide_depth = 150
+	pm.subdivide_width = 70 if low_spec else 150
+	pm.subdivide_depth = 70 if low_spec else 150
 	_sea.mesh = pm
 	var smat := ShaderMaterial.new()
 	smat.shader = CLOUD_SEA
@@ -402,8 +406,9 @@ func _build_environment() -> void:
 	add_child(_sea)
 
 	# far-away floating islets for depth and parallax
-	for i in 14:
-		var a := TAU * i / 14.0 + _rng.randf() * 0.3
+	var far_n := 7 if low_spec else 14
+	for i in far_n:
+		var a := TAU * i / float(far_n) + _rng.randf() * 0.3
 		var d := _rng.randf_range(130.0, 230.0)
 		var m := ISLAND.instantiate()
 		var r := _rng.randf_range(5.0, 14.0)
@@ -442,8 +447,8 @@ func island(pos: Vector3, r: float, depth := -1.0, style := "meadow", grass := t
 	cs.shape = sh
 	body.add_child(cs)
 	if grass:
-		_grass_disc(pos, r, sy, int(r * r * 9.0))
-		_flowers_disc(pos, r, sy, int(r * 1.2))
+		_grass_disc(pos, r, sy, int(r * r * (3.0 if low_spec else 9.0)))
+		_flowers_disc(pos, r, sy, int(r * (0.5 if low_spec else 1.2)))
 	return body
 
 
@@ -855,7 +860,7 @@ func planet(center: Vector3, r: float, style := "planet", grass := true) -> Plan
 	p.setup(self, r, style)
 	if grass:
 		var xf := []
-		var n := int(r * r * 14.0)
+		var n := int(r * r * (5.0 if low_spec else 14.0))
 		for i in n:
 			var d := Vector3(_rng.randf_range(-1, 1), _rng.randf_range(-1, 1), _rng.randf_range(-1, 1))
 			if d.length() < 0.05:

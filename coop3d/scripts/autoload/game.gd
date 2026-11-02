@@ -24,6 +24,7 @@ const CHARACTERS := [
 ]
 
 const LEVELS := [
+	{"title": "Campo de Treino", "script": "res://scripts/levels/level_test.gd", "sub": "Todas as mecânicas numa fase só"},
 	{"title": "Prado das Lanternas", "script": "res://scripts/levels/level_1.gd", "sub": "Aprendam a se ajudar"},
 	{"title": "Jardim Orbital", "script": "res://scripts/levels/level_2.gd", "sub": "Pequenos planetas, grandes saltos"},
 	{"title": "Ruínas da Fenda", "script": "res://scripts/levels/level_3.gd", "sub": "Fendas, marés e relógios"},

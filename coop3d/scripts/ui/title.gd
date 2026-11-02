@@ -98,8 +98,12 @@ func _build_ui() -> void:
 	_menu.custom_minimum_size = Vector2(460, 0)
 	_menu.add_theme_constant_override("separation", 12)
 	_ui.add_child(_menu)
-	_add_btn(_menu, "Jogar Coop (2 jogadores)", func(): _start(true))
-	_add_btn(_menu, "Jogar Solo (troca com Tab)", func(): _start(false))
+	if OS.has_feature("mobile"):
+		_add_btn(_menu, "Jogar Solo (botão Trocar)", func(): _start(false))
+		_add_btn(_menu, "Jogar Coop (2 controles)", func(): _start(true))
+	else:
+		_add_btn(_menu, "Jogar Coop (2 jogadores)", func(): _start(true))
+		_add_btn(_menu, "Jogar Solo (troca com Tab)", func(): _start(false))
 	_add_btn(_menu, "Escolher fase", _show_levels)
 	_add_btn(_menu, "Controles", _show_controls)
 	_add_btn(_menu, "Sair", func(): get_tree().quit())
@@ -134,7 +138,7 @@ func _add_btn(parent: Control, text: String, cb: Callable) -> Button:
 
 func _start(coop: bool) -> void:
 	Game.coop = coop
-	Game.play_level(clampi(Game.unlocked - 1, 0, Game.LEVELS.size() - 1) if Game.best.size() > 0 else 0)
+	Game.play_level(0)  # demo: always start at the training stage
 
 
 func _close_panel() -> void:

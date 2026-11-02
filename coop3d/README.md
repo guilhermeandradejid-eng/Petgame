@@ -17,6 +17,7 @@ Os dois têm dash, pulo longo (dash + pulo) e ground pound. Quem cai do mapa vir
 
 ## Fases
 
+0. **Campo de Treino** (demo): todas as mecânicas numa fase compacta.
 1. **Prado das Lanternas** (tutorial coop): duas placas abrem um portão; o Bolota arremessa a Lumi numa torre enquanto segura uma placa pesada; um caixote faz o papel de um herói; Espinhudos; corrente de ar para a Lumi planar e Elo de Luz para puxar o Bolota.
 2. **Jardim Orbital**: planetoides com gravidade esférica. Placas em lados opostos de um planeta, corrida contra um interruptor temporizado em volta de outro, e luas gêmeas cujos campos de gravidade se tocam.
 3. **Ruínas da Fenda**: ponte de luz temporizada, fendas mantidas abertas pelos dois lados, escadaria de **blocos de maré** (um alterna, o outro sobe) e placas em ilhas distantes.
@@ -45,6 +46,27 @@ Cada fase tem 3 **Sementes Estelares** escondidas e faíscas para coletar.
 2. Abra `coop3d/project.godot` no Godot e aperte F5.
 
 O projeto usa o renderizador Forward+ e cai para Compatibility/OpenGL automaticamente quando o Vulkan não está disponível.
+
+## Demo para Android (APK)
+
+O APK da demo fica em [`build/LumiBolota-demo.apk`](../build/LumiBolota-demo.apk). Ele é arm64, tem cerca de 37 MB e é assinado com uma chave de debug (v2/v3).
+
+- Começa no **Campo de Treino**, uma fase compacta com todas as mecânicas: pulo, pulo duplo e planar; dash e pulo longo; duas placas e um portão; arremesso até a torre com placa pesada; caixote; Espinhudo; cogumelo; ponte temporizada; fenda; ventilador com Elo de Luz; blocos de maré; planetinha com anéis de lançamento; Flor Estelar.
+- **Controles de toque:** joystick flutuante à esquerda; botões Pular, Dash, Erguer/Elo, Pound e Trocar à direita; arrastar no lado direito gira a câmera.
+- No celular o modo solo vem primeiro (o botão Trocar alterna entre Lumi e Bolota). Com dois controles Bluetooth dá para jogar em coop.
+- O renderizador é Compatibility (OpenGL ES 3), com grama, sombras e cenário reduzidos para rodar em mais aparelhos.
+
+Para instalar, copie o APK para o celular, permita "instalar apps de fontes desconhecidas" e abra o arquivo. Pelo PC: `adb install build/LumiBolota-demo.apk`.
+
+Para gerar de novo, instale os export templates do Godot 4.7.2 e um Android SDK, depois:
+
+```sh
+godot --headless --path coop3d --export-release "Android" ../build/unsigned.apk
+# assine com o apksigner do SDK ou com o uber-apk-signer:
+java -jar uber-apk-signer.jar -a build/unsigned.apk
+```
+
+O preset fica em `coop3d/export_presets.cfg`: arm64-v8a, sem Gradle, pacote `com.lumibolota.demo`.
 
 ## Estrutura
 
@@ -85,9 +107,9 @@ O rig depende dos nomes dos pivôs (`Hips`, `Head`, `ArmL`, `EarL`, `Tail1`, `Ca
 # compila todos os scripts
 godot --headless --path coop3d res://tools/check.tscn
 # testa as mecânicas de cada fase com entradas simuladas
-godot --headless --path coop3d -- --playtest --level=1   # (2, 3)
+godot --headless --path coop3d -- --playtest --level=0   # 0 = Campo de Treino, 1..3 = fases
 # screenshot de uma fase depois de N frames
-godot --path coop3d -- --shot=2 --out=/tmp/fase2.png --frames=120
+godot --path coop3d -- --shot=2 --out=/tmp/fase2.png --frames=120 [--touch]
 ```
 
 O playtest confere, por exemplo, alturas de pulo, pulo duplo, arremesso até a torre, placas e portões, placa pesada, ground pound, caixote na placa, Elo de Luz, corrente de ar, bolha de resgate, gravidade esférica, troca de gravidade entre luas, anéis de lançamento, fendas, maré e a Flor Estelar exigindo os dois heróis.

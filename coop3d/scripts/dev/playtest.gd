@@ -16,13 +16,15 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--level="):
 			which = int(a.substr(8))
-	Game.current_level = which - 1
+	Game.current_level = which
 	get_tree().change_scene_to_file.call_deferred("res://scenes/level.tscn")
 	await get_tree().create_timer(1.0).timeout
 	level = get_tree().current_scene.get_node("Level")
 	lumi = level.players[0]
 	bolota = level.players[1]
-	if which == 1:
+	if which == 0:
+		await _run0()
+	elif which == 1:
 		await _run()
 	elif which == 2:
 		await _run2()
@@ -362,3 +364,76 @@ func _run3() -> void:
 	await frames(30)
 	var g: Gate = of_type(Gate)[0]
 	check("plates on two islands open final gate", g.opened)
+
+
+func _run0() -> void:
+	# walk the whole first island onto the bridge after opening the gate
+	place(lumi, Vector3(-5, 0.4, -4))
+	place(bolota, Vector3(5, 0.4, -4))
+	await frames(30)
+	check("T: plates open gate", of_type(Gate)[0].opened)
+	place(lumi, Vector3(0, 0.4, -6))
+	press(0, "fwd")
+	await frames(150)
+	release(0, "fwd")
+	check("T: walk over bridge to island B", lumi.global_position.z < -19.0 and lumi.global_position.y > -0.5, "p=%s" % lumi.global_position)
+	# throw onto tower
+	place(bolota, Vector3(-4.5, 0.4, -26.5))
+	place(lumi, Vector3(-5.0, 0.4, -26.0))
+	bolota.facing = Vector3.FORWARD
+	await frames(10)
+	await tap(1, "grab")
+	await frames(5)
+	await tap(1, "grab")
+	await frames(28)
+	press(0, "fwd")
+	await frames(26)
+	release(0, "fwd")
+	await frames(60)
+	check("T: lumi on tower plate", level.channel("c"), "p=%s" % lumi.global_position)
+	place(bolota, Vector3(4.5, 0.4, -26))
+	await frames(20)
+	check("T: second gate", of_type(Gate)[1].opened)
+	# timed bridge
+	var sw: PoundSwitch = of_type(PoundSwitch)[0]
+	place(lumi, Vector3(0, 0.4, -55))
+	place(bolota, sw.global_position + Vector3(0, 3, 0))
+	await frames(3)
+	await tap(1, "pound")
+	await frames(20)
+	press(0, "fwd")
+	await frames(110)
+	release(0, "fwd")
+	check("T: crossed timed bridge to D", lumi.global_position.z < -66.0 and lumi.global_position.y > -0.5, "p=%s" % lumi.global_position)
+	# fan + tether
+	place(bolota, Vector3(0, 0.4, -75))
+	place(lumi, Vector3(0, 1.0, -78.5))
+	press(0, "jump")
+	await frames(10)
+	release(0, "jump")
+	await frames(20)
+	press(0, "jump")
+	await frames(130)
+	press(0, "fwd")
+	await frames(60)
+	release(0, "fwd")
+	release(0, "jump")
+	await frames(60)
+	check("T: lumi reached high island via fan", lumi.global_position.y > 8.5 and lumi.is_on_floor(), "p=%s" % lumi.global_position)
+	await tap(0, "grab")
+	await frames(60)
+	check("T: tether pulls bolota up", bolota.global_position.y > 8.0, "p=%s" % bolota.global_position)
+	# ring -> planet -> ring -> goal
+	var rings := of_type(LaunchRing)
+	place(lumi, rings[0].global_position + Vector3(0, 0.4, 0))
+	await frames(140)
+	var p: Planetoid = of_type(Planetoid)[0]
+	check("T: ring to planet", lumi.global_position.distance_to(p.global_position) < 5.8, "d=%.2f" % lumi.global_position.distance_to(p.global_position))
+	place(lumi, rings[1].global_position + rings[1].global_basis.y * 0.5)
+	place(bolota, rings[1].global_position + rings[1].global_basis.y * 0.5 + rings[1].global_basis.x * 0.6)
+	await frames(160)
+	check("T: both reach goal island", lumi.global_position.distance_to(Vector3(0, 9, -141)) < 9.0 and bolota.global_position.distance_to(Vector3(0, 9, -141)) < 9.0, "l=%s b=%s" % [lumi.global_position, bolota.global_position])
+	place(lumi, Vector3(0, 9.6, -144))
+	place(bolota, Vector3(1, 9.6, -144))
+	await frames(30)
+	check("T: goal completes", level.done)
