@@ -409,11 +409,10 @@ func _stands() -> void:
 	crowd_mat.shader = preload("res://shaders/crowd.gdshader")
 	var shirts := [Color("ff4b3e"), Color("2f8cff"), Color("ffd23f"), Color("35e0a1"), Color("ff5fa2"),
 		Color("ffffff"), Color("9b5de5"), Color("ff9f1c"), Color("1f2a44"), Color("19d3ff")]
-	# laterais e fundo da quadra
+	# só nas laterais: o fundo fica livre para ver o mar
 	var stands := [
 		{"pos": Vector3(-11.6, 0, -0.5), "rot": PI * 0.5, "rows": 5},
 		{"pos": Vector3(11.6, 0, -0.5), "rot": -PI * 0.5, "rows": 5},
-		{"pos": Vector3(0, 0, -14.4), "rot": 0.0, "rows": 5},
 	]
 	for st in stands:
 		var b := _place(BLEACHERS, st["pos"], st["rot"], 1.0, {"outline": 0.0, "halftone": 0.0, "rim": 0.0})

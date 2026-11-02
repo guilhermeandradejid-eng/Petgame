@@ -155,7 +155,8 @@ smash-areia/
   bate. Tem faixas com texto, antenas listradas, cabos até os postes, estais presos em estacas
   na areia e protetor acolchoado nos postes.
 - **Plateia viva**: quatro tipos de torcedor (braços para cima, plaquinha, mãozona de espuma,
-  palmas) com cores sorteadas. Eles viram o corpo seguindo a bola e fazem a **ola** quando a sua
+  palmas) com cores sorteadas, só nas arquibancadas laterais (o fundo fica livre para ver o mar).
+  Eles viram o corpo seguindo a bola e fazem a **ola** quando a sua
   dupla pontua. O juiz na cadeira acompanha a bola com a cabeça e levanta o braço no apito.
 - Letreiros **pequenos e rápidos**, só nos lances especiais. Nas batidas comuns entram faíscas e
   uma estrela de impacto 3D da cor do golpe.
