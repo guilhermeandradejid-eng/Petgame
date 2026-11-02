@@ -819,7 +819,7 @@ func _make_bubble() -> void:
 	sm.height = 1.7
 	_bubble.mesh = sm
 	var m := ShaderMaterial.new()
-	m.shader = preload("res://shaders/bubble.gdshader")
+	m.shader = ShaderLib.get_shader("bubble")
 	_bubble.material_override = m
 	_bubble.position = Vector3(0, 0.6, 0)
 	_bubble.visible = false
@@ -837,7 +837,7 @@ func _update_beam(delta: float) -> void:
 		_beam = MeshInstance3D.new()
 		_beam.mesh = ImmediateMesh.new()
 		var m := ShaderMaterial.new()
-		m.shader = preload("res://shaders/beam.gdshader")
+		m.shader = ShaderLib.get_shader("beam")
 		m.set_shader_parameter("color", data["light"])
 		_beam.material_override = m
 		_beam.top_level = true

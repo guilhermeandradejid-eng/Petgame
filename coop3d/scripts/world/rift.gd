@@ -3,7 +3,6 @@ extends Area3D
 ## One end of a dimensional rift. Two rifts are linked; stepping into an
 ## open rift pops you out of the other one with a flash and a swirl.
 
-const SHADER := preload("res://shaders/portal.gdshader")
 
 var level: Node
 var other: Rift
@@ -31,7 +30,7 @@ func setup(lvl: Node, ch := "") -> void:
 	q.size = Vector2(3.0, 3.0)
 	_disc.mesh = q
 	_mat = ShaderMaterial.new()
-	_mat.shader = SHADER
+	_mat.shader = ShaderLib.get_shader("portal")
 	_disc.material_override = _mat
 	_disc.position.y = 1.4
 	_disc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -59,6 +58,11 @@ func is_open() -> bool:
 
 
 func _process(delta: float) -> void:
+	var cam := get_viewport().get_camera_3d()
+	if cam:
+		var to := cam.global_position - _disc.global_position
+		if to.length() > 0.1 and absf(to.normalized().dot(Vector3.UP)) < 0.98:
+			_disc.look_at(_disc.global_position - to, Vector3.UP)
 	_open = move_toward(_open, 1.0 if is_open() else 0.12, delta * 2.0)
 	_mat.set_shader_parameter("open", _open)
 	_light.light_energy = 1.8 * _open

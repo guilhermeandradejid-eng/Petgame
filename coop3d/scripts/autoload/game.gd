@@ -3,6 +3,7 @@ extends Node
 ## persistent progress and scene flow.
 
 const SAVE_PATH := "user://save.cfg"
+const TRACE_PATH := "user://gpu_trace.txt"
 
 const CHARACTERS := [
 	{
@@ -66,14 +67,23 @@ var current_level := 0
 var unlocked := 1
 var best := {}  # level index -> {"sparks": int, "seeds": Array[bool]}
 var settings := {"shake": 1.0, "music": 0.6, "sfx": 0.9}
+## Shaders replaced by their safe twins (filled automatically after a crash).
+var safe_shaders: Array = []
+## Replace every custom shader with its safe twin.
+var safe_graphics := false
+## Set when the previous run closed unexpectedly (shown on the title).
+var crash_note := ""
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	Input.joy_connection_changed.connect(_on_joy_changed)
 	_load()
+	_check_last_run()
 	auto_assign_pads()
 	bind_all()
+	if "--safe-graphics" in OS.get_cmdline_user_args():
+		safe_graphics = true
 	for a in OS.get_cmdline_user_args():
 		if a == "--playtest":
 			add_child(load("res://scripts/dev/playtest.gd").new())
@@ -182,6 +192,8 @@ func save() -> void:
 	cf.set_value("progress", "unlocked", unlocked)
 	cf.set_value("progress", "best", best)
 	cf.set_value("settings", "values", settings)
+	cf.set_value("graphics", "safe_shaders", safe_shaders)
+	cf.set_value("graphics", "safe_graphics", safe_graphics)
 	cf.save(SAVE_PATH)
 
 
@@ -192,6 +204,40 @@ func _load() -> void:
 	unlocked = cf.get_value("progress", "unlocked", 1)
 	best = cf.get_value("progress", "best", {})
 	settings.merge(cf.get_value("settings", "values", {}), true)
+	safe_shaders = cf.get_value("graphics", "safe_shaders", [])
+	safe_graphics = cf.get_value("graphics", "safe_graphics", false)
+
+
+# ------------------------------------------------------------- crash trace
+## Records the current loading stage. If the app dies (e.g. a GPU driver
+## crashes compiling a shader) the next launch knows where it happened.
+func trace(stage: String) -> void:
+	var f := FileAccess.open(TRACE_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string(stage)
+		f.flush()
+		f.close()
+
+
+func _check_last_run() -> void:
+	if not FileAccess.file_exists(TRACE_PATH):
+		return
+	var last := FileAccess.get_file_as_string(TRACE_PATH).strip_edges()
+	if last == "" or last == "ok":
+		return
+	if last.begins_with("shader:"):
+		var name := last.substr(7)
+		if name in ShaderLib.REAL and not name in safe_shaders:
+			safe_shaders.append(name)
+			crash_note = "O jogo fechou ao preparar o shader \"%s\". Ele foi trocado por uma versão simples." % name
+		else:
+			safe_graphics = true
+			crash_note = "O jogo fechou ao preparar \"%s\". Gráficos seguros ativados." % name
+	else:
+		safe_graphics = true
+		crash_note = "O jogo fechou na etapa \"%s\". Gráficos seguros ativados." % last
+	save()
+	trace("ok")
 
 
 # -------------------------------------------------------------- scene flow

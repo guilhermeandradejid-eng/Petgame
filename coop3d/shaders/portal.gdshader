@@ -1,4 +1,4 @@
-// Dimensional rift: a billboarded disc with a swirling polar-coordinate
+// Dimensional rift: a disc (turned toward the camera by rift.gd) with a swirling polar-coordinate
 // vortex, chromatic crackling rim and a dark core. `open` scales it in/out.
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled, blend_mix;
@@ -16,12 +16,6 @@ float n(vec2 p) {
 	vec2 f = fract(p);
 	f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(h(i), h(i + vec2(1, 0)), f.x), mix(h(i + vec2(0, 1)), h(i + vec2(1, 1)), f.x), f.y);
-}
-
-void vertex() {
-	// spherical billboard keeping the node's scale
-	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0] * length(MODEL_MATRIX[0].xyz),
-			INV_VIEW_MATRIX[1] * length(MODEL_MATRIX[1].xyz), INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);
 }
 
 void fragment() {

@@ -3,7 +3,6 @@ extends Node
 ## soft circle, puff), rings use the shockwave shader, and a screen overlay
 ## handles speed lines, vignette and flashes.
 
-const SHOCKWAVE := preload("res://shaders/shockwave.gdshader")
 const SPEEDLINES := preload("res://shaders/speedlines.gdshader")
 
 var tex_star: ImageTexture
@@ -188,7 +187,7 @@ func ring(pos: Vector3, normal := Vector3.UP, color := Color(1, 0.9, 0.6), size 
 	mi.mesh = quad
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var m := ShaderMaterial.new()
-	m.shader = SHOCKWAVE
+	m.shader = ShaderLib.get_shader("shockwave")
 	m.set_shader_parameter("color", color)
 	mi.material_override = m
 	_scene().add_child(mi)

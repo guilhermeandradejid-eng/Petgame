@@ -2,11 +2,6 @@ class_name Mats
 ## Material factory + cache. Converts imported glTF materials into the
 ## project's stylized shaders based on the Blender material name prefix.
 
-const TOON := preload("res://shaders/toon.gdshader")
-const OUTLINE := preload("res://shaders/outline.gdshader")
-const TERRAIN := preload("res://shaders/terrain.gdshader")
-const GLOW := preload("res://shaders/glow.gdshader")
-const GHOST := preload("res://shaders/ghost.gdshader")
 
 const N_ROCK := preload("res://assets/textures/normals/rock.webp")
 const N_PEBBLES := preload("res://assets/textures/normals/pebbles.webp")
@@ -20,12 +15,19 @@ static var _cache := {}
 static var _outline_cache := {}
 
 
+## Forget cached materials (after switching graphics/safe mode).
+static func clear() -> void:
+	_cache.clear()
+	_outline_cache.clear()
+	ShaderLib.clear_cache()
+
+
 static func toon(color: Color, opts := {}) -> ShaderMaterial:
 	var key := "toon_%s_%s" % [color.to_html(), str(opts)]
 	if _cache.has(key):
 		return _cache[key]
 	var m := ShaderMaterial.new()
-	m.shader = TOON
+	m.shader = ShaderLib.get_shader("toon")
 	m.set_shader_parameter("albedo", color)
 	for k in opts:
 		if k == "outline":
@@ -42,7 +44,7 @@ static func outline(width := 0.012, color := Color(0.16, 0.09, 0.2)) -> ShaderMa
 	if _outline_cache.has(key):
 		return _outline_cache[key]
 	var m := ShaderMaterial.new()
-	m.shader = OUTLINE
+	m.shader = ShaderLib.get_shader("outline")
 	m.set_shader_parameter("width", width)
 	m.set_shader_parameter("outline_color", color)
 	_outline_cache[key] = m
@@ -54,7 +56,7 @@ static func glow(color: Color, energy := 1.6) -> ShaderMaterial:
 	if _cache.has(key):
 		return _cache[key]
 	var m := ShaderMaterial.new()
-	m.shader = GLOW
+	m.shader = ShaderLib.get_shader("glow")
 	m.set_shader_parameter("color", color)
 	m.set_shader_parameter("energy", energy)
 	_cache[key] = m
@@ -63,7 +65,7 @@ static func glow(color: Color, energy := 1.6) -> ShaderMaterial:
 
 static func ghost(color: Color) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
-	m.shader = GHOST
+	m.shader = ShaderLib.get_shader("ghost")
 	m.set_shader_parameter("color", color)
 	return m
 
@@ -74,7 +76,7 @@ static func terrain(style := "meadow", planet_center := Vector3.ZERO, radial := 
 	if _cache.has(key):
 		return _cache[key]
 	var m := ShaderMaterial.new()
-	m.shader = TERRAIN
+	m.shader = ShaderLib.get_shader("terrain")
 	m.set_shader_parameter("rock_normal", N_ROCK)
 	m.set_shader_parameter("grass_normal", N_PEBBLES)
 	m.set_shader_parameter("radial", radial)

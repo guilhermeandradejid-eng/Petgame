@@ -41,6 +41,10 @@ func _ready() -> void:
 	add_child(_cam)
 	_cam.current = true
 	_build_ui()
+	if Game.crash_note != "":
+		_show_crash_note()
+	Game.trace("title")
+	get_tree().create_timer(4.0).timeout.connect(func(): Game.trace("ok"))
 	Sfx.play_music(0)
 	Vfx.set_vignette(0.3)
 
@@ -128,6 +132,21 @@ func _build_ui() -> void:
 	_ui.add_child(info)
 
 
+func _show_crash_note() -> void:
+	var p := PanelContainer.new()
+	p.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	p.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	p.position = Vector2(0, 250)
+	var l := Label.new()
+	l.text = Game.crash_note + "\nSe puder, conte qual mensagem apareceu aqui."
+	l.add_theme_font_size_override("font_size", 22)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	p.add_child(l)
+	_ui.add_child(p)
+	p.position.x = -p.size.x * 0.5
+	Game.crash_note = ""
+
+
 func _add_btn(parent: Control, text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
@@ -212,6 +231,14 @@ Solo: Tab / Back troca de personagem."""
 	mono.font_names = PackedStringArray(["DejaVu Sans Mono", "Monospace"])
 	txt.add_theme_font_override("font", mono)
 	v.add_child(txt)
+	var safe := CheckButton.new()
+	safe.text = "Gráficos seguros (se o jogo fechar sozinho)"
+	safe.button_pressed = Game.safe_graphics
+	safe.toggled.connect(func(on):
+		Game.safe_graphics = on
+		Mats.clear()
+		Game.save())
+	v.add_child(safe)
 	_add_btn(v, "Trocar controles entre P1 e P2", func():
 		Game.swap_pads()
 		Sfx.play("unlock"))

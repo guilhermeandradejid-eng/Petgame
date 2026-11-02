@@ -13,9 +13,6 @@ const BUSH := preload("res://assets/models/bush.glb")
 const FLOWER := preload("res://assets/models/flower.glb")
 const ROCK := preload("res://assets/models/rock.glb")
 const CRYSTAL := preload("res://assets/models/crystal.glb")
-const SKY := preload("res://shaders/sky.gdshader")
-const CLOUD_SEA := preload("res://shaders/cloud_sea.gdshader")
-const GRASS := preload("res://shaders/grass.gdshader")
 const CHANNEL_PALETTE := [Color(0.25, 0.9, 0.85), Color(1.0, 0.45, 0.75), Color(1.0, 0.75, 0.25), Color(0.55, 0.95, 0.4), Color(0.5, 0.65, 1.0), Color(1.0, 0.5, 0.35)]
 const FLOWER_COLORS := [Color(1.0, 0.55, 0.7), Color(1.0, 0.85, 0.4), Color(0.7, 0.6, 1.0), Color(1, 1, 1), Color(0.5, 0.85, 1.0)]
 
@@ -345,7 +342,7 @@ func _build_environment() -> void:
 	env.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
 	var sm := ShaderMaterial.new()
-	sm.shader = SKY
+	sm.shader = ShaderLib.get_shader("sky")
 	sm.set_shader_parameter("zenith", c["zenith"])
 	sm.set_shader_parameter("horizon", c["horizon"])
 	sm.set_shader_parameter("ground", c["ground"])
@@ -396,7 +393,7 @@ func _build_environment() -> void:
 	pm.subdivide_depth = 70 if low_spec else 150
 	_sea.mesh = pm
 	var smat := ShaderMaterial.new()
-	smat.shader = CLOUD_SEA
+	smat.shader = ShaderLib.get_shader("cloud_sea")
 	smat.set_shader_parameter("top_color", c["sea_top"])
 	smat.set_shader_parameter("low_color", c["sea_low"])
 	smat.set_shader_parameter("far_color", c["horizon"])
@@ -486,7 +483,7 @@ func _grass_mmi(xforms: Array) -> void:
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
 	var m := ShaderMaterial.new()
-	m.shader = GRASS
+	m.shader = ShaderLib.get_shader("grass")
 	mmi.material_override = m
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mmi)

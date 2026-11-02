@@ -48,7 +48,7 @@ func setup(_lvl: Node, r: float, style := "planet", gravity_range := 2.4) -> voi
 	hm.height = r * 2.24
 	halo.mesh = hm
 	var hmat := ShaderMaterial.new()
-	hmat.shader = preload("res://shaders/bubble.gdshader")
+	hmat.shader = ShaderLib.get_shader("bubble")
 	hmat.set_shader_parameter("tint", Color(0.85, 0.95, 1.0))
 	hmat.set_shader_parameter("wobble", 0.0)
 	halo.material_override = hmat

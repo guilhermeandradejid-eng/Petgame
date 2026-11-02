@@ -84,7 +84,7 @@ func flash(strength := 1.0) -> void:
 		var m := mi as MeshInstance3D
 		for s in m.get_surface_override_material_count():
 			var mat := m.get_surface_override_material(s)
-			if mat is ShaderMaterial and mat.shader == Mats.TOON:
+			if mat is ShaderMaterial and mat.shader == ShaderLib.get_shader("toon"):
 				var dup: ShaderMaterial = mat.duplicate()
 				dup.set_shader_parameter("hit_flash", strength)
 				m.set_surface_override_material(s, dup)
