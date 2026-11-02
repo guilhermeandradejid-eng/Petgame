@@ -70,6 +70,7 @@ var squash := 1.0
 var squash_v := 0.0
 var anim_time := 0.0
 var lean := Vector2.ZERO
+var prev_lv := Vector3.ZERO
 var bubble: Label3D
 var bubble_t := 0.0
 var shadow: MeshInstance3D
@@ -78,6 +79,8 @@ var aura: MeshInstance3D
 var shield: Node3D             # escudo azul na frente do corpo enquanto a DEFESA está armada
 var shield_mats: Array[StandardMaterial3D] = []
 var shield_flash := 0.0
+var racket_flash_t := 0.0
+var skid_cd := 0.0
 var hittable := false
 var footstep_t := 0.0
 var foot_side := 1.0
@@ -177,7 +180,7 @@ func _build_model() -> void:
 	i_hand_l = rig.bones.get("Hand.L", -1)
 	i_low = rig.bones.get("LowerArm.R", -1)
 
-	shadow = Toon.blob(1.0, Color(0.3, 0.12, 0.2, 0.42))
+	shadow = Toon.blob(1.0, Color(0.22, 0.08, 0.16, 0.55))
 	shadow.top_level = true
 	add_child(shadow)
 	aura = Toon.blob(1.7, Color(1, 1, 1, 0.0), true)
@@ -500,6 +503,8 @@ func _start_swing(type: int, ball_pos: Vector3, st := "", at_contact := false) -
 			game.sfx_at("swing", global_position + Vector3(0, 1.4, 0), -20.0, 0.08)
 	swing_type = type
 	swing_t = 0.28 if at_contact else 0.0
+	if at_contact:
+		squash_v = -4.0 if type == Shots.SMASH or type == Shots.SPECIAL else -2.5   # o corpo "soca" na batida
 	last_charge = charge()
 	pending_shot = -1
 	trail_pts.clear()
@@ -630,6 +635,19 @@ func _update_normal(dt: float) -> void:
 	if not on_ground():
 		target = vel
 	var accel := 40.0 if move_input.length() > 0.1 else 32.0
+	var spd0 := Vector2(vel.x, vel.z).length()
+	if spd0 < 1.0 and move_input.length() > 0.1:
+		accel = 52.0   # primeiro passo explosivo
+	# freada/troca de direção na areia: espirro de areia, pegada funda e passo forte
+	var tgt2 := Vector2(target.x, target.z)
+	if spd0 > 3.5 and tgt2.length() > 0.5 and Vector2(vel.x, vel.z).normalized().dot(tgt2.normalized()) < -0.3 \
+			and on_ground() and skid_cd <= 0.0 and game:
+		skid_cd = 0.35
+		var vd := Vector3(vel.x, 0, vel.z).normalized()
+		game.sand_burst(global_position + vd * 0.2, 5)
+		game.world.footprint(global_position + vd * 0.15, atan2(vd.x, vd.z), 1.4)
+		game.sfx_at("step", global_position, -12.0, 0.1, 0.9)
+	skid_cd -= dt
 	vel = vel.move_toward(Vector3(target.x, 0.0, target.z), accel * dt)
 	# locomoção: corrida, passo lateral (de frente para a rede) ou recuo de costas
 	var net_yaw := atan2(net_dir().x, net_dir().z)
@@ -682,7 +700,11 @@ func _animate(dt: float) -> void:
 	var s := sin(run_phase)
 	var breathe := sin(anim_time * 3.0) * 0.025
 	var lv := global_transform.basis.inverse() * vel
-	lean = lean.lerp(Vector2(lv.x, lv.z) / 6.5, 1.0 - exp(-8.0 * dt))
+	# inclina com a velocidade e mais ainda com a aceleração (arranca para a frente, freia para trás)
+	var acc := (lv - prev_lv) / maxf(dt, 0.001)
+	prev_lv = lv
+	var la := Vector2(clampf(acc.x / 40.0, -0.6, 0.6), clampf(acc.z / 40.0, -0.6, 0.6))
+	lean = lean.lerp(Vector2(lv.x, lv.z) / 6.5 + la, 1.0 - exp(-8.0 * dt))
 	var run := moving if loco == "run" else 0.0
 	var shuf := moving if loco == "shuffle" else 0.0
 	var bk := moving if loco == "back" else 0.0
@@ -961,12 +983,39 @@ func _make_shield() -> void:
 	shield.visible = false
 
 
+var racket_flashing := false
+
+
+func _set_racket_flash(v: float) -> void:
+	racket_flashing = v > 0.0
+	if racket == null:
+		return
+	for mi in racket.find_children("*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		for si in m.mesh.get_surface_count():
+			var mat := m.get_surface_override_material(si) as ShaderMaterial
+			if mat:
+				if not mat.has_meta("own"):
+					mat = mat.duplicate()
+					mat.set_meta("own", true)
+					m.set_surface_override_material(si, mat)
+				mat.set_shader_parameter("flash", v)
+
+
+## Raquete pisca branco por um instante (batida perfeita ou carregada)
+func racket_flash() -> void:
+	racket_flash_t = 0.08
+
+
 ## Flash do escudo quando a defesa pega a bola
 func shield_hit() -> void:
 	shield_flash = 1.0
 
 
 func _update_shield(dt: float) -> void:
+	if racket_flash_t > 0.0 or racket_flashing:
+		racket_flash_t = maxf(0.0, racket_flash_t - dt)
+		_set_racket_flash(1.0 if racket_flash_t > 0.0 else 0.0)
 	if shield == null:
 		return
 	shield_flash = maxf(0.0, shield_flash - dt * 2.4)
@@ -988,6 +1037,8 @@ func _update_decals(dt: float) -> void:
 	var ch := charge()
 	var ac: Color = Shots.COLORS[pending_shot] if pending_shot >= 0 else Color.WHITE
 	ac.a = ch * 0.9 if pending_shot >= 0 else 0.0
+	if is_human and pending_shot != Shots.SPECIAL:
+		ac.a = 0.0   # o humano já tem o anel de carga na tela
 	if pending_shot == Shots.SPECIAL:
 		ac.a = 0.6 + 0.4 * sin(anim_time * 20.0)
 	am.set_shader_parameter("color", ac)
@@ -999,7 +1050,8 @@ func _update_decals(dt: float) -> void:
 		zone_ring.global_position = Vector3(c.x, 0.025, c.z)
 		var m := zone_ring.material_override as ShaderMaterial
 		var col: Color = m.get_shader_parameter("color")
-		col.a = lerpf(col.a, 0.8 if hittable else 0.0, 1.0 - exp(-14.0 * dt))
+		# anel fraco sempre visível no humano (para se achar na quadra), forte quando dá para bater
+		col.a = lerpf(col.a, 0.8 if hittable else 0.22, 1.0 - exp(-14.0 * dt))
 		m.set_shader_parameter("color", col)
 		m.set_shader_parameter("pulse", 1.0 if hittable else 0.0)
 	if bubble_t > 0.0:

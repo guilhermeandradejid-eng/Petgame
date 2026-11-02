@@ -5,7 +5,7 @@ config_version=5
 
 config/name="Smash na Areia"
 config/description="Beach tennis arcade com visual de gibi"
-config/version="0.1.0-demo"
+config/version="0.2.0-demo"
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 boot_splash/bg_color=Color(1, 0.84, 0.25, 1)

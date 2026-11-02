@@ -13,6 +13,7 @@ uniform float flash = 0.0;
 uniform vec4 flash_color : source_color = vec4(1.0, 1.0, 1.0, 1.0);
 uniform float wind = 0.0;
 uniform float fog = 1.0;
+uniform float bg = 0.0;     // cenário: menos contraste e um véu lilás (o foco fica na quadra)
 
 const vec3 KEY = vec3(-0.45, 0.72, 0.53);      // luz principal (frente-esquerda)
 const vec3 SUN_BACK = vec3(-0.55, 0.35, -0.76); // sol baixo atrás da quadra (contraluz)
@@ -40,7 +41,7 @@ void fragment() {
 	vec2 g = FRAGCOORD.xy / px;
 	g = mat2(vec2(0.7071, -0.7071), vec2(0.7071, 0.7071)) * g;
 	float d = length(fract(g) - 0.5);
-	float amount = clamp((-0.04 - ndl) * 1.5, 0.0, 1.0) * halftone;
+	float amount = clamp((-0.04 - ndl) * 1.5, 0.0, 1.0) * halftone * (1.0 - bg);
 	float r = 0.48 * sqrt(amount);
 	float dots = 1.0 - smoothstep(r - 0.08, r, d);
 	col = mix(col, col * 0.74, dots * step(0.001, amount));
@@ -55,6 +56,7 @@ void fragment() {
 	col += vec3(1.0) * step(0.965, dot(NORMAL, H)) * spec_amount;
 
 	col = mix(col, flash_color.rgb, flash);
+	col = mix(col, vec3(0.88, 0.82, 0.9) * (0.75 + 0.25 * lit), bg * 0.3);
 	float dist = length(VERTEX);
 	col = mix(col, HAZE, smoothstep(45.0, 380.0, dist) * 0.85 * fog);
 	ALBEDO = col;

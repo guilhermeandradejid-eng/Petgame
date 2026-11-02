@@ -11,7 +11,7 @@ const MAGNUS := 0.0042       # a = MAGNUS * (w x v)
 const SPIN_DECAY := 0.25
 const DT := 1.0 / 60.0
 const RADIUS := 0.11
-const NAMES := ["TOPSPIN", "LOB", "CURTA", "SMASH", "DEFESA", "SUPER"]
+const NAMES := ["FORTE", "LOB", "CURTA", "SMASH", "DEFESA", "SUPER"]
 const COLORS := [Color("ff7a2e"), Color("b06bff"), Color("4fc3ff"), Color("ff3b5c"), Color("ffffff"), Color("ffe14d")]
 
 ## Super golpes de cada personagem
@@ -156,10 +156,22 @@ static func compute(type: int, from: Vector3, side: float, aim_in: Vector2, qual
 	match type:
 		DRIVE:
 			target.z = side * (5.2 + depth * 1.6)
-			style = {"speed": (14.0 + quality * 3.5) * power * boost}
+			var dspeed := (14.0 + quality * 3.5) * power * boost
 			top = 55.0 * spin_boost
-			sidespin = 14.0 * curve * spin_boost
 			margin = 0.3 - net_err
+			if absf(from.z) < 3.2 and from.y > GameData.NET_H + 0.1:
+				# voleio na rede: bola de cima, mais rápida e com ângulo aberto
+				label = "VOLEIO!"
+				dspeed *= 1.12
+				target.z = side * (3.6 + depth * 1.8)
+				target.x = clampf(aim_in.x, -1.0, 1.0) * 3.8
+			elif from.y < 0.7:
+				# bola baixa: tem que subir para passar a rede, sai mais fraca
+				dspeed *= 0.85
+				top *= 1.3
+				margin += 0.15
+			style = {"speed": dspeed}
+			sidespin = 14.0 * curve * spin_boost
 			err = 0.85
 		LOB:
 			target.z = side * (6.6 + depth * 0.9)
@@ -178,7 +190,12 @@ static func compute(type: int, from: Vector3, side: float, aim_in: Vector2, qual
 		SMASH:
 			target.z = side * (4.2 + depth * 2.2)
 			var speed := (21.0 + quality * 6.0) * power * boost
-			if from.y < 1.9:
+			if from.y < 0.7:
+				speed *= 0.6
+				top = 30.0
+				margin += 0.15
+				label = "PANCADA"
+			elif from.y < 1.9:
 				speed *= 0.72
 				label = "PANCADA"
 			style = {"speed": speed}

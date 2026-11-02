@@ -10,16 +10,22 @@ void fragment() {
 	vec2 p = UV * 2.0 - 1.0;
 	float r = length(p);
 	float a;
+	vec3 col = color.rgb;
 	if (ring > 0.5) {
-		float rr = 0.78 + sin(TIME * 10.0) * 0.06 * pulse;
-		a = smoothstep(0.17, 0.1, abs(r - rr));
+		float rr = 0.74 + sin(TIME * 10.0) * 0.05 * pulse;
+		float core = smoothstep(0.13, 0.07, abs(r - rr));
 		// tracejado
 		float ang = atan(p.y, p.x);
-		a *= step(0.0, sin(ang * 8.0 + TIME * 4.0)) * 0.6 + 0.4;
-		a = max(a, smoothstep(0.2, 0.12, r));
+		core *= step(0.0, sin(ang * 8.0 + TIME * 4.0)) * 0.6 + 0.4;
+		float dot_c = smoothstep(0.18, 0.11, r);
+		core = max(core, dot_c);
+		// faixa de tinta por baixo: o anel se destaca na areia clara
+		float ink = max(smoothstep(0.22, 0.15, abs(r - rr)), smoothstep(0.24, 0.17, r));
+		col = mix(vec3(0.07, 0.04, 0.12), color.rgb, core);
+		a = max(core, ink * 0.75);
 	} else {
 		a = smoothstep(1.0, 0.7, r);
 	}
-	ALBEDO = color.rgb;
+	ALBEDO = col;
 	ALPHA = color.a * a;
 }

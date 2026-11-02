@@ -132,7 +132,10 @@ func update(dt: float, game: Node) -> void:
 				var shot := choose_shot(bp, ball, game)
 				if plan.get("gancho", false):
 					shot = Shots.LOB if rng.randf() < 0.55 else Shots.DRIVE
-				if float(game.energy[p.team]) >= 1.0 and ball.special == "" and rng.randf() < 0.45:
+				# especial na hora certa: bola alta perto da rede, ou ponto decisivo
+				var good_spot: bool = bp.y > 1.6 and absf(bp.z) < 5.0
+				var big_point: bool = int(game.points[p.team]) >= 3 or int(game.points[1 - p.team]) >= 3
+				if float(game.energy[p.team]) >= 1.0 and ball.special == "" and (good_spot or big_point) and rng.randf() < 0.6:
 					shot = Shots.SPECIAL
 					if p.data.get("special", "") == "meteoro":
 						p.jump_boost = 1.45
@@ -176,7 +179,10 @@ func choose_shot(contact: Vector3, ball: Ball, game: Node) -> int:
 	var close_net := absf(contact.z) < 5.5
 	if contact.y > Player.TOP_REACH - 0.2 and close_net and roll < float(diff["smash"]):
 		return Shots.SMASH
-	if ball.speed_at_hit > 17.0 or ball.special != "":
+	if ball.special != "":
+		# contra o especial a CPU tenta o bloqueio (mais vezes no difícil)
+		return Shots.DEFENSE if roll < float(diff["judge"]) * 0.9 else Shots.LOB
+	if ball.speed_at_hit > 17.0:
 		if roll < 0.4:
 			return Shots.DEFENSE
 		return Shots.LOB if roll < 0.75 else Shots.DRIVE

@@ -28,6 +28,12 @@ var bus_ui := -1
 var lp_music: AudioEffectLowPassFilter
 var lp_crowd: AudioEffectLowPassFilter
 var last_play := {}
+var duck_t := 0.0
+
+
+## Abaixa a música um instante (para o estouro do especial aparecer)
+func duck(t := 0.4) -> void:
+	duck_t = t
 
 
 func _ready() -> void:
@@ -223,10 +229,11 @@ func follow(cam: Camera3D) -> void:
 
 
 func _process(dt: float) -> void:
+	duck_t = maxf(0.0, duck_t - dt)
 	for i in stems.size():
 		var tgt: float = stem_target[i] if music_on else 0.0
 		stem_level[i] = move_toward(stem_level[i], tgt, dt * (1.6 if tgt > stem_level[i] else 0.8))
-		stems[i].volume_db = linear_to_db(maxf(stem_level[i], 0.0001)) - (2.0 if i > 0 else 0.0)
+		stems[i].volume_db = linear_to_db(maxf(stem_level[i], 0.0001)) - (2.0 if i > 0 else 0.0) - (5.0 if duck_t > 0.0 else 0.0)
 	var cut := lerpf(20000.0, 700.0, muffle)
 	lp_music.cutoff_hz = lerpf(lp_music.cutoff_hz, cut, 1.0 - exp(-6.0 * dt))
 	lp_crowd.cutoff_hz = lerpf(lp_crowd.cutoff_hz, lerpf(20000.0, 1800.0, muffle), 1.0 - exp(-6.0 * dt))

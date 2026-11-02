@@ -16,6 +16,9 @@ static func outline(width: float) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = OUTLINE_SHADER
 	m.set_shader_parameter("width", width)
+	# traços finos (jogadores, bola, raquete) mantêm a espessura de longe;
+	# os grossos do cenário não crescem, para o fundo não ficar pesado
+	m.set_shader_parameter("max_scale", 2.6 if width <= 0.025 else 1.0)
 	m.render_priority = -1
 	_outline_cache[key] = m
 	return m
@@ -37,6 +40,8 @@ static func make(color: Color, opts: Dictionary = {}) -> ShaderMaterial:
 		m.set_shader_parameter("shadow_tint", opts["shadow"])
 	if opts.has("wind"):
 		m.set_shader_parameter("wind", opts["wind"])
+	if opts.has("bg"):
+		m.set_shader_parameter("bg", opts["bg"])
 	var w: float = opts.get("outline", 0.025)
 	if w > 0.0:
 		m.next_pass = outline(w)

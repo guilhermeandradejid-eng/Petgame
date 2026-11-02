@@ -29,7 +29,9 @@ var games := [0, 0]
 var games_to_win := 2
 var official := false        # set oficial: 6 games com 2 de vantagem e tie-break no 6-6
 var tiebreak := false
-var start_games := 0         # teste: começa a partida com este placar de games
+var start_games := 0
+var human_serves := 0          # dicas do saque só nas primeiras vezes
+var serve_press_y := -1.0      # altura da bola quando o humano apertou para bater o saque         # teste: começa a partida com este placar de games
 var serving_team := 0
 var server_turn := [0, 0]
 var server: Player = null
@@ -57,6 +59,7 @@ var cam_back := 1.0
 var cam_cut := true
 var fov_kick := 0.0
 var shake := 0.0
+var shake_dir := Vector2(0.6, 0.8)
 var hitstop := 0.0
 var intro_t := 10.0
 var celeb: Player = null
@@ -76,6 +79,7 @@ var replay_f := 0.0
 var replay_from := 0
 var replay_done := false
 var replay_cam := Vector3.ZERO
+var replay_side := -1.0
 var replay_ok := false
 var pts_reason := ""
 var replay_cool := 0
@@ -212,6 +216,9 @@ func _setup_views() -> void:
 		var sv := SubViewport.new()
 		sv.world_3d = get_viewport().world_3d
 		sv.msaa_3d = Viewport.MSAA_2X
+		# celular com tela grande: 3D em 80% da resolução (a interface continua nítida)
+		if OS.has_feature("mobile") and DisplayServer.screen_get_size().y > 800:
+			sv.scaling_3d_scale = 0.8
 		sv.audio_listener_enable_3d = false
 		svc.add_child(sv)
 		var c := Camera3D.new()
@@ -846,13 +853,14 @@ func support_position(p: Player) -> Vector3:
 			mx = (mate.brain.plan["stand"] as Vector3).x
 		var cx := mx + (2.6 if mx < 0.0 else -2.6)
 		return Vector3(clampf(cx, -3.4, 3.4), 0.0, s * 4.6)
-	var z := 4.2
+	# a CPU fecha a rede depois de atacar (no beach tennis quem domina a rede domina o ponto)
+	var z := 3.7
 	if ball.last_team == p.team:
 		match ball.last_shot:
 			Shots.LOB, Shots.DEFENSE:
 				z = 4.9
-			Shots.SMASH, Shots.DROP, Shots.SPECIAL:
-				z = 3.1
+			Shots.SMASH, Shots.DROP, Shots.SPECIAL, Shots.DRIVE:
+				z = 3.0
 		if ball.is_live() and ball.last_shot == Shots.LOB:
 			var lp := ball.landing_point()
 			if absf(lp.z) < 5.5:
@@ -919,7 +927,11 @@ func _begin_serve() -> void:
 		var who := ""
 		if server.is_human:
 			who = "SEU SAQUE" if humans.size() == 1 else "SAQUE DO J%d" % server.pid
-			hud.set_hint(who + ": escolha um golpe (SMASH = saque viagem)")
+			human_serves += 1
+			if human_serves <= 2:
+				hud.set_hint(who + ": golpe lança a bola, aperte de novo quando o anel fechar")
+			else:
+				hud.set_hint("")
 		else:
 			hud.set_hint("SAQUE: %s (%s)" % [String(server.data["name"]).to_upper(), GameData.TEAMS[server.team]["name"]])
 		if points[0] + points[1] == 0:
@@ -930,6 +942,12 @@ func _begin_serve() -> void:
 ## Indicador de carga do golpe em cima de cada jogador humano
 func _update_charge_marks() -> void:
 	var marks: Array = []
+	# anel do tempo do saque: fecha quando a bola chega na altura da batida
+	if state == S.SERVE and serve_phase == 1 and server and server.is_human and not demo and serve_press_y < 0.0:
+		var gap := ball.position.y - _serve_contact_h()
+		var k := clampf(gap / 2.2, 0.0, 1.0) if ball.vel.y < 0.0 else 1.0
+		for vi in (2 if split_active() else 1):
+			marks.append({"pos": screen_pos(ball.position, vi), "ring": k, "col": Color("ffe14d")})
 	if state == S.RALLY and not demo:
 		for hp in humans:
 			if hp.pending_shot < 0 or hp.pending_shot == Shots.SPECIAL:
@@ -938,6 +956,46 @@ func _update_charge_marks() -> void:
 				marks.append({"pos": screen_pos(hp.global_position + Vector3(0, 2.65, 0), vi),
 					"v": hp.charge(), "col": Shots.COLORS[hp.pending_shot], "name": Shots.NAMES[hp.pending_shot]})
 	hud.set_charges(marks)
+
+
+# ---------------------------------------------------------------- dicas da primeira partida
+
+var coach_seen := {}
+var coach_loaded := false
+
+
+## Mostra uma dica uma única vez (lembrada entre partidas em user://coach.cfg)
+func coach(key: String, text: String) -> void:
+	if demo or sim or autoplay:
+		return
+	if not coach_loaded:
+		coach_loaded = true
+		var cf := ConfigFile.new()
+		if cf.load("user://coach.cfg") == OK:
+			for k in cf.get_section_keys("seen"):
+				coach_seen[k] = true
+	if coach_seen.has(key):
+		return
+	coach_seen[key] = true
+	hud.flash_tip(text, 3.2, Color.WHITE)
+	var cf2 := ConfigFile.new()
+	for k in coach_seen:
+		cf2.set_value("seen", k, true)
+	cf2.save("user://coach.cfg")
+
+
+func _coach_rally() -> void:
+	if human == null or state != S.RALLY or not ball.is_live() or ball.last_team == human.team:
+		return
+	if coach_loaded and coach_seen.has("smash") and coach_seen.has("first"):
+		return
+	if assigned[human.team] == human and human.pending_shot < 0:
+		var plan := AIBrain.intercept(human, ball, 0.0)
+		if not plan.is_empty() and float(plan["t"]) < 0.9:
+			if (plan["point"] as Vector3).y > Player.TOP_REACH - 0.25:
+				coach("smash", "BOLA ALTA: SMASH!")
+			else:
+				coach("first", "APERTE O GOLPE ANTES DA BOLA CHEGAR (QUANTO ANTES, MAIS CARREGA)")
 
 
 func _hand_pos(p: Player) -> Vector3:
@@ -950,6 +1008,7 @@ func _do_toss(type: int) -> void:
 	serve_phase = 1
 	serve_type = type
 	serve_timer = 0.0
+	serve_press_y = -1.0
 	ball.toss(_hand_pos(server), Vector3(0, 5.2 if type == Shots.SMASH else 4.6, 0))
 	server.pending_shot = Shots.SMASH
 	server.pending_t = 5.0
@@ -977,6 +1036,15 @@ func _serve_hit() -> void:
 		Shots.SMASH:
 			shot = Shots.SMASH
 			quality = 0.7
+	# saque no tempo: apertar quando a bola desce até a altura de contato dá o saque perfeito
+	var perfect := false
+	if server.is_human and not autoplay:
+		var ch := _serve_contact_h()
+		if serve_press_y >= 0.0:
+			quality = lerpf(0.62, 1.0, 1.0 - clampf(absf(serve_press_y - ch) / 0.7, 0.0, 1.0))
+		else:
+			quality = 0.72
+		perfect = quality > 0.93
 	server._start_swing(Shots.SMASH, ball.position, "smash", true)
 	var err := 1.0 if server.is_human else float(GameData.DIFFICULTIES[GameData.difficulty]["error"])
 	var res := Shots.compute(shot, ball.position, -server.side, aim, quality,
@@ -984,6 +1052,10 @@ func _serve_hit() -> void:
 	if shot == Shots.SMASH:
 		res["label"] = "SAQUE VIAGEM!"
 	_launch(server, shot, res, quality, 0.0, false)
+	if perfect:
+		hud.fx.pop(screen_pos(server.global_position + Vector3(0, 2.8, 0)), "SAQUE PERFEITO!", Color("ffe14d"), 0.5, true)
+		hitstop = maxf(hitstop, 0.05)
+		server.racket_flash()
 	ball.is_serve = true
 	server.serve_mode = false
 	server.lock_x = false
@@ -994,6 +1066,8 @@ func _launch(p: Player, shot: int, res: Dictionary, quality: float, charge: floa
 	ball.is_serve = false
 	var sp: String = res.get("special", "")
 	ball.launch(res["velocity"], res["spin"], p.team, p, shot, sp, quality)
+	if sp != "" and team_human(1 - p.team) != null:
+		coach("block", "ESPECIAL VINDO! DEFESA APERTADA ANTES = BLOQUEIO")
 	if sim:
 		ball.set_meta("sp", sp)
 		var simd: Dictionary = res.get("sim", {})
@@ -1032,10 +1106,13 @@ func _launch(p: Player, shot: int, res: Dictionary, quality: float, charge: floa
 			hud.super_ready_hint(th.pad >= 0 and (hud.pad_mode or th.pid == 2), ("J%d" % th.pid) if humans.size() > 1 else "")
 	hud.set_energy(energy)
 	var power := clampf(ball.vel.length() / 22.0, 0.3, 1.2)
+	var bv := ball.vel
+	shake_dir = Vector2(bv.x, bv.y * 0.6).normalized() if Vector2(bv.x, bv.y).length() > 0.5 else Vector2(0.6, 0.8)
 	match shot:
 		Shots.SPECIAL:
 			col = Shots.SPECIALS.get(sp, {"color": col})["color"]
 			sfx_at("hit_super", pos, 3.0, 0.02)
+			audio.duck(0.5)
 			sfx("ooh", -6.0)
 			shake = 0.6
 			hitstop = 0.16
@@ -1058,28 +1135,40 @@ func _launch(p: Player, shot: int, res: Dictionary, quality: float, charge: floa
 			world.cheer(0.6)
 			impact(pos, col, 1.5)
 		Shots.LOB:
-			sfx_at("hit_lob", pos, -2.0)
+			sfx_at("hit_lob", pos, -2.0, 0.04, 0.96 + 0.08 * quality)
 			impact(pos, col, 0.7)
+			hitstop = maxf(hitstop, 0.015)
 		Shots.DROP:
-			sfx_at("hit_drop", pos, -3.0)
+			sfx_at("hit_drop", pos, -3.0, 0.04, 0.96 + 0.08 * quality)
 			impact(pos, col, 0.7)
+			hitstop = maxf(hitstop, 0.015)
 		Shots.DEFENSE:
 			p.shield_hit()
 			sfx_at("hit_block", pos, -1.0)
 			impact(pos, col, 0.9)
 			world.cheer(0.4)
+			hitstop = maxf(hitstop, 0.03)
 		_:
-			sfx_at("hit_drive", pos, linear_to_db(power) + charge * 2.0)
+			sfx_at("hit_drive", pos, linear_to_db(power) + charge * 2.0, 0.03, 0.95 + 0.12 * quality)
 			impact(pos, col, 0.9 + charge * 0.5)
+			# congelamento curto também nas batidas normais (mais forte se carregada/perfeita)
+			hitstop = maxf(hitstop, 0.025 + 0.035 * charge + (0.02 if quality > 0.88 else 0.0))
+			if charge >= 1.0 or quality > 0.88:
+				shake = maxf(shake, 0.18)
+				p.racket_flash()
 	if chance_shot:
 		comic(head + Vector3(0, 0.35, 0), "CHANCE!", Color("ffe14d"), 0.55)
 		shake = maxf(shake, 0.25)
 	if p.is_human:
-		if shot != Shots.SPECIAL and shot != Shots.SMASH:
-			var txt: String = res["label"]
+		# letreiro só nos lances que merecem (menos texto na tela)
+		if shot != Shots.SPECIAL and shot != Shots.SMASH and not chance_shot:
+			var txt := ""
 			if quality > 0.88:
 				txt = "PERFEITO!"
-			hud.fx.pop(screen_pos(head), txt, col.lightened(0.2), 0.42, false)
+			elif charge >= 1.0:
+				txt = "CARREGADO!"
+			if txt != "":
+				hud.fx.pop(screen_pos(head), txt, col.lightened(0.2), 0.42, false)
 		rumble(p, shot == Shots.SMASH or shot == Shots.SPECIAL)
 	chance = {}
 	chance_star.visible = false
@@ -1088,8 +1177,30 @@ func _launch(p: Player, shot: int, res: Dictionary, quality: float, charge: floa
 func _do_hit(p: Player, type: int, quality: float, charge: float, style := "") -> void:
 	var incoming_speed := ball.vel.length()
 	var shot := type
-	# recebeu um super golpe: é empurrado e só consegue defender
-	if ball.special != "" and shot != Shots.SPECIAL:
+	# recebeu um super golpe: a DEFESA armada a tempo bloqueia; os outros golpes são empurrados
+	var blocked := false
+	if ball.special != "" and shot == Shots.DEFENSE:
+		var ok := false
+		if p.is_human and not autoplay:
+			ok = charge >= 0.35   # defesa apertada com antecedência
+		elif p.brain:
+			ok = rng.randf() < float(p.brain.diff["judge"]) * 0.7
+		if ok:
+			blocked = true
+			quality = 0.8
+			p.shield_hit()
+			comic(p.global_position + Vector3(0, 2.6, 0), "BLOQUEIO!", Color("8fd8ff"), 0.6)
+			hitstop = maxf(hitstop, 0.1)
+			impact(ball.global_position, Color.WHITE, 1.8)
+			energy[p.team] = minf(1.0, energy[p.team] + 0.15)
+			hud.set_energy(energy)
+			if p.is_human:
+				rumble(p, true)
+		else:
+			p.knockback(Vector3(ball.vel.x, 0, ball.vel.z), 0.5)
+			quality = 0.45
+			charge = 0.0
+	elif ball.special != "" and shot != Shots.SPECIAL:
 		var resist := quality > 0.92 and rng.randf() < 0.35
 		if not resist:
 			p.knockback(Vector3(ball.vel.x, 0, ball.vel.z), 1.0)
@@ -1099,7 +1210,9 @@ func _do_hit(p: Player, type: int, quality: float, charge: float, style := "") -
 			shot = Shots.DEFENSE
 			quality = 0.25
 			charge = 0.0
-	if incoming_speed > 16.5 and (shot == Shots.DRIVE or shot == Shots.DROP):
+	if blocked:
+		pass
+	elif incoming_speed > 16.5 and (shot == Shots.DRIVE or shot == Shots.DROP):
 		shot = Shots.DEFENSE
 	if shot == Shots.LOB and incoming_speed > 16.5:
 		quality *= 0.85
@@ -1262,6 +1375,8 @@ func _refresh_chance() -> void:
 	(chance_star.material_override as ShaderMaterial).set_shader_parameter("color", Shots.COLORS[type])
 	if team == 0 and not demo:
 		sfx("tick", -6.0, 0.0, 1.3)
+		if team_human(0) != null:
+			coach("chance", "PARE NA ESTRELA E USE O GOLPE DA MESMA COR = CHANCE!")
 
 
 # ---------------------------------------------------------------- entrada
@@ -1287,10 +1402,16 @@ func _player_shot(p: Player, type: int) -> void:
 	if state == S.REPLAY and not demo:
 		replay_f = float(rec.size())
 		return
+	if state == S.POINT and not demo and not _wants_replay() and point_timer < 1.9:
+		point_timer = minf(point_timer, 0.25)   # apertar um golpe pula a espera entre pontos
+		return
 	if demo or p == null or get_tree().paused:
 		return
 	if state == S.SERVE and server == p:
-		_do_toss(type if type != Shots.DEFENSE else Shots.LOB)
+		if serve_phase == 0:
+			_do_toss(type if type != Shots.DEFENSE else Shots.LOB)
+		elif serve_phase == 1 and serve_press_y < 0.0:
+			serve_press_y = ball.position.y   # tempo da batida do saque
 		return
 	if state != S.RALLY:
 		return
@@ -1310,7 +1431,7 @@ func _player_super(p: Player) -> void:
 		return
 	p.request_shot(Shots.SPECIAL)
 	p.say("ESPECIAL ARMADO!", Color("ffe14d"))
-	if p.data.get("special", "") == "meteoro" and p.on_ground():
+	if p.data.get("special", "") == "meteoro" and p.on_ground() and not p.smash_wait and absf(p.position.z) < 6.3:
 		p.jump_boost = 1.45
 		if p.jump_timer < 0.0:
 			p.jump_timer = 0.05
@@ -1415,6 +1536,7 @@ func _physics_process(delta: float) -> void:
 		if assign_t <= 0.0:
 			_assign()
 			assign_t = 0.12
+			_coach_rally()
 		if ball.hit_id != chance_hit:
 			chance_hit = ball.hit_id
 			_refresh_chance()
@@ -1473,7 +1595,7 @@ func _update_serve(dt: float) -> void:
 		ball.position = _hand_pos(server)
 		if not server.is_human or (autoplay and not keytest):
 			server.move_input = Vector3.ZERO
-			if serve_timer > (1.6 if not demo else 1.1):
+			if serve_timer > (1.25 if not demo else 1.1):
 				var r := rng.randf()
 				var t := Shots.DRIVE
 				if r < 0.22:
@@ -1484,11 +1606,15 @@ func _update_serve(dt: float) -> void:
 					t = Shots.DROP
 				_do_toss(t)
 	elif serve_phase == 1:
-		var contact_h := 2.75 if serve_type == Shots.SMASH else 2.45
-		if serve_type == Shots.SMASH:
-			contact_h = server.y + Player.TOP_REACH + 0.25
+		var contact_h := _serve_contact_h()
 		if ball.vel.y < 0.0 and ball.position.y <= contact_h:
 			_serve_hit()
+
+
+func _serve_contact_h() -> float:
+	if serve_type == Shots.SMASH:
+		return server.y + Player.TOP_REACH + 0.25
+	return 2.45
 
 
 func _assign() -> void:
@@ -1521,7 +1647,8 @@ func _assign() -> void:
 		assigned[team] = best
 		if best and team_human(team) != null and not demo and announced_hit != ball.hit_id:
 			announced_hit = ball.hit_id
-			if not best.is_human and best.brain and not best.brain.leaving and rng.randf() < 0.6:
+			var lpx := absf(ball.landing_point().x)
+			if not best.is_human and best.brain and not best.brain.leaving and lpx < 1.2 and rng.randf() < 0.25:
 				best.say("MINHA!", Color("4fc3ff"))
 			elif best.is_human and rng.randf() < 0.2:
 				var m := teammate(best)
@@ -1530,7 +1657,7 @@ func _assign() -> void:
 
 
 func _update_marker() -> void:
-	if state == S.RALLY and ball.is_live() and ball.position.y > 0.4:
+	if state == S.RALLY and ball.is_live() and ball.position.y > 0.4 and not ball.into_net:
 		var lp := ball.landing_point()
 		marker.visible = true
 		marker.global_position = Vector3(lp.x, 0.03, lp.z)
@@ -1555,6 +1682,11 @@ func _update_marker() -> void:
 
 func _on_net(pos: Vector3) -> void:
 	world.net_hit(pos)
+	if ball.cord:
+		ball.cord = false
+		comic(pos + Vector3(0, 0.7, 0), "NA FITA!", Color("ffe14d"), 0.5)
+		sfx("ooh", -6.0)
+		return
 	_stat("net_" + (Shots.NAMES[ball.last_shot] if ball.last_shot >= 0 else "?") + "_" + ball.get_meta("sp", ""))
 	if sim and stats.get("netlog", 0) < 12:
 		stats["netlog"] = int(stats.get("netlog", 0)) + 1
@@ -1746,7 +1878,10 @@ func _start_replay() -> void:
 	_layout_views()   # replay em tela cheia, mesmo no VS
 	hud.set_replay(true)
 	var b0: Vector3 = rec[replay_from]["b"]
-	replay_cam = Vector3(-10.4, 2.7, clampf(b0.z * 0.7, -6.0, 6.0))
+	# lado fixo durante o replay: oposto ao lado em que o ponto terminou
+	var b1: Vector3 = rec[rec.size() - 1]["b"]
+	replay_side = -signf(b1.x + 0.01)
+	replay_cam = Vector3(replay_side * 9.5, 3.0, clampf(b0.z * 0.7, -6.0, 6.0) + signf(b0.z + 0.01) * 1.5)
 	cam_cut = true
 	sfx("swing_smash", -14.0, 0.0, 0.6)
 	world.cheer(0.6)
@@ -1843,7 +1978,9 @@ func _update_camera(dt: float) -> void:
 	if shake > 0.0:
 		shake = maxf(shake - dt, 0.0)
 		var sh := shake * shake * 0.8
-		off = Vector3(rng.randf_range(-sh, sh), rng.randf_range(-sh, sh), 0.0)
+		# tremida na direção da pancada (oscila e some) + um resto aleatório pequeno
+		var osc := sin(time * 62.0) * sh
+		off = Vector3(shake_dir.x * osc, shake_dir.y * osc, 0.0) + Vector3(rng.randf_range(-sh, sh), rng.randf_range(-sh, sh), 0.0) * 0.25
 	var n := 2 if split_active() else 1
 	for vi in n:
 		var v: Dictionary = views[vi]
@@ -1868,7 +2005,10 @@ func _update_view(v: Dictionary, viewer: Player, dt: float, off: Vector3, split:
 	c.h_offset = lerpf(c.h_offset, -3.0 if demo and state != S.REPLAY else 0.0, 1.0 - exp(-5.0 * dt))
 	if state == S.REPLAY:
 		var bp := ball.global_position
-		replay_cam = replay_cam.lerp(Vector3(-10.4, 2.7 + bp.y * 0.15, clampf(bp.z * 0.7, -6.0, 6.0)), 1.0 - exp(-2.5 * dt))
+		# lateral do lado da bola e afastada do meio, para o poste da rede não tapar a cena
+		var rx := replay_side * 9.5
+		var rz := clampf(bp.z * 0.7, -6.0, 6.0) + signf(bp.z + 0.01) * 1.5
+		replay_cam = replay_cam.lerp(Vector3(rx, 3.0 + bp.y * 0.15, rz), 1.0 - exp(-2.0 * dt))
 		target_pos = replay_cam
 		target_look = Vector3(bp.x * 0.4, 0.9 + bp.y * 0.3, bp.z * 0.85)
 		base_fov = 44.0
@@ -1933,15 +2073,16 @@ func _update_view(v: Dictionary, viewer: Player, dt: float, off: Vector3, split:
 		var far_side := clampf(-ahead.z / 8.0, 0.0, 1.0) if ahead.z < 0.0 else 0.0
 		# câmera baixa atrás do fundo da quadra (estilo tênis arcade): pega os jogadores
 		# grandes de costas e "comprime" o lado adversário
-		var zz := lerpf(12.6, 15.0, cb) + (1.2 if split else 0.0) - approach * 0.7 - tension * 0.8 - cam_punch * 1.2
+		# segue o jogador (mais perto = bonecos maiores), sem chegar tanto que corte o outro lado
+		var zz := clampf(hp.z + lerpf(7.6, 8.4, cb), 10.2, 15.0) + (1.2 if split else 0.0) - approach * 0.6 - tension * 0.6 - cam_punch * 1.2
 		var sway := Vector3(sin(time * 0.7) * 0.08, sin(time * 1.1) * 0.05, 0.0)
-		target_pos = _mirror(Vector3(fx * 0.7, lerpf(3.7, 4.4, cb) + lift * 0.7 + (0.4 if split else 0.0)
+		target_pos = _mirror(Vector3(fx * 0.7, lerpf(3.5, 4.1, cb) + lift * 0.7 + (0.4 if split else 0.0)
 				- tension * 0.2, zz) + sway, s)
 		target_look = _mirror(Vector3(fx * 0.55, lerpf(1.25, 1.05, cb) + lift * 0.5,
 				lerpf(-4.0, -3.0, cb) - far_side * 1.0), s)
 		v["roll_t"] = -clampf((ahead.x - hp.x) * 0.012, -0.05, 0.05)
 		smooth_t = lerpf(0.35, 0.26, tension)
-		base_fov = 50.0 - far_side * 1.5
+		base_fov = 49.0 - far_side * 1.5
 		if intro_t < 2.4:
 			var k := smoothstep(0.0, 2.4, intro_t)
 			target_pos = _mirror(Vector3(0, 22, -46), s).lerp(target_pos, k)

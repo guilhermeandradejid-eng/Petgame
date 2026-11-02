@@ -31,6 +31,7 @@ var banner_sub: Label
 var hint: Label
 var super_hint: Label
 var super_hint_t := 0.0
+var banner_y := 112.0
 var pause_btn: Button
 var pause_panel: Control
 var end_panel: Control
@@ -120,12 +121,13 @@ func _ready() -> void:
 	touch = TouchControls.new()
 	add_child(touch)
 
-	banner = _label("", 96, Color.WHITE, 22)
-	banner.set_anchors_preset(Control.PRESET_CENTER)
+	# faixa no terço de cima (não cobre o rosto de quem comemora no close)
+	banner = _label("", 84, Color.WHITE, 20)
+	banner.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	banner.custom_minimum_size = Vector2(1200, 140)
-	banner.position = Vector2(-600, -150)
+	banner.position = Vector2(-600, 112)
 	banner.pivot_offset = Vector2(600, 70)
 	banner.visible = false
 	add_child(banner)
@@ -979,8 +981,16 @@ func _draw_title() -> void:
 		prompt = "APERTE (A) PARA JOGAR"
 	elif DisplayServer.is_touchscreen_available():
 		prompt = "TOQUE NA TELA PARA JOGAR"
-	var a := 0.55 + 0.45 * sin(t * 5.0)
-	_txt(ci, Vector2(c.x, vs.y - 64), prompt, int(40 + 3 * sin(t * 5.0)), Color(1, 1, 1, a), 12, true, Color(INK, a))
+	var a := 0.82 + 0.18 * sin(t * 5.0)
+	var pw2 := FONT.get_string_size(prompt, HORIZONTAL_ALIGNMENT_LEFT, -1, 38).x + 60.0
+	var pill := Rect2(c.x - pw2 * 0.5, vs.y - 92, pw2, 58)
+	var sc2 := 1.0 + 0.03 * sin(t * 5.0)
+	ci.draw_set_transform(pill.get_center(), 0.0, Vector2.ONE * sc2)
+	var lp := Rect2(-pill.size * 0.5, pill.size)
+	ci.draw_rect(lp.grow(5), YELLOW)
+	ci.draw_rect(lp, Color(INK, 0.92))
+	_txt(ci, Vector2(0, -1), prompt, 38, Color(1, 1, 1, a), 0)
+	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	_txt(ci, Vector2(vs.x - 60, vs.y - 22), "DEMO 0.2", 22, Color(1, 1, 1, 0.75), 6)
 
 
@@ -1153,7 +1163,7 @@ func _build_help() -> void:
 		["LOB (alto, fundo)", "X", "K", "LOB"],
 		["CURTA (slice)", "B", "L", "CURTA"],
 		["SMASH (bola alta)", "Y", "I", "SMASH"],
-		["DEFESA (escudo azul)", "LB  ou  RT", "O", "DEFESA"],
+		["DEFESA (bloqueia especial)", "LB  ou  RT", "O", "DEFESA"],
 		["ESPECIAL (barra cheia)", "RB", "U", "ESTRELA ESPECIAL"],
 		["PEIXINHO", "LT  ou  L3", "SHIFT", "PEIXINHO"],
 		["PAUSA", "START", "ESC", "II"],
@@ -1240,6 +1250,8 @@ func _process(dt: float) -> void:
 						pl.state = Player.State.NORMAL
 	if banner.visible:
 		banner.scale = banner.scale.lerp(Vector2.ONE, 1.0 - exp(-14.0 * dt))
+		banner_y = lerpf(banner_y, 112.0, 1.0 - exp(-16.0 * dt))
+		banner.position.y = banner_y
 	if super_hint.visible:
 		super_hint_t -= dt
 		super_hint.scale = Vector2.ONE * (1.0 + 0.06 * sin(t * 9.0))
@@ -1386,7 +1398,9 @@ func show_banner(text: String, sub: String = "", color: Color = Color.WHITE, tim
 	banner.text = text
 	banner.add_theme_color_override("font_color", color)
 	banner.visible = true
-	banner.scale = Vector2(1.6, 1.6)
+	time = minf(time, 1.5)
+	banner.scale = Vector2(1.25, 1.25)
+	banner_y = 72.0
 	banner.rotation = randf_range(-0.05, 0.05)
 	banner_sub.text = ""
 	banner_sub.visible = false   # sem subtítulo nas faixas
@@ -1449,6 +1463,15 @@ func _draw_charges() -> void:
 		return
 	for m in charges:
 		var c: Vector2 = m["pos"]
+		if m.has("ring"):
+			# saque: anel que fecha em volta da bola; no tamanho do alvo = hora de bater
+			var k: float = m["ring"]
+			var rr := 16.0 + 70.0 * k
+			charge_layer.draw_arc(c, 16.0, 0, TAU, 28, Color(INK, 0.8), 6.0)
+			charge_layer.draw_arc(c, 16.0, 0, TAU, 28, Color.WHITE, 3.0)
+			charge_layer.draw_arc(c, rr, 0, TAU, 40, Color(INK, 0.7), 7.0)
+			charge_layer.draw_arc(c, rr, 0, TAU, 40, YELLOW if k > 0.12 else Color.WHITE, 4.0)
+			continue
 		var v: float = m["v"]
 		var col: Color = m["col"]
 		var full := v >= 1.0
@@ -1516,8 +1539,8 @@ func _draw_score() -> void:
 	var vs := ci.get_viewport_rect().size
 	var cx := vs.x * 0.5
 	var top := 12.0
-	var pw := 268.0
-	var ph := 64.0
+	var pw := 236.0
+	var ph := 58.0
 	var gap := 14.0
 	var pts: Array = score["points"]
 	var golden: bool = score["golden"]
@@ -1536,7 +1559,7 @@ func _draw_score() -> void:
 		ci.draw_colored_polygon(shp, Color(INK, 0.45))
 		_comic_poly(ci, poly, col, 0.14, 4.0)
 		# caixa dos pontos (do lado de dentro, perto do centro)
-		var bw := 84.0
+		var bw := 76.0
 		var bx: float = rect.end.x - bw - 6.0 if side == 0 else rect.position.x + 6.0
 		var pop: float = pop_t[side]
 		var box := Rect2(bx, top + 6, bw, ph - 12)
@@ -1545,14 +1568,14 @@ func _draw_score() -> void:
 		var ps: String = str(pts[side]) if score.get("tiebreak", false) else GameData.POINT_NAMES[mini(pts[side], 3)]
 		var s := 1.0 + 0.6 * pop * pop
 		ci.draw_set_transform(box.get_center(), 0.0, Vector2.ONE * s)
-		_txt(ci, Vector2(0, -2), ps, 48, RED.darkened(0.3) if golden else INK, 0)
+		_txt(ci, Vector2(0, -2), ps, 44, RED.darkened(0.3) if golden else INK, 0)
 		ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		# nome + games em bolinhas
 		var nx: float = rect.position.x + 24.0 if side == 0 else rect.end.x - 24.0
 		var nm: String = team["name"]
 		if vs_mode:
 			nm = ("J1 " if side == 0 else "J2 ") + nm
-		var fs := 30
+		var fs := 27
 		var tw := FONT.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		_txt(ci, Vector2(nx if side == 0 else nx - tw, top + 22), nm, fs, Color.WHITE, 9, false)
 		var target: int = score["target"]
@@ -1584,8 +1607,8 @@ func _draw_score() -> void:
 		ci.draw_rect(fill, fc)
 		var stc := Vector2(er.position.x - 4.0 if side == 0 else er.end.x + 4.0, er.get_center().y)
 		_star(ci, stc, 14.0 * (1.0 + (0.15 * sin(t * 10.0) if full else 0.0)), YELLOW if full else Color(0.6, 0.58, 0.66), 2.5, t if full else 0.0)
-		_txt(ci, Vector2(er.get_center().x, er.get_center().y), "ESPECIAL PRONTO!" if full else "ESPECIAL", 15,
-			INK if full else Color(1, 1, 1, 0.8), 0 if full else 5)
+		if full:
+			_txt(ci, Vector2(er.get_center().x, er.get_center().y), "PRONTO!", 15, INK, 0)
 	# centro
 	var mid := Rect2(cx - 24, top + 14, 48, 36)
 	ci.draw_rect(mid.grow(3), INK)

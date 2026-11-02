@@ -210,5 +210,3 @@ func _draw_super(b: Dictionary, u: float) -> void:
 	_text(p + Vector2(0, rr * 0.62), "ESPECIAL", 15, Color(1, 1, 1, 1.0 if ready else 0.75), u, a)
 	if ready:
 		_text(p + Vector2(0, -rr - 14.0 * u), "PRONTO!", 20 + int(2.0 * sin(t * 9.0)), Color("ffe14d"), u, 1.0)
-	else:
-		_text(p + Vector2(0, -rr - 10.0 * u), "%d%%" % int(super_fill * 100.0), 15, Color(1, 1, 1, 0.6), u, 0.6)

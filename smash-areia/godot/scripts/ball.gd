@@ -8,6 +8,7 @@ signal landed(pos: Vector3)
 signal touched_net(pos: Vector3)
 
 const RADIUS := Shots.RADIUS
+const VIS := 1.5          # escala só do desenho da bola
 const TRAIL_LEN := 16
 
 var vel := Vector3.ZERO
@@ -22,6 +23,7 @@ var last_shot := -1
 var last_quality := 1.0
 var hit_id := 0
 var net_touched := false
+var cord := false          # última batida passou raspando na fita
 var is_serve := false
 var speed_at_hit := 0.0
 var flight_t := 0.0
@@ -48,21 +50,23 @@ var fx_mat: ShaderMaterial
 func _ready() -> void:
 	mesh = MeshInstance3D.new()
 	var sm := SphereMesh.new()
-	sm.radius = RADIUS
-	sm.height = RADIUS * 2.0
+	# só o visual é maior (1,5x) para a bola ser legível no celular; a física usa RADIUS
+	sm.radius = RADIUS * VIS
+	sm.height = RADIUS * VIS * 2.0
 	sm.radial_segments = 16
 	sm.rings = 10
 	mesh.mesh = sm
-	mesh.material_override = Toon.make(Color("ffe14d"), {"rim": 0.6, "spec": 0.6, "outline": 0.016, "halftone": 0.0})
+	# verde-limão: separa da areia pelo matiz (e combina com a bola do logo)
+	mesh.material_override = Toon.make(Color("d8ff3e"), {"rim": 0.6, "spec": 0.6, "outline": 0.02, "halftone": 0.0})
 	squash_node = Node3D.new()
 	add_child(squash_node)
 	squash_node.add_child(mesh)
-	# duas faixas cruzadas: deixam a rotação do efeito bem visível
-	for i in 2:
+	# uma faixa branca: deixa a rotação do efeito visível sem embolar no tamanho pequeno
+	for i in 1:
 		var band := MeshInstance3D.new()
 		var tm := TorusMesh.new()
-		tm.inner_radius = RADIUS * 0.94
-		tm.outer_radius = RADIUS * 1.05
+		tm.inner_radius = RADIUS * VIS * 0.94
+		tm.outer_radius = RADIUS * VIS * 1.05
 		tm.rings = 16
 		tm.ring_segments = 6
 		band.mesh = tm
@@ -70,7 +74,7 @@ func _ready() -> void:
 		band.material_override = Toon.make(Color("ff7a2e") if i == 0 else Color("ffffff"), {"outline": 0.0})
 		mesh.add_child(band)
 
-	shadow = Toon.blob(0.42, Color(0.25, 0.1, 0.25, 0.5))
+	shadow = Toon.blob(0.5, Color(0.12, 0.04, 0.14, 0.62))
 	shadow.top_level = true
 	add_child(shadow)
 
@@ -115,6 +119,9 @@ func _rebuild_traj() -> void:
 	var sim := Shots.simulate(position, vel, spin, special)
 	traj = sim["points"]
 	traj_i = 0
+	# a bola vai morrer na rede? (o marcador de queda não deve enganar o jogador)
+	traj_net_h = float(sim["net_h"])
+	into_net = traj_net_h < GameData.NET_H + RADIUS * 0.5
 
 
 func launch(v: Vector3, w: Vector3, team: int, hitter: Node3D, shot: int, sp := "", quality := 1.0) -> void:
@@ -223,8 +230,19 @@ func step(dt: float) -> void:
 		var c := prev.lerp(position, f)
 		if absf(c.x) < GameData.NET_HALF_W and c.y < GameData.NET_H + RADIUS:
 			net_touched = true
-			dead = true
 			var s := signf(prev.z)
+			# bola na fita: no beach tennis ela segue em jogo se passar (inclusive no saque)
+			if c.y > GameData.NET_H - RADIUS * 0.6 and randf() < 0.4:
+				position = Vector3(c.x, GameData.NET_H + RADIUS + 0.02, -s * (RADIUS + 0.05))
+				vel = Vector3(vel.x * 0.3, 1.6 + randf() * 0.8, -s * maxf(absf(vel.z) * 0.22, 1.2))
+				spin *= 0.3
+				special = ""
+				_set_fx("")
+				_rebuild_traj()
+				cord = true
+				touched_net.emit(position)
+				return
+			dead = true
 			position = Vector3(c.x, minf(c.y, GameData.NET_H - 0.05), s * (RADIUS + 0.03))
 			vel = Vector3(vel.x * 0.15, minf(vel.y, 0.5) * 0.3, s * absf(vel.z) * 0.1)
 			spin *= 0.2
@@ -260,7 +278,14 @@ func _update_visuals(dt: float) -> void:
 	var perp := 1.0 / sqrt(along)
 	var up := Vector3.UP if absf(sq_dir.dot(Vector3.UP)) < 0.98 else Vector3.RIGHT
 	var b := Basis.looking_at(sq_dir, up)
-	squash_node.global_basis = b.scaled_local(Vector3(perp, perp, along))
+	# perto da câmera a bola fica no tamanho real; longe, cresce até VIS para continuar legível
+	var vis := VIS
+	if trail_cam:
+		var dcam := trail_cam.global_position.distance_to(global_position)
+		vis = lerpf(1.0, VIS, clampf((dcam - 4.0) / 10.0, 0.0, 1.0)) / VIS
+	else:
+		vis = 1.0
+	squash_node.global_basis = b.scaled_local(Vector3(perp, perp, along) * vis)
 	shadow.global_position = Vector3(global_position.x, 0.02, global_position.z)
 	var h := clampf(global_position.y / 6.0, 0.0, 1.0)
 	shadow.scale = Vector3.ONE * lerpf(1.0, 0.55, h)
@@ -324,6 +349,10 @@ func time_to_ground() -> float:
 	if not flying:
 		return 0.0
 	return maxf(float(traj.size() - traj_i) * Shots.DT, 0.0)
+
+
+var traj_net_h := INF
+var into_net := false
 
 
 func landing_point() -> Vector3:

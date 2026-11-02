@@ -6,6 +6,7 @@ render_mode unshaded;
 uniform float excitement = 0.0;
 uniform vec3 ball_pos = vec3(0.0, 1.0, 0.0);
 uniform float ola_t = -10.0;
+uniform float mute = 0.3;   // torcida menos saturada que os jogadores
 uniform float ola_speed = 14.0;
 
 const vec3 SKINS[5] = vec3[](vec3(0.95, 0.73, 0.54), vec3(0.83, 0.6, 0.42), vec3(0.55, 0.35, 0.23),
@@ -51,6 +52,8 @@ void vertex() {
 
 void fragment() {
 	vec3 col = tint * mix(0.72, 1.0, step(0.5, shade));
+	float l = dot(col, vec3(0.3, 0.59, 0.11));
+	col = mix(col, vec3(l) * vec3(1.0, 0.94, 1.0), mute) * 0.94;
 	col = mix(col, vec3(1.0, 0.84, 0.72), smoothstep(45.0, 300.0, length(VERTEX)) * 0.7);
 	ALBEDO = col;
 }

@@ -13,6 +13,41 @@ desconhecidos" e abra. O jogo roda deitado (paisagem).
 |---|---|---|---|
 | ![personagens](docs/personagens.jpg) | ![vestiario](docs/vestiario.jpg) | ![smash](docs/smash.jpg) | ![comemoracao](docs/comemoracao.jpg) |
 
+## Revisão de game design (rodada 0.2)
+
+Feita com um agente de game design que leu o código e os prints; aplicado:
+
+- **Bola legível**: verde-limão (separa da areia), maior de longe (até 1,5x só no desenho, a física
+  não muda), sombra mais escura e marcador de queda com faixa de tinta. Se a bola vai morrer na
+  rede, o marcador some (não engana mais o jogador).
+- **Contorno que não some de longe** nos jogadores, bola e raquete; o cenário mantém o traço fino.
+- **Fundo calmo, frente forte**: cenário com véu lilás e menos contraste, torcida menos saturada,
+  sol menor e mais perto do mar.
+- **Batidas com peso**: congelamento curto em todas as batidas (mais nas carregadas e perfeitas),
+  tremida na direção da pancada, corpo que "soca" na batida, raquete que pisca branco no golpe
+  perfeito, afinação do som pela qualidade e a música abaixa um instante no especial.
+- **Movimento**: primeiro passo explosivo, inclinação pela aceleração e freada na areia com espirro,
+  pegada funda e passo forte.
+- **Câmera** um pouco mais perto e baixa, seguindo o jogador (bonecos maiores); replay pela lateral
+  do lado do ponto, sem o poste da rede na frente.
+- **Você na quadra**: anel fraco sempre embaixo do seu jogador; estrela de chance de 5 pontas.
+- **Menos texto**: letreiro só em PERFEITO/CARREGADO/chance/smash/especial, "MINHA!" só na bola do
+  meio, faixa de ponto no terço de cima e mais curta, placar mais compacto, aviso do título em
+  etiqueta legível. O golpe FORTE se chama FORTE em todo lugar.
+- **Bloqueio do especial**: DEFESA armada a tempo (carga ≥ 35%) segura o especial ("BLOQUEIO!",
+  ganha energia); a CPU também tenta bloquear.
+- **Jogo de rede**: FORTE batido acima da rede perto dela vira **VOLEIO** (mais rápido e angulado);
+  bola baixa sai mais fraca. A CPU fecha a rede depois de atacar.
+- **Saque no tempo**: o golpe lança a bola e um anel fecha em volta dela; apertar de novo na hora
+  certa dá o **SAQUE PERFEITO**.
+- **Bola na fita**: raspou na fita e passou, segue em jogo ("NA FITA!"), como no beach tennis.
+- **Dicas da primeira partida** (uma vez só): apertar antes, bola alta = smash, estrela de chance e
+  bloqueio do especial.
+- **CPU** usa o especial na hora certa (bola alta perto da rede ou ponto decisivo) e saca mais rápido;
+  apertar um golpe pula a espera entre pontos.
+- **Desempenho**: céu sem animação por tempo (não é redesenhado todo frame), sem reflexo de céu,
+  3D em 80% da resolução nos celulares de tela grande, plano extra da quadra removido.
+
 ## Menus
 
 1. **Título** com logo de gibi, raios girando e os quatro personagens. Qualquer toque ou botão entra.

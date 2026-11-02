@@ -199,6 +199,9 @@ func _environment() -> void:
 	sky.sky_material = sm
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	# tudo é unshaded: sem reflexo do céu (o céu não precisa virar cubemap a cada frame)
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
+	sky.radiance_size = Sky.RADIANCE_SIZE_32
 	env.ambient_light_color = Color.WHITE
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	var we := WorldEnvironment.new()
@@ -254,15 +257,6 @@ func _court() -> void:
 	for sx in [-1.0, 1.0]:
 		for sz in [-1.0, 1.0]:
 			_box(Vector3(0.16, 0.05, 0.16), Vector3(sx * hw, 0.02, sz * hl), Color("ffd23f"))
-	# areia mais clarinha (rastelada) dentro da quadra
-	var inner := MeshInstance3D.new()
-	var q := PlaneMesh.new()
-	q.size = Vector2(hw * 2.0, hl * 2.0)
-	inner.mesh = q
-	inner.position = Vector3(0, 0.004, 0)
-	inner.material_override = Toon.blob(1.0, Color(1.0, 0.97, 0.85, 0.22)).material_override.duplicate()
-	(inner.material_override as ShaderMaterial).set_shader_parameter("ring", 0.0)
-	add_child(inner)
 
 
 var net_mat: ShaderMaterial
@@ -373,7 +367,7 @@ func net_hit(pos: Vector3) -> void:
 
 
 func _referee() -> void:
-	var chair := _place(REFCHAIR, Vector3(5.6, 0, 0), -PI * 0.5, 1.0)
+	var chair := _place(REFCHAIR, Vector3(5.6, 0, 0), -PI * 0.5, 1.0, {"bg": 0.0})
 	var data := {"skin": Color("c98a5b"), "hair_color": Color("1d1d1d"), "accent": Color("1d1d1d"),
 		"hair": "Shades", "racket": Color.WHITE}
 	var team := {"shirt": Color("ffffff"), "trim": Color("1d1d1d"), "shorts": Color("1d1d1d")}
@@ -409,7 +403,7 @@ func _place(scene: PackedScene, pos: Vector3, rot_y := 0.0, s := 1.0, opts: Dict
 	n.position = pos
 	n.rotation.y = rot_y
 	n.scale = Vector3.ONE * s
-	var o := {"outline": 0.03, "halftone": 0.0}
+	var o := {"outline": 0.03, "halftone": 0.0, "bg": 1.0}
 	o.merge(opts, true)
 	Toon.apply(n, {}, o, ds, {"Leaf": {"wind": 1.0}, "LeafDark": {"wind": 1.0}})
 	add_child(n)
