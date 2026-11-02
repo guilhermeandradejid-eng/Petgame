@@ -53,10 +53,10 @@ const LENGTHS := [
 const OUTFITS := [
 	{"name": "CAMISETA", "parts": ["Shirt", "Shorts"]},
 	{"name": "REGATA", "parts": ["Tank", "Shorts"]},
-	{"name": "LISTRADA", "parts": ["Shirt", "Stripe0", "Stripe1", "Bermuda", "BermudaBand_R", "BermudaBand_L"]},
-	{"name": "ATLETA", "parts": ["Tank", "Stripe1", "Bermuda", "BermudaBand_R", "BermudaBand_L"]},
+	{"name": "LISTRADA", "parts": ["Shirt", "Stripe0", "Stripe1", "Bermuda"]},
+	{"name": "ATLETA", "parts": ["Tank", "Bermuda"]},
 ]
-const CLOTH_PARTS := ["Shirt", "Tank", "Stripe0", "Stripe1", "Shorts", "Bermuda", "BermudaBand_R", "BermudaBand_L"]
+const CLOTH_PARTS := ["Shirt", "Tank", "Stripe0", "Stripe1", "Shorts", "Bermuda"]
 
 ## Paletas de cada time (camisa, detalhe, short): sempre no tom do time
 const PALETTES := [

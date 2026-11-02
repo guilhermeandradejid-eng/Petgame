@@ -1317,8 +1317,8 @@ func show_banner(text: String, sub: String = "", color: Color = Color.WHITE, tim
 	banner.visible = true
 	banner.scale = Vector2(1.6, 1.6)
 	banner.rotation = randf_range(-0.05, 0.05)
-	banner_sub.text = sub
-	banner_sub.visible = sub != ""
+	banner_sub.text = ""
+	banner_sub.visible = false   # sem subtítulo nas faixas
 	get_tree().create_timer(time, true, false, true).timeout.connect(_hide_banner.bind(text))
 
 
@@ -1354,6 +1354,41 @@ func score_pop(team: int) -> void:
 
 var replay_layer: Control
 var replay_t := 0.0
+var charge_layer: Control
+var charges: Array = []
+
+
+## Medidor de carga do golpe: anel que enche em cima do jogador e "MAX!" quando cheio
+func set_charges(marks: Array) -> void:
+	if charge_layer == null:
+		charge_layer = Control.new()
+		charge_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+		charge_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		charge_layer.draw.connect(_draw_charges)
+		add_child(charge_layer)
+		move_child(charge_layer, 2)
+	if marks.is_empty() and charges.is_empty():
+		return
+	charges = marks
+	charge_layer.queue_redraw()
+
+
+func _draw_charges() -> void:
+	if replay_on or menu.visible:
+		return
+	for m in charges:
+		var c: Vector2 = m["pos"]
+		var v: float = m["v"]
+		var col: Color = m["col"]
+		var full := v >= 1.0
+		var r := 19.0 * (1.0 + (0.12 * sin(t * 18.0) if full else 0.0))
+		charge_layer.draw_circle(c, r + 6.0, Color(INK, 0.75))
+		charge_layer.draw_arc(c, r, 0, TAU, 32, Color(1, 1, 1, 0.18), 7.0)
+		if v > 0.0:
+			charge_layer.draw_arc(c, r, -PI * 0.5, -PI * 0.5 + TAU * v, 32, Color.WHITE if full and fmod(t, 0.2) < 0.1 else col, 7.0)
+		if full:
+			_txt(charge_layer, c + Vector2(0, -r - 18), "MAX!", 24, YELLOW, 8)
+		_txt(charge_layer, c + Vector2(0, 1), String(m["name"]).substr(0, 1), 18, Color.WHITE, 0)
 
 
 func set_replay(on: bool) -> void:

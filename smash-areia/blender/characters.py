@@ -352,11 +352,6 @@ def player_clothes(M, body_me, body_w):
         body_shell("Shorts", body_me, body_w, M["shorts"], sk, legs_off, sc),
         body_shell("Bermuda", body_me, body_w, M["shorts"], bk, legs_off, bc),
     ]
-    for sd in (".R", ".L"):
-        bone = "UpperLeg" + sd
-        keep = (lambda bnm: lambda c, bn, t: bn == bnm and 0.76 <= t <= 0.84)(bone)
-        out.append(body_shell("BermudaBand" + sd, body_me, body_w, M["trim"], keep, lambda bn: 0.036,
-                              [leg_plane(bone, 0.76), leg_plane(bone, 0.84)]))
     return out
 
 

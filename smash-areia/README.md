@@ -29,9 +29,12 @@ desconhecidos" e abra. O jogo roda deitado (paisagem).
 
    Os parceiros e adversários da CPU sorteiam roupa, cores e raquete a cada partida.
    As roupas são uma "casca" copiada do próprio corpo no Blender (cortes retos com bisect) e herdam
-   os mesmos pesos dos ossos, então a pele nunca atravessa o tecido em nenhuma pose.
+   os mesmos pesos dos ossos, então a pele nunca atravessa o tecido em nenhuma pose. Sem enfeites
+   extras: só camiseta ou regata (a listrada tem duas faixas no peito) e short ou bermuda.
 
-Tudo funciona no toque, no mouse, no teclado e no controle (D-pad + A, B volta).
+Tudo funciona no toque, no mouse, no teclado e no controle (D-pad ou analógico para escolher,
+**A** ou Start confirma, **B** volta; o Godot não liga o A do controle ao "confirmar" por padrão,
+então o jogo adiciona isso ao iniciar).
 
 ### Vídeo: 1 minuto de partida (com som)
 
@@ -82,11 +85,17 @@ As regras são de beach tennis:
 - Tamanho da partida: **RÁPIDA** (quem fizer 2 games), **NORMAL** (4 games) ou **SET OFICIAL**:
   6 games com 2 de vantagem e, no 6-6, **tie-break** até 7 pontos (2 de vantagem). No tie-break o
   placar conta 1, 2, 3... e o saque troca depois do 1º ponto e depois a cada 2.
+- **Saque**: a bola fica na palma da mão esquerda (com o braço à frente do corpo); no lançamento o
+  braço sobe esticado apontando a bola, na pose do troféu.
+- **Medidor de carga**: ao apertar um golpe antes da bola chegar, aparece um anel em cima do seu
+  jogador que enche com a cor do golpe (com a letra dele) e mostra "MAX!" quando a carga está cheia.
+- **Replay**: mostra até os últimos 5,5 s do rali, quase em tempo real no começo e em câmera lenta
+  no lance final; a raquete, o pulo e o estado de cada jogador são gravados quadro a quadro.
 - **Saque em rodízio**: as duplas alternam o saque a cada game, e dentro da dupla os dois jogadores
   se revezam (no seu time, você e o parceiro sacam em games alternados).
 - **Placar**: cada dupla mostra os próprios pontos em destaque (pisca quando pontua), os games
-  ganhos em bolinhas, a bolinha de SAQUE e a barra do especial. A cada ponto aparece o motivo
-  ("CAIU NA AREIA DOS SIRIS", "MANDARAM FORA", "NA REDE").
+  ganhos em bolinhas, a bolinha de SAQUE e a barra do especial. As faixas de ponto não têm
+  subtítulo: só o título grande ("PONTO DOS SIRIS!", "GAME!").
 
 ### Controles (toque)
 

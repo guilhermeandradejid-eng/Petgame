@@ -98,6 +98,7 @@ var smash_check := 0.0
 var racket_prev := Vector3.ZERO
 var racket_n := Vector3.FORWARD
 var i_hand := -1
+var i_hand_l := -1
 var i_low := -1
 var lh_w := 0.0            # peso da mão livre segurando a garganta da raquete (IK)
 var racket_grip := Vector3.ZERO
@@ -173,6 +174,7 @@ func _build_model() -> void:
 	racket = mm["racket"]
 	body.add_child(model)
 	i_hand = rig.bones.get("Hand.R", -1)
+	i_hand_l = rig.bones.get("Hand.L", -1)
 	i_low = rig.bones.get("LowerArm.R", -1)
 
 	shadow = Toon.blob(1.0, Color(0.3, 0.12, 0.2, 0.42))
@@ -717,6 +719,16 @@ func _animate(dt: float) -> void:
 	if swing_t < 1.0 and swing_type >= 0:
 		_strike_pose(swing_type, style, swing_t, p, L)
 		sharp = 32.0
+	# saque: bola na mão esquerda à frente do corpo; depois do lançamento o braço
+	# esquerdo fica esticado apontando a bola (pose do troféu)
+	if serve_mode and state == State.NORMAL and swing_t >= 1.0:
+		if pending_shot < 0:
+			var pump := sin(anim_time * 3.2) * 0.08
+			p["UpperArm.L"] = Vector3(-0.85 + pump, 0.25, 0.2)
+			p["LowerArm.L"] = Vector3(-1.05 - pump, 0.0, 0.0)
+		else:
+			p["UpperArm.L"] = Vector3(-2.75, 0.0, 0.2)
+			p["LowerArm.L"] = Vector3(-0.15, 0.0, 0.0)
 	if not on_ground() and split_t < 0.0:
 		L["tr"] = -0.9
 		L["kr"] = 1.3
@@ -869,7 +881,9 @@ func _update_racket(dt: float) -> void:
 ## (como nas fotos de posição de base do beach tennis); solta na batida.
 func _left_hand_ik(dt: float) -> void:
 	var target_w := 0.0
-	if state == State.NORMAL and on_ground() and swing_t >= 1.0:
+	if serve_mode:
+		target_w = 0.0   # no saque a mão esquerda segura/lança a bola
+	elif state == State.NORMAL and on_ground() and swing_t >= 1.0:
 		if pending_shot < 0 and loco != "run":
 			target_w = 1.0
 		elif pending_shot >= 0 and (style == "back" or style == "low_back" or style == "block"):
@@ -886,6 +900,17 @@ func _left_hand_ik(dt: float) -> void:
 	var chest := sk.global_transform * sk.get_bone_global_pose(rig.bones["Chest"]).origin
 	var pole := chest + b.x.normalized() * 0.5 + Vector3.DOWN * 0.6 - b.z.normalized() * 0.2
 	rig.ik_arm("UpperArm.L", "LowerArm.L", inv * throat, inv * pole, lh_w)
+
+
+## Ponto na palma da mão esquerda (onde a bola fica antes do saque)
+func ball_hold_pos() -> Vector3:
+	if i_hand_l < 0:
+		return global_position + global_transform.basis * Vector3(-0.3, 1.1, 0.35)
+	var sk := rig.sk
+	var xf := sk.global_transform
+	var hand := xf * sk.get_bone_global_pose(i_hand_l).origin
+	var wrist_dir := (hand - xf * sk.get_bone_global_pose(rig.bones["LowerArm.L"]).origin).normalized()
+	return hand + wrist_dir * 0.05 + Vector3.UP * 0.06
 
 
 func _make_shield() -> void:

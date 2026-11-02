@@ -66,9 +66,10 @@ var cam_punch := 0.0        # empurrão para a frente no smash
 var cam_dutch := 0.0        # inclinação forte no super
 
 # replay em câmera lenta dos lances bonitos
-const REC_MAX := 150
-const REPLAY_LEN := 105
-const REPLAY_SPEED := 0.42
+const REC_MAX := 540         # até 9 s de rali gravados (60 por segundo)
+const REPLAY_LEN := 330      # o replay mostra até os últimos 5,5 s do rali
+const REPLAY_SPEED := 0.42   # câmera lenta no lance final
+const REPLAY_FAST := 0.9     # o começo do rali passa quase em tempo real
 var rec: Array = []
 var highlight := 0
 var replay_f := 0.0
@@ -352,6 +353,13 @@ func _setup_input() -> void:
 			var e := InputEventKey.new()
 			e.physical_keycode = k
 			InputMap.action_add_event(action, e)
+	# menus no controle: A (ou Start) confirma, B volta (o Godot não traz isso por padrão)
+	for pair in [["ui_accept", JOY_BUTTON_A], ["ui_accept", JOY_BUTTON_START], ["ui_cancel", JOY_BUTTON_B]]:
+		var jb := InputEventJoypadButton.new()
+		jb.button_index = pair[1]
+		jb.device = -1
+		if not InputMap.action_has_event(pair[0], jb):
+			InputMap.action_add_event(pair[0], jb)
 
 
 # ---------------------------------------------------------------- áudio / fx
@@ -895,8 +903,21 @@ func _begin_serve() -> void:
 	hud.set_score(points, games, serving_team, games_to_win, tiebreak)
 
 
+## Indicador de carga do golpe em cima de cada jogador humano
+func _update_charge_marks() -> void:
+	var marks: Array = []
+	if state == S.RALLY and not demo:
+		for hp in humans:
+			if hp.pending_shot < 0 or hp.pending_shot == Shots.SPECIAL:
+				continue
+			for vi in (2 if split_active() else 1):
+				marks.append({"pos": screen_pos(hp.global_position + Vector3(0, 2.65, 0), vi),
+					"v": hp.charge(), "col": Shots.COLORS[hp.pending_shot], "name": Shots.NAMES[hp.pending_shot]})
+	hud.set_charges(marks)
+
+
 func _hand_pos(p: Player) -> Vector3:
-	return p.global_position + p.global_transform.basis * Vector3(0.38, 1.25, 0.25)
+	return p.ball_hold_pos()
 
 
 func _do_toss(type: int) -> void:
@@ -1394,6 +1415,9 @@ func _physics_process(delta: float) -> void:
 	for p in players:
 		p.update(dt)
 	ball.step(dt)
+	if state == S.SERVE and serve_phase == 0 and server:
+		ball.position = _hand_pos(server)   # bola presa na palma, depois da pose do frame
+	_update_charge_marks()
 	world.set_ball(ball.global_position)
 	if state == S.RALLY or (state == S.POINT and point_timer > 2.2):
 		_record()
@@ -1680,7 +1704,7 @@ func _record() -> void:
 	var snap := {"b": ball.global_position, "f": ball.flying, "p": []}
 	for p in players:
 		snap["p"].append([p.position, p.facing, p.body.rotation, p.body.scale, p.rig.cur.duplicate(),
-			p.swing_t, p.swing_type, p.style, p.pending_shot, p.lh_w])
+			p.swing_t, p.swing_type, p.style, p.pending_shot, p.lh_w, p.state, p.serve_mode, p.y])
 	rec.append(snap)
 	if rec.size() > REC_MAX:
 		rec.pop_front()
@@ -1705,7 +1729,10 @@ func _start_replay() -> void:
 
 
 func _update_replay(dt: float) -> void:
-	replay_f += REPLAY_SPEED * (dt * 60.0)
+	# começo do rali quase em tempo real, últimos ~1,4 s em câmera lenta
+	var left := float(rec.size()) - replay_f
+	var spd := lerpf(REPLAY_SPEED, REPLAY_FAST, clampf((left - 85.0) / 40.0, 0.0, 1.0))
+	replay_f += spd * (dt * 60.0)
 	if replay_f >= float(rec.size() - 1):
 		hud.set_replay(false)
 		state = S.POINT
@@ -1731,6 +1758,12 @@ func _update_replay(dt: float) -> void:
 		pl.swing_type = pa[6]
 		pl.style = pa[7]
 		pl.lh_w = pa[9]
+		# o estado do golpe também volta, senão a raquete é orientada pela pose
+		# de agora (comemoração) e não pela do lance
+		pl.pending_shot = pa[8]
+		pl.state = pa[10]
+		pl.serve_mode = pa[11]
+		pl.y = float(pa[12])
 		# a raquete é posicionada por código: precisa acompanhar a mão no replay também
 		pl._update_racket(dt)
 		pl._update_trail()
