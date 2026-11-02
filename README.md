@@ -58,3 +58,9 @@ Teclado: `J` liga o pulo, espaço freia ou usa a habilidade, `Esc` pausa.
 
 - `estelar/holes.js`: os buracos, descritos como mapas de texto (tipo de piso + altura por casa)
 - `estelar/game.js`: física isométrica com alturas e rampas, renderização em baixa resolução ampliada sem suavização, sprites gerados por código (personagens e inimigos são esferas iluminadas rasterizadas pixel a pixel, por isso rolam de verdade), música chiptune e efeitos sintetizados com Web Audio
+
+---
+
+# Smash na Areia
+
+Beach tennis arcade em 3D com visual de gibi (Godot 4.5 + modelos do Blender), com lob, smash com pulo, curtinha, defesa e mergulho. Fica na pasta [`smash-areia/`](smash-areia/), e o APK da demo está em [`smash-areia/builds/SmashNaAreia-demo.apk`](smash-areia/builds/SmashNaAreia-demo.apk).
