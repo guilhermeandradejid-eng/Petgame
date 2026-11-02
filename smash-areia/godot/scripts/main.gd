@@ -176,6 +176,10 @@ func _ready() -> void:
 			GameData.mode = a.substr(7)
 		elif a.begins_with("--diff="):
 			GameData.difficulty = int(a.substr(7))
+		elif a == "--sfxonly":
+			# teste de áudio: só os efeitos (sem música e torcida)
+			AudioServer.set_bus_mute.call_deferred(AudioServer.get_bus_index("Music"), true)
+			AudioServer.set_bus_mute.call_deferred(AudioServer.get_bus_index("Crowd"), true)
 		elif a == "--padtest":
 			var pt: Node = load("res://tests/pad_menu_test.gd").new()
 			add_child(pt)
@@ -381,6 +385,12 @@ func _setup_input() -> void:
 func _setup_audio() -> void:
 	audio = GameAudio.new()
 	add_child(audio)
+	# o 3D é desenhado nas SubViewports (a raiz tem o 3D desligado): o ouvinte
+	# precisa morar na viewport da câmera principal, senão os sons 3D ficam mudos
+	var sv: SubViewport = views[0]["sv"]
+	sv.audio_listener_enable_3d = true
+	audio.listener.reparent(sv)
+	audio.listener.make_current()
 	_update_music()
 
 
