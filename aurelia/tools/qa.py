@@ -1,6 +1,8 @@
 """QA gate for generated characters.  usage: python3 qa.py ren [capmook ...]  (exit 1 on any failure)
 
-Checks the frozen contract, animation quality floors, pixel hygiene and anchors.
+Checks the frozen contract, animation quality floors, pixel hygiene, anchors and the size budget.
+sheet.json v3: every anim lists display frames {i, logical, at, sub, anchors}; the frame shown at tick t is the
+last entry of its logical frame with at <= (t - logical start).
 """
 import json
 import os
@@ -10,10 +12,12 @@ import numpy as np
 from PIL import Image
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-MIN_FLUIDITY = 0.6          # sub-frames per logical frame (milestone-1 floor)
+MIN_FRAMES_PER_TICK = 0.45     # display frames per game tick (smoothness floor)
 MIN_ATTACK_FRAMES = 5
 MIN_HELD_TICKS = 6
 ANCHORS = ("hand", "hand_dir", "off_hand", "head", "chest", "weapon_tip")
+BUDGET_KB = {"ren": 1400}      # per png; everything else 600
+DEFAULT_BUDGET_KB = 600
 
 
 def check(char):
@@ -26,29 +30,59 @@ def check(char):
     cell = contract["cell"]
     if nimg.size != (img.shape[1], img.shape[0]):
         errs.append("normal sheet size != color sheet size")
+    for fn in ("sheet.png", "normal.png"):
+        kb = os.path.getsize(os.path.join(cdir, fn)) / 1024
+        cap = BUDGET_KB.get(char, DEFAULT_BUDGET_KB)
+        if kb > cap:
+            errs.append(f"{fn} is {kb:.0f} KB (> {cap} KB budget)")
     if set(sheet["anims"]) != set(contract["anims"]):
         errs.append(f"animation set differs from contract: {set(sheet['anims']) ^ set(contract['anims'])}")
-    logical = subs = 0
+    total_ticks = total_frames = 0
     heights = []
+    checked_cells = set()
     for name, ca in contract["anims"].items():
         sa = sheet["anims"].get(name)
         if not sa:
             continue
         if sa["ticks"] != ca["ticks"]:
             errs.append(f"{name}: tick budget changed")
-        mains = [f for f in sa["frames"] if not f["sub"]]
-        if [f["logical"] for f in mains] != list(range(len(ca["ticks"]))):
-            errs.append(f"{name}: logical frame count changed")
-        logical += len(mains)
-        subs += len(sa["frames"]) - len(mains)
+        n = len(ca["ticks"])
+        by_l = {}
+        for f in sa["frames"]:
+            by_l.setdefault(f["logical"], []).append(f)
+        if sorted(by_l) != list(range(n)):
+            errs.append(f"{name}: logical frame set changed")
+        order = [(f["logical"], f["at"]) for f in sa["frames"]]
+        if order != sorted(order):
+            errs.append(f"{name}: frames not sorted by (logical, at)")
+        frozen = set(ca.get("hold", []))
         contacts = ca.get("contact", [])
         if contacts:
-            if len(ca["ticks"]) < MIN_ATTACK_FRAMES:
-                errs.append(f"{name}: attack has {len(ca['ticks'])} frames (<{MIN_ATTACK_FRAMES})")
+            frozen.add(contacts[-1])
+        for l, fl in by_l.items():
+            if fl[0]["at"] != 0:
+                errs.append(f"{name}: logical frame {l} has no key frame at tick offset 0")
+            if any(f["at"] >= ca["ticks"][l] for f in fl):
+                errs.append(f"{name}: logical frame {l} has a display frame beyond its tick budget")
+            if l in frozen:       # held/contact frames stay on their exact key: the blade/hand never moves
+                a0 = fl[0]["anchors"]
+                if any(f["anchors"] != a0 for f in fl[1:]):
+                    errs.append(f"{name}: held frame {l} moves (anchors differ between its display frames)")
+        total_ticks += sum(ca["ticks"])
+        total_frames += len(sa["frames"])
+        if contacts:
+            if n < MIN_ATTACK_FRAMES:
+                errs.append(f"{name}: attack has {n} frames (<{MIN_ATTACK_FRAMES})")
             # single hit: the contact frame is held; multi-hit: the LAST contact frame is held
             if ca["ticks"][contacts[-1]] < MIN_HELD_TICKS:
                 errs.append(f"{name}: last contact frame held {ca['ticks'][contacts[-1]]} ticks (<{MIN_HELD_TICKS})")
         for f in sa["frames"]:
+            for k in ANCHORS:
+                if k not in f["anchors"]:
+                    errs.append(f"{name}[{f['i']}]: missing anchor {k}")
+            if f["i"] in checked_cells:
+                continue
+            checked_cells.add(f["i"])
             x, y = (f["i"] % sheet["cols"]) * cell, (f["i"] // sheet["cols"]) * cell
             tile = img[y:y + cell, x:x + cell]
             a = tile[..., 3]
@@ -56,25 +90,22 @@ def check(char):
                 errs.append(f"{name}[{f['i']}]: semi-transparent pixels")
             if a[0, :].any() or a[-1, :].any() or a[:, 0].any() or a[:, -1].any():
                 errs.append(f"{name}[{f['i']}]: sprite touches cell border")
-            for k in ANCHORS:
-                if k not in f["anchors"]:
-                    errs.append(f"{name}[{f['i']}]: missing anchor {k}")
-            if name == "idle" and not f["sub"] and f["logical"] == 0:
+            if name == "idle" and f["logical"] == 0 and f["at"] == 0:
                 ys = np.nonzero(a.any(1))[0]
                 heights.append(int(ys.max() - ys.min() + 1))
-    flu = subs / max(logical, 1)
-    if flu < MIN_FLUIDITY:
-        errs.append(f"fluidity {flu:.2f} < {MIN_FLUIDITY}")
+    fpt = total_frames / max(total_ticks, 1)
+    if fpt < MIN_FRAMES_PER_TICK:
+        errs.append(f"display frames per tick {fpt:.2f} < {MIN_FRAMES_PER_TICK}")
     tgt = contract["target_height_px"]
     if heights and abs(heights[0] - tgt) > tgt * 0.2:
         errs.append(f"idle height {heights[0]}px vs target {tgt}px (>20%)")
-    print(f"{char}: anims={len(contract['anims'])} logical={logical} fluidity={flu:.2f} "
-          f"height={heights[0] if heights else '?'}px -> {'FAIL' if errs else 'PASS'}")
+    print(f"{char}: anims={len(contract['anims'])} display_frames={total_frames} ticks={total_ticks} per_tick={fpt:.2f} "
+          f"unique_cells={sheet['frames']} height={heights[0] if heights else '?'}px -> {'FAIL' if errs else 'PASS'}")
     for e in errs[:20]:
         print("   -", e)
     return not errs
 
 
 if __name__ == "__main__":
-    ok = all([check(c) for c in (sys.argv[1:] or ["ren", "capmook"])])
+    ok = all([check(c) for c in (sys.argv[1:] or ["ren", "capmook", "hopkin"])])
     sys.exit(0 if ok else 1)

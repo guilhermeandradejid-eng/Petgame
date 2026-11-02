@@ -9,6 +9,7 @@ from engine import Canvas, Mask, simulate_chain, hexc
 from chars._cute import eyes, put, DARK
 
 CELL = 64
+HOLD_PULSE = 0            # the cap spring would swing it out of the cell during held frames
 G = (32.0, 59.0)
 CAP = "#D8403A"
 HOT = "#FF9A2E"
@@ -60,9 +61,9 @@ def poses(anim, n):
         ][:n]
     if anim == "headbutt":
         return [
-            P(bw=9.7, bh=6.0, nk=2.4, lean=-22, glow=1.0, expr="angry", hx=-1.0, ff=(4.2, 0), bf=(-4.6, 0), capoff=(-1.5, 1.6), mouth="grit"),
-            P(bw=9.9, bh=5.7, nk=2.2, lean=-26, glow=1.0, expr="angry", hx=-2.5, ff=(4.4, 0), bf=(-4.8, 0), capoff=(-2.5, 1.8), mouth="grit"),
-            P(bw=6.6, bh=10.4, nk=5.0, lean=14, glow=1.0, expr="angry", hx=2.0, lift=3.0, ff=(5.5, -1.5), bf=(-3.5, -2.5), mouth="open"),
+            P(bw=9.7, bh=6.0, nk=2.4, lean=-22, glow=1.0, expr="angry", hx=-1.0, ff=(4.2, 0), bf=(-4.6, 0), capoff=(-1.5, 1.6), mouth="grit", ease="in"),
+            P(bw=9.9, bh=5.7, nk=2.2, lean=-26, glow=1.0, expr="angry", hx=-2.5, ff=(4.4, 0), bf=(-4.8, 0), capoff=(-2.5, 1.8), mouth="grit", stop=True, ease="in"),
+            P(bw=6.6, bh=10.4, nk=5.0, lean=14, glow=1.0, expr="angry", hx=2.0, lift=3.0, ff=(5.5, -1.5), bf=(-3.5, -2.5), mouth="open", ease="snap"),
             P(bw=6.8, bh=10.0, nk=5.0, lean=27, glow=1.0, expr="angry", hx=3.5, lift=1.0, ff=(7.0, 0), bf=(-2.5, -0.5), capoff=(1.6, 0.6), mouth="open"),
             P(bw=7.6, bh=9.0, nk=4.0, lean=18, glow=0.5, expr="angry", hx=3.5, ff=(6.0, 0), bf=(-3.0, 0), capoff=(1.0, 0.5), mouth="open"),
             P(bw=8.6, bh=7.4, nk=3.0, lean=7, glow=0.15, expr="neutral", hx=2.5, ff=(4.5, 0), bf=(-3.5, 0), mouth="grit"),
@@ -146,6 +147,8 @@ def draw(sk, chains, p):
         spring = math.degrees(math.atan2(cp[0] - top[0], -(cp[1] - top[1])))
         tilt = sk["lean"] * 0.45 + max(-14.0, min(14.0, (spring - sk["lean"]) * 0.6)) + p["caprot"]
     t = math.radians(tilt)
+    reach = 14.2 * abs(math.cos(t)) + 9.8 * abs(math.sin(t)) + 1.6          # keep the cap inside the cell (1px outline + margin)
+    cx = max(reach + 1.0, min(CELL - 1.0 - reach, cx))
     dx, dy = xs - cx, ys - cy
     lx = dx * math.cos(t) + dy * math.sin(t)
     ly = -dx * math.sin(t) + dy * math.cos(t)

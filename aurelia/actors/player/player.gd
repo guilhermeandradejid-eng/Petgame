@@ -238,7 +238,7 @@ func _advance_sprite() -> void:
 	var prev_logical := sprite.logical
 	if state == S.IDLE and (an == "run" or an == "walk"):
 		var v := Vector2(velocity.x, velocity.z).length()
-		var ref := REF_RUN if an == "run" else REF_WALK
+		var ref := sprite.sheet.ref_speed(an, REF_RUN if an == "run" else REF_WALK)
 		sprite.advance_rate(clampf(v / ref, 0.35, 1.9))
 		if sprite.logical != prev_logical and (sprite.logical == 0 or sprite.logical == 4) and v > 1.0:
 			Sfx.play("step", -13.0, 0.9 + 0.2 * randf())

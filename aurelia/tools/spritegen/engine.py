@@ -382,13 +382,16 @@ def normal_map(buf, depth=4):
 # ------------------------------------------------------------------- springs
 
 
+CHAIN_SUBSTEPS = 1      # build.py raises this: chains are simulated per game tick, tuned at ~2 steps/tick
+
+
 def simulate_chain(anchors, rests, stiffness=0.14, damping=0.80, gravity=0.18, wind=0.0,
                    seglens=None, loop=False, floor=57.5):
     """Simulate a spring chain over a sequence of display frames.
 
     anchors: list of (x, y) pinned root per frame.
     rests:   list (per frame) of lists of rest points (len n) for the free joints.
-    Returns per frame list of points [anchor, p1..pn].
+    wind may be a scalar or a per-frame list. Returns per frame list of points [anchor, p1..pn].
     """
     n = len(rests[0])
     frames = len(anchors)
@@ -404,21 +407,23 @@ def simulate_chain(anchors, rests, stiffness=0.14, damping=0.80, gravity=0.18, w
         out = []
         for f in range(frames):
             a = anchors[f]
-            for i in range(n):
-                vx = (p[i][0] - prev[i][0]) * damping
-                vy = (p[i][1] - prev[i][1]) * damping
-                prev[i] = list(p[i])
-                p[i][0] += vx + wind * (1 + 0.5 * math.sin(f * 0.9 + i)) + stiffness * (rests[f][i][0] - p[i][0])
-                p[i][1] += vy + gravity + stiffness * (rests[f][i][1] - p[i][1])
-            for _ in range(3):
-                last = a
+            w = wind[f] if isinstance(wind, (list, tuple)) else wind
+            for _sub in range(CHAIN_SUBSTEPS):
                 for i in range(n):
-                    dx, dy = p[i][0] - last[0], p[i][1] - last[1]
-                    d = math.hypot(dx, dy) or 1e-6
-                    p[i][0] = last[0] + dx / d * seg[i]
-                    p[i][1] = last[1] + dy / d * seg[i]
-                    if p[i][1] > floor:
-                        p[i][1] = floor
-                    last = p[i]
+                    vx = (p[i][0] - prev[i][0]) * damping
+                    vy = (p[i][1] - prev[i][1]) * damping
+                    prev[i] = list(p[i])
+                    p[i][0] += vx + w * (1 + 0.5 * math.sin(f * 0.45 + i)) + stiffness * (rests[f][i][0] - p[i][0])
+                    p[i][1] += vy + gravity + stiffness * (rests[f][i][1] - p[i][1])
+                for _ in range(3):
+                    last = a
+                    for i in range(n):
+                        dx, dy = p[i][0] - last[0], p[i][1] - last[1]
+                        d = math.hypot(dx, dy) or 1e-6
+                        p[i][0] = last[0] + dx / d * seg[i]
+                        p[i][1] = last[1] + dy / d * seg[i]
+                        if p[i][1] > floor:
+                            p[i][1] = floor
+                        last = p[i]
             out.append([tuple(a)] + [tuple(q) for q in p])
     return out

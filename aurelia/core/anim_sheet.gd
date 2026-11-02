@@ -71,6 +71,7 @@ func _load(char_id: String) -> void:
 		anims[name] = {
 			"loop": a["loop"], "ticks": ticks, "starts": starts, "total": acc,
 			"contact": a["contact"], "hold": a["hold"], "frames": by_logical,
+			"ref_speed": float(a.get("ref_speed_mps", 0.0)),
 		}
 
 
@@ -103,6 +104,13 @@ func at(name: String, tick: int) -> Dictionary:
 		else:
 			break
 	return {"i": int(fr["i"]), "logical": l, "anchors": fr["anchors"]}
+
+
+## Ground speed (m/s) at which a locomotion cycle's feet do not slide (0 = unknown).
+func ref_speed(name: String, fallback: float) -> float:
+	if anims.has(name) and anims[name]["ref_speed"] > 0.0:
+		return anims[name]["ref_speed"]
+	return fallback
 
 
 ## [start, end) ticks of the first contact run, or Vector2i(-1, -1).

@@ -6,7 +6,9 @@ spins squash the body horizontally (engine.Canvas.warp_x) and flip it, face pain
 """
 import math
 
-from engine import (Canvas, Mask, ik2, simulate_chain, smooth)
+import numpy as np
+
+from engine import (SS as SSF, Canvas, Mask, ik2, simulate_chain, smooth)
 
 MATERIALS = {
     # name: (base hex, glossy, [deep, shade, base, light, highlight])  - hand-tuned, hue-shifted ramps
@@ -24,10 +26,10 @@ MATERIALS = {
 }
 CELL = 64
 G = (32.0, 59.0)
-HIP_H = 12.8
+HIP_H = 14.0
 TORSO = 8.0
 HEAD_OFF = 9.6
-THIGH = SHIN = 6.0
+THIGH = SHIN = 6.6
 ANKLE_H = 3.1
 UARM, FARM = 5.5, 5.3
 WEAPON_LEN = {"sword": 14.5, "spear": 18.5, "axe": 12.0}
@@ -40,7 +42,7 @@ NO_SEAM = {("hair", "head"), ("scarf", "head"), ("scarf", "torso"), ("hair", "sc
            ("hem", "torso"), ("hem", "legF"), ("hem", "legB"), ("bootF", "legF"), ("bootB", "legB"),
            ("sword", "guard"), ("guard", "blade"), ("sword", "blade")}
 
-DEFAULT = dict(plant=False, hx=0.0, hy=0.0, lean=0.0, head=0.0, ff=(3.2, 0.0), bf=(-3.2, 0.0),
+DEFAULT = dict(plant=False, str=1.0, hx=0.0, hy=0.0, lean=0.0, head=0.0, ff=(3.2, 0.0), bf=(-3.2, 0.0),
                nh=(3.2, 6.6), fh=(-2.4, 6.4), sw=165.0, weapon="sword", two=None, wscale=1.0,
                spin=None, expr="neutral", wind=0.0)
 
@@ -71,39 +73,69 @@ def blend(a, b, t):
 
 
 # ------------------------------------------------------------------ poses
+#
+# Every logical frame of the contract gets ONE key pose. build.py samples a Hermite spline through
+# the keys for every game tick. Per-key tags steer the in-betweens leaving that key:
+#   ease = "in" (accelerate), "out" (decelerate), "snap" (fast, ~4% overshoot), None (spline flow)
+#   stop = True  -> velocity is zero on that key (anticipation extremes, apexes)
+# Hold / last-contact frames of the contract are frozen on their exact key by the builder.
+
+REF_SPEED = {}            # filled below: m/s the walk/run cycles were authored for (32 px = 1 m)
+S_WALK, S_RUN, F_STANCE_RUN = 9.0, 10.0, 0.45
 
 
-def _foot(t, stride, lift):
-    t %= 1.0
-    if t < 0.5:
-        return (stride * (1 - 4 * t), 0.0)
-    u = (t - 0.5) * 2
-    return (-stride + 2 * stride * smooth(u), -lift * math.sin(math.pi * u))
+def _foot_walk(phi):
+    phi %= 1.0
+    if phi < 0.5:                         # stance: sole glued to the floor, moving back at constant speed
+        return (S_WALK * (1 - 4 * phi), 0.0)
+    u = (phi - 0.5) * 2.0                 # swing
+    e = u * u * (3 - 2 * u)
+    return (-S_WALK + 2 * S_WALK * e, -3.9 * math.sin(math.pi * u) ** 0.85)
 
 
-def _walk(n=8):
-    out = []
-    for i in range(n):
-        t = i / n
-        ff, bf = _foot(t, 4.2, 3.2), _foot(t + 0.5, 4.2, 3.2)
-        s = -ff[0] / 4.2
-        out.append(P(hy=0.9 * math.cos(4 * math.pi * (t - 1 / 8)) + 0.9, lean=3.0, head=-1.0 * math.cos(4 * math.pi * t),
-                     ff=ff, bf=bf, nh=(3.2 + 1.8 * s, 6.5 - 0.5 * abs(s)), fh=(-2.4 - 3.0 * s, 6.2 - 0.4 * abs(s)),
-                     sw=165 - 8 * s, wind=-0.03))
-    return out
+def walk_pose(phi):
+    ff, bf = _foot_walk(phi), _foot_walk(phi + 0.5)
+    s = -ff[0] / S_WALK                   # +1: near foot is back, near hand forward
+    c2 = math.cos(4 * math.pi * phi)      # +1 at foot contact, -1 at passing
+    lean = 3.4 + 0.9 * c2
+    return P(hx=0.35 * math.sin(2 * math.pi * phi), hy=0.7 + 0.95 * c2, lean=lean, head=-0.55 * (lean - 3.4) - 0.6 * math.sin(2 * math.pi * phi),
+             ff=ff, bf=bf, str=1.0 + 0.012 * c2,
+             nh=(3.2 + 3.0 * s, 6.5 - (1.0 * s if s > 0 else -0.35 * s)),
+             fh=(-2.4 - 3.2 * s, 6.3 - (-1.0 * s if s < 0 else 0.35 * s)),
+             sw=165 - 11 * s, wind=-0.035, expr="neutral")
 
 
-def _run(n=8):
-    out = []
-    for i in range(n):
-        t = i / n
-        ff, bf = _foot(t, 7.5, 6.5), _foot(t + 0.5, 7.5, 6.5)
-        air = max(0.0, math.sin(4 * math.pi * t))        # 0 at contact, 1 mid-flight
-        s = -ff[0] / 7.5
-        out.append(P(hy=2.2 - 5.2 * air, lean=17.0, head=-3.0, ff=ff, bf=bf,
-                     nh=(2.5 + 3.5 * s, 4.2 - 1.2 * abs(s)), fh=(-3.0 - 4.5 * s, 4.0 - 1.0 * abs(s)),
-                     sw=205 - 10 * s, wind=-0.22, expr="focus"))
-    return out
+def _foot_run(phi):
+    phi %= 1.0
+    if phi < F_STANCE_RUN:                # stance
+        psi = phi / F_STANCE_RUN
+        return (S_RUN * (1 - 2 * psi), 0.0)
+    u = (phi - F_STANCE_RUN) / (1 - F_STANCE_RUN)
+    e = u * u * (3 - 2 * u)
+    x = -S_RUN + 2 * S_RUN * e - 2.8 * math.sin(math.pi * min(u / 0.4, 1.0))        # heel kick-back first
+    return (x, -8.0 * math.sin(math.pi * u ** 0.8) ** 0.8)
+
+
+def run_pose(phi):
+    ff, bf = _foot_run(phi), _foot_run(phi + 0.5)
+    s = -ff[0] / S_RUN
+    # hip: low through each stance, springs up over the short flight window
+    def hip(ph):
+        ph %= 0.5
+        if ph < F_STANCE_RUN:
+            return 2.6 - 1.3 * math.sin(math.pi * ph / F_STANCE_RUN)
+        v = (ph - F_STANCE_RUN) / (0.5 - F_STANCE_RUN)
+        return 2.6 - 5.0 * math.sin(math.pi * v)
+    c2 = math.cos(4 * math.pi * phi)
+    return P(hx=0.3 * math.sin(2 * math.pi * phi), hy=hip(phi), lean=15.5 + 1.6 * c2, head=-4.0 + 0.8 * c2, ff=ff, bf=bf, str=1.0 + 0.02 * c2,
+             nh=(2.0 + 3.8 * s, 4.5 - 1.2 * abs(s) - (0.8 if s > 0 else 0.0)),
+             fh=(-3.0 - 4.2 * s, 4.3 - 1.2 * abs(s) - (0.8 if s < 0 else 0.0)),
+             sw=208 - 13 * s, wind=-0.24, expr="focus")
+
+
+PROCEDURAL = {"walk": walk_pose, "run": run_pose}
+REF_SPEED["walk"] = round((2 * S_WALK) / 20.0 * 60.0 / 32.0, 3)                       # stance = half of the 40-tick cycle
+REF_SPEED["run"] = round((2 * S_RUN) / (F_STANCE_RUN * 32.0) * 60.0 / 32.0, 3)        # stance = 45% of the 32-tick cycle
 
 
 def _spin(phi, weapon, **kw):
@@ -116,6 +148,13 @@ def _spin(phi, weapon, **kw):
                 fh=(-4.5 * vx, -3.0 * vy + 3.4), ff=(2.6, 0.0), bf=(-2.6, 0.0), lean=5.0, expr="angry", wind=-0.25)
     base.update(kw)
     return P(**base)
+
+
+# a neutral stance every attack settles into (matches idle frame 0, so the hand-off to idle is invisible)
+def _rest(**kw):
+    d = dict(hx=0.2, hy=0.3, lean=1.5, ff=(3.8, 0.0), bf=(-3.6, 0.0), nh=(3.3, 6.6), fh=(-2.4, 6.4), sw=164)
+    d.update(kw)
+    return P(**d)
 
 
 def poses(anim, n):
@@ -132,243 +171,252 @@ def poses(anim, n):
 
 def _poses(anim, n):
     S = "sword"
-    if anim == "idle":
-        hy = [0.0, 0.5, 1.0, 0.8, 0.3, 0.0]
-        return [P(hy=hy[i], lean=0.3 * i % 1, head=[0, 0.5, 1.2, 1.0, 0.4, 0][i],
-                  nh=(3.2, 6.6 - 0.25 * hy[i]), fh=(-2.4, 6.4 - 0.2 * hy[i]), wind=0.03,
-                  expr="blink" if i == 4 else "neutral") for i in range(6)][:n]
-    if anim == "ready":
+    if anim == "idle":              # breathing + weight shift + one blink + a scarf flutter
         out = []
         for i in range(6):
-            b = [0, 0.7, 1.4, 1.6, 0.9, 0.3][i]
-            out.append(P(hy=2.6 + b * 0.5, lean=6, hx=0.5, ff=(6.2, 0), bf=(-5.2, 0), nh=(6.0, 2.8 - 0.3 * b), fh=(-1.5, 4.8),
-                         sw=28 + 3 * b, expr="focus", wind=-0.04))
+            ph = i / 6.0
+            out.append(P(hx=0.45 * math.sin(2 * math.pi * ph), hy=0.5 - 0.5 * math.cos(2 * math.pi * ph), lean=0.4 + 0.7 * math.sin(2 * math.pi * ph + 0.6),
+                         head=1.0 + 1.0 * math.sin(2 * math.pi * ph - 0.8), str=1.0 + 0.012 * math.sin(2 * math.pi * ph - 1.2),
+                         ff=(3.2 + 0.25 * math.sin(2 * math.pi * ph), 0.0), bf=(-3.2 + 0.25 * math.sin(2 * math.pi * ph), 0.0),
+                         nh=(3.2, 6.6 - 0.35 * math.sin(2 * math.pi * ph - 0.4)), fh=(-2.4, 6.4 - 0.3 * math.sin(2 * math.pi * ph - 0.4)),
+                         sw=164 + 2.0 * math.sin(2 * math.pi * ph), wind=0.03 + (0.07 if i == 2 else 0.0),
+                         expr="blink" if i == 4 else "neutral"))
+        return out[:n]
+    if anim == "ready":             # battle stance: knees bent, weapon up, bouncing on the toes
+        out = []
+        for i in range(6):
+            ph = i / 6.0
+            b = 0.5 - 0.5 * math.cos(2 * math.pi * ph)
+            out.append(P(hy=2.9 + 0.7 * b - 0.0, hx=0.5, lean=6.5 + 0.8 * math.sin(2 * math.pi * ph), head=-1.5, ff=(6.4, -0.35 * b), bf=(-5.4, -0.2 * b),
+                         nh=(6.0, 2.9 - 0.5 * b), fh=(-1.5, 4.9 + 0.3 * b), sw=28 + 3.5 * b, str=1.0 - 0.015 * b, expr="focus", wind=-0.05 + 0.05 * b))
         return out[:n]
     if anim == "walk":
-        return _walk(8)[:n]
+        return [walk_pose(i / 8.0) for i in range(8)][:n]
     if anim == "run":
-        return _run(8)[:n]
-    if anim == "dash":
+        return [run_pose(i / 8.0) for i in range(8)][:n]
+    if anim == "dash":              # crouch -> explosive launch -> long stretched glide -> brake -> settle
         return [
-            P(hx=-1.5, hy=3.0, lean=9, head=-3, ff=(6, 0), bf=(-6, 0), nh=(-1, 6), fh=(-3, 6), sw=215, expr="focus", wind=-0.1),
-            P(hx=2.5, hy=3.5, lean=30, head=-8, ff=(9, -0.5), bf=(-12, -2), nh=(-3.5, 4.5), fh=(-5, 4), sw=235, expr="angry", wind=-0.35),
-            P(hx=3.5, hy=3.0, lean=40, head=-14, ff=(11, -2.5), bf=(-14, -5), nh=(-5, 3.5), fh=(-6, 3), sw=245, expr="angry", wind=-0.5),
-            P(hx=2.0, hy=2.5, lean=30, head=-9, ff=(10, -1), bf=(-12, -3), nh=(-4, 4), fh=(-5, 3.5), sw=240, expr="focus", wind=-0.35),
-            P(hx=0.5, hy=1.5, lean=10, head=-2, ff=(7, 0), bf=(-5, 0), nh=(2, 6), fh=(-3, 6), sw=190, wind=-0.1),
+            P(hx=-2.0, hy=3.6, lean=7, head=-3, ff=(6, 0), bf=(-6.5, 0), nh=(-1.5, 6.5), fh=(-3.5, 6), sw=220, str=0.94, expr="focus", wind=-0.15, ease="snap"),
+            P(hx=2.2, hy=3.4, lean=30, head=-8, ff=(10, -1.5), bf=(-13, -2.5), nh=(-3.8, 4.5), fh=(-5.2, 4), sw=236, str=1.06, expr="angry", wind=-0.45),
+            P(hx=3.8, hy=3.0, lean=42, head=-15, ff=(12, -3.0), bf=(-15, -6.0), nh=(-5.5, 3.5), fh=(-6.5, 3), sw=246, str=1.1, expr="angry", wind=-0.55),
+            P(hx=2.4, hy=2.8, lean=28, head=-9, ff=(10.5, -0.6), bf=(-11, -2.4), nh=(-3.5, 4.2), fh=(-5, 3.8), sw=238, str=1.03, expr="focus", wind=-0.35, ease="out"),
+            _rest(hx=0.8, hy=1.6, lean=8, ff=(6.5, 0), bf=(-5.0, 0), nh=(2.0, 6.2), sw=186, wind=-0.1),
         ][:n]
     if anim == "jump":
         return [
-            P(hy=3.8, lean=5, head=-2, ff=(4.5, 0), bf=(-4.5, 0), nh=(2.5, 6.5), fh=(-3, 6.5), sw=175, expr="focus"),
-            P(hy=-4.5, lean=-3, head=-2, ff=(3, -6.5), bf=(-3.5, -4.5), nh=(5, 0.5), fh=(-5, 1.5), sw=105, expr="happy"),
-            P(hy=-3.5, lean=2, head=3, ff=(4.5, -4.0), bf=(-1.5, -5.0), nh=(5.5, -3.5), fh=(-4.5, -3.5), sw=75, expr="neutral"),
-            P(hy=4.5, lean=7, head=-3, ff=(5.0, 0), bf=(-5.0, 0), nh=(3, 7), fh=(-3, 7), sw=170, expr="blink"),
+            P(hy=4.2, lean=6, head=-2, ff=(4.8, 0), bf=(-4.8, 0), nh=(2.5, 6.8), fh=(-3, 6.8), sw=176, str=0.93, expr="focus", ease="snap"),
+            P(hy=-4.8, lean=-4, head=-2, ff=(3, -7), bf=(-3.5, -5), nh=(5, 0.2), fh=(-5, 1.2), sw=105, str=1.1, expr="happy"),
+            P(hy=-3.6, lean=3, head=3, ff=(4.5, -4.4), bf=(-1.5, -5.4), nh=(5.5, -3.8), fh=(-4.5, -3.8), sw=75, str=0.97, expr="neutral"),
+            P(hy=5.0, lean=8, head=-3, ff=(5.4, 0), bf=(-5.4, 0), nh=(3, 7.2), fh=(-3, 7.2), sw=170, str=0.9, expr="blink", ease="out"),
         ][:n]
-    if anim == "sword.1":
+    if anim == "sword.1":           # diagonal down-slash: coil back, snap forward, lunge, drag
         return [
-            P(hx=-1, hy=1.5, lean=-7, ff=(5, 0), bf=(-5, 0), nh=(-1, 2), fh=(1, 5), sw=332, expr="focus"),
-            P(hx=-2.5, hy=2, lean=-13, head=-4, ff=(5, 0), bf=(-6, 0), nh=(-4, -2.5), fh=(2, 3), sw=302, expr="focus", wind=-0.05),
-            P(hx=0.5, hy=1.5, lean=4, ff=(7, 0), bf=(-6, 0), nh=(3, -6), fh=(-3, 4), sw=12, expr="angry"),
-            P(hx=3, hy=2.0, lean=16, ff=(10, 0), bf=(-7, 0), nh=(8, 0), fh=(-4, 4), sw=86, expr="angry"),
-            P(hx=3.5, hy=2.5, lean=19, ff=(10, 0), bf=(-6.5, 0), nh=(7, 5.5), fh=(-4, 5), sw=132, expr="focus"),
-            P(hx=2, hy=1.5, lean=10, ff=(8, 0), bf=(-5, 0), nh=(5, 7), fh=(-3, 6), sw=152),
-            P(hx=0.5, hy=0.5, lean=3, ff=(5, 0), bf=(-3.5, 0), nh=(3.4, 6.6), fh=(-2.4, 6.4), sw=164),
+            P(hx=-1.0, hy=1.9, lean=-4, ff=(5, 0), bf=(-5, 0), nh=(1.0, 3.8), fh=(1, 5.5), sw=262, str=0.97, expr="focus", ease="in"),
+            P(hx=-3.2, hy=3.0, lean=-15, head=-5, ff=(5.5, 0), bf=(-7, 0), nh=(-5.2, -3.6), fh=(2.2, 3), sw=316, str=0.95, expr="focus", wind=-0.05, stop=True, ease="in"),
+            P(hx=1.2, hy=1.0, lean=7, head=1, ff=(8.5, -2.6), bf=(-7.6, 0), nh=(2.0, -7.6), fh=(-4, 3), sw=2, str=1.07, expr="angry", wind=-0.25, ease="snap"),
+            P(hx=4.4, hy=2.7, lean=21, head=3, ff=(11.5, 0), bf=(-8.6, 0), nh=(8.6, 2.8), fh=(-5.2, 3.2), sw=122, str=1.04, expr="angry", wind=-0.3),
+            P(hx=5.0, hy=3.3, lean=25, head=1, ff=(11.5, 0), bf=(-8.2, 0), nh=(8.0, 6.2), fh=(-5.6, 4.0), sw=150, str=0.99, expr="focus", wind=-0.2, ease="out"),
+            P(hx=2.8, hy=2.2, lean=12, ff=(8.5, 0), bf=(-5.2, 0), nh=(5.6, 7.0), fh=(-3.6, 6.0), sw=157, wind=-0.1),
+            _rest(),
         ][:n]
-    if anim == "sword.2":
+    if anim == "sword.2":           # rising reverse slash with a stepping lunge
         return [
-            P(hy=2.5, lean=6, ff=(6, 0), bf=(-6, 0), nh=(5, 7), fh=(-2, 6), sw=170, expr="focus"),
-            P(hx=-1.5, hy=3.2, lean=2, ff=(6, 0), bf=(-6, 0), nh=(1, 8.2), fh=(-1, 6), sw=208, expr="focus"),
-            P(hx=1.5, hy=2.2, lean=-2, ff=(8, 0), bf=(-6, 0), nh=(7, 4), fh=(-3, 5), sw=128, expr="angry"),
-            P(hx=2.5, hy=1.0, lean=-5, ff=(9, 0), bf=(-6, 0), nh=(8, -2.5), fh=(-4, 5), sw=46, expr="angry"),
-            P(hx=2, hy=0.2, lean=-9, ff=(8, 0), bf=(-5, 0), nh=(4.5, -7.5), fh=(-3, 6), sw=6, expr="focus"),
-            P(hx=1, hy=0.6, lean=-3, ff=(6, 0), bf=(-4, 0), nh=(2, -3.5), fh=(-2, 6), sw=332),
-            P(hx=0.5, hy=0.5, lean=3, ff=(5, 0), bf=(-3.5, 0), nh=(3.4, 6.6), fh=(-2.4, 6.4), sw=164),
+            P(hx=0.0, hy=2.6, lean=8, ff=(6, 0), bf=(-6, 0), nh=(5.0, 7.0), fh=(-2, 6), sw=172, str=0.97, expr="focus", ease="in"),
+            P(hx=-2.6, hy=3.8, lean=11, head=1, ff=(7, 0), bf=(-8.4, 0), nh=(-0.6, 9.6), fh=(-1.4, 6), sw=214, str=0.94, expr="focus", wind=-0.05, stop=True, ease="in"),
+            P(hx=1.6, hy=2.4, lean=2, ff=(9.6, -2.8), bf=(-7.2, 0), nh=(7.2, 5.2), fh=(-4.2, 4.6), sw=120, str=1.04, expr="angry", wind=-0.25, ease="snap"),
+            P(hx=3.8, hy=1.0, lean=-7, head=-1, ff=(11, 0), bf=(-7.6, 0), nh=(7.6, -3.6), fh=(-5.2, 5.2), sw=38, str=1.07, expr="angry", wind=-0.3),
+            P(hx=3.4, hy=0.4, lean=-12, head=-3, ff=(10, 0), bf=(-6.6, 0), nh=(4.6, -8.2), fh=(-3.6, 6.2), sw=340, str=1.04, expr="focus", wind=-0.15, ease="out"),
+            P(hx=1.6, hy=0.8, lean=-4, ff=(6.6, 0), bf=(-4.4, 0), nh=(2.4, -3.6), fh=(-2.2, 6.2), sw=330, wind=-0.05),
+            _rest(),
         ][:n]
-    if anim == "sword.3":
+    if anim == "sword.3":           # finisher: crouch, leap, arch back, hammer down
         return [
-            P(hy=4.0, lean=-7, ff=(5, 0), bf=(-5, 0), nh=(3, 7.5), fh=(-2, 6.5), sw=172, expr="focus"),
-            P(hy=-5.0, lean=-9, ff=(3, -5.5), bf=(-2, -4.5), nh=(1, -8), fh=(-3, -6), sw=352, expr="focus"),
-            P(hy=-8.0, lean=-4, ff=(4, -6.5), bf=(-2, -5.5), nh=(3, -9), fh=(-1, -9), sw=335, expr="angry"),
-            P(hx=3.5, hy=3.0, lean=30, ff=(11, 0), bf=(-5, 0), nh=(9, 5), fh=(-2, 4), sw=118, expr="angry"),
-            P(hx=3, hy=3.8, lean=26, ff=(11, 0), bf=(-5, 0), nh=(9, 7), fh=(-2, 5), sw=138, expr="focus"),
-            P(hx=2, hy=2.2, lean=16, ff=(8, 0), bf=(-4, 0), nh=(6, 7), fh=(-2, 6), sw=152),
-            P(hx=0.5, hy=0.5, lean=3, ff=(5, 0), bf=(-3.5, 0), nh=(3.4, 6.6), fh=(-2.4, 6.4), sw=164),
+            P(hy=5.0, lean=-6, ff=(5.5, 0), bf=(-5.5, 0), nh=(2.6, 7.6), fh=(-2, 6.6), sw=172, str=0.9, expr="focus", ease="snap"),
+            P(hy=-6.2, lean=-9, ff=(3, -5.8), bf=(-2.5, -4.8), nh=(0.6, -8.6), fh=(-3, -6.6), sw=352, str=1.12, expr="focus", wind=-0.1),
+            P(hy=-10.2, lean=-13, head=-7, ff=(4, -6.8), bf=(-3, -5.8), nh=(1.6, -10.6), fh=(-1.6, -9.4), sw=330, str=1.05, expr="angry", wind=0.1, stop=True, ease="in"),
+            P(hx=4.6, hy=3.6, lean=33, head=4, ff=(11.8, 0), bf=(-6, 0), nh=(9.6, 5.4), fh=(-3, 4.2), sw=117, str=0.96, expr="angry", wind=-0.3),
+            P(hx=4.4, hy=5.2, lean=31, ff=(12.4, 0), bf=(-6.2, 0), nh=(8.9, 7.4), fh=(-3.2, 5.4), sw=138, str=0.92, expr="focus", wind=-0.1, ease="out"),
+            P(hx=2.6, hy=3.0, lean=16, ff=(9, 0), bf=(-4.4, 0), nh=(6, 7.2), fh=(-2.4, 6.2), sw=152, str=0.97),
+            _rest(),
         ][:n]
-    if anim == "spear.1":
+    if anim == "spear.1":           # long straight thrust: rear-leg drive, recoil
         W = dict(weapon="spear", two=6.0)
         return [
-            P(hx=-1.5, hy=2.0, lean=-6, ff=(6, 0), bf=(-5, 0), nh=(-1.5, 4.2), sw=84, expr="focus", **W),
-            P(hx=-3, hy=2.4, lean=-10, ff=(6, 0), bf=(-6, 0), nh=(-4.5, 3.4), sw=82, expr="focus", **W),
-            P(hx=1.5, hy=2.0, lean=7, ff=(8, 0), bf=(-6, 0), nh=(3.5, 3.8), sw=88, expr="angry", **W),
-            P(hx=4.5, hy=2.8, lean=17, ff=(12, 0), bf=(-7, 0), nh=(8.6, 3.5), sw=90, expr="angry", **W),
-            P(hx=4.0, hy=2.8, lean=15, ff=(12, 0), bf=(-7, 0), nh=(7.4, 3.6), sw=88, expr="focus", **W),
-            P(hx=2.0, hy=2.0, lean=9, ff=(9, 0), bf=(-5, 0), nh=(4, 4.5), sw=68, **W),
-            P(hx=0.5, hy=0.6, lean=3, ff=(5, 0), bf=(-3.5, 0), nh=(3.4, 6.0), sw=36, **W),
+            P(hx=-0.6, hy=2.4, lean=-3, ff=(6, 0), bf=(-5.6, 0), nh=(0.4, 4.6), sw=88, str=0.97, expr="focus", ease="in", **W),
+            P(hx=-3.2, hy=3.2, lean=-11, head=-3, ff=(6, 0), bf=(-7.8, 0), nh=(-5.8, 3.8), sw=84, str=0.95, expr="focus", stop=True, ease="in", **W),
+            P(hx=1.8, hy=2.2, lean=7, ff=(9.8, -2.2), bf=(-8.2, 0), nh=(2.8, 3.9), sw=88, str=1.05, expr="angry", wind=-0.25, ease="snap", **W),
+            P(hx=5.2, hy=2.8, lean=19, ff=(12.8, 0), bf=(-9, 0), nh=(9.6, 3.2), sw=90, str=1.06, expr="angry", wind=-0.3, **W),
+            P(hx=3.8, hy=2.6, lean=12, ff=(12.2, 0), bf=(-8.4, 0), nh=(6.6, 3.8), sw=94, str=1.0, expr="focus", ease="out", **W),
+            P(hx=2.2, hy=2.0, lean=7, ff=(9, 0), bf=(-5.4, 0), nh=(4.2, 4.6), sw=64, **W),
+            _rest(sw=36, nh=(3.4, 6.0), **W),
         ][:n]
-    if anim == "spear.2":
+    if anim == "spear.2":           # rising stab
         W = dict(weapon="spear", two=6.0)
         return [
-            P(hy=3.0, lean=3, ff=(6, 0), bf=(-6, 0), nh=(0.5, 8), sw=120, expr="focus", **W),
-            P(hx=-1.5, hy=3.6, lean=-1, ff=(6.5, 0), bf=(-6.5, 0), nh=(-2, 9), sw=127, expr="focus", **W),
-            P(hx=1.5, hy=2.8, lean=5, ff=(8.5, 0), bf=(-6.5, 0), nh=(4, 5.5), sw=92, expr="angry", **W),
-            P(hx=4.5, hy=2.4, lean=12, ff=(12, 0), bf=(-7, 0), nh=(8.6, -0.5), sw=56, expr="angry", **W),
-            P(hx=4.0, hy=2.4, lean=10, ff=(12, 0), bf=(-7, 0), nh=(7.6, -1), sw=50, expr="focus", **W),
-            P(hx=2.0, hy=1.8, lean=6, ff=(9, 0), bf=(-5, 0), nh=(4.5, 2.5), sw=44, **W),
-            P(hx=0.5, hy=0.6, lean=3, ff=(5, 0), bf=(-3.5, 0), nh=(3.4, 6.0), sw=36, **W),
+            P(hy=3.0, lean=3, ff=(6, 0), bf=(-6, 0), nh=(0.5, 8), sw=120, str=0.96, expr="focus", ease="in", **W),
+            P(hx=-2.6, hy=4.0, lean=-1, ff=(6.5, 0), bf=(-7.4, 0), nh=(-2.4, 9.4), sw=130, str=0.93, expr="focus", stop=True, ease="in", **W),
+            P(hx=1.8, hy=2.8, lean=5, ff=(9.2, -2.2), bf=(-7.4, 0), nh=(4.2, 5.4), sw=94, str=1.03, expr="angry", wind=-0.25, ease="snap", **W),
+            P(hx=5.0, hy=2.4, lean=13, ff=(12.4, 0), bf=(-8, 0), nh=(9.2, -0.8), sw=55, str=1.07, expr="angry", wind=-0.3, **W),
+            P(hx=4.0, hy=2.3, lean=10, ff=(12, 0), bf=(-7.6, 0), nh=(7.0, -0.4), sw=50, str=1.02, expr="focus", ease="out", **W),
+            P(hx=2.2, hy=1.8, lean=6, ff=(9, 0), bf=(-5, 0), nh=(4.5, 2.5), sw=44, **W),
+            _rest(sw=36, nh=(3.4, 6.0), **W),
         ][:n]
-    if anim == "spear.3":
+    if anim == "spear.3":           # wide sweeping finisher
         W = dict(weapon="spear", two=6.0)
         return [
-            P(hy=3.2, lean=-4, ff=(6, 0), bf=(-6, 0), nh=(-2, 8), sw=212, expr="focus", **W),
-            P(hx=-3, hy=2.8, lean=-12, ff=(6, 0), bf=(-7, 0), nh=(-5, 3), sw=255, expr="focus", **W),
-            P(hx=-1, hy=0.5, lean=-8, ff=(7, 0), bf=(-6, 0), nh=(-2, -5.5), sw=332, expr="angry", **W),
-            P(hx=4.5, hy=3.0, lean=25, ff=(12, 0), bf=(-7, 0), nh=(8, 3.5), sw=102, expr="angry", **W),
-            P(hx=4.0, hy=3.4, lean=22, ff=(12, 0), bf=(-7, 0), nh=(7.5, 5), sw=116, expr="focus", **W),
-            P(hx=2.0, hy=2.2, lean=12, ff=(9, 0), bf=(-5, 0), nh=(5, 5.5), sw=88, **W),
-            P(hx=0.5, hy=0.6, lean=3, ff=(5, 0), bf=(-3.5, 0), nh=(3.4, 6.0), sw=36, **W),
+            P(hy=3.4, lean=-4, ff=(6, 0), bf=(-6, 0), nh=(-2, 8), sw=214, str=0.95, expr="focus", ease="in", **W),
+            P(hx=-3.6, hy=3.0, lean=-14, head=-5, ff=(6, 0), bf=(-8, 0), nh=(-5.6, 3), sw=258, str=0.95, expr="focus", stop=True, ease="in", **W),
+            P(hx=-0.6, hy=0.2, lean=-9, ff=(7.4, -2), bf=(-6.4, 0), nh=(-2, -6), sw=336, str=1.08, expr="angry", wind=0.05, ease="snap", **W),
+            P(hx=5.0, hy=3.2, lean=27, head=3, ff=(12.4, 0), bf=(-7.4, 0), nh=(8.4, 3.6), sw=102, str=1.02, expr="angry", wind=-0.3, **W),
+            P(hx=4.4, hy=3.6, lean=23, ff=(12.2, 0), bf=(-7.2, 0), nh=(7.8, 5.2), sw=118, str=0.97, expr="focus", ease="out", **W),
+            P(hx=2.4, hy=2.4, lean=12, ff=(9, 0), bf=(-5, 0), nh=(5.2, 5.8), sw=86, **W),
+            _rest(sw=36, nh=(3.4, 6.0), **W),
         ][:n]
-    if anim == "axe.1":
+    if anim == "axe.1":             # heavy wind-up, huge arc, ground-shake settle
         W = dict(weapon="axe", two=4.5)
         return [
-            P(hx=-1.5, hy=2.8, lean=-10, ff=(6, 0), bf=(-6, 0), nh=(-3, 3.5), sw=300, expr="focus", **W),
-            P(hx=-3, hy=3.0, lean=-17, head=-5, ff=(6, 0), bf=(-7, 0), nh=(-5, -1.5), sw=282, expr="focus", **W),
-            P(hx=0.5, hy=2.0, lean=0, ff=(8, 0), bf=(-6, 0), nh=(2, -6.5), sw=350, expr="angry", **W),
-            P(hx=3.5, hy=2.8, lean=20, ff=(11, 0), bf=(-7, 0), nh=(7.5, 1), sw=96, expr="angry", **W),
-            P(hx=3.5, hy=3.2, lean=22, ff=(11, 0), bf=(-7, 0), nh=(7, 5), sw=128, expr="focus", **W),
-            P(hx=2.0, hy=2.2, lean=12, ff=(8, 0), bf=(-5, 0), nh=(5, 6.5), sw=146, **W),
-            P(hx=0.5, hy=0.8, lean=3, ff=(5, 0), bf=(-3.5, 0), nh=(3.4, 6.4), sw=163, **W),
+            P(hx=-1.6, hy=3.0, lean=-10, ff=(6, 0), bf=(-6, 0), nh=(-3, 3.5), sw=300, str=0.95, expr="focus", ease="in", **W),
+            P(hx=-3.8, hy=3.6, lean=-19, head=-6, ff=(6, 0), bf=(-7.6, 0), nh=(-5.6, -1.6), sw=284, str=0.93, expr="focus", wind=-0.05, stop=True, ease="in", **W),
+            P(hx=0.4, hy=1.8, lean=-1, ff=(8.4, -2.4), bf=(-6.4, 0), nh=(2, -7), sw=352, str=1.08, expr="angry", wind=-0.3, ease="snap", **W),
+            P(hx=4.0, hy=3.0, lean=23, head=3, ff=(11.6, 0), bf=(-7.6, 0), nh=(7.8, 1.2), sw=97, str=1.03, expr="angry", wind=-0.35, **W),
+            P(hx=3.8, hy=4.0, lean=25, ff=(11.6, 0), bf=(-7.4, 0), nh=(7.2, 5.4), sw=130, str=0.93, expr="focus", ease="out", **W),
+            P(hx=2.2, hy=2.6, lean=13, ff=(8.4, 0), bf=(-5, 0), nh=(5, 6.6), sw=146, str=0.98, **W),
+            _rest(hy=0.8, sw=163, nh=(3.4, 6.4), **W),
         ][:n]
     if anim == "axe.2":
         W = dict(weapon="axe", two=4.5)
         return [
-            P(hy=3.0, lean=8, ff=(6, 0), bf=(-6, 0), nh=(5.5, 7.5), sw=172, expr="focus", **W),
-            P(hx=-2, hy=3.6, lean=1, ff=(6, 0), bf=(-7, 0), nh=(0.5, 8.5), sw=215, expr="focus", **W),
-            P(hx=1.5, hy=2.8, lean=-3, ff=(8.5, 0), bf=(-6, 0), nh=(7, 4.5), sw=130, expr="angry", **W),
-            P(hx=3.0, hy=2.0, lean=-6, ff=(10, 0), bf=(-6, 0), nh=(8, -2), sw=60, expr="angry", **W),
-            P(hx=2.5, hy=1.2, lean=-10, ff=(9, 0), bf=(-5, 0), nh=(5, -7), sw=18, expr="focus", **W),
-            P(hx=1.2, hy=1.0, lean=-3, ff=(6, 0), bf=(-4, 0), nh=(2.5, -3), sw=335, **W),
-            P(hx=0.5, hy=0.8, lean=3, ff=(5, 0), bf=(-3.5, 0), nh=(3.4, 6.4), sw=163, **W),
+            P(hy=3.2, lean=8, ff=(6, 0), bf=(-6, 0), nh=(5.5, 7.5), sw=172, str=0.95, expr="focus", ease="in", **W),
+            P(hx=-2.4, hy=4.0, lean=2, ff=(6, 0), bf=(-7.6, 0), nh=(0.4, 8.8), sw=218, str=0.92, expr="focus", stop=True, ease="in", **W),
+            P(hx=1.6, hy=2.8, lean=-3, ff=(9, -2.6), bf=(-6.4, 0), nh=(7, 4.4), sw=128, str=1.04, expr="angry", wind=-0.3, ease="snap", **W),
+            P(hx=3.4, hy=1.8, lean=-8, ff=(10.4, 0), bf=(-6.6, 0), nh=(8, -2.4), sw=60, str=1.07, expr="angry", wind=-0.35, **W),
+            P(hx=2.8, hy=1.0, lean=-12, ff=(9.4, 0), bf=(-5.4, 0), nh=(5, -7.2), sw=16, str=1.04, expr="focus", ease="out", **W),
+            P(hx=1.4, hy=1.2, lean=-4, ff=(6, 0), bf=(-4, 0), nh=(2.5, -3), sw=335, **W),
+            _rest(hy=0.8, sw=163, nh=(3.4, 6.4), **W),
         ][:n]
-    if anim == "axe.3":
+    if anim == "axe.3":             # overhead leap + slam
         W = dict(weapon="axe", two=4.5)
         return [
-            P(hy=4.5, lean=-9, ff=(5.5, 0), bf=(-5.5, 0), nh=(2.5, 7.5), sw=170, expr="focus", **W),
-            P(hy=-5.5, lean=-11, ff=(3, -6), bf=(-2.5, -5), nh=(0.5, -8.5), sw=352, expr="focus", **W),
-            P(hy=-9.0, lean=-8, ff=(4, -7), bf=(-3, -6), nh=(2, -9.5), sw=345, expr="angry", **W),
-            P(hx=4.0, hy=3.6, lean=34, ff=(12, 0), bf=(-5, 0), nh=(9, 6), sw=124, expr="angry", **W),
-            P(hx=3.5, hy=4.4, lean=30, ff=(12, 0), bf=(-5, 0), nh=(9, 7.5), sw=140, expr="focus", **W),
-            P(hx=2.0, hy=3.0, lean=18, ff=(9, 0), bf=(-4, 0), nh=(6, 7), sw=152, **W),
-            P(hx=0.5, hy=0.8, lean=3, ff=(5, 0), bf=(-3.5, 0), nh=(3.4, 6.4), sw=163, **W),
+            P(hy=5.0, lean=-9, ff=(5.5, 0), bf=(-5.5, 0), nh=(2.5, 7.6), sw=170, str=0.9, expr="focus", ease="in", **W),
+            P(hy=-5.8, lean=-12, ff=(3, -6.4), bf=(-2.5, -5.2), nh=(0.4, -8.8), sw=352, str=1.12, expr="focus", **W),
+            P(hy=-10.6, lean=-9, head=-4, ff=(4, -7.4), bf=(-3, -6.4), nh=(2, -9.8), sw=346, str=1.06, expr="angry", wind=0.1, stop=True, ease="in", **W),
+            P(hx=4.4, hy=3.8, lean=36, head=4, ff=(12.4, 0), bf=(-5.4, 0), nh=(9.2, 6.2), sw=124, str=0.96, expr="angry", wind=-0.35, **W),
+            P(hx=3.8, hy=5.0, lean=31, ff=(12.4, 0), bf=(-5.4, 0), nh=(9, 7.6), sw=140, str=0.9, expr="focus", ease="out", **W),
+            P(hx=2.2, hy=3.4, lean=19, ff=(9.4, 0), bf=(-4.4, 0), nh=(6.2, 7.2), sw=152, str=0.96, **W),
+            _rest(hy=0.8, sw=163, nh=(3.4, 6.4), **W),
         ][:n]
-    if anim == "sword.sp1":       # Whirlwind
-        ph = [-30, 30, 90, 150, 210, 270]
-        out = [P(hy=3.2, lean=-12, ff=(5, 0), bf=(-5, 0), nh=(-5, 3), fh=(-3, 4), sw=268, expr="focus"),
-               P(hx=-1.5, hy=3.8, lean=-17, head=-6, ff=(5, 0), bf=(-5, 0), nh=(-6, 1.5), fh=(-2, 3.5), sw=250, expr="angry", wind=-0.15)]
-        out += [_spin(p, S, hy=-1.0 - 0.6 * (i % 2)) for i, p in enumerate(ph)]
-        out += [P(hx=1.0, hy=2.5, lean=10, ff=(6, 0), bf=(-5, 0), nh=(6, 4.5), fh=(-3, 5), sw=108, expr="focus", wind=-0.2),
-                P(hx=0.5, hy=0.6, lean=3, ff=(5, 0), bf=(-3.5, 0), nh=(3.4, 6.6), fh=(-2.4, 6.4), sw=164)]
+    if anim == "sword.sp1":         # Whirlwind: wind-up, full 360 spin, finishing flourish
+        ph = [-30, 40, 110, 180, 250]
+        out = [P(hy=3.4, lean=-13, ff=(5, 0), bf=(-5, 0), nh=(-5, 3), fh=(-3, 4), sw=268, str=0.95, expr="focus", ease="in"),
+               P(hx=-1.8, hy=4.0, lean=-19, head=-7, ff=(5, 0), bf=(-5.4, 0), nh=(-6.4, 1.5), fh=(-2, 3.5), sw=250, str=0.94, expr="angry", wind=-0.15, stop=True, ease="snap")]
+        out += [_spin(p, S, hy=-1.4 - 0.8 * math.sin(i * 1.4), lean=7.0 + 2 * math.sin(i * 1.4)) for i, p in enumerate(ph)]
+        out += [P(hx=1.4, hy=2.0, lean=14, ff=(7.5, 0), bf=(-5.5, 0), nh=(7.4, 3.5), fh=(-4, 5), sw=96, str=1.04, expr="angry", wind=-0.3),
+                P(hx=1.0, hy=2.6, lean=10, ff=(6.6, 0), bf=(-5.0, 0), nh=(5.6, 4.8), fh=(-3, 5), sw=118, expr="focus", wind=-0.2, ease="out"),
+                _rest()]
         return out[:n]
-    if anim == "axe.sp2":         # Hurricane Axe
-        ph = [-30, 30, 90, 150, 210, 270]
+    if anim == "axe.sp2":           # Hurricane Axe
+        ph = [-30, 40, 110, 180, 250]
         W = "axe"
-        out = [P(hy=3.6, lean=-14, ff=(5, 0), bf=(-5, 0), nh=(-5.5, 2), sw=272, weapon=W, two=4.5, expr="focus"),
-               P(hx=-1, hy=4.0, lean=-18, ff=(5, 0), bf=(-5, 0), nh=(-6, 0), sw=255, weapon=W, two=4.5, expr="angry", wind=-0.15)]
-        out += [_spin(p, W, hy=-3.0 - 1.2 * math.sin(i * 0.5), two=4.5, ff=(2.4, -2.5), bf=(-2.4, -1.5)) for i, p in enumerate(ph)]
-        out += [P(hx=0.5, hy=4.0, lean=14, ff=(6, 0), bf=(-6, 0), nh=(5.5, 6), sw=130, weapon=W, two=4.5, expr="focus"),
-                P(hx=0.5, hy=0.8, lean=3, ff=(5, 0), bf=(-3.5, 0), nh=(3.4, 6.4), sw=163, weapon=W, two=4.5)]
+        out = [P(hy=3.8, lean=-14, ff=(5, 0), bf=(-5, 0), nh=(-5.5, 2), sw=272, weapon=W, two=4.5, str=0.94, expr="focus", ease="in"),
+               P(hx=-1.4, hy=4.4, lean=-19, ff=(5, 0), bf=(-5.6, 0), nh=(-6.2, 0), sw=255, weapon=W, two=4.5, str=0.93, expr="angry", wind=-0.15, stop=True, ease="snap")]
+        out += [_spin(p, W, hy=-3.2 - 1.4 * math.sin(i * 1.3), two=4.5, ff=(2.4, -2.6), bf=(-2.4, -1.6), lean=7.0 + 2 * math.sin(i * 1.3)) for i, p in enumerate(ph)]
+        out += [P(hx=1.4, hy=3.8, lean=16, ff=(7, 0), bf=(-6, 0), nh=(7.2, 5.6), sw=118, weapon=W, two=4.5, str=0.95, expr="angry", wind=-0.3),
+                P(hx=0.8, hy=3.0, lean=10, ff=(6.4, 0), bf=(-5, 0), nh=(5.6, 6.2), sw=140, weapon=W, two=4.5, expr="focus", ease="out"),
+                _rest(hy=0.8, sw=163, nh=(3.4, 6.4), weapon=W, two=4.5)]
         return out[:n]
-    if anim == "sword.sp2":       # Meteor Dive
+    if anim == "sword.sp2":         # Meteor Dive
         return [
-            P(hy=4.5, lean=-6, ff=(5, 0), bf=(-5, 0), nh=(3, 8), fh=(-2, 7), sw=172, expr="focus"),
-            P(hx=1, hy=-6.0, lean=-6, ff=(3, -6.5), bf=(-3, -5), nh=(3, -8.5), fh=(-2, -7), sw=355, expr="angry"),
-            P(hx=2, hy=-12.0, lean=-2, ff=(3, -9), bf=(-2, -8), nh=(2.5, -10), fh=(-1.5, -10), sw=2, expr="angry", wind=0.05),
-            P(hx=5, hy=-9.0, lean=118, head=-12, ff=(-5, -17), bf=(-9, -14), nh=(6.5, 3.5), fh=(4.5, 1), sw=150, expr="angry", wind=-0.4),
-            P(hx=5.5, hy=5.4, lean=42, ff=(10, 0), bf=(-3.5, 0), nh=(8, 8), fh=(3, 6.5), sw=179, expr="angry", plant=True),
-            P(hx=4, hy=4.8, lean=30, ff=(9, 0), bf=(-3, 0), nh=(7.5, 8), fh=(2, 7), sw=176, expr="focus", plant=True),
-            P(hx=1, hy=1.0, lean=4, ff=(5, 0), bf=(-3.5, 0), nh=(3.4, 6.6), fh=(-2.4, 6.4), sw=164),
+            P(hy=4.8, lean=-6, ff=(5, 0), bf=(-5, 0), nh=(3, 8), fh=(-2, 7), sw=172, str=0.9, expr="focus", ease="snap"),
+            P(hx=1, hy=-6.4, lean=-6, ff=(3, -6.8), bf=(-3, -5.2), nh=(3, -8.8), fh=(-2, -7.2), sw=355, str=1.14, expr="angry"),
+            P(hx=2, hy=-12.6, lean=-2, ff=(3, -9.4), bf=(-2, -8.4), nh=(2.5, -10.4), fh=(-1.5, -10.4), sw=2, str=1.06, expr="angry", wind=0.05, ease="snap"),
+            P(hx=5, hy=-9.4, lean=118, head=-12, ff=(-5, -17.5), bf=(-9, -14.5), nh=(6.5, 3.5), fh=(4.5, 1), sw=150, str=1.1, expr="angry", wind=-0.45),
+            P(hx=5.6, hy=5.6, lean=44, ff=(10.4, 0), bf=(-3.4, 0), nh=(8, 8), fh=(3, 6.5), sw=179, str=0.9, expr="angry", plant=True),
+            P(hx=4, hy=5.0, lean=30, ff=(9, 0), bf=(-3, 0), nh=(7.5, 8), fh=(2, 7), sw=176, str=0.94, expr="focus", plant=True, ease="out"),
+            _rest(hx=1, hy=1.0, lean=4),
         ][:n]
-    if anim == "spear.sp1":       # Gale Thrusts
+    if anim == "spear.sp1":         # Gale Thrusts: rapid alternating jabs, then a big finishing lunge
         W = dict(weapon="spear", two=6.0)
         T = lambda hx, lean, nh, sw, ff, bf, **k: P(hx=hx, hy=2.6, lean=lean, ff=ff, bf=bf, nh=nh, sw=sw, expr="angry", wind=-0.2, **W, **k)
-        out = [P(hx=-2, hy=2.6, lean=-8, ff=(6, 0), bf=(-6, 0), nh=(-3, 4), sw=86, expr="focus", **W)]
-        out += [T(4.0, 17, (8.8, 3.5), 90, (12, 0), (-7, 0)),
-                T(3.0, 13, (7.2, 3.6), 96, (10, 0), (-8, 0)),
-                T(4.5, 18, (8.8, 1.2), 78, (13, 0), (-6, 0)),
-                T(3.2, 13, (7.4, 5.4), 104, (9, 0), (-9, 0)),
-                T(4.8, 19, (9.0, 3.0), 86, (13, 0), (-6.5, 0)),
-                T(3.4, 14, (7.6, 2.0), 80, (10, 0), (-8.5, 0))]
-        out += [P(hx=6, hy=3.0, lean=25, ff=(14, 0), bf=(-6, 0), nh=(9.2, 3.2), sw=88, expr="angry", wind=-0.3, **W),
-                P(hx=3.5, hy=2.2, lean=12, ff=(10, 0), bf=(-5, 0), nh=(6, 4.5), sw=66, expr="focus", **W),
-                P(hx=0.5, hy=0.8, lean=3, ff=(5, 0), bf=(-3.5, 0), nh=(3.4, 6.0), sw=36, **W)]
+        out = [P(hx=-2.4, hy=2.8, lean=-9, ff=(6, 0), bf=(-6.6, 0), nh=(-3.4, 4), sw=86, str=0.95, expr="focus", ease="in", **W)]
+        out += [T(5.0, 19, (9.4, 3.5), 90, (12.6, 0), (-7, 0), str=1.06),
+                T(1.4, 6, (3.0, 3.9), 96, (8.6, -1.2), (-8.8, 0), str=0.96),
+                T(5.2, 20, (9.4, 1.2), 78, (13.2, 0), (-6, 0), str=1.06),
+                T(1.4, 6, (3.2, 5.8), 104, (8.4, -1.2), (-9.4, 0), str=0.96),
+                T(5.4, 21, (9.6, 3.0), 86, (13.6, 0), (-6.5, 0), str=1.07),
+                T(1.8, 8, (3.6, 2.0), 80, (9, -1.0), (-9, 0), str=0.97)]
+        out += [P(hx=6.4, hy=3.0, lean=26, ff=(14.4, 0), bf=(-6.4, 0), nh=(9.6, 3.2), sw=88, str=1.08, expr="angry", wind=-0.35, **W),
+                P(hx=3.5, hy=2.4, lean=12, ff=(10, 0), bf=(-5, 0), nh=(6, 4.5), sw=66, str=1.0, expr="focus", ease="out", **W),
+                _rest(sw=36, nh=(3.4, 6.0), **W)]
         return out[:n]
-    if anim == "spear.sp2":       # Javelin Toss (empty-handed from frame 3: the spear leaves the hand)
+    if anim == "spear.sp2":         # Javelin Toss (empty-handed from the release frame on)
         return [
-            P(hx=-2, hy=2.4, lean=-12, ff=(6, 0), bf=(-5, 0), nh=(-3.5, 1.5), fh=(5.5, 1.5), sw=84, weapon="spear", expr="focus"),
-            P(hx=-3.5, hy=2.8, lean=-20, head=-6, ff=(6, 0), bf=(-7, 0), nh=(-6.5, -0.5), fh=(6.5, 1.0), sw=74, weapon="spear", expr="angry"),
-            P(hx=0.5, hy=2.2, lean=0, ff=(8, 0), bf=(-6, 0), nh=(2.5, -2.5), fh=(5.5, 2.5), sw=70, weapon="spear", expr="angry", wind=-0.2),
-            P(hx=3.5, hy=2.6, lean=24, ff=(11, 0), bf=(-6, 0), nh=(8.8, -3.0), fh=(-3, 4.5), sw=80, weapon=None, expr="shout", wind=-0.3),
-            P(hx=3.5, hy=2.8, lean=20, ff=(11, 0), bf=(-6, 0), nh=(7.5, 1.5), fh=(-3, 5), sw=100, weapon=None, expr="focus"),
+            P(hx=-2, hy=2.4, lean=-12, ff=(6, 0), bf=(-5, 0), nh=(-3.5, 1.5), fh=(5.5, 1.5), sw=84, weapon="spear", str=0.96, expr="focus", ease="in"),
+            P(hx=-3.8, hy=2.9, lean=-21, head=-7, ff=(6, 0), bf=(-7.4, 0), nh=(-6.8, -0.5), fh=(6.6, 1.0), sw=74, weapon="spear", str=0.94, expr="angry", stop=True, ease="in"),
+            P(hx=0.8, hy=2.0, lean=2, ff=(8.4, -2), bf=(-6.4, 0), nh=(2.6, -2.5), fh=(5.5, 2.5), sw=70, weapon="spear", expr="angry", wind=-0.25, str=1.05, ease="snap"),
+            P(hx=3.8, hy=2.6, lean=26, ff=(11.4, 0), bf=(-6.4, 0), nh=(9.0, -3.0), fh=(-3, 4.5), sw=80, weapon=None, str=1.07, expr="shout", wind=-0.35),
+            P(hx=3.8, hy=2.9, lean=21, ff=(11.2, 0), bf=(-6.2, 0), nh=(7.8, 1.5), fh=(-3, 5), sw=100, weapon=None, expr="focus", ease="out"),
             P(hx=1.0, hy=1.2, lean=6, ff=(7, 0), bf=(-4, 0), nh=(4, 5.5), fh=(-2.4, 6), sw=130, weapon=None),
         ][:n]
-    if anim == "axe.sp1":         # Quake Cleave
+    if anim == "axe.sp1":           # Quake Cleave: huge overhead wind-up, slam into the ground
         W = dict(weapon="axe", two=4.5)
         return [
-            P(hx=-2, hy=3.4, lean=-14, ff=(6, 0), bf=(-6.5, 0), nh=(-3.5, 0.5), sw=318, expr="focus", **W),
-            P(hx=-2.5, hy=-1.0, lean=-20, head=-8, ff=(6, 0), bf=(-7, 0), nh=(-1.5, -9.5), sw=356, expr="angry", **W),
-            P(hx=1.0, hy=2.0, lean=6, ff=(8, 0), bf=(-6, 0), nh=(5, -4), sw=48, expr="angry", wind=-0.25, **W),
-            P(hx=5.0, hy=4.2, lean=38, ff=(13, 0), bf=(-5, 0), nh=(10, 8), sw=132, expr="shout", plant=True, **W),
-            P(hx=4.5, hy=4.6, lean=34, ff=(13, 0), bf=(-5, 0), nh=(9.8, 8.6), sw=138, expr="angry", plant=True, **W),
-            P(hx=2.0, hy=2.4, lean=14, ff=(8, 0), bf=(-4, 0), nh=(6, 7), sw=152, expr="focus", **W),
+            P(hx=-2, hy=3.6, lean=-14, ff=(6, 0), bf=(-6.5, 0), nh=(-3.5, 0.5), sw=318, str=0.94, expr="focus", ease="in", **W),
+            P(hx=-2.8, hy=-1.4, lean=-22, head=-9, ff=(6, 0), bf=(-7.4, 0), nh=(-1.5, -10), sw=358, str=1.12, expr="angry", wind=0.1, stop=True, ease="snap", **W),
+            P(hx=1.0, hy=2.0, lean=7, ff=(8.4, -2.4), bf=(-6.4, 0), nh=(5, -4), sw=50, str=1.06, expr="angry", wind=-0.3, ease="snap", **W),
+            P(hx=5.2, hy=4.6, lean=40, ff=(13.4, 0), bf=(-5, 0), nh=(10, 8), sw=132, str=0.92, expr="shout", plant=True, **W),
+            P(hx=4.6, hy=5.0, lean=35, ff=(13.4, 0), bf=(-5, 0), nh=(9.8, 8.6), sw=138, str=0.9, expr="angry", plant=True, ease="out", **W),
+            _rest(hx=2.0, hy=2.4, lean=14, ff=(8, 0), bf=(-4, 0), nh=(6, 7), sw=152, expr="focus", **W),
         ][:n]
-    if anim == "cast":            # Ice Lance
+    if anim == "cast":              # Ice Lance: gather, push forward
         return [
-            P(hy=1.2, lean=-5, nh=(2, 6.5), fh=(2.5, 4.5), sw=175, expr="focus"),
-            P(hx=-1.5, hy=1.6, lean=-10, head=-4, ff=(5, 0), bf=(-5, 0), nh=(1.5, 7), fh=(-1, 1), sw=185, expr="focus"),
-            P(hx=0.5, hy=1.2, lean=4, ff=(6, 0), bf=(-5, 0), nh=(-1.5, 3.5), fh=(6.5, 0.5), sw=335, expr="angry"),
-            P(hx=2.0, hy=1.0, lean=12, ff=(8, 0), bf=(-5, 0), nh=(-2.0, 2.5), fh=(10.6, -3.5), sw=330, expr="shout"),
-            P(hx=1.5, hy=1.0, lean=9, ff=(7, 0), bf=(-4.5, 0), nh=(-2.0, 3.5), fh=(10.0, -2.8), sw=332, expr="focus"),
-            P(hx=0.5, hy=0.6, lean=3, ff=(5, 0), bf=(-3.5, 0), nh=(3.4, 6.6), fh=(-2.4, 6.4), sw=164),
+            P(hy=1.4, lean=-5, nh=(2, 6.5), fh=(2.5, 4.5), sw=175, str=0.98, expr="focus", ease="in"),
+            P(hx=-1.8, hy=1.9, lean=-11, head=-5, ff=(5, 0), bf=(-5.4, 0), nh=(1.5, 7), fh=(-1.4, 1), sw=185, str=0.96, expr="focus", stop=True, ease="in"),
+            P(hx=0.6, hy=1.2, lean=4, ff=(6.2, 0), bf=(-5.2, 0), nh=(-1.5, 3.5), fh=(6.5, 0.5), sw=335, str=1.03, expr="angry", ease="snap"),
+            P(hx=2.4, hy=1.0, lean=13, ff=(8.4, 0), bf=(-5.4, 0), nh=(-2.0, 2.5), fh=(10.8, -3.6), sw=330, str=1.06, expr="shout", wind=0.15),
+            P(hx=1.8, hy=1.0, lean=9, ff=(7.2, 0), bf=(-4.6, 0), nh=(-2.0, 3.5), fh=(10.0, -2.8), sw=332, expr="focus", ease="out"),
+            _rest(),
         ][:n]
-    if anim == "cast.ring":       # Ring of Fire
+    if anim == "cast.ring":         # Ring of Fire: crouch, arms sweep out and up
         return [
-            P(hy=3.2, lean=6, ff=(5, 0), bf=(-5, 0), nh=(1.5, 8.5), fh=(0, 8.5), sw=178, expr="focus"),
-            P(hy=5.0, lean=10, head=3, ff=(6, 0), bf=(-6, 0), nh=(1, 9), fh=(0.5, 9), sw=180, expr="focus"),
-            P(hy=1.5, lean=0, ff=(5.5, 0), bf=(-5.5, 0), nh=(5, 5.5), fh=(-5, 5.5), sw=172, expr="angry"),
-            P(hy=-1.5, lean=-5, head=-8, ff=(5.5, 0), bf=(-5.5, 0), nh=(8.6, 2.8), fh=(-8, 3.0), sw=140, expr="shout", wind=0.3),
-            P(hy=-0.5, lean=-3, head=-5, ff=(5.5, 0), bf=(-5.5, 0), nh=(8.4, 3.8), fh=(-7.6, 4.0), sw=142, expr="angry", wind=0.2),
-            P(hy=0.6, lean=2, nh=(3.4, 6.6), fh=(-2.4, 6.4), sw=164),
+            P(hy=3.4, lean=6, ff=(5, 0), bf=(-5, 0), nh=(1.5, 8.5), fh=(0, 8.5), sw=178, str=0.93, expr="focus", ease="in"),
+            P(hy=5.4, lean=11, head=3, ff=(6.4, 0), bf=(-6.4, 0), nh=(1, 9.2), fh=(0.5, 9.2), sw=180, str=0.9, expr="focus", stop=True, ease="snap"),
+            P(hy=1.4, lean=0, ff=(5.6, 0), bf=(-5.6, 0), nh=(5, 5.5), fh=(-5, 5.5), sw=172, str=1.04, expr="angry"),
+            P(hy=-2.0, lean=-6, head=-9, ff=(5.6, -0.6), bf=(-5.6, -0.6), nh=(8.8, 2.4), fh=(-8.4, 2.6), sw=138, str=1.1, expr="shout", wind=0.35),
+            P(hy=-0.6, lean=-3, head=-5, ff=(5.5, 0), bf=(-5.5, 0), nh=(8.4, 3.8), fh=(-7.6, 4.0), sw=142, expr="angry", wind=0.2, ease="out"),
+            _rest(),
         ][:n]
-    if anim == "cast.sky":        # Comet
+    if anim == "cast.sky":          # Comet: both... one arm hauls up to the sky
         return [
-            P(hy=1.4, lean=-3, nh=(2.5, 6.5), fh=(-1.5, 2), sw=175, expr="focus"),
-            P(hy=0.4, lean=-6, head=-10, ff=(4.5, 0), bf=(-4.5, 0), nh=(2, 7), fh=(-3.5, -5), sw=180, expr="focus"),
-            P(hy=-0.8, lean=-8, head=-16, ff=(4.5, 0), bf=(-4.5, 0), nh=(2, 7), fh=(-4.0, -8.6), sw=182, expr="angry"),
-            P(hy=-2.5, lean=-10, head=-20, ff=(4.0, 0), bf=(-4.0, 0), nh=(2, 7), fh=(-4.5, -8.8), sw=184, expr="shout", wind=0.3),
-            P(hy=-1.5, lean=-8, head=-16, ff=(4.0, 0), bf=(-4.0, 0), nh=(2, 7), fh=(-4.2, -8.4), sw=184, expr="focus"),
-            P(hy=0.6, lean=2, nh=(3.4, 6.6), fh=(-2.4, 6.4), sw=164),
+            P(hy=1.6, lean=-3, nh=(2.5, 6.5), fh=(-1.5, 2), sw=175, str=0.98, expr="focus", ease="in"),
+            P(hy=0.6, lean=-7, head=-11, ff=(4.5, 0), bf=(-4.5, 0), nh=(2, 7), fh=(-3.5, -5), sw=180, str=1.02, expr="focus"),
+            P(hy=-1.0, lean=-9, head=-17, ff=(4.5, 0), bf=(-4.5, 0), nh=(2, 7), fh=(-4.0, -9.0), sw=182, str=1.08, expr="angry", stop=True, ease="snap"),
+            P(hy=-2.8, lean=-11, head=-21, ff=(4.0, -0.5), bf=(-4.0, -0.5), nh=(2, 7), fh=(-4.5, -9.4), sw=184, str=1.1, expr="shout", wind=0.3),
+            P(hy=-1.6, lean=-8, head=-16, ff=(4.0, 0), bf=(-4.0, 0), nh=(2, 7), fh=(-4.2, -8.6), sw=184, str=1.04, expr="focus", ease="out"),
+            _rest(),
         ][:n]
-    if anim == "hurt":
+    if anim == "hurt":              # instant impact, overshoot, recover
         return [
-            P(hx=-3.0, hy=1.5, lean=-22, head=-16, ff=(5, -1), bf=(-5, 0), nh=(-2, 2), fh=(-4, 1), sw=215, expr="hurt"),
-            P(hx=-4.0, hy=2.5, lean=-28, head=-18, ff=(5, -0.5), bf=(-6, 0), nh=(-3, 4), fh=(-5, 3), sw=225, expr="hurt"),
-            P(hx=-1.5, hy=1.8, lean=-11, head=-6, ff=(4.5, 0), bf=(-4.5, 0), nh=(1, 6.5), fh=(-3.5, 6), sw=195, expr="hurt"),
+            P(hx=-3.4, hy=1.8, lean=-24, head=-17, ff=(5, -1), bf=(-5.4, 0), nh=(-2, 2), fh=(-4, 1), sw=216, str=0.94, expr="hurt", wind=0.3, ease="snap"),
+            P(hx=-4.6, hy=2.8, lean=-30, head=-20, ff=(5, -0.5), bf=(-6.4, 0), nh=(-3, 4), fh=(-5, 3), sw=226, str=0.92, expr="hurt", wind=0.2, ease="out"),
+            P(hx=-1.4, hy=1.8, lean=-11, head=-6, ff=(4.5, 0), bf=(-4.5, 0), nh=(1, 6.5), fh=(-3.5, 6), sw=195, expr="hurt"),
         ][:n]
     if anim == "death":
         return [
-            P(hx=-3.0, hy=1.5, lean=-26, head=-16, ff=(5, -1), bf=(-4, 0), nh=(-2, 2), fh=(-4, 1), sw=215, expr="hurt"),
-            P(hx=-1.0, hy=3.5, lean=-52, head=-10, ff=(8, -1), bf=(0, 0), nh=(-4, 3), fh=(-5, 2), sw=225, expr="hurt"),
-            P(hx=3.0, hy=6.0, lean=-76, head=-4, ff=(14, -3), bf=(9, -1.5), nh=(-1, 4), fh=(-3, 4), sw=240, expr="dead", weapon=None),
-            P(hx=8.0, hy=6.6, lean=-92, head=2, ff=(20, -3.5), bf=(16, -2), nh=(2, 4.5), fh=(0.5, 6.5), sw=250, expr="dead", weapon=None),
-            P(hx=8.0, hy=6.4, lean=-93, head=3, ff=(21, -3), bf=(17, -1.5), nh=(2.2, 4.8), fh=(0.5, 6.8), sw=252, expr="dead", weapon=None),
-            P(hx=8.0, hy=6.4, lean=-94, head=3, ff=(21, -3), bf=(17, -1.5), nh=(2.4, 5), fh=(0.5, 7.0), sw=255, expr="dead", weapon=None),
+            P(hx=-3.2, hy=1.8, lean=-27, head=-17, ff=(5, -1), bf=(-4, 0), nh=(-2, 2), fh=(-4, 1), sw=215, str=0.95, expr="hurt", ease="snap"),
+            P(hx=-1.0, hy=3.6, lean=-53, head=-10, ff=(8, -1), bf=(0, 0), nh=(-4, 3), fh=(-5, 2), sw=225, expr="hurt", ease="in"),
+            P(hx=3.0, hy=6.2, lean=-77, head=-4, ff=(14, -3), bf=(9, -1.5), nh=(-1, 4), fh=(-3, 4), sw=240, expr="dead", weapon=None, ease="out"),
+            P(hx=8.0, hy=6.8, lean=-92, head=2, ff=(20, -3.5), bf=(16, -2), nh=(2, 4.5), fh=(0.5, 6.5), sw=250, expr="dead", weapon=None, ease="out"),
+            P(hx=8.0, hy=6.5, lean=-93, head=3, ff=(21, -3), bf=(17, -1.5), nh=(2.2, 4.8), fh=(0.5, 6.8), sw=252, expr="dead", weapon=None),
+            P(hx=8.0, hy=6.5, lean=-94, head=3, ff=(21, -3), bf=(17, -1.5), nh=(2.4, 5), fh=(0.5, 7.0), sw=255, expr="dead", weapon=None),
         ][:n]
     if anim == "victory":
         return [
-            P(hy=4.0, lean=5, ff=(5, 0), bf=(-5, 0), nh=(3, 7.5), fh=(-2.5, 7.5), sw=170, expr="happy"),
-            P(hy=-6.5, lean=-4, head=-6, ff=(3, -6), bf=(-3.5, -4.5), nh=(3.5, -8), fh=(-4, -3), sw=12, expr="happy", wind=0.1),
-            P(hy=-8.5, lean=-6, head=-8, ff=(3.5, -7), bf=(-3, -6), nh=(3, -9.5), fh=(-5, -6), sw=18, expr="shout", wind=0.2),
-            P(hy=4.0, lean=6, ff=(5.5, 0), bf=(-5.5, 0), nh=(3.5, 1.5), fh=(-3, 5), sw=30, expr="happy"),
-            P(hy=1.2, lean=-2, head=-4, ff=(4.5, 0), bf=(-4, 0), nh=(3.5, -3), fh=(-2.2, 4.5), sw=14, expr="happy"),
-            P(hy=1.0, lean=-3, head=-5, ff=(4.5, 0), bf=(-4, 0), nh=(3.5, -3.5), fh=(-2.2, 4.5), sw=12, expr="happy"),
+            P(hy=4.4, lean=5, ff=(5, 0), bf=(-5, 0), nh=(3, 7.5), fh=(-2.5, 7.5), sw=170, str=0.9, expr="happy", ease="snap"),
+            P(hy=-6.8, lean=-4, head=-6, ff=(3, -6.2), bf=(-3.5, -4.8), nh=(3.5, -8.2), fh=(-4, -3), sw=12, str=1.12, expr="happy", wind=0.1),
+            P(hy=-9.0, lean=-6, head=-9, ff=(3.5, -7.2), bf=(-3, -6.2), nh=(3, -9.8), fh=(-5, -6), sw=18, str=1.06, expr="shout", wind=0.2, stop=True, ease="snap"),
+            P(hy=4.4, lean=6, ff=(5.5, 0), bf=(-5.5, 0), nh=(3.5, 1.5), fh=(-3, 5), sw=30, str=0.9, expr="happy", ease="out"),
+            P(hy=1.0, lean=-2, head=-4, ff=(4.5, 0), bf=(-4, 0), nh=(3.5, -3), fh=(-2.2, 4.5), sw=14, expr="happy"),
+            P(hy=0.8, lean=-3, head=-5, ff=(4.5, 0), bf=(-4, 0), nh=(3.5, -3.5), fh=(-2.2, 4.5), sw=12, expr="happy"),
         ][:n]
     raise KeyError(anim)
 
@@ -387,7 +435,7 @@ def skeleton(p, _depth=0):
     hip = (G[0] + p["hx"], G[1] - HIP_H + p["hy"])
     td = (math.sin(lr), -math.cos(lr))
     perp = (math.cos(lr), math.sin(lr))
-    sh = (hip[0] + td[0] * TORSO, hip[1] + td[1] * TORSO)
+    sh = (hip[0] + td[0] * TORSO * p["str"], hip[1] + td[1] * TORSO * p["str"])
     nsh = (sh[0] + perp[0] * 1.5, sh[1] + perp[1] * 1.5)
     fsh = (sh[0] - perp[0] * 2.6, sh[1] - perp[1] * 2.6)
     hr = math.radians(lean + p["head"])
@@ -398,7 +446,7 @@ def skeleton(p, _depth=0):
         return skeleton(q, _depth + 1)
     sk = {"hip": hip, "sh": sh, "nsh": nsh, "fsh": fsh, "head": head, "lean": lean, "td": td}
     for tag, hp, foot in (("n", (hip[0] + 1.2, hip[1]), p["ff"]), ("f", (hip[0] - 1.4, hip[1]), p["bf"])):
-        ankle = (G[0] + foot[0], G[1] + foot[1] - ANKLE_H)
+        ankle = (G[0] + foot[0], G[1] + min(foot[1], 0.0) - ANKLE_H)
         knee, ankle = ik2(hp, ankle, THIGH, SHIN, -1)
         sk["hip" + tag], sk["knee" + tag], sk["ankle" + tag] = hp, knee, ankle
     sa = math.radians(p["sw"])
@@ -416,6 +464,19 @@ def skeleton(p, _depth=0):
     w = p.get("weapon")
     L = WEAPON_LEN.get(w, 0.0) * p["wscale"]
     sk["tip"] = (sk["handn"][0] + sk["sdir"][0] * L, sk["handn"][1] + sk["sdir"][1] * L)
+    if _depth < 8:           # keep every extremity inside the cell (shift the whole body, never the pose shape)
+        right = max(sk["handn"][0] + 3.2, sk["handf"][0] + 3.2, sk["anklen"][0] + 5.0, sk["ankled"][0] + 5.0 if "ankled" in sk else 0, sk["anklef"][0] + 5.0, head[0] + 13.0,
+                    sk["tip"][0] + (1.5 if w else 0.0))
+        left = min(sk["handn"][0] - 3.2, sk["handf"][0] - 3.2, sk["anklen"][0] - 4.0, sk["anklef"][0] - 4.0, head[0] - 13.0,
+                   sk["tip"][0] - (1.5 if w else 0.0))
+        if right > 59.4:
+            q = dict(p)
+            q["hx"] = p["hx"] - (right - 59.4)
+            return skeleton(q, _depth + 1)
+        if left < 2.8:
+            q = dict(p)
+            q["hx"] = p["hx"] + (2.8 - left)
+            return skeleton(q, _depth + 1)
     if w and _depth < 8:
         # keep the weapon inside the cell and (unless planted) above the ground
         tx, ty = sk["tip"]
@@ -441,9 +502,9 @@ def skeleton(p, _depth=0):
         elif ty > limit + 0.5:       # blade already horizontal but the hand itself is too low: lift the body
             q["hy"] = p["hy"] - (ty - limit) * 0.9
             changed = True
-        if tx > 61.0:
-            q["hx"] = p["hx"] - (tx - 61.0) * 0.8
-            q["nh"] = (p["nh"][0] - (tx - 61.0) * 0.4, p["nh"][1])
+        if tx > 59.0:
+            q["hx"] = p["hx"] - (tx - 59.0) * 0.8
+            q["nh"] = (p["nh"][0] - (tx - 59.0) * 0.4, p["nh"][1])
             changed = True
         elif tx < 3.0:
             q["hx"] = p["hx"] + (3.0 - tx) * 0.7
@@ -475,7 +536,7 @@ def chain_specs(sk, p):
 
 def simulate(sks, poses_, loop):
     specs = [chain_specs(s, p) for s, p in zip(sks, poses_)]
-    wind = sum(p["wind"] for p in poses_) / len(poses_)
+    wind = [p["wind"] for p in poses_]
     out = [dict() for _ in sks]
     cfg = {"tail1": (0.10, 0.80, 0.16), "tail2": (0.12, 0.78, 0.22), "pony": (0.15, 0.78, 0.20)}
     for name, (st, dm, gr) in cfg.items():
@@ -611,7 +672,60 @@ def _arm(cv, sk, tag, front):
         cv.paint("bronze", Mask(CELL).circle((sh[0] + 0.2, sh[1] - 0.2), 2.8), group="pauldron", k=3, cast=3)
 
 
-def draw(sk, chains, p):
+SUPPORTS_TRAIL = True
+SMEAR_COL = (232, 242, 255)
+
+
+BAYER4 = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]], dtype=np.float32) / 16.0
+
+
+def _smear(buf, sk, trail, p):
+    """Dithered, outline-less motion smear: the outer part of the blade swept over the last two ticks.
+    Dense next to the current blade, thinning out behind it."""
+    w = p.get("weapon")
+    if not w or not trail:
+        return
+    ws = p["wscale"]
+    L = WEAPON_LEN[w] * ws
+    inner = 0.55 if w != "axe" else 0.5
+
+    def state(s_):
+        d, h = s_["sdir"], s_["handn"]
+        return h, math.degrees(math.atan2(d[0], -d[1]))
+
+    cur, prev1, prev2 = state(sk), state(trail[0]), state(trail[1])
+    tip_c = (cur[0][0] + sk["sdir"][0] * L, cur[0][1] + sk["sdir"][1] * L)
+    tip_p = (prev1[0][0] + trail[0]["sdir"][0] * L, prev1[0][1] + trail[0]["sdir"][1] * L)
+    sp = math.hypot(tip_c[0] - tip_p[0], tip_c[1] - tip_p[1])
+    if sp < 6.5:
+        return
+
+    def mix(a, b, f):
+        d = (b[1] - a[1] + 180.0) % 360.0 - 180.0
+        return ((a[0][0] + (b[0][0] - a[0][0]) * f, a[0][1] + (b[0][1] - a[0][1]) * f), a[1] + d * f)
+
+    K = 10
+    age = np.full((CELL, CELL), 9.0, np.float32)
+    for k in range(K + 1):
+        f = k / K                                   # 0 = now, 1 = two ticks ago
+        st_ = mix(cur, prev1, f * 2.0) if f <= 0.5 else mix(prev1, prev2, (f - 0.5) * 2.0)
+        (hx, hy), ang = st_
+        d = (math.sin(math.radians(ang)), -math.cos(math.radians(ang)))
+        a0 = (hx + d[0] * L * inner, hy + d[1] * L * inner)
+        a1 = (hx + d[0] * L, hy + d[1] * L)
+        m = Mask(CELL).capsule(a0, a1, 0.6, 0.9).array().reshape(CELL, SSF, CELL, SSF).mean(axis=(1, 3)) > 0.3
+        age = np.where(m & (age > f), f, age)
+    show = (age < 9.0) & ~buf["filled"]
+    show &= BAYER4[np.arange(CELL)[:, None] % 4, np.arange(CELL)[None, :] % 4] < (1.0 - age) * 0.95
+    show[0, :] = show[-1, :] = False
+    show[:, 0] = show[:, -1] = False
+    show[55:, :] = False                      # never smear along the floor
+    rgba = buf["rgba"]
+    rgba[show, :3] = SMEAR_COL
+    rgba[show, 3] = 255
+
+
+def draw(sk, chains, p, trail=None):
     cv = Canvas(CELL, MATERIALS)
     xs, ys = cv.xs, cv.ys
     lr = math.radians(sk["lean"])
@@ -680,6 +794,7 @@ def draw(sk, chains, p):
     buf = cv.finish(NO_SEAM)
     if spin is None or math.cos(math.radians(spin)) > 0.35:
         paint_face(buf, cv, head, p["expr"])
+    _smear(buf, sk, trail, p)
     return cv, buf
 
 
