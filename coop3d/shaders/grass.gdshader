@@ -30,8 +30,11 @@ void vertex() {
 	float gust = sin(TIME * 0.7 + origin.x * 0.05) * 0.5 + 0.5;
 	vec3 wind = vec3(sin(TIME * 1.8 + ph), 0.0, cos(TIME * 1.3 + ph * 1.3) * 0.5) * sway * (0.6 + gust);
 	vec3 off = (wind + push(world, player_pos_a) + push(world, player_pos_b)) * w * w;
-	// convert the world offset into model space
-	VERTEX += (inverse(MODEL_MATRIX) * vec4(off, 0.0)).xyz;
+	// world offset -> model space without a 4x4 inverse (rotation + scale only):
+	// for M = R*S, M^-1 = S^-1 * R^T, i.e. transpose(M) divided by scale^2 per axis.
+	mat3 m = mat3(MODEL_MATRIX);
+	vec3 inv_s2 = vec3(1.0 / dot(m[0], m[0]), 1.0 / dot(m[1], m[1]), 1.0 / dot(m[2], m[2]));
+	VERTEX += (transpose(m) * off) * inv_s2;
 	VERTEX.y -= length(off) * 0.3 * w;
 }
 
