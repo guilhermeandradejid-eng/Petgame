@@ -9,21 +9,21 @@ smash com pulo e onomatopeias de quadrinho.
 (Android 7+, arm64 e armv7). Baixe no celular, permita "instalar apps
 desconhecidos" e abra. O jogo roda deitado (paisagem).
 
-| Menu | Super golpe "RAIO!" | Comemoração |
-|---|---|---|
-| ![menu](docs/menu.jpg) | ![super](docs/super.jpg) | ![comemoracao](docs/comemoracao.jpg) |
+| Menu | Smash no rali | Estrela de chance | Comemoração |
+|---|---|---|---|
+| ![menu](docs/menu.jpg) | ![smash](docs/smash.jpg) | ![chance](docs/chance.jpg) | ![comemoracao](docs/comemoracao.jpg) |
 
-### Gameplay
+### Vídeo: 1 minuto de partida (com som)
 
-| Super golpe RAIO, empurrão e smash de chance | Estrela de chance, smash e peixinho |
-|---|---|
-| ![super](docs/gifs/super-raio.gif) | ![chance](docs/gifs/chance-smash-mergulho.gif) |
-| **Smash de chance e close na comemoração** | **Entrada cinematográfica e primeiro ponto** |
-| ![comemoracao](docs/gifs/nosso-smash-comemoracao.gif) | ![entrada](docs/gifs/entrada-e-smash.gif) |
+[![partida](docs/smash.jpg)](docs/partida-1min.mp4)
 
-Os GIFs saem do próprio jogo: `godot --path godot --fixed-fps 30 -- --autoplay --shots=/tmp/rec --shotdt=0 --shotmax=2700`
-grava um frame por quadro (e imprime no terminal os eventos `EVT` com o número do frame de cada golpe),
-depois o `ffmpeg` recorta os trechos.
+[`docs/partida-1min.mp4`](docs/partida-1min.mp4) foi gravado direto do jogo com o Movie Maker do Godot
+(vídeo e som do próprio jogo), com o computador jogando pelas duas duplas:
+
+```sh
+godot --path godot --resolution 1280x720 --write-movie partida.avi --fixed-fps 30 --quit-after 1830 -- --autoplay
+ffmpeg -i partida.avi -vf scale=1024:-2 -c:v libx264 -crf 30 -c:a aac docs/partida-1min.mp4
+```
 
 ## Como jogar
 
@@ -126,7 +126,8 @@ smash-areia/
 
 - **Personagens limpos e articulados**: o corpo é uma malha única gerada no Blender pelo
   modificador Skin sobre um esqueleto de 16 ossos, com pesos de skinning calculados por
-  distância. Joelhos e cotovelos dobram, os pés ficam no chão (o quadril desce conforme as
+  distância. Camiseta e short são peças separadas (bordas redondas, sem emendas) e o rosto
+  é só o essencial: olhos com brilho, sorriso e bochechas, com o cabelo em formas fechadas. Joelhos e cotovelos dobram, os pés ficam no chão (o quadril desce conforme as
   pernas dobram), o tronco gira nos golpes e a raquete deixa um rastro ("smear").
 - **Cel-shading** com retícula de gibi nas sombras, **contraluz dourada** do sol de fim de tarde,
   **névoa de distância** e **contorno preto** em tudo.

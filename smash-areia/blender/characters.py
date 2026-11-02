@@ -195,26 +195,17 @@ def player_materials():
 
 
 def player_body(M):
-    me = skin_mesh("Body", PLAYER_J, PLAYER_R, PLAYER_EDGES, "pelvis", subsurf=2)
+    """Corpo inteiro na cor da pele; a roupa é outra malha por cima.
+    O tronco é mais fino que a roupa para nunca atravessar o tecido."""
+    radii = dict(PLAYER_R)
+    for k, d in (("pelvis", 0.05), ("spine", 0.045), ("chest", 0.05), ("hip.R", 0.025), ("hip.L", 0.025),
+                 ("shoulder.R", 0.016), ("shoulder.L", 0.016)):
+        radii[k] = (radii[k][0] - d, radii[k][1] - d * 0.8)
+    me = skin_mesh("Body", PLAYER_J, radii, PLAYER_EDGES, "pelvis", subsurf=2)
     segs = bone_segments(PLAYER_J, PLAYER_BONES)
-    for m in (M["skin"], M["shirt"], M["shorts"], M["trim"]):
-        me.materials.append(m)
-    sleeve_z = PLAYER_J["shoulder.R"][2] - 0.1
+    me.materials.append(M["skin"])
     for poly in me.polygons:
-        c = poly.center
-        bn, _ = nearest_bone(c, segs, skip=("Head",))
-        mat = 0
-        if bn in ("Spine", "Chest", "Hips") and c.z > 1.03:
-            mat = 1
-            if c.z > 1.43 and abs(c.x) < 0.085:
-                mat = 0          # gola: pescoço aparece
-        elif bn in ("Spine", "Chest", "Hips"):
-            mat = 2
-        elif bn.startswith("UpperArm") and c.z > sleeve_z:
-            mat = 1
-        elif bn.startswith("UpperLeg") and c.z > 0.66:
-            mat = 2
-        poly.material_index = mat
+        poly.material_index = 0
         poly.use_smooth = True
     me.name = "Body"
     ob = bpy.data.objects.new("Body", me)
@@ -222,89 +213,98 @@ def player_body(M):
     return ob, smooth_weights(me, segs, skip=("Head",))
 
 
+def _lerp(a, b, t):
+    return tuple(a[k] + (b[k] - a[k]) * t for k in range(3))
+
+
+def clothing(M, name, joints, radii, edges, root, mat):
+    """Peça de roupa: malha Skin um pouco maior que o corpo, com bordas
+    arredondadas (barra, manga, gola), presa aos mesmos ossos."""
+    me = skin_mesh(name, joints, radii, edges, root, subsurf=2)
+    me.materials.append(mat)
+    for poly in me.polygons:
+        poly.use_smooth = True
+    me.name = name
+    ob = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(ob)
+    segs = bone_segments(PLAYER_J, PLAYER_BONES)
+    return ob, smooth_weights(me, segs, skip=("Head",))
+
+
+def player_clothes(M):
+    J = PLAYER_J
+    shirt_j = {"hem": (0, 0, 0.98), "spine": J["spine"], "chest": J["chest"], "collar": (0, 0, 1.47)}
+    shirt_r = {"hem": (0.19, 0.15), "spine": (0.166, 0.128), "chest": (0.205, 0.146), "collar": (0.085, 0.082)}
+    edges = [("hem", "spine"), ("spine", "chest"), ("chest", "collar")]
+    for sd in (".R", ".L"):
+        shirt_j["sh" + sd] = J["shoulder" + sd]
+        shirt_j["sl" + sd] = _lerp(J["shoulder" + sd], J["elbow" + sd], 0.42)
+        shirt_r["sh" + sd] = (0.088, 0.088)
+        shirt_r["sl" + sd] = (0.074, 0.074)
+        edges += [("chest", "sh" + sd), ("sh" + sd, "sl" + sd)]
+    out = [clothing(M, "Shirt", shirt_j, shirt_r, edges, "hem", M["shirt"])]
+    sj = {"waist": (0, 0, 0.95)}
+    sr = {"waist": (0.15, 0.114)}
+    se = []
+    for sd in (".R", ".L"):
+        sj["hp" + sd] = J["hip" + sd]
+        sj["lg" + sd] = _lerp(J["hip" + sd], J["knee" + sd], 0.55)
+        sr["hp" + sd] = (0.1, 0.1)
+        sr["lg" + sd] = (0.096, 0.096)
+        se += [("waist", "hp" + sd), ("hp" + sd, "lg" + sd)]
+    out.append(clothing(M, "Shorts", sj, sr, se, "waist", M["shorts"]))
+    return out
+
+
 def player_head(M):
     b = B.Builder("HeadMesh")
-    hc = (0, 0, 1.76)
-    b.sphere(hc, 0.3, M["skin"], scale=(1.0, 0.97, 0.95), seg=28, rings=18)
+    b.sphere((0, 0, 1.76), 0.3, M["skin"], scale=(1.0, 0.97, 0.95), seg=32, rings=20)
     for s in (-1, 1):
         x = 0.105 * s
-        b.sphere((x, -0.262, 1.79), 1.0, M["pupil"], scale=(0.044, 0.024, 0.066), seg=16, rings=10)
-        b.sphere((x - 0.014 * s, -0.287, 1.815), 0.016, M["shine"], seg=8, rings=6)
-        b.sphere((x * 1.05, -0.282, 1.878), 1.0, M["hair"], scale=(0.05, 0.018, 0.015), seg=10, rings=6,
-                 rot=B.rot_y(-14 * s))
-        b.sphere((0.175 * s, -0.228, 1.69), 1.0, M["cheek"], scale=(0.048, 0.02, 0.028), seg=10, rings=6)
-        b.sphere((0.293 * s, 0.0, 1.75), 1.0, M["skin"], scale=(0.04, 0.055, 0.07), seg=10, rings=8)
-    b.sphere((0, -0.296, 1.73), 0.032, M["skin"], seg=10, rings=8)
-    b.sphere((0, -0.276, 1.676), 1.0, M["mouth"], scale=(0.058, 0.02, 0.03), seg=14, rings=10, cut_above=1.676)
-    ob = b.build()
-    return ob
+        b.sphere((x, -0.262, 1.79), 1.0, M["pupil"], scale=(0.046, 0.026, 0.068), seg=16, rings=10)
+        b.sphere((x - 0.014 * s, -0.288, 1.815), 0.017, M["shine"], seg=8, rings=6)
+        b.sphere((0.172 * s, -0.226, 1.69), 1.0, M["cheek"], scale=(0.05, 0.022, 0.03), seg=12, rings=6)
+        b.sphere((0.292 * s, 0.0, 1.75), 1.0, M["skin"], scale=(0.04, 0.055, 0.07), seg=12, rings=8)
+    b.sphere((0, -0.279, 1.68), 1.0, M["mouth"], scale=(0.055, 0.02, 0.028), seg=16, rings=10, cut_above=1.68)
+    return b.build()
+
+
+def _hair_cap(b, M, scale=(0.316, 0.31, 0.255), center=(0, 0.06, 1.86)):
+    # forma fechada: a linha do cabelo nasce da interseção com a cabeça (sem corte reto)
+    b.sphere(center, 1.0, M["hair"], scale=scale, seg=26, rings=14)
 
 
 def hair_variants(M):
     out = []
-    # Tuca: espetado limpo (poucas mechas grandes)
     b = B.Builder("Hair_Spiky")
-    b.sphere((0, 0.035, 1.86), 1.0, M["hair"], scale=(0.316, 0.312, 0.245), seg=22, rings=12, cut_below=1.73)
-    for ax, ay, az in [(0, 0.4, 1), (-0.55, 0.2, 0.9), (0.55, 0.2, 0.9), (-0.3, 0.75, 0.7), (0.3, 0.75, 0.7)]:
+    _hair_cap(b, M)
+    for ax, ay, az in [(0, 0.35, 1), (-0.55, 0.2, 0.9), (0.55, 0.2, 0.9), (-0.3, 0.75, 0.7), (0.3, 0.75, 0.7)]:
         d = Vector((ax, ay, az)).normalized()
-        base = Vector((0, 0.04, 1.88)) + d * 0.2
-        b.cone(base, d, 0.2, 0.1, 0.012, M["hair"], seg=8)
+        base = Vector((0, 0.05, 1.88)) + d * 0.19
+        b.cone(base, d, 0.2, 0.105, 0.015, M["hair"], seg=10)
     out.append(b.build())
-    # Bia: rabo de cavalo
     b = B.Builder("Hair_Pony")
-    b.sphere((0, 0.035, 1.85), 1.0, M["hair"], scale=(0.318, 0.315, 0.255), seg=22, rings=12, cut_below=1.7)
-    for i in range(5):
-        t = i / 4.0
-        b.sphere((0, 0.31 + t * 0.12, 1.95 - t * 0.33), 0.1 - t * 0.035, M["hair"], seg=12, rings=8)
-    b.sphere((0, 0.29, 1.95), 1.0, M["band"], scale=(0.07, 0.04, 0.07), seg=10, rings=6)
+    _hair_cap(b, M, (0.32, 0.315, 0.262), (0, 0.06, 1.85))
+    for i in range(4):
+        t = i / 3.0
+        b.sphere((0, 0.32 + t * 0.1, 1.92 - t * 0.3), 0.1 - t * 0.03, M["hair"], seg=14, rings=10)
     out.append(b.build())
-    # Zeca: boné
     b = B.Builder("Cap")
-    b.sphere((0, 0.02, 1.86), 1.0, M["band"], scale=(0.322, 0.322, 0.25), seg=22, rings=12, cut_below=1.875)
-    b.sphere((0, -0.31, 1.89), 1.0, M["band"], scale=(0.2, 0.16, 0.022), seg=18, rings=6)
-    b.sphere((0, 0.02, 2.1), 0.035, M["trim"], seg=8, rings=6)
-    b.sphere((0, 0.08, 1.78), 1.0, M["hair"], scale=(0.3, 0.27, 0.12), seg=16, rings=8, cut_below=1.72)
+    b.sphere((0, 0.02, 1.9), 1.0, M["band"], scale=(0.326, 0.326, 0.2), seg=26, rings=14)
+    b.sphere((0, -0.29, 1.9), 1.0, M["band"], scale=(0.2, 0.17, 0.026), seg=20, rings=8)
+    b.sphere((0, 0.1, 1.8), 1.0, M["hair"], scale=(0.29, 0.24, 0.15), seg=18, rings=10)
     out.append(b.build())
-    # Lola: dois coques afro + faixa
     b = B.Builder("Hair_Puffs")
-    b.sphere((0, 0.04, 1.86), 1.0, M["hair"], scale=(0.33, 0.325, 0.26), seg=22, rings=12, cut_below=1.7)
+    _hair_cap(b, M, (0.325, 0.32, 0.26))
     for s in (-1, 1):
-        b.sphere((0.22 * s, 0.06, 2.0), 0.16, M["hair"], seg=16, rings=10)
-    b.sphere((0, -0.0, 1.93), 1.0, M["band"], scale=(0.335, 0.33, 0.035), seg=22, rings=6)
+        b.sphere((0.21 * s, 0.07, 2.0), 0.15, M["hair"], seg=18, rings=12)
     out.append(b.build())
-    # Juiz: viseira + óculos escuros
     b = B.Builder("Shades")
     b.box((0, -0.282, 1.8), (0.32, 0.03, 0.07), M["shades"], smooth=True)
-    b.sphere((0, 0.03, 1.87), 1.0, M["trim"], scale=(0.31, 0.31, 0.04), seg=20, rings=6)
-    b.sphere((0, -0.3, 1.88), 1.0, M["trim"], scale=(0.19, 0.14, 0.02), seg=16, rings=6)
-    b.sphere((0, 0.06, 1.83), 1.0, M["hair"], scale=(0.3, 0.27, 0.12), seg=16, rings=8, cut_below=1.78)
+    b.sphere((0, 0.02, 1.9), 1.0, M["trim"], scale=(0.326, 0.326, 0.2), seg=26, rings=14)
+    b.sphere((0, -0.29, 1.9), 1.0, M["trim"], scale=(0.2, 0.17, 0.026), seg=20, rings=8)
     out.append(b.build())
     return out
-
-
-def player_trims(M, arm):
-    """Faixas que escondem as emendas: cós, barra do short e mangas."""
-    parts = []
-    b = B.Builder("Waist")
-    b.sphere((0, 0, 1.03), 1.0, M["trim"], scale=(0.172, 0.135, 0.03), seg=24, rings=6)
-    parts.append((b.build(), "Hips"))
-    b = B.Builder("Collar")
-    b.sphere((0, 0.0, 1.435), 1.0, M["trim"], scale=(0.098, 0.09, 0.022), seg=18, rings=6)
-    parts.append((b.build(), "Chest"))
-    for s, sx in ((".R", -1), (".L", 1)):
-        b = B.Builder("Cuff" + s)
-        b.sphere((0.1 * sx, 0, 0.665), 1.0, M["shorts"], scale=(0.095, 0.095, 0.026), seg=18, rings=6)
-        parts.append((b.build(), "UpperLeg" + s))
-        b = B.Builder("Sleeve" + s)
-        sh = Vector(PLAYER_J["shoulder" + s])
-        el = Vector(PLAYER_J["elbow" + s])
-        c = sh.lerp(el, 0.36)
-        d = (el - sh).normalized()
-        rot = d.to_track_quat("Z", "Y").to_matrix().to_4x4()
-        b.sphere(tuple(c), 1.0, M["trim"], scale=(0.078, 0.078, 0.022), seg=16, rings=6, rot=rot)
-        parts.append((b.build(), "UpperArm" + s))
-    for ob, bone in parts:
-        bind(ob, arm, rigid_weights(ob.data, bone))
 
 
 def build_player():
@@ -313,7 +313,8 @@ def build_player():
     arm = make_armature("Rig", PLAYER_J, PLAYER_BONES)
     body, w = player_body(M)
     bind(body, arm, w)
-    player_trims(M, arm)
+    for ob, cw in player_clothes(M):
+        bind(ob, arm, cw)
     head = player_head(M)
     bind(head, arm, rigid_weights(head.data, "Head"))
     for h in hair_variants(M):

@@ -1160,8 +1160,12 @@ func _update_camera(dt: float) -> void:
 	elif state == S.POINT and celeb != null and point_timer < 2.2:
 		# close na comemoração
 		var c := celeb.global_position
-		var dir := Vector3(sin(time * 0.6) * 0.5, 0.0, -celeb.side).normalized()
+		# de frente-lateral, sempre do lado do jogador (nunca atrás da rede)
+		var sx := signf(c.x) if absf(c.x) > 0.3 else 1.0
+		var dir := Vector3(sx * 0.75, 0.0, -celeb.side * 0.66).normalized()
 		target_pos = c + dir * 3.9 + Vector3(0, 1.35, 0)
+		if target_pos.z * celeb.side < 0.9:
+			target_pos.z = celeb.side * 0.9
 		target_look = c + Vector3(0, 1.1, 0)
 		base_fov = 48.0
 		if not cam_cut and cam_pos.distance_to(target_pos) > 6.0:
@@ -1169,7 +1173,7 @@ func _update_camera(dt: float) -> void:
 	elif state == S.SERVE and server == human:
 		# por cima do ombro de quem saca
 		var c2 := server.global_position
-		target_pos = c2 + Vector3(-1.5, 2.6, 4.3)
+		target_pos = c2 + Vector3(1.4, 2.6, 4.3)
 		target_look = Vector3(c2.x * 0.3, 1.0, -6.0)
 		base_fov = 52.0
 	elif state == S.END:

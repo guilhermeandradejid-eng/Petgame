@@ -249,29 +249,21 @@ func _place(scene: PackedScene, pos: Vector3, rot_y := 0.0, s := 1.0, opts: Dict
 	n.position = pos
 	n.rotation.y = rot_y
 	n.scale = Vector3.ONE * s
-	var o := {"outline": 0.03}
+	var o := {"outline": 0.03, "halftone": 0.0}
 	o.merge(opts, true)
-	Toon.apply(n, {}, o, ds)
+	Toon.apply(n, {}, o, ds, {"Leaf": {"wind": 1.0}, "LeafDark": {"wind": 1.0}})
 	add_child(n)
 	return n
 
 
 func _props() -> void:
-	var leaves := ["Leaf", "LeafDark"]
 	var palm_spots := [
 		Vector3(-15, 0, -19), Vector3(16, 0, -20), Vector3(-21, 0, -7), Vector3(22, 0, -9),
 		Vector3(-25, 0, 6), Vector3(26, 0, 4), Vector3(-9, 0, -24), Vector3(11, 0, -24.5),
 		Vector3(-31, 0, -16), Vector3(32, 0, -17), Vector3(-19, 0, 18), Vector3(20, 0, 20),
 	]
 	for p in palm_spots:
-		var palm := _place(PALM, p, rng.randf_range(0, TAU), rng.randf_range(1.1, 1.5), {"outline": 0.04}, leaves)
-		for mi in Toon._meshes(palm):
-			for s in mi.mesh.get_surface_count():
-				var mat := mi.get_surface_override_material(s) as ShaderMaterial
-				if mat and mat.shader != Toon.TOON_SHADER:
-					var w := mat.duplicate() as ShaderMaterial
-					w.set_shader_parameter("wind", 1.0)
-					mi.set_surface_override_material(s, w)
+		_place(PALM, p, rng.randf_range(0, TAU), rng.randf_range(1.1, 1.5), {"outline": 0.035})
 	var umb_spots := [Vector3(-13.5, 0, -12), Vector3(14, 0, -13), Vector3(-6, 0, -20), Vector3(7, 0, -19.5)]
 	for p in umb_spots:
 		var u := _place(UMBRELLA, p, rng.randf_range(0, TAU), 1.2)

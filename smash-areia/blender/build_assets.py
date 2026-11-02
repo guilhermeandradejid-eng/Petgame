@@ -172,50 +172,38 @@ def export(name):
 
 def build_palm():
     reset_scene()
-    trunk_a = material("Trunk", "#9a6a3c")
-    trunk_b = material("TrunkDark", "#7a4f2a")
+    trunk = material("Trunk", "#a8743f")
     leaf = material("Leaf", "#3fbf4f")
-    leaf_dark = material("LeafDark", "#24903a")
+    leaf_dark = material("LeafDark", "#2fa043")
     coco = material("Coconut", "#6b4a2b")
-
     b = Builder("Palm")
-    pos = Vector((0, 0, 0))
-    direction = Vector((0.0, 0.0, 1.0))
-    n = 9
-    for i in range(n):
-        r = 0.32 - i * 0.022
-        seg_len = 0.75
-        direction = (direction + Vector((0.07, 0.0, 0.0))).normalized()
-        b.cone(pos, direction, seg_len + 0.06, r + 0.04, r - 0.01, trunk_a if i % 2 == 0 else trunk_b, seg=9)
-        pos = pos + direction * seg_len
-    top = pos
-    b.sphere(top + Vector((0, 0, 0.05)), 0.32, leaf_dark, seg=10, rings=8)
+    # tronco liso e curvado (cones encadeados sem degraus)
+    pts = []
+    for i in range(11):
+        t = i / 10.0
+        pts.append(Vector((0.9 * t * t * 1.6, 0.0, 5.6 * t)))
+    for i in range(10):
+        r1 = 0.3 - i * 0.012
+        d = pts[i + 1] - pts[i]
+        b.cone(pts[i] - d.normalized() * 0.04, d, d.length + 0.08, r1, r1 - 0.012, trunk, seg=12)
+    top = pts[-1]
     for k in range(3):
         a = k * 2.1
-        b.sphere(top + Vector((math.cos(a) * 0.22, math.sin(a) * 0.22, -0.18)), 0.17, coco, seg=10, rings=8)
-    # folhas: tiras curvadas e caidas
-    for k in range(8):
-        a = k * math.tau / 8 + 0.2
-        dirh = Vector((math.cos(a), math.sin(a), 0))
-        side = Vector((-dirh.y, dirh.x, 0))
-        mat = leaf if k % 2 == 0 else leaf_dark
-        segs = 7
-        verts_l = []
-        bm = b.bm
-        mi = b._mi(mat)
-        for s in range(segs + 1):
-            t = s / segs
-            c = top + dirh * (t * 2.6) + Vector((0, 0, 0.5 * math.sin(t * math.pi * 0.8) - 1.3 * t * t))
-            w = 0.42 * math.sin(math.pi * min(1.0, t * 1.05 + 0.08))
-            verts_l.append((bm.verts.new(c + side * w), bm.verts.new(c + Vector((0, 0, 0.06))),
-                            bm.verts.new(c - side * w)))
-        for s in range(segs):
-            a0, m0, b0 = verts_l[s]
-            a1, m1, b1 = verts_l[s + 1]
-            for quad in ((a0, a1, m1, m0), (m0, m1, b1, b0)):
-                f = bm.faces.new(quad)
-                f.material_index = mi
-                f.smooth = True
+        b.sphere(top + Vector((math.cos(a) * 0.2, math.sin(a) * 0.2, -0.22)), 0.16, coco, seg=12, rings=8)
+    # folhas: elipsoides achatados e curvados para baixo (formas fechadas)
+    for k in range(7):
+        ang = k * math.tau / 7 + 0.3
+        length = 2.4
+        verts = b.sphere((0, 0, 0), 1.0, leaf if k % 2 == 0 else leaf_dark,
+                         scale=(length * 0.5, 0.36, 0.06), seg=16, rings=8)
+        ca, sa = math.cos(ang), math.sin(ang)
+        for v in verts:
+            x = v.co.x + length * 0.5          # 0..length ao longo da folha
+            t = x / length
+            z = v.co.z + 0.45 * math.sin(t * math.pi * 0.7) - 1.25 * t * t
+            y = v.co.y * (1.0 - 0.75 * t * t)  # afina na ponta
+            v.co = top + Vector((x * ca - y * sa, x * sa + y * ca, z + 0.05))
+    b.sphere(top + Vector((0, 0, 0.05)), 0.26, leaf_dark, seg=12, rings=8)
     b.build()
     export("palm")
 
@@ -226,24 +214,22 @@ def build_umbrella():
     white = material("UmbrellaB", "#fff4e0")
     pole = material("Pole", "#ffffff")
     b = Builder("Umbrella")
-    b.cone((0, 0, -0.3), (0, 0, 1), 2.7, 0.035, 0.035, pole, seg=8)
+    b.cone((0, 0, -0.3), (0, 0, 1), 2.75, 0.035, 0.035, pole, seg=8)
     bm = b.bm
-    segs = 10
-    apex = bm.verts.new((0, 0, 2.55))
+    segs = 12
+    apex = bm.verts.new((0, 0, 2.6))
     ring = []
     for i in range(segs):
         a = i * math.tau / segs
-        ring.append(bm.verts.new((math.cos(a) * 1.55, math.sin(a) * 1.55, 1.95)))
+        ring.append(bm.verts.new((math.cos(a) * 1.55, math.sin(a) * 1.55, 1.98)))
+    center_low = bm.verts.new((0, 0, 2.2))
     for i in range(segs):
         f = bm.faces.new((apex, ring[i], ring[(i + 1) % segs]))
         f.material_index = b._mi(red if i % 2 == 0 else white)
         f.smooth = False
-    # babado
-    for i in range(segs):
-        a = (i + 0.5) * math.tau / segs
-        b.sphere((math.cos(a) * 1.45, math.sin(a) * 1.45, 1.93), 1.0, white if i % 2 == 0 else red,
-                 scale=(0.22, 0.22, 0.08), seg=8, rings=4)
-    b.sphere((0, 0, 2.58), 0.07, pole, seg=8, rings=6)
+        f2 = bm.faces.new((center_low, ring[(i + 1) % segs], ring[i]))
+        f2.material_index = b._mi(white)
+    b.sphere((0, 0, 2.63), 0.07, pole, seg=10, rings=6)
     b.build()
     export("umbrella")
 

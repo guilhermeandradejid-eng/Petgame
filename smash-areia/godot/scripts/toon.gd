@@ -35,6 +35,8 @@ static func make(color: Color, opts: Dictionary = {}) -> ShaderMaterial:
 	m.set_shader_parameter("halftone", opts.get("halftone", 1.0))
 	if opts.has("shadow"):
 		m.set_shader_parameter("shadow_tint", opts["shadow"])
+	if opts.has("wind"):
+		m.set_shader_parameter("wind", opts["wind"])
 	var w: float = opts.get("outline", 0.025)
 	if w > 0.0:
 		m.next_pass = outline(w)

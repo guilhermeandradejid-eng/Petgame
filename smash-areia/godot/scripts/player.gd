@@ -98,10 +98,11 @@ static func make_model(char_data: Dictionary, team_data: Dictionary) -> Dictiona
 		"Skin": char_data["skin"], "Hair": char_data["hair_color"], "Band": char_data["accent"],
 		"Shirt": team_data["shirt"], "ShirtTrim": team_data["trim"], "Shorts": team_data["shorts"],
 	}
-	var soft := {"halftone": 0.0, "shadow": Color(0.8, 0.64, 0.74), "rim": 0.5}
-	Toon.apply(m, palette, {"outline": 0.018, "rim": 0.4}, [],
-			{"Skin": soft, "Cheek": soft, "Mouth": soft, "Pupil": {"halftone": 0.0, "outline": 0.0},
-			"EyeShine": {"halftone": 0.0, "outline": 0.0}})
+	var soft := {"halftone": 0.0, "shadow": Color(0.86, 0.72, 0.8), "rim": 0.45}
+	var flat := {"halftone": 0.0, "outline": 0.0, "rim": 0.0}
+	Toon.apply(m, palette, {"outline": 0.018, "rim": 0.4, "halftone": 0.45}, [],
+			{"Skin": soft, "Cheek": flat, "Mouth": flat, "Pupil": flat, "EyeShine": flat,
+			"Hair": {"halftone": 0.0, "rim": 0.5}, "Band": {"halftone": 0.0}})
 	var r := Rig.new(sk)
 	var att := BoneAttachment3D.new()
 	att.bone_name = "Hand.R"
