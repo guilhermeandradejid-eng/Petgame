@@ -21,6 +21,8 @@ func _ready() -> void:
 			frames = int(a.substr(9))
 		elif a.begins_with("--steps="):
 			steps = a.substr(8)
+	if "--dbg" in OS.get_cmdline_user_args():
+		add_child(load("res://scripts/dev/dbg.gd").new())
 	if target != "title":
 		Game.coop = true
 		Game.current_level = int(target)
