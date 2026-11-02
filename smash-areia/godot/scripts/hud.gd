@@ -56,6 +56,7 @@ var replay_on := false
 var split_on := false
 var pad_mode := false        # controle em uso pelo J1: esconde os botões de toque
 var last_input_pad := false
+var pad_info := ""
 
 # menu
 var menu: Control
@@ -813,7 +814,7 @@ func _refresh_menu() -> void:
 		tx = "1 CONTROLE CONECTADO"
 	elif n > 1:
 		tx = "%d CONTROLES CONECTADOS" % n
-	pads_label.text = tx
+	pads_label.text = pad_info if pad_info != "" else tx
 	for c in cards:
 		c.queue_redraw()
 	char_scr.queue_redraw()
@@ -828,6 +829,8 @@ func _input(event: InputEvent) -> void:
 		last_input_pad = true
 	elif event is InputEventScreenTouch and event.is_pressed():
 		last_input_pad = false
+	if _pad_menu_input(event):
+		return
 	if not menu.visible:
 		return
 	if screen == "title" and screen_t > 0.35:
@@ -843,6 +846,74 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		_click()
 		_back()
+
+
+## Algum menu na tela (principal, pausa, fim ou ajuda)?
+func _menu_active() -> bool:
+	return menu.visible or pause_panel.visible or end_panel.visible or help_panel.visible
+
+
+## Confirmação e volta pelo controle tratadas aqui, sem depender do mapa
+## padrão do Godot (que no Android nem sempre liga o A ao "confirmar"):
+## A, X, Y ou Start apertam o botão em foco; B ou Select voltam.
+## O D-pad e o analógico continuam com a navegação normal de foco.
+func _pad_menu_input(event: InputEvent) -> bool:
+	if not (event is InputEventJoypadButton) or not _menu_active():
+		return false
+	var jb := event as InputEventJoypadButton
+	var b := jb.button_index
+	if jb.pressed:
+		pad_info = "CONTROLE: %s  •  BOTÃO %d" % [Input.get_joy_name(jb.device).to_upper().left(28), b]
+		if pads_label:
+			pads_label.text = pad_info
+	if menu.visible and screen == "title":
+		return false   # o título já aceita qualquer botão
+	var confirm := b in [JOY_BUTTON_A, JOY_BUTTON_X, JOY_BUTTON_Y, JOY_BUTTON_START]
+	var back := b in [JOY_BUTTON_B, JOY_BUTTON_BACK]
+	if not confirm and not back:
+		# D-pad: se nada estiver em foco, foca o botão principal da tela
+		if jb.pressed and get_viewport().gui_get_focus_owner() == null:
+			_focus_default()
+		return false
+	get_viewport().set_input_as_handled()
+	if not jb.pressed:
+		return true
+	if back:
+		_click()
+		if help_panel.visible or (menu.visible and screen != "title"):
+			_back()
+		elif pause_panel.visible:
+			_on_pause()
+		return true
+	if b == JOY_BUTTON_START and pause_panel.visible and not help_panel.visible:
+		_on_pause()   # Start sempre volta para o jogo
+		return true
+	var f := get_viewport().gui_get_focus_owner()
+	if f is BaseButton and f.is_visible_in_tree() and not (f as BaseButton).disabled:
+		(f as BaseButton).pressed.emit()
+	else:
+		_focus_default()
+	return true
+
+
+func _focus_default() -> void:
+	var target: Control = null
+	if help_panel.visible:
+		target = help_panel.get_meta("close")
+	elif pause_panel.visible:
+		target = cont_btn
+	elif end_panel.visible:
+		target = again_btn
+	elif menu.visible:
+		match screen:
+			"mode":
+				target = mode_tiles[0]
+			"char":
+				target = cards[GameData.char_index]
+			"locker":
+				target = play_btn
+	if target:
+		target.grab_focus()
 
 
 func _draw_menu_bg() -> void:

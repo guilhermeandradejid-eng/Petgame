@@ -176,6 +176,9 @@ func _ready() -> void:
 			GameData.mode = a.substr(7)
 		elif a.begins_with("--diff="):
 			GameData.difficulty = int(a.substr(7))
+		elif a == "--padtest":
+			var pt: Node = load("res://tests/pad_menu_test.gd").new()
+			add_child(pt)
 		elif a.begins_with("--outfit="):
 			GameData.looks[0]["outfit"] = int(a.substr(9))
 			GameData.looks[0]["racket"] = int(a.substr(9)) % 3
@@ -269,11 +272,22 @@ func _portrait(path: String) -> void:
 	p.reset_state()
 	p.shadow.visible = false
 	var body_cam := path.contains("body")
-	if path.contains("swing"):
-		p.request_shot(Shots.DRIVE)
 	var card := path.contains("card")
 	for i in 20:
 		p.update(1.0 / 30.0)
+	# poses de teste: preparação da defesa e quadros da batida de defesa
+	if path.contains("defw"):
+		p.request_shot(Shots.DEFENSE)
+		p.style = "block"
+		p.style_t = 99.0
+		p.pending_t = 99.0
+		for i in 20:
+			p.update(1.0 / 30.0)
+	elif path.contains("defs"):
+		p.style = "block"
+		p._start_swing(Shots.DEFENSE, p.global_position + Vector3(0, 1.2, 1.0), "block")
+		for i in path.get_slice("defs", 1).get_slice("_", 0).to_int():
+			p.update(1.0 / 60.0)
 	cam.h_offset = 0.0
 	if body_cam:
 		cam.fov = 32

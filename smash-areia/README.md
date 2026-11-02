@@ -34,7 +34,9 @@ desconhecidos" e abra. O jogo roda deitado (paisagem).
 
 Tudo funciona no toque, no mouse, no teclado e no controle (D-pad ou analógico para escolher,
 **A** ou Start confirma, **B** volta; o Godot não liga o A do controle ao "confirmar" por padrão,
-então o jogo adiciona isso ao iniciar).
+então o jogo trata o controle por conta própria: **A, X, Y ou Start** apertam o botão em foco e
+**B ou Select** voltam). Na tela de modos aparece o nome do controle e o número do último botão
+apertado, para conferir o mapeamento.
 
 ### Vídeo: 1 minuto de partida (com som)
 
@@ -106,7 +108,7 @@ As regras são de beach tennis:
 | **LOB** | Bola alta com topspin que cai no fundo, boa para tirar a dupla da rede. |
 | **CURTA** | **Slice**: flutua, faz curva e morre perto da rede. |
 | **SMASH** | Com a bola alta, o boneco **pula e crava** no tempo certo. Com a bola baixa vira uma pancada. Perto da rede é quase indefensável, do fundo sai mais lento. |
-| **DEFESA** | Devolve uma bola alta, funda e segura no meio da quadra. Alcança mais longe e aguenta pancada (bloqueio). Enquanto está armada aparece um **escudo azul** na frente do jogador e "DEFESA!" em cima; o escudo pisca quando pega a bola. |
+| **DEFESA** | Devolve uma bola alta, funda e segura no meio da quadra. Alcança mais longe e aguenta pancada (bloqueio). Pose de defesa do beach tennis: base aberta e baixa, tronco à frente e raquete em pé na frente do rosto com a face para a rede; na batida o corpo sobe e a raquete empurra a bola para cima e para o fundo. Um anel azul discreto marca a defesa armada e pisca quando pega a bola. |
 | **PEIXINHO** | Mergulho para salvar bola longe. Rebate sozinho uma defesa alta. |
 | **ESPECIAL** (estrela grande acima do losango) | Enche junto com a barra ESPECIAL do placar (mostra a %) e pulsa com "PRONTO!" quando está cheia: solta o golpe especial do seu personagem. Também aparece um aviso na tela dizendo qual botão apertar (RB, U ou a estrela). |
 

@@ -853,7 +853,16 @@ func _update_racket(dt: float) -> void:
 		k = -0.75   # raquete caída atrás das costas (pose do troféu)
 	if state == State.DIVE or state == State.RECOVER:
 		k = 0.1
+	var defending := style == "block" and (pending_shot == Shots.DEFENSE or (swing_t < 1.0 and swing_type == Shots.DEFENSE))
+	if defending:
+		k = 0.9      # cabeça da raquete para cima, na frente do peito
+		push = 0.2
 	var axis := (fore + Vector3.UP * k + fwd * push).normalized()
+	if defending:
+		# bloqueio: cabo na mão e cabeça da raquete em pé na frente do rosto,
+		# levemente inclinada para a rede (na batida ela tomba mais para a frente)
+		var lean := 0.25 + (0.45 * (1.0 - pow(1.0 - swing_t, 2.0)) if swing_t < 1.0 else 0.0)
+		axis = (Vector3.UP + fwd * lean - body.global_transform.basis.x.normalized() * 0.12).normalized()
 	var head := grip + axis * 0.42 * sc
 	var hv := (head - racket_prev) / maxf(dt, 0.001)
 	racket_prev = head
@@ -861,7 +870,9 @@ func _update_racket(dt: float) -> void:
 	# laterais (o perfil aponta para a rede); na batida a face segue o golpe
 	var lateral := body.global_transform.basis.x.normalized()
 	var n0 := lateral
-	if swing_t < 1.0 and hv.length() > 2.5:
+	if defending:
+		n0 = (fwd + Vector3.UP * 0.4).normalized()   # face aberta para a rede (bloqueio)
+	elif swing_t < 1.0 and hv.length() > 2.5:
 		n0 = hv.normalized()
 	n0 = n0 - axis * n0.dot(axis)
 	if n0.length() < 0.05:
@@ -915,20 +926,20 @@ func ball_hold_pos() -> Vector3:
 
 func _make_shield() -> void:
 	shield = Node3D.new()
-	shield.position = Vector3(0, 1.0, 0.62)
+	shield.position = Vector3(0, 0.85, 0.75)
 	add_child(shield)
 	var disc := MeshInstance3D.new()
 	var cm := CylinderMesh.new()
-	cm.top_radius = 0.6
-	cm.bottom_radius = 0.6
+	cm.top_radius = 0.42
+	cm.bottom_radius = 0.42
 	cm.height = 0.01
 	cm.radial_segments = 32
 	disc.mesh = cm
 	disc.rotation.x = PI * 0.5
 	var ring := MeshInstance3D.new()
 	var tm := TorusMesh.new()
-	tm.inner_radius = 0.56
-	tm.outer_radius = 0.66
+	tm.inner_radius = 0.4
+	tm.outer_radius = 0.46
 	tm.rings = 32
 	ring.mesh = tm
 	ring.rotation.x = PI * 0.5
@@ -959,7 +970,7 @@ func _update_shield(dt: float) -> void:
 	a = maxf(a, shield_flash)
 	shield.visible = a > 0.02
 	if shield.visible:
-		shield_mats[0].albedo_color.a = 0.28 * a + 0.3 * shield_flash
+		shield_mats[0].albedo_color.a = 0.14 * a + 0.3 * shield_flash
 		shield_mats[1].albedo_color.a = 0.9 * a
 		shield.scale = Vector3.ONE * (0.8 + 0.2 * a + 0.45 * shield_flash)
 
@@ -1097,18 +1108,22 @@ func _windup_pose(type: int, st: String, r: Dictionary, L: Dictionary) -> void:
 			r["UpperArm.L"] = Vector3(-0.2, 0.0, -0.4)
 			r["Chest"] = Vector3(0.2, 0.7, 0.0)
 		"block":
-			L["tr"] = -0.6
-			L["tl"] = -0.6
-			L["kr"] = 1.1
-			L["kl"] = 1.1
-			L["zr"] = -0.3
-			L["zl"] = 0.3
-			r["UpperArm.R"] = Vector3(-1.25, 0.35, -0.1)
-			r["LowerArm.R"] = Vector3(-0.95, 0.0, 0.0)
-			r["UpperArm.L"] = Vector3(-1.0, -0.2, 0.3)
-			r["LowerArm.L"] = Vector3(-1.1, 0.0, 0.0)
-			r["Spine"] = Vector3(0.3, 0.0, 0.0)
-			r["Head"] = Vector3(-0.2, 0.0, 0.0)
+			# guarda de defesa do beach tennis: base bem aberta e baixa, tronco à
+			# frente, raquete na frente do peito com a face para a rede, olhos na bola
+			L["tr"] = -0.85
+			L["tl"] = -0.75
+			L["kr"] = 1.45
+			L["kl"] = 1.35
+			L["zr"] = -0.42
+			L["zl"] = 0.42
+			L["crouch"] = 0.05
+			r["Spine"] = Vector3(0.4, 0.0, 0.0)
+			r["Chest"] = Vector3(0.12, 0.0, 0.0)
+			r["Head"] = Vector3(-0.5, 0.0, 0.0)
+			r["UpperArm.R"] = Vector3(-1.3, 0.4, -0.2)
+			r["LowerArm.R"] = Vector3(-0.6, 0.0, 0.0)
+			r["UpperArm.L"] = Vector3(-0.75, 0.0, 0.8)
+			r["LowerArm.L"] = Vector3(-0.6, 0.0, 0.0)
 		"gancho":
 			r["UpperArm.R"] = Vector3(-2.6, 1.05, 0.6)
 			r["LowerArm.R"] = Vector3(-1.1, 0.0, 0.0)
@@ -1177,17 +1192,22 @@ func _strike_pose(type: int, st: String, t: float, r: Dictionary, L: Dictionary)
 			r["UpperArm.L"] = Vector3(-0.2, 0.0, -0.4)
 			r["Chest"] = Vector3(0.2, lerpf(0.7, 0.1, e), 0.0)
 		"block":
-			L["tr"] = -0.6
-			L["tl"] = -0.6
-			L["kr"] = 1.1
-			L["kl"] = 1.1
-			L["zr"] = -0.3
-			L["zl"] = 0.3
-			r["UpperArm.R"] = Vector3(lerpf(-1.25, -1.5, e), 0.3, -0.1)
-			r["LowerArm.R"] = Vector3(lerpf(-0.95, -0.45, e), 0.0, 0.0)
-			r["UpperArm.L"] = Vector3(-1.0, -0.2, 0.3)
-			r["LowerArm.L"] = Vector3(-1.1, 0.0, 0.0)
-			r["Spine"] = Vector3(lerpf(0.3, 0.4, e), 0.0, 0.0)
+			# batida de defesa: empurra a raquete para a frente e para cima (bola
+			# alta e funda) enquanto o corpo sobe da base baixa
+			L["tr"] = lerpf(-0.85, -0.45, e)
+			L["tl"] = lerpf(-0.75, -0.3, e)
+			L["kr"] = lerpf(1.45, 0.8, e)
+			L["kl"] = lerpf(1.35, 0.7, e)
+			L["zr"] = -0.38
+			L["zl"] = 0.38
+			L["crouch"] = lerpf(0.05, 0.0, e)
+			r["Spine"] = Vector3(lerpf(0.4, 0.12, e), 0.0, 0.0)
+			r["Chest"] = Vector3(lerpf(0.12, -0.05, e), 0.0, 0.0)
+			r["Head"] = Vector3(lerpf(-0.5, -0.35, e), 0.0, 0.0)
+			r["UpperArm.R"] = Vector3(lerpf(-1.3, -2.2, e), lerpf(0.4, 0.15, e), -0.2)
+			r["LowerArm.R"] = Vector3(lerpf(-0.6, -0.15, e), 0.0, 0.0)
+			r["UpperArm.L"] = Vector3(-0.8, 0.0, 0.9)
+			r["LowerArm.L"] = Vector3(-0.5, 0.0, 0.0)
 		"dive":
 			pass
 		"gancho":
