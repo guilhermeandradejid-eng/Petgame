@@ -1,33 +1,50 @@
 {
  "id": "ren",
- "cell": 64,
- "target_height_px": 46,
- "version": 2,
- "note": "FROZEN (v2). The renderer may redraw poses and add sub-frames, never change this file. Multi-hit anims list several contact frames; the last one is held >= 6 ticks.",
+ "cell": 80,
+ "ground": [
+  40,
+  74
+ ],
+ "target_height_px": 52,
+ "version": 4,
+ "note": "FROZEN (v4). Arcade hi-bit proportions (~1:4.6), 52 px tall in an 80x80 cell, feet on row 74. Basic anims exist per weapon (<weapon>.idle/.ready/.walk/.run/.dash/.jump/.hurt/.victory). cast*/death are weapon-independent (weapon sheathed).",
  "anims": {
-  "idle": {
+  "sword.idle": {
    "loop": true,
    "ticks": [
-    9,
-    9,
-    9,
-    9,
-    9,
-    9
+    12,
+    12,
+    12,
+    12,
+    12,
+    12
    ]
   },
-  "ready": {
+  "sword.ready": {
    "loop": true,
    "ticks": [
-    8,
-    8,
-    8,
-    8,
-    8,
-    8
+    10,
+    10,
+    10,
+    10,
+    10,
+    10
    ]
   },
-  "walk": {
+  "sword.walk": {
+   "loop": true,
+   "ticks": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6
+   ]
+  },
+  "sword.run": {
    "loop": true,
    "ticks": [
     5,
@@ -40,55 +57,256 @@
     5
    ]
   },
-  "run": {
-   "loop": true,
-   "ticks": [
-    4,
-    4,
-    4,
-    4,
-    4,
-    4,
-    4,
-    4
-   ]
-  },
-  "dash": {
+  "sword.dash": {
    "loop": false,
    "ticks": [
-    2,
     3,
-    5,
     4,
-    5
+    6,
+    5,
+    7
    ],
    "hold": [
     2
    ]
   },
-  "jump": {
+  "sword.jump": {
    "loop": false,
    "ticks": [
-    3,
-    5,
-    5,
-    5
+    4,
+    6,
+    6,
+    6
    ],
    "hold": [
     1,
     2
    ]
   },
-  "sword.1": {
+  "sword.hurt": {
+   "loop": false,
+   "ticks": [
+    5,
+    4,
+    10
+   ]
+  },
+  "sword.victory": {
+   "loop": false,
+   "ticks": [
+    6,
+    6,
+    6,
+    10,
+    10,
+    70
+   ],
+   "hold": [
+    5
+   ]
+  },
+  "spear.idle": {
+   "loop": true,
+   "ticks": [
+    12,
+    12,
+    12,
+    12,
+    12,
+    12
+   ]
+  },
+  "spear.ready": {
+   "loop": true,
+   "ticks": [
+    10,
+    10,
+    10,
+    10,
+    10,
+    10
+   ]
+  },
+  "spear.walk": {
+   "loop": true,
+   "ticks": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6
+   ]
+  },
+  "spear.run": {
+   "loop": true,
+   "ticks": [
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5
+   ]
+  },
+  "spear.dash": {
    "loop": false,
    "ticks": [
     3,
-    3,
-    2,
+    4,
     6,
+    5,
+    7
+   ],
+   "hold": [
+    2
+   ]
+  },
+  "spear.jump": {
+   "loop": false,
+   "ticks": [
     4,
-    4,
+    6,
+    6,
     6
+   ],
+   "hold": [
+    1,
+    2
+   ]
+  },
+  "spear.hurt": {
+   "loop": false,
+   "ticks": [
+    5,
+    4,
+    10
+   ]
+  },
+  "spear.victory": {
+   "loop": false,
+   "ticks": [
+    6,
+    6,
+    6,
+    10,
+    10,
+    70
+   ],
+   "hold": [
+    5
+   ]
+  },
+  "axe.idle": {
+   "loop": true,
+   "ticks": [
+    12,
+    12,
+    12,
+    12,
+    12,
+    12
+   ]
+  },
+  "axe.ready": {
+   "loop": true,
+   "ticks": [
+    10,
+    10,
+    10,
+    10,
+    10,
+    10
+   ]
+  },
+  "axe.walk": {
+   "loop": true,
+   "ticks": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6
+   ]
+  },
+  "axe.run": {
+   "loop": true,
+   "ticks": [
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5
+   ]
+  },
+  "axe.dash": {
+   "loop": false,
+   "ticks": [
+    3,
+    4,
+    6,
+    5,
+    7
+   ],
+   "hold": [
+    2
+   ]
+  },
+  "axe.jump": {
+   "loop": false,
+   "ticks": [
+    4,
+    6,
+    6,
+    6
+   ],
+   "hold": [
+    1,
+    2
+   ]
+  },
+  "axe.hurt": {
+   "loop": false,
+   "ticks": [
+    5,
+    4,
+    10
+   ]
+  },
+  "axe.victory": {
+   "loop": false,
+   "ticks": [
+    6,
+    6,
+    6,
+    10,
+    10,
+    70
+   ],
+   "hold": [
+    5
+   ]
+  },
+  "sword.1": {
+   "loop": false,
+   "ticks": [
+    4,
+    4,
+    3,
+    8,
+    5,
+    5,
+    8
    ],
    "contact": [
     3
@@ -100,13 +318,13 @@
   "sword.2": {
    "loop": false,
    "ticks": [
-    3,
-    3,
-    2,
-    6,
     4,
     4,
-    6
+    3,
+    8,
+    5,
+    5,
+    8
    ],
    "contact": [
     3
@@ -118,13 +336,13 @@
   "sword.3": {
    "loop": false,
    "ticks": [
+    6,
     5,
     4,
-    3,
-    9,
-    5,
-    5,
-    8
+    12,
+    6,
+    6,
+    10
    ],
    "contact": [
     3
@@ -136,13 +354,13 @@
   "spear.1": {
    "loop": false,
    "ticks": [
-    3,
-    3,
-    2,
-    6,
     4,
     4,
-    6
+    3,
+    8,
+    5,
+    5,
+    8
    ],
    "contact": [
     3
@@ -154,13 +372,13 @@
   "spear.2": {
    "loop": false,
    "ticks": [
-    3,
-    3,
-    2,
-    6,
     4,
     4,
-    6
+    3,
+    8,
+    5,
+    5,
+    8
    ],
    "contact": [
     3
@@ -172,13 +390,13 @@
   "spear.3": {
    "loop": false,
    "ticks": [
+    6,
     5,
     4,
-    3,
-    9,
-    5,
-    5,
-    8
+    12,
+    6,
+    6,
+    10
    ],
    "contact": [
     3
@@ -188,42 +406,6 @@
    ]
   },
   "axe.1": {
-   "loop": false,
-   "ticks": [
-    5,
-    4,
-    3,
-    7,
-    5,
-    5,
-    8
-   ],
-   "contact": [
-    3
-   ],
-   "hold": [
-    3
-   ]
-  },
-  "axe.2": {
-   "loop": false,
-   "ticks": [
-    5,
-    4,
-    3,
-    7,
-    5,
-    5,
-    8
-   ],
-   "contact": [
-    3
-   ],
-   "hold": [
-    3
-   ]
-  },
-  "axe.3": {
    "loop": false,
    "ticks": [
     7,
@@ -241,19 +423,55 @@
     3
    ]
   },
+  "axe.2": {
+   "loop": false,
+   "ticks": [
+    7,
+    5,
+    4,
+    9,
+    6,
+    6,
+    10
+   ],
+   "contact": [
+    3
+   ],
+   "hold": [
+    3
+   ]
+  },
+  "axe.3": {
+   "loop": false,
+   "ticks": [
+    9,
+    7,
+    5,
+    12,
+    8,
+    8,
+    12
+   ],
+   "contact": [
+    3
+   ],
+   "hold": [
+    3
+   ]
+  },
   "sword.sp1": {
    "loop": false,
    "ticks": [
-    6,
-    4,
-    3,
-    3,
-    3,
-    3,
-    3,
-    6,
     8,
-    6
+    5,
+    4,
+    4,
+    4,
+    4,
+    4,
+    8,
+    10,
+    8
    ],
    "contact": [
     2,
@@ -270,13 +488,13 @@
   "sword.sp2": {
    "loop": false,
    "ticks": [
-    6,
-    5,
-    5,
-    4,
     8,
-    6,
-    10
+    7,
+    7,
+    5,
+    10,
+    8,
+    12
    ],
    "contact": [
     4
@@ -289,16 +507,16 @@
   "spear.sp1": {
    "loop": false,
    "ticks": [
-    6,
-    3,
-    3,
-    3,
-    3,
-    3,
-    3,
-    6,
     8,
-    6
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    8,
+    10,
+    8
    ],
    "contact": [
     1,
@@ -316,12 +534,12 @@
   "spear.sp2": {
    "loop": false,
    "ticks": [
-    7,
+    9,
+    5,
     4,
-    3,
-    6,
-    6,
-    8
+    8,
+    8,
+    10
    ],
    "contact": [
     3
@@ -333,12 +551,12 @@
   "axe.sp1": {
    "loop": false,
    "ticks": [
-    9,
-    6,
-    4,
-    10,
+    11,
     8,
-    8
+    5,
+    12,
+    10,
+    10
    ],
    "contact": [
     3
@@ -350,16 +568,16 @@
   "axe.sp2": {
    "loop": false,
    "ticks": [
-    8,
-    4,
-    3,
-    3,
-    3,
-    3,
-    3,
-    6,
     10,
-    6
+    5,
+    4,
+    4,
+    4,
+    4,
+    4,
+    8,
+    12,
+    8
    ],
    "contact": [
     2,
@@ -376,12 +594,12 @@
   "cast": {
    "loop": false,
    "ticks": [
-    5,
-    5,
-    3,
-    8,
     6,
-    6
+    6,
+    4,
+    10,
+    8,
+    8
    ],
    "contact": [
     3
@@ -396,9 +614,9 @@
     6,
     6,
     4,
+    10,
     8,
-    6,
-    6
+    8
    ],
    "contact": [
     3
@@ -410,12 +628,12 @@
   "cast.sky": {
    "loop": false,
    "ticks": [
-    6,
-    6,
-    5,
     8,
     8,
-    6
+    6,
+    10,
+    10,
+    8
    ],
    "contact": [
     3
@@ -424,37 +642,15 @@
     3
    ]
   },
-  "hurt": {
-   "loop": false,
-   "ticks": [
-    4,
-    3,
-    8
-   ]
-  },
   "death": {
    "loop": false,
    "ticks": [
-    4,
-    6,
-    6,
+    5,
+    8,
     8,
     10,
-    30
-   ],
-   "hold": [
-    5
-   ]
-  },
-  "victory": {
-   "loop": false,
-   "ticks": [
-    5,
-    5,
-    5,
-    8,
-    8,
-    60
+    12,
+    40
    ],
    "hold": [
     5
