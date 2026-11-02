@@ -76,6 +76,14 @@ var trail_mi: MeshInstance3D
 var trail_pts: Array = []
 var trail_color := Color.WHITE
 
+# estilo visual do golpe (escolhido pela posição da bola): fore, back, low_fore,
+# low_back, lunge_fore, lunge_back, smash, gancho, block
+var style := "fore"
+var last_style := "fore"
+var style_t := 0.0
+var loco := "idle"        # idle, run, shuffle, back
+var split_t := -1.0
+
 
 func setup(char_data: Dictionary, team_index: int, human: bool) -> void:
 	data = char_data
@@ -317,9 +325,66 @@ func reach_info(p: Vector3, fast := false) -> Dictionary:
 		elif rel > TOP_REACH:
 			qh = 0.7
 		q = clampf(qd * 0.75 + qh * 0.25, 0.0, 1.0)
+		# gancho: bola alta passando por cima/atrás da cabeça
+		if not ok and rel > 1.8 and rel < TOP_REACH + 0.6:
+			var dh := Vector2(p.x - global_position.x, p.z - global_position.z).length()
+			if dh < 0.95:
+				ok = true
+				q = 0.72
 		if fast:
 			q *= 0.8
 	return {"in": ok, "dist": d, "quality": q, "high": p.y > 2.0}
+
+
+## Classifica o golpe pela posição da bola em relação ao corpo (de frente
+## para a rede): forehand, backhand, baixo, avanço lateral, smash ou gancho.
+func classify(bp: Vector3, type: int, fast: bool) -> String:
+	if type == Shots.DEFENSE and state == State.DIVE:
+		return "dive"
+	var f := net_dir()
+	var left := Vector3.UP.cross(f)
+	var rel := bp - global_position
+	var lx := rel.dot(left)          # > 0: lado esquerdo (backhand de quem é destro)
+	var fz := rel.dot(f)
+	var h := bp.y - y
+	if h > 1.8 and fz < 0.3:
+		return "gancho" if (lx > -0.25 or type != Shots.SMASH) else "smash"
+	if type == Shots.SMASH or type == Shots.SPECIAL or h > 1.95:
+		return "smash"
+	if fast or type == Shots.DEFENSE:
+		return "block"
+	var c := reach_center()
+	var lat := absf(Vector2(bp.x - c.x, bp.z - c.z).dot(Vector2(left.x, left.z)))
+	var sd := "back" if lx > 0.12 else "fore"
+	if lat > 0.8 and h < 1.6:
+		return "lunge_" + sd
+	if h < 0.6:
+		return "low_" + sd
+	return sd
+
+
+func _predict_style() -> void:
+	if game == null:
+		return
+	var b: Ball = game.ball
+	if not b.is_live():
+		return
+	var fast := b.vel.length() > 16.0
+	for i in range(1, 30):
+		var t := i * 0.03
+		var bp := b.predict(t)
+		var me := global_position + vel * t
+		var c := me + net_dir() * 0.3
+		if Vector2(bp.x - c.x, bp.z - c.z).length() < REACH and bp.y > 0.12:
+			style = classify(bp - vel * t, pending_shot, fast)
+			return
+
+
+## Pulinho de preparação (split-step) quando o adversário bate na bola.
+func split_step() -> void:
+	if state == State.NORMAL and on_ground() and pending_shot < 0 and swing_t >= 1.0:
+		split_t = 0.0
+		vy = 2.0
 
 
 ## Chamado pelo jogo a cada frame em que este jogador pode rebater a bola.
@@ -327,7 +392,8 @@ func try_contact(ball: Ball, delta: float) -> Dictionary:
 	if state == State.DIVE:
 		var info := reach_info(ball.global_position)
 		if info["in"]:
-			return {"type": Shots.DEFENSE, "quality": info["quality"], "charge": 0.0}
+			last_style = "dive"
+			return {"type": Shots.DEFENSE, "quality": info["quality"], "charge": 0.0, "style": "dive"}
 		return {}
 	if pending_shot < 0 or state != State.NORMAL:
 		return {}
@@ -345,19 +411,26 @@ func try_contact(ball: Ball, delta: float) -> Dictionary:
 			q = maxf(q - 0.1, 0.0)
 		var shot := pending_shot
 		var ch := charge()
-		_start_swing(shot, ball.global_position)
-		return {"type": shot, "quality": q, "charge": ch}
+		var st := classify(ball.global_position, shot, fast or ball.special != "")
+		_start_swing(shot, ball.global_position, st)
+		return {"type": shot, "quality": q, "charge": ch, "style": st}
 	best_dist = minf(best_dist, d)
 	return {}
 
 
-func _start_swing(type: int, ball_pos: Vector3) -> void:
+func _start_swing(type: int, ball_pos: Vector3, st := "") -> void:
 	swing_type = type
 	swing_t = 0.0
 	last_charge = charge()
 	pending_shot = -1
 	trail_pts.clear()
 	trail_color = Shots.COLORS[type]
+	if st == "":
+		st = classify(ball_pos, type, false)
+	style = st
+	last_style = st
+	if st == "gancho" and on_ground():
+		vy = 2.6   # pulinho no gancho
 	var local := global_transform.affine_inverse() * ball_pos
 	swing_side = 1.0 if local.x <= 0.15 else -1.0
 
@@ -367,6 +440,10 @@ func _start_swing(type: int, ball_pos: Vector3) -> void:
 func update(dt: float) -> void:
 	anim_time += dt
 	state_t += dt
+	if split_t >= 0.0:
+		split_t += dt
+		if split_t > 0.3:
+			split_t = -1.0
 	match state:
 		State.NORMAL:
 			_update_normal(dt)
@@ -398,7 +475,7 @@ func update(dt: float) -> void:
 		if y <= 0.0:
 			y = 0.0
 			vy = 0.0
-			squash_v = -4.5
+			squash_v = -4.5 if split_t < 0.0 else -2.5
 			if game:
 				game.sand_burst(global_position, 5)
 	var pos := position + vel * dt
@@ -414,12 +491,33 @@ func update(dt: float) -> void:
 	_animate(dt)
 
 
+func _style_yaw(st: String) -> float:
+	match st:
+		"fore", "low_fore":
+			return -0.45
+		"back", "low_back":
+			return 0.75
+		"lunge_fore":
+			return -0.6
+		"lunge_back":
+			return 0.9
+		"gancho":
+			return 1.25
+		"smash":
+			return -0.35
+	return 0.0
+
+
 func _update_normal(dt: float) -> void:
 	if pending_shot >= 0:
 		pending_t -= dt
 		pending_age += dt
+		style_t -= dt
+		if style_t <= 0.0:
+			style_t = 0.08
+			_predict_style()
 		if pending_t <= 0.0:
-			_start_swing(pending_shot, global_position + net_dir())
+			_start_swing(pending_shot, global_position + net_dir(), style)
 	if jump_timer >= 0.0:
 		jump_timer -= dt
 		if jump_timer < 0.0:
@@ -436,12 +534,29 @@ func _update_normal(dt: float) -> void:
 		target = vel
 	var accel := 40.0 if move_input.length() > 0.1 else 32.0
 	vel = vel.move_toward(Vector3(target.x, 0.0, target.z), accel * dt)
-	var face_target := atan2(net_dir().x, net_dir().z)
+	# locomoção: corrida, passo lateral (de frente para a rede) ou recuo de costas
+	var net_yaw := atan2(net_dir().x, net_dir().z)
+	var face_target := net_yaw
 	var flat := Vector2(vel.x, vel.z)
-	if flat.length() > 2.2 and pending_shot < 0 and swing_t >= 1.0 and not serve_mode:
-		face_target = lerp_angle(face_target, atan2(vel.x, vel.z), 0.75)
+	var spd := flat.length()
+	var fwd := Vector2(net_dir().x, net_dir().z)
+	var along := flat.dot(fwd)
+	var lat := absf(flat.dot(Vector2(-fwd.y, fwd.x)))
+	if spd < 0.6:
+		loco = "idle"
+	elif spd > 4.6 and pending_shot < 0 and swing_t >= 1.0 and not serve_mode and along > -2.0:
+		loco = "run"
+		face_target = lerp_angle(net_yaw, atan2(vel.x, vel.z), 0.8)
+	elif along < -0.6 and along * along > lat * lat:
+		loco = "back"
+	else:
+		loco = "shuffle"
+	if pending_shot >= 0:
+		face_target = net_yaw + _style_yaw(style)
+	elif swing_t < 1.0:
+		face_target = net_yaw + _style_yaw(style) * (1.0 - swing_t)
 	facing = lerp_angle(facing, face_target, 1.0 - exp(-12.0 * dt))
-	if flat.length() > 3.0 and on_ground():
+	if spd > 3.0 and on_ground():
 		footstep_t -= dt
 		if footstep_t <= 0.0:
 			footstep_t = 0.22
@@ -451,65 +566,71 @@ func _update_normal(dt: float) -> void:
 
 # ---------------------------------------------------------------- animação
 
-func _leg_drop(thigh: float, knee: float) -> float:
+func _leg_drop(thigh: float, knee: float, spread := 0.0) -> float:
 	# quanto o quadril precisa descer para o pé continuar no chão
-	return THIGH * (1.0 - cos(thigh)) + SHIN * (1.0 - cos(thigh + knee))
+	var cs := cos(spread)
+	return THIGH * (1.0 - cos(thigh) * cs) + SHIN * (1.0 - cos(thigh + knee) * cs)
 
 
 func _animate(dt: float) -> void:
 	rotation.y = facing
 	var spd := Vector2(vel.x, vel.z).length()
-	var run := clampf(spd / 5.5, 0.0, 1.0) if on_ground() and state == State.NORMAL else 0.0
+	var moving := clampf(spd / 5.5, 0.0, 1.0) if on_ground() and state == State.NORMAL else 0.0
 	run_phase += dt * (6.0 + spd * 1.6)
 	var s := sin(run_phase)
 	var breathe := sin(anim_time * 3.0) * 0.025
 	var lv := global_transform.basis.inverse() * vel
 	lean = lean.lerp(Vector2(lv.x, lv.z) / 6.5, 1.0 - exp(-8.0 * dt))
+	var run := moving if loco == "run" else 0.0
+	var shuf := moving if loco == "shuffle" else 0.0
+	var bk := moving if loco == "back" else 0.0
 	var ready := 1.0 - run
 	var p := {
-		"Spine": Vector3(0.1 + lean.y * 0.25 + breathe, 0.0, -lean.x * 0.15),
+		"Spine": Vector3(0.12 + lean.y * 0.25 + breathe - bk * 0.15, 0.0, -lean.x * 0.18),
 		"Chest": Vector3(0.06 * ready + 0.12 * run, 0.0, 0.0),
 		"Neck": Vector3(-0.08, 0.0, 0.0),
 		"Head": Vector3(-0.1 - 0.1 * run, 0.0, 0.0),
-		"UpperArm.R": Vector3(-0.55 * ready + (-0.3 - s * 0.6) * run, 0.25 * ready, -0.28),
-		"LowerArm.R": Vector3(-1.0 * ready - 1.3 * run, 0.0, 0.0),
+		"UpperArm.R": Vector3(-0.6 * ready + (-0.3 - s * 0.6) * run, 0.25 * ready, -0.3 - shuf * 0.15),
+		"LowerArm.R": Vector3(-1.05 * ready - 1.3 * run, 0.0, 0.0),
 		"Hand.R": Vector3(0.25, 0.0, 0.0),
-		"UpperArm.L": Vector3(-0.4 * ready + (-0.2 + s * 0.8) * run, 0.0, 0.25),
-		"LowerArm.L": Vector3(-0.9 * ready - 1.4 * run, 0.0, 0.0),
+		"UpperArm.L": Vector3(-0.45 * ready + (-0.2 + s * 0.8) * run, 0.0, 0.3 + shuf * 0.15),
+		"LowerArm.L": Vector3(-0.95 * ready - 1.4 * run, 0.0, 0.0),
 	}
-	var thigh_r := -0.42 * ready + (-0.3 + 0.85 * s) * run
-	var thigh_l := -0.42 * ready + (-0.3 - 0.85 * s) * run
-	var knee_r := 0.78 * ready + (0.45 + 1.2 * maxf(0.0, s)) * run
-	var knee_l := 0.78 * ready + (0.45 + 1.2 * maxf(0.0, -s)) * run
-	var crouch := 0.0
+	# pernas: base atlética + corrida + passo lateral + recuo
+	var L := {
+		"tr": -0.45 * ready + (-0.3 + 0.85 * s) * run + 0.35 * s * bk,
+		"tl": -0.45 * ready + (-0.3 - 0.85 * s) * run - 0.35 * s * bk,
+		"kr": 0.8 * ready + (0.45 + 1.2 * maxf(0.0, s)) * run + 0.4 * maxf(0.0, -s) * bk,
+		"kl": 0.8 * ready + (0.45 + 1.2 * maxf(0.0, -s)) * run + 0.4 * maxf(0.0, s) * bk,
+		"zr": -0.08 - shuf * (0.12 + 0.22 * maxf(0.0, s)),
+		"zl": 0.08 + shuf * (0.12 + 0.22 * maxf(0.0, -s)),
+		"crouch": 0.0, "tilt": 0.0,
+	}
+	if split_t >= 0.0:
+		L["zr"] = -0.28
+		L["zl"] = 0.28
 	var sharp := 14.0
 	var body_rot := Vector3.ZERO
 
 	if state == State.NORMAL and pending_shot >= 0:
-		_windup_pose(pending_shot, p)
+		_windup_pose(pending_shot, style, p, L)
 		var ch := charge()
-		crouch = 0.03 + ch * 0.05
-		if pending_shot == Shots.LOB or pending_shot == Shots.DEFENSE:
-			knee_r += 0.4
-			knee_l += 0.4
-			thigh_r -= 0.2
-			thigh_l -= 0.2
+		L["crouch"] = float(L["crouch"]) + 0.03 + ch * 0.05
 		body.position.x = (randf() - 0.5) * 0.03 * ch if int(anim_time * 30.0) % 2 == 0 else 0.0
 	else:
 		body.position.x = 0.0
 	if swing_t < 1.0 and swing_type >= 0:
-		_strike_pose(swing_type, swing_t, p)
+		_strike_pose(swing_type, style, swing_t, p, L)
 		sharp = 32.0
-		thigh_l -= 0.3 * sin(swing_t * PI)
-		knee_l += 0.2 * sin(swing_t * PI)
-	if not on_ground():
-		thigh_r = -0.9
-		knee_r = 1.3
-		thigh_l = 0.2
-		knee_l = 0.6
-		if serve_mode or swing_type == Shots.SMASH or pending_shot == Shots.SMASH:
-			p["UpperArm.L"] = Vector3(-2.7, 0.0, 0.25)
-			p["LowerArm.L"] = Vector3(-0.2, 0.0, 0.0)
+	if not on_ground() and split_t < 0.0:
+		L["tr"] = -0.9
+		L["kr"] = 1.3
+		L["tl"] = 0.2
+		L["kl"] = 0.6
+		if serve_mode or style == "smash" or pending_shot == Shots.SMASH:
+			if not (swing_t < 1.0):
+				p["UpperArm.L"] = Vector3(-2.7, 0.0, 0.25)
+				p["LowerArm.L"] = Vector3(-0.2, 0.0, 0.0)
 	match state:
 		State.DIVE, State.RECOVER:
 			var k := 1.0 if state == State.DIVE else clampf(1.0 - state_t / 0.42, 0.0, 1.0)
@@ -521,10 +642,12 @@ func _animate(dt: float) -> void:
 			p["LowerArm.R"] = Vector3(-0.2, 0, 0)
 			p["LowerArm.L"] = Vector3(-0.2, 0, 0)
 			p["Head"] = Vector3(-0.7 * k, 0, 0)
-			thigh_r = 0.25 * k
-			thigh_l = 0.1 * k
-			knee_r = 0.5 * k
-			knee_l = 0.3 * k
+			L["tr"] = 0.25 * k
+			L["tl"] = 0.1 * k
+			L["kr"] = 0.5 * k
+			L["kl"] = 0.3 * k
+			L["zr"] = -0.1
+			L["zl"] = 0.1
 			sharp = 18.0
 		State.KNOCK:
 			var k2 := clampf(1.0 - state_t / 0.75, 0.0, 1.0)
@@ -549,21 +672,30 @@ func _animate(dt: float) -> void:
 			p["UpperArm.L"] = Vector3(0.05, 0, 0.08)
 			p["LowerArm.R"] = Vector3(-0.2, 0, 0)
 			p["LowerArm.L"] = Vector3(-0.2, 0, 0)
-			thigh_r = -0.15
-			thigh_l = -0.15
-			knee_r = 0.3
-			knee_l = 0.3
-	p["UpperLeg.R"] = Vector3(thigh_r, 0.0, -0.06)
-	p["UpperLeg.L"] = Vector3(thigh_l, 0.0, 0.06)
-	p["LowerLeg.R"] = Vector3(knee_r, 0.0, 0.0)
-	p["LowerLeg.L"] = Vector3(knee_l, 0.0, 0.0)
-	p["Foot.R"] = Vector3(-(thigh_r + knee_r) * 0.8, 0.0, 0.0)
-	p["Foot.L"] = Vector3(-(thigh_l + knee_l) * 0.8, 0.0, 0.0)
-	var drop := minf(_leg_drop(thigh_r, knee_r), _leg_drop(thigh_l, knee_l))
+			L["tr"] = -0.15
+			L["tl"] = -0.15
+			L["kr"] = 0.3
+			L["kl"] = 0.3
+	var tr: float = L["tr"]
+	var tl: float = L["tl"]
+	var kr: float = L["kr"]
+	var kl: float = L["kl"]
+	var zr: float = L["zr"]
+	var zl: float = L["zl"]
+	p["UpperLeg.R"] = Vector3(tr, 0.0, zr)
+	p["UpperLeg.L"] = Vector3(tl, 0.0, zl)
+	p["LowerLeg.R"] = Vector3(kr, 0.0, 0.0)
+	p["LowerLeg.L"] = Vector3(kl, 0.0, 0.0)
+	p["Foot.R"] = Vector3(-(tr + kr) * 0.8, 0.0, -zr * 0.7)
+	p["Foot.L"] = Vector3(-(tl + kl) * 0.8, 0.0, -zl * 0.7)
+	var sp: Vector3 = p["Spine"]
+	sp.z += float(L["tilt"])
+	p["Spine"] = sp
+	var drop := minf(_leg_drop(tr, kr, zr), _leg_drop(tl, kl, zl))
 	if not on_ground() or state == State.DIVE:
 		drop = 0.0
-	var bob := absf(cos(run_phase)) * 0.05 * run
-	rig.apply(p, 1.0 - exp(-sharp * dt), Vector3(0.0, -drop - crouch + bob, 0.0))
+	var bob := absf(cos(run_phase)) * 0.05 * run + absf(sin(run_phase)) * 0.03 * shuf
+	rig.apply(p, 1.0 - exp(-sharp * dt), Vector3(0.0, -drop - float(L["crouch"]) + bob, 0.0))
 	# super golpe: giro completo de desenho animado
 	if swing_type == Shots.SPECIAL and swing_t < 1.0:
 		body.rotation.y = (1.0 - pow(1.0 - swing_t, 2.0)) * TAU
@@ -638,23 +770,97 @@ func _update_trail() -> void:
 	trail_im.surface_end()
 
 
-func _windup_pose(type: int, r: Dictionary) -> void:
-	match type:
-		Shots.DRIVE:
-			r["UpperArm.R"] = Vector3(-1.1, -1.25, -0.3)
+# ---------------------------------------------------------------- poses dos golpes
+# Eixos do personagem: X = esquerda, Y = cima, Z = frente. Raquete na mão direita (-X).
+# Braço: x negativo levanta para a frente; y gira em volta do corpo; z abre para o lado.
+
+func _low_legs(L: Dictionary) -> void:
+	L["tr"] = -0.75
+	L["tl"] = -0.75
+	L["kr"] = 1.45
+	L["kl"] = 1.45
+	L["crouch"] = 0.06
+
+
+func _lunge_legs(L: Dictionary, to_left: bool) -> void:
+	# passo largo para o lado da bola, perna de trás esticada
+	if to_left:
+		L["zl"] = 0.7
+		L["tl"] = -0.5
+		L["kl"] = 1.2
+		L["zr"] = -0.15
+		L["tr"] = -0.1
+		L["kr"] = 0.2
+		L["tilt"] = 0.25
+	else:
+		L["zr"] = -0.7
+		L["tr"] = -0.5
+		L["kr"] = 1.2
+		L["zl"] = 0.15
+		L["tl"] = -0.1
+		L["kl"] = 0.2
+		L["tilt"] = -0.25
+	L["crouch"] = 0.04
+
+
+func _windup_pose(type: int, st: String, r: Dictionary, L: Dictionary) -> void:
+	match st:
+		"fore", "low_fore":
+			r["UpperArm.R"] = Vector3(-1.1 if type != Shots.LOB else 0.35, -1.3, -0.3)
 			r["LowerArm.R"] = Vector3(-0.6, 0.0, 0.0)
-			r["Chest"] = Vector3(0.08, -0.75, 0.0)
-			r["Spine"] = Vector3(0.12, -0.3, 0.0)
-		Shots.LOB, Shots.DEFENSE:
-			r["UpperArm.R"] = Vector3(0.45, -0.4, -0.2)
+			r["UpperArm.L"] = Vector3(-1.2, 0.45, 0.25)
+			r["LowerArm.L"] = Vector3(-0.4, 0.0, 0.0)
+			r["Chest"] = Vector3(0.08, -0.7, 0.0)
+			r["Spine"] = Vector3(0.14, -0.3, 0.0)
+			if st == "low_fore":
+				_low_legs(L)
+				r["Spine"] = Vector3(0.45, -0.3, 0.0)
+				r["UpperArm.R"] = Vector3(-0.4, -1.3, -0.3)
+		"back", "low_back":
+			r["UpperArm.R"] = Vector3(-1.1 if type != Shots.LOB else 0.1, 1.35, 0.25)
+			r["LowerArm.R"] = Vector3(-1.45, 0.0, 0.0)
+			r["UpperArm.L"] = Vector3(-0.9, 0.9, 0.1)
+			r["LowerArm.L"] = Vector3(-1.3, 0.0, 0.0)
+			r["Chest"] = Vector3(0.1, 0.85, 0.0)
+			r["Spine"] = Vector3(0.16, 0.35, 0.0)
+			if st == "low_back":
+				_low_legs(L)
+				r["Spine"] = Vector3(0.45, 0.35, 0.0)
+				r["UpperArm.R"] = Vector3(-0.45, 1.3, 0.25)
+		"lunge_fore":
+			_lunge_legs(L, false)
+			r["UpperArm.R"] = Vector3(-0.9, -0.9, -0.9)
 			r["LowerArm.R"] = Vector3(-0.3, 0.0, 0.0)
-			r["UpperArm.L"] = Vector3(-0.8, 0.0, 0.35)
-			r["Chest"] = Vector3(0.2, -0.35, 0.0)
-		Shots.DROP:
-			r["UpperArm.R"] = Vector3(-0.9, -0.8, -0.25)
-			r["LowerArm.R"] = Vector3(-1.2, 0.0, 0.0)
-			r["Chest"] = Vector3(0.12, -0.4, 0.0)
-		Shots.SMASH, Shots.SPECIAL:
+			r["UpperArm.L"] = Vector3(-0.3, 0.0, 0.9)
+			r["Chest"] = Vector3(0.2, -0.45, 0.0)
+		"lunge_back":
+			_lunge_legs(L, true)
+			r["UpperArm.R"] = Vector3(-1.0, 1.25, 0.4)
+			r["LowerArm.R"] = Vector3(-0.6, 0.0, 0.0)
+			r["UpperArm.L"] = Vector3(-0.2, 0.0, -0.4)
+			r["Chest"] = Vector3(0.2, 0.7, 0.0)
+		"block":
+			L["tr"] = -0.6
+			L["tl"] = -0.6
+			L["kr"] = 1.1
+			L["kl"] = 1.1
+			L["zr"] = -0.3
+			L["zl"] = 0.3
+			r["UpperArm.R"] = Vector3(-1.25, 0.35, -0.1)
+			r["LowerArm.R"] = Vector3(-0.95, 0.0, 0.0)
+			r["UpperArm.L"] = Vector3(-1.0, -0.2, 0.3)
+			r["LowerArm.L"] = Vector3(-1.1, 0.0, 0.0)
+			r["Spine"] = Vector3(0.3, 0.0, 0.0)
+			r["Head"] = Vector3(-0.2, 0.0, 0.0)
+		"gancho":
+			r["UpperArm.R"] = Vector3(-2.6, 1.05, 0.6)
+			r["LowerArm.R"] = Vector3(-1.1, 0.0, 0.0)
+			r["UpperArm.L"] = Vector3(-1.3, 0.0, 1.1)
+			r["LowerArm.L"] = Vector3(-0.3, 0.0, 0.0)
+			r["Spine"] = Vector3(-0.3, 0.2, 0.0)
+			r["Chest"] = Vector3(-0.15, 0.5, 0.0)
+			r["Head"] = Vector3(-0.55, 0.0, 0.0)
+		_:   # smash / super
 			r["UpperArm.R"] = Vector3(-2.9, -0.45, -0.3)
 			r["LowerArm.R"] = Vector3(-1.9, 0.0, 0.0)
 			r["UpperArm.L"] = Vector3(-2.7, 0.0, 0.2)
@@ -664,38 +870,87 @@ func _windup_pose(type: int, r: Dictionary) -> void:
 			r["Head"] = Vector3(-0.45, 0.0, 0.0)
 
 
-func _strike_pose(type: int, t: float, r: Dictionary) -> void:
+func _strike_pose(type: int, st: String, t: float, r: Dictionary, L: Dictionary) -> void:
 	var e := 1.0 - pow(1.0 - t, 3.0)
-	match type:
-		Shots.DRIVE:
-			if swing_side > 0.0:
-				r["UpperArm.R"] = Vector3(-1.25, lerpf(-1.25, 1.1, e), -0.2)
-				r["LowerArm.R"] = Vector3(lerpf(-0.6, -1.3, e), 0.0, 0.0)
-				r["Chest"] = Vector3(0.08, lerpf(-0.75, 0.6, e), 0.0)
-				r["Spine"] = Vector3(0.12, lerpf(-0.3, 0.3, e), 0.0)
+	var lob := type == Shots.LOB or type == Shots.DEFENSE
+	var soft := type == Shots.DROP
+	var amp := 0.55 if soft else 1.0
+	match st:
+		"fore", "low_fore":
+			var x0 := 0.35 if lob else -1.1
+			var x1 := -2.4 if lob else -1.3
+			if st == "low_fore":
+				_low_legs(L)
+				x0 = 0.2 if lob else -0.4
+				x1 = -1.9 if lob else -0.8
+				r["Spine"] = Vector3(lerpf(0.45, 0.25, e), lerpf(-0.3, 0.3, e), 0.0)
 			else:
-				r["UpperArm.R"] = Vector3(-1.2, lerpf(1.3, -1.4, e), -0.3)
-				r["LowerArm.R"] = Vector3(lerpf(-1.3, -0.2, e), 0.0, 0.0)
-				r["Chest"] = Vector3(0.08, lerpf(0.85, -0.45, e), 0.0)
-		Shots.LOB, Shots.DEFENSE:
-			r["UpperArm.R"] = Vector3(lerpf(0.45, -2.5, e), lerpf(-0.4, 0.25, e), -0.2)
-			r["LowerArm.R"] = Vector3(lerpf(-0.3, -0.5, e), 0.0, 0.0)
-			r["UpperArm.L"] = Vector3(-0.9, 0.0, 0.35)
-			r["Chest"] = Vector3(lerpf(0.2, -0.25, e), 0.0, 0.0)
-			r["Head"] = Vector3(-0.35 * e, 0.0, 0.0)
-		Shots.DROP:
-			r["UpperArm.R"] = Vector3(lerpf(-0.9, -1.35, e), lerpf(-0.8, -0.1, e), -0.25)
-			r["LowerArm.R"] = Vector3(lerpf(-1.2, -0.7, e), 0.0, 0.0)
-			r["Chest"] = Vector3(0.12, lerpf(-0.4, 0.05, e), 0.0)
-		Shots.SMASH:
-			r["UpperArm.R"] = Vector3(lerpf(-2.9, -0.6, e), lerpf(-0.45, 0.5, e), -0.2)
-			r["LowerArm.R"] = Vector3(lerpf(-1.9, -0.15, e), 0.0, 0.0)
-			r["UpperArm.L"] = Vector3(lerpf(-2.7, -0.5, e), 0.0, 0.25)
-			r["Spine"] = Vector3(lerpf(-0.25, 0.45, e), lerpf(-0.2, 0.25, e), 0.0)
-			r["Chest"] = Vector3(lerpf(-0.15, 0.3, e), lerpf(-0.45, 0.35, e), 0.0)
-			r["Head"] = Vector3(lerpf(-0.45, 0.2, e), 0.0, 0.0)
-		Shots.SPECIAL:
-			r["Spine"] = Vector3(lerpf(-0.25, 0.4, e), 0.0, 0.0)
-			r["UpperArm.R"] = Vector3(lerpf(-2.9, -0.8, e), lerpf(-0.45, 0.5, e), -0.6)
-			r["LowerArm.R"] = Vector3(lerpf(-1.9, -0.1, e), 0.0, 0.0)
-			r["UpperArm.L"] = Vector3(-1.6, 0.0, 1.0)
+				r["Spine"] = Vector3(0.14, lerpf(-0.3, 0.3, e) * amp, 0.0)
+			r["UpperArm.R"] = Vector3(lerpf(x0, x1, e), lerpf(-1.3, 1.1 * amp, e), -0.2)
+			r["LowerArm.R"] = Vector3(lerpf(-0.6, -1.25, e), 0.0, 0.0)
+			r["UpperArm.L"] = Vector3(lerpf(-1.2, -0.3, e), lerpf(0.45, -0.4, e), 0.4)
+			r["Chest"] = Vector3(0.08, lerpf(-0.7, 0.6 * amp, e), 0.0)
+			L["tl"] = float(L["tl"]) - 0.3 * sin(t * PI)
+			L["kl"] = float(L["kl"]) + 0.2 * sin(t * PI)
+		"back", "low_back":
+			var bx0 := 0.1 if lob else -1.1
+			var bx1 := -2.3 if lob else -1.35
+			if st == "low_back":
+				_low_legs(L)
+				bx0 = 0.1 if lob else -0.45
+				bx1 = -1.8 if lob else -0.85
+			r["UpperArm.R"] = Vector3(lerpf(bx0, bx1, e), lerpf(1.35, -1.2 * amp, e), lerpf(0.25, -0.45, e))
+			r["LowerArm.R"] = Vector3(lerpf(-1.45, -0.1, e), 0.0, 0.0)
+			r["UpperArm.L"] = Vector3(lerpf(-0.9, 0.3, e), lerpf(0.9, 0.0, e), lerpf(0.1, 0.7, e))
+			r["LowerArm.L"] = Vector3(-0.5, 0.0, 0.0)
+			r["Chest"] = Vector3(0.1, lerpf(0.85, -0.35 * amp, e), 0.0)
+			r["Spine"] = Vector3(0.16 if st == "back" else 0.4, lerpf(0.35, -0.15, e), 0.0)
+			L["tr"] = float(L["tr"]) - 0.3 * sin(t * PI)
+			L["kr"] = float(L["kr"]) + 0.2 * sin(t * PI)
+		"lunge_fore":
+			_lunge_legs(L, false)
+			r["UpperArm.R"] = Vector3(lerpf(-0.9, -1.2, e), lerpf(-0.9, 0.3, e), lerpf(-0.9, -0.6, e))
+			r["LowerArm.R"] = Vector3(-0.3, 0.0, 0.0)
+			r["UpperArm.L"] = Vector3(-0.3, 0.0, 0.9)
+			r["Chest"] = Vector3(0.2, lerpf(-0.45, 0.1, e), 0.0)
+		"lunge_back":
+			_lunge_legs(L, true)
+			r["UpperArm.R"] = Vector3(lerpf(-1.0, -1.3, e), lerpf(1.25, 0.3, e), lerpf(0.4, 0.1, e))
+			r["LowerArm.R"] = Vector3(lerpf(-0.6, -0.1, e), 0.0, 0.0)
+			r["UpperArm.L"] = Vector3(-0.2, 0.0, -0.4)
+			r["Chest"] = Vector3(0.2, lerpf(0.7, 0.1, e), 0.0)
+		"block":
+			L["tr"] = -0.6
+			L["tl"] = -0.6
+			L["kr"] = 1.1
+			L["kl"] = 1.1
+			L["zr"] = -0.3
+			L["zl"] = 0.3
+			r["UpperArm.R"] = Vector3(lerpf(-1.25, -1.5, e), 0.3, -0.1)
+			r["LowerArm.R"] = Vector3(lerpf(-0.95, -0.45, e), 0.0, 0.0)
+			r["UpperArm.L"] = Vector3(-1.0, -0.2, 0.3)
+			r["LowerArm.L"] = Vector3(-1.1, 0.0, 0.0)
+			r["Spine"] = Vector3(lerpf(0.3, 0.4, e), 0.0, 0.0)
+		"dive":
+			pass
+		"gancho":
+			# arco por cima da cabeça, do lado esquerdo para o direito
+			r["UpperArm.R"] = Vector3(lerpf(-2.6, -2.2, e), lerpf(1.05, -1.3, e), lerpf(0.6, -0.9, e))
+			r["LowerArm.R"] = Vector3(lerpf(-1.1, -0.15, e), 0.0, 0.0)
+			r["UpperArm.L"] = Vector3(lerpf(-1.3, -0.4, e), 0.0, lerpf(1.1, 0.6, e))
+			r["Spine"] = Vector3(lerpf(-0.3, 0.15, e), lerpf(0.2, -0.3, e), 0.0)
+			r["Chest"] = Vector3(lerpf(-0.15, 0.1, e), lerpf(0.5, -0.5, e), 0.0)
+			r["Head"] = Vector3(lerpf(-0.55, -0.1, e), 0.0, 0.0)
+		_:
+			if type == Shots.SPECIAL:
+				r["Spine"] = Vector3(lerpf(-0.25, 0.4, e), 0.0, 0.0)
+				r["UpperArm.R"] = Vector3(lerpf(-2.9, -0.8, e), lerpf(-0.45, 0.5, e), -0.6)
+				r["LowerArm.R"] = Vector3(lerpf(-1.9, -0.1, e), 0.0, 0.0)
+				r["UpperArm.L"] = Vector3(-1.6, 0.0, 1.0)
+			else:
+				r["UpperArm.R"] = Vector3(lerpf(-2.9, -0.6, e), lerpf(-0.45, 0.5, e), -0.2)
+				r["LowerArm.R"] = Vector3(lerpf(-1.9, -0.15, e), 0.0, 0.0)
+				r["UpperArm.L"] = Vector3(lerpf(-2.7, -0.5, e), 0.0, 0.25)
+				r["Spine"] = Vector3(lerpf(-0.25, 0.45, e), lerpf(-0.2, 0.25, e), 0.0)
+				r["Chest"] = Vector3(lerpf(-0.15, 0.3, e), lerpf(-0.45, 0.35, e), 0.0)
+				r["Head"] = Vector3(lerpf(-0.45, 0.2, e), 0.0, 0.0)

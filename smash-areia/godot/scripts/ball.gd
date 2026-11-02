@@ -273,6 +273,14 @@ func _draw_trail() -> void:
 	trail_im.surface_end()
 
 
+## Mostra a bola numa posição gravada (replay em câmera lenta).
+func show_replay(p: Vector3, prev: Vector3, fly: bool) -> void:
+	position = p
+	vel = (p - prev) * 60.0
+	flying = fly
+	_update_visuals(1.0 / 60.0)
+
+
 ## Posição prevista daqui a t segundos (usa a trajetória simulada; ignora a rede).
 func predict(t: float) -> Vector3:
 	if not flying or traj.size() == 0:

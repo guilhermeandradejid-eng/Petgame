@@ -9,7 +9,7 @@ smash com pulo e onomatopeias de quadrinho.
 (Android 7+, arm64 e armv7). Baixe no celular, permita "instalar apps
 desconhecidos" e abra. O jogo roda deitado (paisagem).
 
-| Menu | Smash no rali | Estrela de chance | Comemoração |
+| Menu | Rali | Rali | Replay em câmera lenta |
 |---|---|---|---|
 | ![menu](docs/menu.jpg) | ![smash](docs/smash.jpg) | ![chance](docs/chance.jpg) | ![comemoracao](docs/comemoracao.jpg) |
 
@@ -66,6 +66,22 @@ As regras são de beach tennis:
 
   Quem recebe um super é **empurrado para trás** e só consegue uma defesa fraca. Às vezes é o ponto
   de chance para fechar!
+
+### Movimentos e golpes automáticos
+
+Você escolhe o **tipo** do golpe (forte, lob, curta, smash) e o boneco escolhe o **movimento**
+pela posição da bola:
+
+- **Forehand** quando a bola vem do lado da raquete e **backhand** quando vem do outro lado,
+  com o corpo virando de lado antes da batida.
+- **Bola baixa**: agacha com os joelhos dobrados. **Bola longe**: avanço lateral largo.
+- **Gancho**: bola alta que passa por cima ou por trás da cabeça. O boneco vira de lado, dá um
+  pulinho e passa a raquete num arco por cima da cabeça. Dá para devolver lobs que
+  pareciam perdidos.
+- **Bloqueio**: contra pancada, defesa curta com base larga e raquete na frente do peito.
+- **Peixinho** para as bolas impossíveis.
+- Entre os golpes: **split-step** (pulinho de preparação quando o adversário bate),
+  **passo lateral** de frente para a rede, **recuo de costas** para o lob e corrida.
 
 ### Outras dicas
 
@@ -131,8 +147,13 @@ smash-areia/
   pernas dobram), o tronco gira nos golpes e a raquete deixa um rastro ("smear").
 - **Cel-shading** com retícula de gibi nas sombras, **contraluz dourada** do sol de fim de tarde,
   **névoa de distância** e **contorno preto** em tudo.
-- **Câmera de TV**: perto e baixa no rali, por cima do ombro no saque, entrada cinematográfica,
-  zoom no smash e no super e close na comemoração de cada ponto.
+- **Câmera de TV** com movimento suave (mola amortecida) que antecipa para onde a bola vai:
+  perto e baixa no rali, por cima do ombro no saque, entrada cinematográfica, zoom no smash e no
+  super e close na comemoração. Pontos decididos por super, gancho, smash depois de rali ou rali
+  longo ganham **replay em câmera lenta** pela lateral (toque para pular).
+- **Rede caprichada**: malha com fios suavizados e caimento no meio, que treme quando a bola
+  bate. Tem faixas com texto, antenas listradas, cabos até os postes, estais presos em estacas
+  na areia e protetor acolchoado nos postes.
 - **Plateia viva**: quatro tipos de torcedor (braços para cima, plaquinha, mãozona de espuma,
   palmas) com cores sorteadas. Eles viram o corpo seguindo a bola e fazem a **ola** quando a sua
   dupla pontua. O juiz na cadeira acompanha a bola com a cabeça e levanta o braço no apito.

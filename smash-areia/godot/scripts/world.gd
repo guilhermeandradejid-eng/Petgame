@@ -50,6 +50,9 @@ func _ready() -> void:
 
 
 func _process(dt: float) -> void:
+	net_hit_t += dt
+	if net_mat:
+		net_mat.set_shader_parameter("hit_t", net_hit_t)
 	crowd_excite = move_toward(crowd_excite, 0.0, dt * 0.45)
 	ola_t += dt
 	if crowd_mat:
@@ -181,35 +184,111 @@ func _court() -> void:
 	add_child(inner)
 
 
+var net_mat: ShaderMaterial
+var net_hit_t := 10.0
+
+
+func _cyl(r: float, h: float, pos: Vector3, color: Color, outline := 0.01, parent: Node = null) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = r
+	cm.bottom_radius = r
+	cm.height = h
+	cm.radial_segments = 10
+	cm.rings = 1
+	mi.mesh = cm
+	mi.position = pos
+	mi.material_override = Toon.make(color, {"outline": outline, "halftone": 0.0, "rim": 0.3})
+	(parent if parent else self).add_child(mi)
+	return mi
+
+
+## Cilindro fino ligando dois pontos (cabos e estais)
+func _rope(a: Vector3, b: Vector3, r: float, color: Color) -> void:
+	var mid := (a + b) * 0.5
+	var mi := _cyl(r, a.distance_to(b), mid, color, 0.006)
+	var dir := (b - a).normalized()
+	var axis := Vector3.UP.cross(dir)
+	if axis.length() > 0.0001:
+		mi.basis = Basis(axis.normalized(), Vector3.UP.angle_to(dir))
+
+
 func _net() -> void:
 	var nh := GameData.NET_H
 	var half := GameData.NET_HALF_W
+	var depth := 0.92
+	var blue := Color("1f6bff")
 	for sx in [-1.0, 1.0]:
 		var post: Node3D = POST.instantiate()
 		post.position = Vector3(sx * half, 0, 0)
-		Toon.apply(post, {}, {"outline": 0.02})
+		Toon.apply(post, {}, {"outline": 0.02, "halftone": 0.0})
 		add_child(post)
+		# protetor acolchoado no poste
+		_cyl(0.13, 1.25, Vector3(sx * half, 0.62, 0), blue, 0.015)
+		_cyl(0.135, 0.08, Vector3(sx * half, 1.22, 0), Color("ffffff"), 0.0)
+		# estais: do topo do poste até estacas na areia
+		var top := Vector3(sx * half, 1.86, 0)
+		for sz in [-1.0, 1.0]:
+			var anchor := Vector3(sx * (half + 1.3), 0.02, sz * 0.9)
+			_rope(top, anchor, 0.012, Color("f4f0e8"))
+			_box(Vector3(0.22, 0.12, 0.22), anchor + Vector3(0, 0.05, 0), Color("c98a4b"), 0.012)
+		# cabo da faixa superior até o poste
+		_rope(Vector3(sx * GameData.COURT_HALF_W * 1.02, nh - 0.02, 0), Vector3(sx * half, nh + 0.02, 0), 0.01, Color("f4f0e8"))
+		_rope(Vector3(sx * GameData.COURT_HALF_W * 1.02, nh - depth, 0), Vector3(sx * half, nh - depth + 0.02, 0), 0.008, Color("f4f0e8"))
+	# malha
 	var net := MeshInstance3D.new()
 	var q := QuadMesh.new()
-	q.size = Vector2(half * 2.0, 0.92)
+	var w := GameData.COURT_HALF_W * 2.0 + 0.2
+	q.size = Vector2(w, depth)
+	q.subdivide_width = 40
+	q.subdivide_depth = 6
 	net.mesh = q
-	net.position = Vector3(0, nh - 0.46, 0)
-	var m := ShaderMaterial.new()
-	m.shader = preload("res://shaders/net.gdshader")
-	m.set_shader_parameter("cells", Vector2(half * 2.0 / 0.1, 0.92 / 0.1))
-	net.material_override = m
+	net.position = Vector3(0, nh - depth * 0.5, 0)
+	net_mat = ShaderMaterial.new()
+	net_mat.shader = preload("res://shaders/net.gdshader")
+	net_mat.set_shader_parameter("cells", Vector2(w / 0.1, depth / 0.1))
+	net_mat.render_priority = 3
+	net.material_override = net_mat
 	add_child(net)
-	_box(Vector3(half * 2.0, 0.07, 0.035), Vector3(0, nh - 0.03, 0), Color("ffffff"), 0.012)
-	_box(Vector3(half * 2.0, 0.04, 0.03), Vector3(0, nh - 0.92, 0), Color("ffffff"), 0.0)
+	# faixas: em cima (com texto), embaixo e nas laterais
+	var band := _box(Vector3(w, 0.075, 0.04), Vector3(0, nh - 0.035, 0), Color("ffffff"), 0.01)
+	band.name = "TopBand"
+	_box(Vector3(w, 0.045, 0.03), Vector3(0, nh - depth, 0), Color("ffffff"), 0.008)
 	for sx in [-1.0, 1.0]:
-		_box(Vector3(0.03, 0.8, 0.03), Vector3(sx * GameData.COURT_HALF_W, nh + 0.38, 0), Color("ff4b3e"), 0.01)
+		_box(Vector3(0.05, depth, 0.034), Vector3(sx * GameData.COURT_HALF_W, nh - depth * 0.5, 0), Color("ffffff"), 0.008)
+	for sz in [-1.0, 1.0]:
+		var t := Label3D.new()
+		t.text = "SMASH NA AREIA   •   BEACH TENNIS   •   SMASH NA AREIA"
+		t.font = FONT
+		t.font_size = 48
+		t.pixel_size = 0.0011
+		t.outline_size = 0
+		t.modulate = blue
+		t.shaded = false
+		t.position = Vector3(0, nh - 0.035, sz * 0.022)
+		t.rotation.y = 0.0 if sz > 0 else PI
+		add_child(t)
+	# antenas listradas (vermelho e branco)
+	for sx in [-1.0, 1.0]:
+		for k in 8:
+			var col := Color("ff3b3b") if k % 2 == 0 else Color("ffffff")
+			_cyl(0.014, 0.1, Vector3(sx * GameData.COURT_HALF_W, nh - depth + 0.05 + k * 0.1 + 0.9, 0.0) - Vector3(0, 0.0, 0), col, 0.0)
+	# sombra da rede
 	var sh := MeshInstance3D.new()
 	var sq := PlaneMesh.new()
-	sq.size = Vector2(half * 2.0, 0.5)
+	sq.size = Vector2(w, 0.5)
 	sh.mesh = sq
 	sh.position = Vector3(0.4, 0.012, 0.55)
 	sh.material_override = Toon.blob(1.0, Color(0.3, 0.12, 0.2, 0.16)).material_override
 	add_child(sh)
+
+
+## Rede treme quando a bola bate
+func net_hit(pos: Vector3) -> void:
+	net_hit_t = 0.0
+	if net_mat:
+		net_mat.set_shader_parameter("hit_x", pos.x)
+		net_mat.set_shader_parameter("hit_amp", 0.22)
 
 
 func _referee() -> void:

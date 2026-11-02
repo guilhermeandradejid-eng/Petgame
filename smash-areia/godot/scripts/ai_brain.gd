@@ -49,6 +49,18 @@ static func intercept(pl: Player, ball: Ball, react: float) -> Dictionary:
 			need += 0.08
 		if need <= t:
 			return {"ok": true, "t": t, "point": bp, "stand": stand, "high": high, "dive": false}
+	# bola alta passando por cima: dá para pegar de gancho, por baixo dela
+	for i in range(1, 95):
+		var tg := i * 0.035
+		var bg := ball.predict(tg)
+		if bg.y < 1.9:
+			continue
+		if bg.y > 2.85 or bg.z * pl.side < 0.6:
+			continue
+		var stand_g := Vector3(bg.x, 0.0, bg.z) + nd * 0.15
+		var dist_g := Vector2(stand_g.x, stand_g.z).distance_to(here)
+		if react + dist_g / speed + 0.05 <= tg:
+			return {"ok": true, "t": tg, "point": bg, "stand": stand_g, "high": true, "dive": false, "gancho": true}
 	# não alcança correndo: tenta o mergulho
 	var tl := ball.time_to_ground()
 	for k in 4:
@@ -112,6 +124,8 @@ func update(dt: float, game: Node) -> void:
 				committed = true
 				var bp: Vector3 = plan["point"]
 				var shot := choose_shot(bp, ball, game)
+				if plan.get("gancho", false):
+					shot = Shots.LOB if rng.randf() < 0.55 else Shots.DRIVE
 				if float(game.energy[p.team]) >= 1.0 and ball.special == "" and rng.randf() < 0.45:
 					shot = Shots.SPECIAL
 					if p.data.get("special", "") == "meteoro":

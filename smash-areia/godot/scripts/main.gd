@@ -5,7 +5,7 @@ extends Node3D
 ## Camada arcade: golpes com efeito, golpe carregado, estrelas de chance,
 ## barra de energia e super golpe de cada personagem.
 
-enum S { SERVE, RALLY, POINT, END }
+enum S { SERVE, RALLY, POINT, REPLAY, END }
 
 var state := S.SERVE
 var time := 0.0
@@ -53,6 +53,21 @@ var shake := 0.0
 var hitstop := 0.0
 var intro_t := 10.0
 var celeb: Player = null
+var cam_vel := Vector3.ZERO
+var look_vel := Vector3.ZERO
+
+# replay em câmera lenta dos lances bonitos
+const REC_MAX := 150
+const REPLAY_LEN := 105
+const REPLAY_SPEED := 0.42
+var rec: Array = []
+var highlight := 0
+var replay_f := 0.0
+var replay_from := 0
+var replay_done := false
+var replay_cam := Vector3.ZERO
+var replay_ok := false
+var replay_cool := 0
 
 var sfx_players: Array[AudioStreamPlayer] = []
 var sfx_next := 0
@@ -523,6 +538,10 @@ func _begin_serve() -> void:
 	serve_timer = 0.0
 	serve_type = -1
 	rally_hits = 0
+	highlight = 0
+	rec.clear()
+	replay_done = false
+	hud.set_replay(false)
 	assigned = [null, null]
 	chance = {}
 	chance_star.visible = false
@@ -574,6 +593,7 @@ func _do_toss(type: int) -> void:
 	ball.toss(_hand_pos(server), Vector3(0, 5.2 if type == Shots.SMASH else 4.6, 0))
 	server.pending_shot = Shots.SMASH
 	server.pending_t = 5.0
+	server.style = "smash"
 	if type == Shots.SMASH:
 		server.jump_timer = 0.32
 	hud.set_hint("")
@@ -597,7 +617,7 @@ func _serve_hit() -> void:
 		Shots.SMASH:
 			shot = Shots.SMASH
 			quality = 0.7
-	server._start_swing(Shots.SMASH, ball.position)
+	server._start_swing(Shots.SMASH, ball.position, "smash")
 	var err := 1.0 if server.is_human else float(GameData.DIFFICULTIES[GameData.difficulty]["error"])
 	var res := Shots.compute(shot, ball.position, -server.side, aim, quality,
 			float(server.data["power"]), float(server.data["control"]), err * 0.8, rng)
@@ -623,8 +643,15 @@ func _launch(p: Player, shot: int, res: Dictionary, quality: float, charge: floa
 		print("EVT ", shot_n, " ", res["label"], " team=", p.team, " human=", p.is_human, " q=", snappedf(quality, 0.01),
 				" charge=", snappedf(charge, 0.1), " chance=", chance_shot)
 	_stat("shot_" + Shots.NAMES[shot] + ("_serve" if state == S.SERVE else ""))
+	_stat("style_" + p.last_style)
 	announced_hit = -1
 	assign_t = 0.0
+	for o in opponents(p):
+		(o as Player).split_step()
+	if shot == Shots.SMASH or shot == Shots.SPECIAL:
+		highlight += 2
+	if chance_shot or p.last_style == "gancho" or p.last_style == "dive":
+		highlight += 1
 	var pos := ball.global_position
 	var head := p.global_position + Vector3(0, 2.7, 0)
 	var col: Color = Shots.COLORS[shot]
@@ -688,7 +715,7 @@ func _launch(p: Player, shot: int, res: Dictionary, quality: float, charge: floa
 	chance_star.visible = false
 
 
-func _do_hit(p: Player, type: int, quality: float, charge: float) -> void:
+func _do_hit(p: Player, type: int, quality: float, charge: float, style := "") -> void:
 	var incoming_speed := ball.vel.length()
 	var shot := type
 	# recebeu um super golpe: é empurrado e só consegue defender
@@ -723,8 +750,13 @@ func _do_hit(p: Player, type: int, quality: float, charge: float) -> void:
 		aim = p.brain.choose_aim(self, shot)
 		err = float(p.brain.diff["error"])
 	var extra := {"charge": charge, "chance": is_chance, "special": String(p.data.get("special", ""))}
+	if style == "gancho":
+		quality = maxf(quality - 0.05, 0.3)
 	var res := Shots.compute(shot, ball.global_position, -p.side, aim, quality,
 			float(p.data["power"]), float(p.data["control"]), err, rng, extra)
+	if style == "gancho" and shot != Shots.SPECIAL:
+		res["label"] = "GANCHO!"
+		comic(p.global_position + Vector3(0, 2.9, 0), "GANCHO!", Color("ffe14d"), 0.5, false)
 	_launch(p, shot, res, quality, charge, is_chance)
 
 
@@ -793,6 +825,9 @@ func _refresh_chance() -> void:
 # ---------------------------------------------------------------- entrada
 
 func _on_shot_button(type: int) -> void:
+	if state == S.REPLAY and not demo:
+		replay_f = float(rec.size())
+		return
 	if demo or human == null or get_tree().paused:
 		return
 	if state == S.SERVE and server == human:
@@ -828,6 +863,9 @@ func _on_dive_button() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if state == S.REPLAY and not demo and event.is_pressed() and not event.is_echo():
+		replay_f = float(rec.size())   # toque para pular o replay
+		return
 	if event.is_action_pressed("pause") and not demo and state != S.END:
 		hud._on_pause()
 	if demo or human == null:
@@ -897,15 +935,20 @@ func _physics_process(delta: float) -> void:
 			_update_serve(dt)
 		S.POINT:
 			point_timer -= dt
-			if point_timer <= 0.0:
-				if match_over:
-					_finish_match()
-				else:
-					_begin_serve()
+			if _wants_replay() and point_timer <= 1.2:
+				_start_replay()
+			elif point_timer <= 0.0:
+				_after_point()
+		S.REPLAY:
+			_update_replay(dt)
+			_update_camera(dt)
+			return
 	for p in players:
 		p.update(dt)
 	ball.step(dt)
 	world.set_ball(ball.global_position)
+	if state == S.RALLY or (state == S.POINT and point_timer > 2.2):
+		_record()
 	if state == S.RALLY and ball.is_live():
 		for p in players:
 			p.hittable = false
@@ -915,7 +958,8 @@ func _physics_process(delta: float) -> void:
 				p.hittable = p.reach_info(ball.global_position)["in"]
 			var res := p.try_contact(ball, dt)
 			if not res.is_empty():
-				_do_hit(p, int(res["type"]), float(res["quality"]), float(res.get("charge", 0.0)))
+				_do_hit(p, int(res["type"]), float(res["quality"]), float(res.get("charge", 0.0)),
+						String(res.get("style", "")))
 				break
 	elif human:
 		human.hittable = false
@@ -1010,6 +1054,7 @@ func _update_marker() -> void:
 # ---------------------------------------------------------------- pontos
 
 func _on_net(pos: Vector3) -> void:
+	world.net_hit(pos)
 	_stat("net_" + (Shots.NAMES[ball.last_shot] if ball.last_shot >= 0 else "?") + "_" + ball.get_meta("sp", ""))
 	if sim and stats.get("netlog", 0) < 12:
 		stats["netlog"] = int(stats.get("netlog", 0)) + 1
@@ -1053,6 +1098,17 @@ func _on_ball_landed(pos: Vector3) -> void:
 
 
 func _award_point(team: int, reason: String) -> void:
+	# replay só quando o ponto foi decidido por um lance bonito
+	replay_cool -= 1
+	var lh := ball.last_hitter as Player
+	var won_by_shot := ball.last_team == team and lh != null
+	replay_ok = false
+	if won_by_shot and replay_cool <= 0:
+		var sty := lh.last_style
+		if ball.last_shot == Shots.SPECIAL or sty == "gancho" or highlight >= 4 \
+				or (ball.last_shot == Shots.SMASH and rally_hits >= 4) or rally_hits >= 9:
+			replay_ok = true
+			replay_cool = 2
 	if shot_dir != "":
 		print("EVT ", shot_n, " PONTO ", reason, " team=", team)
 	state = S.POINT
@@ -1110,6 +1166,73 @@ func _award_point(team: int, reason: String) -> void:
 	hud.set_score(points, games, serving_team, games_to_win)
 
 
+func _after_point() -> void:
+	if match_over:
+		_finish_match()
+	else:
+		_begin_serve()
+
+
+# ---------------------------------------------------------------- replay
+
+func _record() -> void:
+	var snap := {"b": ball.global_position, "f": ball.flying, "p": []}
+	for p in players:
+		snap["p"].append([p.position, p.facing, p.body.rotation, p.body.scale, p.rig.cur.duplicate(),
+			p.swing_t, p.swing_type])
+	rec.append(snap)
+	if rec.size() > REC_MAX:
+		rec.pop_front()
+
+
+func _wants_replay() -> bool:
+	return replay_ok and not replay_done and not sim and rec.size() > 40
+
+
+func _start_replay() -> void:
+	replay_done = true
+	state = S.REPLAY
+	replay_from = maxi(0, rec.size() - REPLAY_LEN)
+	replay_f = float(replay_from)
+	hud.set_replay(true)
+	var b0: Vector3 = rec[replay_from]["b"]
+	replay_cam = Vector3(-10.4, 2.7, clampf(b0.z * 0.7, -6.0, 6.0))
+	cam_cut = true
+	sfx("swoosh", -6.0, 0.0, 0.7)
+	world.cheer(0.6)
+
+
+func _update_replay(dt: float) -> void:
+	replay_f += REPLAY_SPEED * (dt * 60.0)
+	if replay_f >= float(rec.size() - 1):
+		hud.set_replay(false)
+		state = S.POINT
+		point_timer = 0.0
+		_after_point()
+		return
+	var i := int(replay_f)
+	var k := replay_f - float(i)
+	var a: Dictionary = rec[i]
+	var b: Dictionary = rec[mini(i + 1, rec.size() - 1)]
+	for j in players.size():
+		var pl := players[j]
+		var pa: Array = a["p"][j]
+		var pb: Array = b["p"][j]
+		pl.position = (pa[0] as Vector3).lerp(pb[0], k)
+		pl.facing = lerp_angle(float(pa[1]), float(pb[1]), k)
+		pl.rotation.y = pl.facing
+		pl.body.rotation = pa[2]
+		pl.body.scale = pa[3]
+		pl.rig.apply(pa[4], 1.0)
+		pl.swing_t = pa[5]
+		pl.swing_type = pa[6]
+		pl._update_trail()
+		pl.shadow.global_position = Vector3(pl.position.x + 0.12, 0.015, pl.position.z + 0.08)
+	var bp := (a["b"] as Vector3).lerp(b["b"], k)
+	ball.show_replay(bp, a["b"], bool(a["f"]))
+	world.set_ball(bp)
+
+
 func _finish_match() -> void:
 	if demo:
 		_reset_score(3)
@@ -1135,14 +1258,32 @@ func _finish_match() -> void:
 
 # ---------------------------------------------------------------- câmera
 
+func _smooth(cur: Vector3, target: Vector3, v: Vector3, smooth_time: float, dt: float) -> Array:
+	# mola criticamente amortecida (sem tranco e sem passar do ponto)
+	var omega := 2.0 / maxf(smooth_time, 0.0001)
+	var x := omega * dt
+	var ex := 1.0 / (1.0 + x + 0.48 * x * x + 0.235 * x * x * x)
+	var change := cur - target
+	var temp := (v + change * omega) * dt
+	v = (v - temp * omega) * ex
+	return [target + (change + temp) * ex, v]
+
+
 func _update_camera(dt: float) -> void:
 	var target_pos: Vector3
 	var target_look: Vector3
 	var base_fov := 54.0
-	var follow := 5.0
-	cam.h_offset = lerpf(cam.h_offset, -3.0 if demo else 0.0, 1.0 - exp(-5.0 * dt))
-	if demo:
-		# menu: planos de TV que se alternam
+	var smooth_t := 0.35
+	cam.h_offset = lerpf(cam.h_offset, -3.0 if demo and state != S.REPLAY else 0.0, 1.0 - exp(-5.0 * dt))
+	if state == S.REPLAY:
+		# câmera de TV na lateral, acompanhando a bola em câmera lenta
+		var bp := ball.global_position
+		replay_cam = replay_cam.lerp(Vector3(-10.4, 2.7 + bp.y * 0.15, clampf(bp.z * 0.7, -6.0, 6.0)), 1.0 - exp(-2.5 * dt))
+		target_pos = replay_cam
+		target_look = Vector3(bp.x * 0.4, 0.9 + bp.y * 0.3, bp.z * 0.85)
+		base_fov = 44.0
+		smooth_t = 0.25
+	elif demo:
 		var shot := int(time / 7.0) % 3
 		var a := time * 0.12
 		match shot:
@@ -1156,11 +1297,9 @@ func _update_camera(dt: float) -> void:
 			_:
 				target_pos = Vector3(cos(a) * 3.0, 8.5, -15.0)
 				target_look = Vector3(0, 0.8, 1.0)
-		follow = 2.0
+		smooth_t = 0.9
 	elif state == S.POINT and celeb != null and point_timer < 2.2:
-		# close na comemoração
 		var c := celeb.global_position
-		# de frente-lateral, sempre do lado do jogador (nunca atrás da rede)
 		var sx := signf(c.x) if absf(c.x) > 0.3 else 1.0
 		var dir := Vector3(sx * 0.75, 0.0, -celeb.side * 0.66).normalized()
 		target_pos = c + dir * 3.9 + Vector3(0, 1.35, 0)
@@ -1168,47 +1307,60 @@ func _update_camera(dt: float) -> void:
 			target_pos.z = celeb.side * 0.9
 		target_look = c + Vector3(0, 1.1, 0)
 		base_fov = 48.0
+		smooth_t = 0.5
 		if not cam_cut and cam_pos.distance_to(target_pos) > 6.0:
 			cam_cut = true
 	elif state == S.SERVE and server == human:
-		# por cima do ombro de quem saca
 		var c2 := server.global_position
 		target_pos = c2 + Vector3(1.4, 2.6, 4.3)
 		target_look = Vector3(c2.x * 0.3, 1.0, -6.0)
 		base_fov = 52.0
+		smooth_t = 0.45
 	elif state == S.END:
 		target_pos = Vector3(0, 3.2, 11.5)
 		target_look = Vector3(0, 1.2, 3.0)
 		base_fov = 46.0
+		smooth_t = 0.8
 	else:
-		var fx := 0.0
-		if human:
-			fx = lerpf(human.position.x, ball.position.x, 0.4)
-		fx = clampf(fx, -3.5, 3.5)
-		var lift := clampf((ball.position.y - 4.0) * 0.3, 0.0, 1.5)
+		# rali: enquadra o jogador e a bola, antecipando para onde a bola vai
+		var hx := human.position.x if human else 0.0
 		var hz := human.position.z if human else 6.0
+		var ahead := ball.global_position
+		if ball.is_live():
+			ahead = ball.global_position.lerp(ball.predict(0.45), 0.6)
+		var fx := clampf(lerpf(hx, ahead.x, 0.4), -3.5, 3.5)
+		var lift := clampf((ahead.y - 3.5) * 0.28, 0.0, 1.6)
 		var back := clampf((hz - 3.5) / 5.0, 0.0, 1.0)
-		cam_back = lerpf(cam_back, back, 1.0 - exp(-3.0 * dt))
+		cam_back = lerpf(cam_back, back, 1.0 - exp(-2.5 * dt))
+		var far_side := 0.0
+		if ahead.z < 0.0:
+			far_side = clampf(-ahead.z / 8.0, 0.0, 1.0)
 		target_pos = Vector3(fx * 0.55, lerpf(4.7, 6.0, cam_back) + lift, lerpf(11.4, 14.6, cam_back))
-		target_look = Vector3(fx * 0.38, lerpf(1.35, 1.0, cam_back) + lift * 0.6, lerpf(-3.0, -2.0, cam_back))
-		# entrada cinematográfica no começo da partida
+		target_look = Vector3(fx * 0.4, lerpf(1.35, 1.0, cam_back) + lift * 0.6,
+				lerpf(-3.0, -2.0, cam_back) - far_side * 1.2)
+		base_fov = 54.0 - far_side * 2.0
 		if intro_t < 2.4:
 			var k := smoothstep(0.0, 2.4, intro_t)
 			target_pos = Vector3(0, 22, -46).lerp(target_pos, k)
 			target_look = Vector3(0, 1.5, -6).lerp(target_look, k)
-			follow = 30.0
+			smooth_t = 0.05
 	if cam_cut:
 		cam_cut = false
 		cam_pos = target_pos
 		cam_look = target_look
-	var k2 := 1.0 - exp(-follow * dt)
-	cam_pos = cam_pos.lerp(target_pos, k2)
-	cam_look = cam_look.lerp(target_look, k2)
+		cam_vel = Vector3.ZERO
+		look_vel = Vector3.ZERO
+	var r1 := _smooth(cam_pos, target_pos, cam_vel, smooth_t, dt)
+	cam_pos = r1[0]
+	cam_vel = r1[1]
+	var r2 := _smooth(cam_look, target_look, look_vel, smooth_t * 0.8, dt)
+	cam_look = r2[0]
+	look_vel = r2[1]
 	fov_kick = lerpf(fov_kick, 0.0, 1.0 - exp(-5.0 * dt))
-	cam.fov = lerpf(cam.fov, base_fov + fov_kick, 1.0 - exp(-12.0 * dt))
+	cam.fov = lerpf(cam.fov, base_fov + fov_kick, 1.0 - exp(-10.0 * dt))
 	var off := Vector3.ZERO
 	if shake > 0.0:
 		shake = maxf(shake - dt, 0.0)
-		var s := shake * shake * 0.8
-		off = Vector3(rng.randf_range(-s, s), rng.randf_range(-s, s), 0.0)
+		var sh := shake * shake * 0.8
+		off = Vector3(rng.randf_range(-sh, sh), rng.randf_range(-sh, sh), 0.0)
 	cam.look_at_from_position(cam_pos + off, cam_look + off * 0.5)

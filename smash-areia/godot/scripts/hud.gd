@@ -374,6 +374,9 @@ func _process(dt: float) -> void:
 			preview_player.state = Player.State.NORMAL
 	if banner.visible:
 		banner.scale = banner.scale.lerp(Vector2.ONE, 1.0 - exp(-14.0 * dt))
+	if replay_layer and replay_layer.visible:
+		replay_t += dt
+		replay_layer.queue_redraw()
 
 
 # ---------------------------------------------------------------- pausa / fim
@@ -499,6 +502,43 @@ func _hide_banner(text: String) -> void:
 
 func set_hint(text: String) -> void:
 	hint.text = text
+
+
+var replay_layer: Control
+var replay_t := 0.0
+
+
+func set_replay(on: bool) -> void:
+	if replay_layer == null:
+		replay_layer = Control.new()
+		replay_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+		replay_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		replay_layer.draw.connect(_draw_replay)
+		add_child(replay_layer)
+		move_child(replay_layer, 1)
+	replay_layer.visible = on
+	if not menu.visible:
+		touch.visible = not on
+		score_panel.visible = not on
+	if on:
+		hint.text = ""
+		banner.visible = false
+		banner_sub.visible = false
+
+
+func _draw_replay() -> void:
+	var vs := replay_layer.get_viewport_rect().size
+	var bar := vs.y * 0.1
+	replay_layer.draw_rect(Rect2(0, 0, vs.x, bar), INK)
+	replay_layer.draw_rect(Rect2(0, vs.y - bar, vs.x, bar), INK)
+	var blink := fmod(replay_t, 1.0) < 0.6
+	if blink:
+		replay_layer.draw_circle(Vector2(46, bar * 0.5), 12, Color("ff3b3b"))
+	replay_layer.draw_string(FONT, Vector2(70, bar * 0.5 + 16), "REPLAY", HORIZONTAL_ALIGNMENT_LEFT, -1, 46, Color.WHITE)
+	var tip := "toque para pular"
+	var tw := FONT.get_string_size(tip, HORIZONTAL_ALIGNMENT_LEFT, -1, 26).x
+	if not menu.visible:
+		replay_layer.draw_string(FONT, Vector2(vs.x - tw - 30, vs.y - bar * 0.5 + 9), tip, HORIZONTAL_ALIGNMENT_LEFT, -1, 26, Color(1, 1, 1, 0.7))
 
 
 func set_energy(e: Array) -> void:
