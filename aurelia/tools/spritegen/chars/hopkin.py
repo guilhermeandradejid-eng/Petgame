@@ -36,51 +36,58 @@ def P(**kw):
     return d
 
 
+def sq(s):
+    """Volume-preserving squash/stretch: s>1 stretches tall, s<1 squashes flat (area stays constant)."""
+    return {"bh": 9.5 * s, "bw": 11.0 / s}
+
+
 def poses(anim, n):
+    """Disney checklist per anim: anticipation, squash & stretch (volume kept), arcs, overlap (ears are
+    springs), slow in/out (ease tags), exaggeration, a clear tell before every attack."""
     if anim == "idle":
         return [
-            P(bw=11.0, bh=9.5, earback=0.0),
-            P(bw=11.25, bh=9.3, earback=0.25, ff=(4.7, 0), bf=(-4.7, 0)),
-            P(bw=11.5, bh=9.1, earback=0.8, lean=1.5),                     # ear twitch
-            P(bw=11.2, bh=9.4, earback=-0.1, expr="blink"),
+            P(**sq(1.0)),
+            P(**sq(0.985), earback=0.15),
+            P(**sq(0.965), earback=0.5, lean=1.2),                     # breath in, ear twitch
+            P(**sq(0.985), earback=-0.1, expr="blink"),
         ][:n]
-    if anim == "walk":    # the hop cycle: squat, stretch-launch, air, air-tuck, land squash, settle
+    if anim == "walk":    # hop cycle on an arc: squat -> stretch-launch -> peak -> tuck/fall -> land squash -> settle
         return [
-            P(bw=12.8, bh=7.8, ff=(5.0, 0), bf=(-5.0, 0), earback=-0.4),
-            P(bw=9.4, bh=11.2, lift=2.5, lean=6, ff=(3.0, -2.0), bf=(-3.0, -2.2), earback=0.4, hx=0.5),
-            P(bw=10.0, bh=10.6, lift=6.0, lean=9, ff=(3.8, -6.0), bf=(-3.2, -6.4), earback=0.7, hx=1.0),
-            P(bw=11.0, bh=10.0, lift=5.0, lean=13, ff=(4.4, -5.0), bf=(-2.8, -5.4), earback=0.55, hx=1.5, expr="happy"),
-            P(bw=13.2, bh=7.3, ff=(5.4, 0), bf=(-5.2, 0), earback=-0.8, lean=2, hx=1.5),
-            P(bw=11.8, bh=9.0, earback=-0.2, hx=1.0),
+            P(**sq(0.8), ff=(5.0, 0), bf=(-5.0, 0), earback=-0.5, expr="happy", ease="in"),
+            P(**sq(1.20), lift=2.4, lean=8, ff=(2.2, -2.0), bf=(-3.4, -2.6), earback=0.6, hx=0.6, ease="out"),
+            P(**sq(1.08), lift=6.6, lean=4, ff=(3.6, -6.2), bf=(-2.8, -6.6), earback=0.8, hx=1.4),
+            P(**sq(0.98), lift=4.4, lean=-6, ff=(4.4, -4.2), bf=(-2.6, -4.6), earback=0.2, hx=1.9, ease="in"),
+            P(**sq(0.70), ff=(5.6, 0), bf=(-5.4, 0), earback=-1.0, lean=3, hx=1.9, ease="out"),
+            P(**sq(1.05), earback=-0.2, hx=1.2),
         ][:n]
-    if anim == "windup":
+    if anim == "windup":   # the tell: pin ears, coil, shiver, glare
         return [
-            P(bw=12.8, bh=8.0, hx=-0.8, rage=0.3, earback=0.3, expr="angry", ff=(5.0, 0), bf=(-5.0, 0)),
-            P(bw=13.6, bh=7.3, hx=0.8, rage=0.65, earback=0.65, expr="angry", ff=(5.4, 0), bf=(-5.4, 0)),
-            P(bw=14.2, bh=6.8, lean=-7, rage=1.0, earback=1.0, expr="angry", mouth="fang", ff=(5.8, 0), bf=(-5.6, 0)),
+            P(**sq(0.84), hx=-0.7, earback=0.5, expr="angry", mouth="fang", ff=(5.0, 0), bf=(-5.0, 0), ease="inout"),
+            P(**sq(0.8), hx=0.9, earback=0.7, expr="angry", mouth="fang", ff=(5.5, 0), bf=(-5.4, 0)),
+            P(**sq(0.72), lean=-9, hx=-0.5, earback=0.9, expr="angry", mouth="fang", ff=(6.0, 0), bf=(-5.8, 0)),
         ][:n]
     if anim == "pounce":
         return [
-            P(bw=14.0, bh=6.6, lean=-10, hx=-1.5, rage=1.0, earback=1.0, expr="angry", mouth="fang", ff=(5.8, 0), bf=(-5.6, 0)),
-            P(bw=9.0, bh=11.4, lean=28, hx=1.5, lift=8.0, rage=1.0, earback=0.75, expr="angry", mouth="open", ff=(-1.0, -9.0), bf=(-4.5, -9.6)),
-            P(bw=10.0, bh=10.4, lean=36, hx=3.0, lift=4.5, rage=1.0, earback=0.8, expr="angry", mouth="open", ff=(1.0, -5.5), bf=(-4.0, -6.0)),
-            P(bw=12.2, bh=8.6, lean=36, hx=3.8, rage=1.0, earback=1.1, expr="angry", mouth="wide", ff=(3.0, 0), bf=(-5.5, 0)),
-            P(bw=13.5, bh=7.2, lean=14, hx=3.0, rage=0.5, earback=0.3, expr="angry", mouth="fang", ff=(5.0, 0), bf=(-5.4, 0)),
-            P(bw=11.8, bh=9.0, lean=1, hx=1.2, rage=0.1, earback=-0.2, expr="neutral"),
+            P(**sq(0.7), lean=-12, hx=-1.6, earback=0.95, expr="angry", mouth="fang", ff=(6.0, 0), bf=(-5.8, 0), ease="in"),
+            P(**sq(1.24), lean=30, hx=1.6, lift=8.0, earback=1.15, expr="angry", mouth="open", ff=(-1.0, -9.0), bf=(-4.6, -9.8), ease="snap"),
+            P(**sq(1.12), lean=34, hx=3.0, lift=4.8, earback=1.0, expr="angry", mouth="open", ff=(1.0, -5.8), bf=(-4.2, -6.4)),
+            P(**sq(0.88), lean=38, hx=4.0, earback=1.2, expr="angry", mouth="wide", ff=(3.2, 0), bf=(-5.6, 0)),
+            P(**sq(0.72), lean=12, hx=3.2, earback=-0.6, expr="angry", mouth="fang", ff=(5.2, 0), bf=(-5.6, 0), ease="out"),
+            P(**sq(1.03), lean=-1, hx=1.2, earback=0.3, expr="neutral"),
         ][:n]
     if anim == "hurt":
         return [
-            P(bw=9.0, bh=11.4, lean=-22, hx=-2.5, lift=1.0, expr="hurt", mouth="o", earback=1.3, ff=(3.5, -0.5), bf=(-5, -0.5)),
-            P(bw=13.0, bh=8.0, lean=-12, hx=-3.0, expr="hurt", mouth="o", earback=0.7),
-            P(bw=11.6, bh=9.2, lean=-4, hx=-1.5, expr="hurt", mouth="o", earback=0.1),
+            P(**sq(1.22), lean=-24, hx=-2.6, lift=1.0, expr="hurt", mouth="o", earback=1.4, ff=(3.5, -0.5), bf=(-5, -0.5), ease="snap"),
+            P(**sq(0.76), lean=-12, hx=-3.2, expr="hurt", mouth="o", earback=0.5),
+            P(**sq(1.0), lean=-3, hx=-1.4, expr="hurt", mouth="o", earback=-0.3),
         ][:n]
     if anim == "death":
         return [
-            P(bw=9.4, bh=11.0, lean=-22, hx=-2.5, lift=1.0, expr="hurt", mouth="o", earback=1.3),
-            P(bw=13.6, bh=7.0, lean=-6, hx=-2.5, expr="dead", mouth="tongue", earback=-1.0, droop=0.4),
-            P(bw=15.2, bh=5.6, hx=-2.5, expr="dead", mouth="tongue", droop=0.8, earback=-1.0),
-            P(bw=16.2, bh=4.7, hx=-2.5, expr="dead", mouth="tongue", droop=1.0, earback=-1.0),
-            P(bw=16.6, bh=4.3, hx=-2.5, expr="dead", mouth="tongue", droop=1.0, earback=-1.0),
+            P(**sq(1.2), lean=-24, hx=-2.6, lift=1.0, expr="hurt", mouth="o", earback=1.4, ease="snap"),
+            P(**sq(0.74), lean=-8, hx=-2.6, expr="dead", mouth="tongue", earback=-1.0, droop=0.4),
+            P(bw=15.0, bh=5.6, hx=-2.6, expr="dead", mouth="tongue", droop=0.8, earback=-1.0),
+            P(bw=16.2, bh=4.7, hx=-2.6, expr="dead", mouth="tongue", droop=1.0, earback=-1.0),
+            P(bw=16.6, bh=4.3, hx=-2.6, expr="dead", mouth="tongue", droop=1.0, earback=-1.0),
         ][:n]
     raise KeyError(anim)
 
@@ -161,15 +168,15 @@ def draw(sk, chains, p):
     # body + belly
     body = Mask(CELL).ellipse(c, bw, bh, lean)
     cv.paint("fur", body, group="body", k=6, cast=4)
-    bo = _rot((bw * 0.22, bh * 0.28), lean)
-    belly = Mask(CELL).ellipse((c[0] + bo[0], c[1] + bo[1]), bw * 0.62, bh * 0.6, lean).array() & body.array()
+    bo = _rot((bw * 0.12, bh * 0.50), lean)
+    belly = Mask(CELL).ellipse((c[0] + bo[0], c[1] + bo[1]), bw * 0.50, bh * 0.42, lean).array() & body.array()
     cv.paint("belly", belly, group="body", k=5, deep=False)
     buf = cv.finish(NO_SEAM)
     # ---- face ----
     ok = {cv.matidx["fur"], cv.matidx["belly"]}
-    fo = _rot((bw * 0.17, -bh * 0.16), lean)
+    fo = _rot((bw * 0.22, -bh * 0.06), lean)
     fx, fy = int(round(c[0] + fo[0])), int(round(c[1] + fo[1]))
-    eyes(buf, ok, fx, fy, p["expr"], 3, 4, 5)
+    eyes(buf, ok, fx, fy - 1, p["expr"], 3, 4, 4)
     pink, dark, white, tongue = (246, 150, 170), (92, 40, 60), (255, 255, 255), (240, 110, 130)
     if p["expr"] in ("neutral", "blink", "happy"):
         for dx in (-7, 7):

@@ -27,6 +27,11 @@ DEFAULT = dict(hx=0.0, lift=0.0, lean=0.0, bw=6.6, bh=10.6, ff=(3.0, 0.0), bf=(-
                capoff=(0.0, 0.0), capabs=(0.0, 0.0), capfree=0.0, caprot=0.0, expr="neutral", mouth="smile")
 
 
+def sq(s):
+    """Volume-preserving squash (s<1) / stretch (s>1): bw*bh stays constant."""
+    return {"bh": 10.6 * s, "bw": 6.6 / s}
+
+
 def P(**kw):
     d = dict(DEFAULT)
     d.update(kw)
@@ -54,39 +59,39 @@ def poses(anim, n):
             t = i / n
             ff, bf = _foot(t, 3.4, 2.4), _foot(t + 0.5, 3.4, 2.4)
             down = 0.5 + 0.5 * math.cos(4 * math.pi * t)          # 1 at foot contact
-            out.append(P(lean=5.5 * math.sin(2 * math.pi * t), bw=6.6 + 0.4 * down, bh=10.6 - 0.8 * down,
+            out.append(P(lean=5.5 * math.sin(2 * math.pi * t), **sq(1.0 - 0.075 * down),
                          ff=ff, bf=bf, hx=0.7 * math.sin(2 * math.pi * t), capoff=(0.0, 0.5 * down),
                          expr="neutral"))
         return out
-    if anim == "windup":    # squat, shake and glare
+    if anim == "windup":    # the tell: crouch, shake, cap pressed down, glare + gritted teeth
         return [
-            P(bw=7.4, bh=9.2, lean=-5, expr="angry", ff=(3.3, 0), bf=(-3.5, 0), capoff=(0, 0.6), mouth="grit", ease="inout"),
-            P(bw=8.2, bh=8.0, lean=-10, hx=-0.9, expr="angry", ff=(3.7, 0), bf=(-3.9, 0), capoff=(0.0, 1.2), mouth="grit"),
-            P(bw=8.7, bh=7.3, lean=-13, hx=0.9, expr="angry", ff=(4.0, 0), bf=(-4.2, 0), capoff=(-0.4, 1.6), mouth="grit"),
-            P(bw=8.9, bh=7.0, lean=-15, hx=-0.5, expr="angry", ff=(4.1, 0), bf=(-4.3, 0), capoff=(-0.6, 1.8), mouth="grit"),
+            P(**sq(0.86), lean=-5, expr="angry", ff=(3.3, 0), bf=(-3.5, 0), capoff=(0, 0.6), mouth="grit", ease="inout"),
+            P(**sq(0.76), lean=-10, hx=-0.9, expr="angry", ff=(3.7, 0), bf=(-3.9, 0), capoff=(0.0, 1.2), mouth="grit"),
+            P(**sq(0.70), lean=-13, hx=0.9, expr="angry", ff=(4.0, 0), bf=(-4.2, 0), capoff=(-0.4, 1.6), mouth="grit"),
+            P(**sq(0.67), lean=-15, hx=-0.5, expr="angry", ff=(4.1, 0), bf=(-4.3, 0), capoff=(-0.6, 1.8), mouth="grit"),
         ][:n]
-    if anim == "headbutt":
+    if anim == "headbutt":   # coil (anticipation) -> snap launch (stretch) -> contact on an arc -> recoil -> settle
         return [
-            P(bw=8.9, bh=7.0, lean=-19, hx=-1.2, expr="angry", ff=(4.1, 0), bf=(-4.4, 0), capoff=(-1.0, 1.8), mouth="grit", ease="in"),
-            P(bw=9.2, bh=6.6, lean=-24, hx=-2.6, expr="angry", ff=(4.3, 0), bf=(-4.6, 0), capoff=(-1.8, 2.0), mouth="grit", stop=True, ease="in"),
-            P(bw=6.0, bh=11.6, lean=12, hx=1.8, lift=3.2, expr="angry", ff=(5.2, -1.6), bf=(-3.4, -2.6), mouth="open", ease="snap"),
-            P(bw=6.2, bh=11.0, lean=26, hx=3.8, lift=1.0, expr="angry", ff=(7.0, 0), bf=(-2.4, -0.6), capoff=(2.2, 1.2), mouth="open"),
-            P(bw=7.2, bh=9.6, lean=18, hx=3.8, expr="angry", ff=(6.0, 0), bf=(-3.0, 0), capoff=(1.4, 0.8), mouth="open"),
-            P(bw=8.2, bh=8.0, lean=8, hx=2.6, expr="neutral", ff=(4.6, 0), bf=(-3.6, 0), capoff=(0.4, 1.2), mouth="grit"),
-            P(bw=7.2, bh=9.8, lean=1, hx=1.0, expr="neutral", ff=(3.4, 0), bf=(-3.4, 0)),
+            P(**sq(0.66), lean=-19, hx=-1.2, expr="angry", ff=(4.1, 0), bf=(-4.4, 0), capoff=(-1.0, 1.8), mouth="grit", ease="in"),
+            P(**sq(0.62), lean=-24, hx=-2.6, expr="angry", ff=(4.3, 0), bf=(-4.6, 0), capoff=(-1.8, 2.0), mouth="grit", stop=True, ease="in"),
+            P(**sq(1.14), lean=12, hx=1.8, lift=3.2, expr="angry", ff=(5.2, -1.6), bf=(-3.4, -2.6), mouth="open", ease="snap"),
+            P(**sq(1.06), lean=27, hx=3.8, lift=1.0, expr="angry", ff=(7.0, 0), bf=(-2.4, -0.6), capoff=(2.4, 1.4), mouth="open"),
+            P(**sq(0.92), lean=18, hx=3.8, expr="angry", ff=(6.0, 0), bf=(-3.0, 0), capoff=(1.4, 0.8), mouth="open"),
+            P(**sq(0.78), lean=6, hx=2.6, expr="neutral", ff=(4.6, 0), bf=(-3.6, 0), capoff=(-0.4, 1.4), mouth="grit", ease="out"),
+            P(**sq(1.03), lean=0, hx=1.0, expr="neutral", ff=(3.4, 0), bf=(-3.4, 0)),
         ][:n]
     if anim == "hurt":
         return [
-            P(bw=6.0, bh=11.2, lean=-20, hx=-2.2, lift=0.8, expr="hurt", capoff=(-1.2, -0.4), ff=(3.6, -0.5), bf=(-4.2, 0), mouth="o", ease="snap"),
-            P(bw=8.0, bh=8.6, lean=-14, hx=-2.6, expr="hurt", capoff=(-1.0, 0.8), mouth="o"),
-            P(bw=7.2, bh=9.8, lean=-4, hx=-1.0, expr="hurt", mouth="o"),
+            P(**sq(1.12), lean=-20, hx=-2.2, lift=0.8, expr="hurt", capoff=(-1.2, -0.4), ff=(3.6, -0.5), bf=(-4.2, 0), mouth="o", ease="snap"),
+            P(**sq(0.82), lean=-14, hx=-2.6, expr="hurt", capoff=(-1.0, 0.8), mouth="o"),
+            P(**sq(0.97), lean=-4, hx=-1.0, expr="hurt", mouth="o"),
         ][:n]
     if anim == "death":
         return [
-            P(bw=6.0, bh=11.2, lean=-20, hx=-2.2, expr="hurt", capoff=(-1.2, -0.4), mouth="o", ease="snap"),
-            P(bw=7.4, bh=8.4, lean=-9, hx=-2.2, expr="dead", capfree=1, capabs=(2.0, -30.0), caprot=-40.0, mouth="o"),
-            P(bw=8.4, bh=6.4, lean=-2, hx=-2.4, expr="dead", capfree=1, capabs=(6.0, -37.0), caprot=55.0, mouth="o"),
-            P(bw=9.4, bh=5.0, hx=-2.6, expr="dead", capfree=1, capabs=(10.0, -24.0), caprot=170.0, mouth="o"),
+            P(**sq(1.12), lean=-20, hx=-2.2, expr="hurt", capoff=(-1.2, -0.4), mouth="o", ease="snap"),
+            P(**sq(0.8), lean=-9, hx=-2.2, expr="dead", capfree=1, capabs=(2.0, -30.0), caprot=-40.0, mouth="o"),
+            P(**sq(0.62), lean=-2, hx=-2.4, expr="dead", capfree=1, capabs=(6.0, -37.0), caprot=55.0, mouth="o"),
+            P(**sq(0.47), hx=-2.6, expr="dead", capfree=1, capabs=(10.0, -24.0), caprot=170.0, mouth="o"),
             P(bw=10.0, bh=4.2, hx=-3.0, expr="dead", capfree=1, capabs=(12.0, -9.0), caprot=305.0, mouth="o"),
             P(bw=10.2, bh=3.9, hx=-3.0, expr="dead", capfree=1, capabs=(12.0, -7.4), caprot=348.0, mouth="o"),
         ][:n]
@@ -156,11 +161,11 @@ def draw(sk, chains, p):
     fx, fy = int(round(sk["face"][0])), int(round(sk["face"][1])) - 1
     eyes(buf, ok, fx, fy, p["expr"], 3, 4, 4)
     my = fy + 5
-    pink, dark = (222, 118, 126), (92, 38, 52)
+    pink, dark, smile = (230, 126, 134), (92, 38, 52), (150, 70, 84)
     mouth = p["mouth"]
     if p["expr"] in ("neutral", "blink"):
         for dx, dy in ((-1, 0), (0, 1), (1, 1), (2, 0)):
-            put(buf, fx + dx, my + dy - 1, dark, ok)
+            put(buf, fx + dx, my + dy - 1, smile, ok)
         for dx in (-5, 5):
             put(buf, fx + dx, fy + 4, pink, ok)
     elif mouth == "open":
