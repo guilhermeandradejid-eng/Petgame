@@ -28,7 +28,7 @@ func setup(_lvl: Node, r: float, style := "planet", gravity_range := 2.4) -> voi
 	mi.set_meta("needs_center", true)
 	gravity_area = Area3D.new()
 	gravity_area.collision_layer = 0
-	gravity_area.collision_mask = 0
+	gravity_area.collision_mask = 2 | 4
 	gravity_area.gravity_space_override = Area3D.SPACE_OVERRIDE_REPLACE
 	gravity_area.gravity_point = true
 	gravity_area.gravity_point_center = Vector3.ZERO

@@ -36,7 +36,6 @@ func _ready() -> void:
 		rig.setup(load(Game.CHARACTERS[i]["model"]), Game.CHARACTERS[i]["kind"])
 		holder.scale = Vector3.ONE * 1.3
 		_rigs.append(rig)
-	spark_ring(Vector3(0, 2.6, 0.5), 2.4, 10)
 	_cam = Camera3D.new()
 	_cam.fov = 45.0
 	add_child(_cam)
@@ -53,14 +52,21 @@ func _physics_process(_delta: float) -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	var a := sin(_t * 0.15) * 0.5
-	_cam.position = Vector3(sin(a) * 7.5, 2.6, cos(a) * 7.5)
-	_cam.look_at(Vector3(0, 1.1, 0))
+	_cam.position = Vector3(sin(a) * 7.0, 2.4, cos(a) * 7.0)
+	var right := Vector3(cos(a), 0, -sin(a))
+	_cam.look_at(Vector3(0, 1.3, 0) + right * 2.1)
 	for i in _rigs.size():
 		var cheer := fmod(_t + i * 1.7, 7.0) < 1.6
 		_rigs[i].animate(delta, {"speed": 0.0, "on_floor": true, "state": "celebrate" if cheer else "normal", "t_state": fmod(_t + i * 1.7, 7.0)})
 	if _logo:
 		_logo.rotation = sin(_t * 1.3) * 0.02
 		_logo.scale = Vector2.ONE * (1.0 + sin(_t * 2.6) * 0.015)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _panel and event.is_action_pressed("ui_cancel"):
+		_close_panel()
+		get_viewport().set_input_as_handled()
 
 
 # --------------------------------------------------------------------- UI
@@ -87,8 +93,8 @@ func _build_ui() -> void:
 	logo.create_tween().tween_property(logo, "scale", Vector2.ONE, 0.9).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 
 	_menu = VBoxContainer.new()
-	_menu.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	_menu.position = Vector2(-230, -380)
+	_menu.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	_menu.position = Vector2(-560, -120)
 	_menu.custom_minimum_size = Vector2(460, 0)
 	_menu.add_theme_constant_override("separation", 12)
 	_ui.add_child(_menu)
@@ -188,7 +194,7 @@ func _show_controls() -> void:
 	txt.text = """             P1 (Lumi)        P2 (Bolota)      Controle
 Mover        WASD             Setas            Analógico esq.
 Pular        Espaço           Enter / Num0     A
-Dash         Shift            Num1 / ;         X
+Dash         Shift            Num1 / "/"       X
 Erguer/Elo   F                .  / Num2        Y / RB
 Ground pound C / Ctrl (no ar) Num3 / ,         B / LB / LT
 Câmera       Q / E            PgUp / PgDn      Analógico dir.

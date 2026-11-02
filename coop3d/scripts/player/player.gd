@@ -298,6 +298,7 @@ func _move_normal(delta: float, wish: Vector3) -> void:
 	v_up = maxf(v_up, -30.0)
 	velocity = v_tan + up * v_up
 	move_and_slide()
+	_try_step(v_tan)
 	_check_hits()
 
 	if state in ["normal", "hover", "thrown"]:
@@ -310,6 +311,27 @@ func _move_normal(delta: float, wish: Vector3) -> void:
 			Sfx.play("swish", 0.7)
 		elif just("grab"):
 			_grab()
+
+
+## Step-up assist: climb small ledges (island rims, bridge lips) without
+## having to jump, like most commercial platformers do.
+func _try_step(v_tan: Vector3) -> void:
+	if not is_on_wall() or v_tan.length() < 0.5:
+		return
+	if not (is_on_floor() or _was_on_floor):
+		return
+	var step := 0.5
+	var xf := global_transform
+	if test_move(xf, up * step):
+		return
+	var fwd := v_tan.normalized() * 0.3
+	var up_xf := xf.translated(up * step)
+	if test_move(up_xf, fwd):
+		return
+	var ahead := up_xf.translated(fwd)
+	var col := KinematicCollision3D.new()
+	if test_move(ahead, -up * (step + 0.05), col) and col.get_normal().dot(up) > 0.7:
+		global_position = ahead.origin + col.get_travel()
 
 
 func _jumped(double: bool) -> void:

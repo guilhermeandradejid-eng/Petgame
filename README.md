@@ -58,3 +58,9 @@ Teclado: `J` liga o pulo, espaço freia ou usa a habilidade, `Esc` pausa.
 
 - `estelar/holes.js`: os buracos, descritos como mapas de texto (tipo de piso + altura por casa)
 - `estelar/game.js`: física isométrica com alturas e rampas, renderização em baixa resolução ampliada sem suavização, sprites gerados por código (personagens e inimigos são esferas iluminadas rasterizadas pixel a pixel, por isso rolam de verdade), música chiptune e efeitos sintetizados com Web Audio
+
+---
+
+# Lumi & Bolota: Jardins Orbitais
+
+Um plataforma 3D **cooperativo local** com foco em puzzles, feito em **Godot 4.7.2**. Os personagens e o cenário são modelados por script no **Blender 5.2**, o visual é toon com shaders próprios, os 12 princípios da Disney estão aplicados na animação procedural e há muito game juice. O jogo fica na pasta [`coop3d/`](coop3d/); veja o [README do jogo](coop3d/README.md) e a [pesquisa de tutoriais](coop3d/docs/PESQUISA.md).

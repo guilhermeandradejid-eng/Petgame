@@ -34,7 +34,7 @@ func build() -> void:
 	pound_switch(Vector3(3.5, 0, -25.0), "t1", "timed", 7.0)
 	sign_text(Vector3(-3.0, 0, -20.0), "GROUND POUND (C / B no ar) no ⏱:\na ponte aparece por pouco tempo!")
 	for i in 3:
-		bridge(Vector3(0, 0, -32.5 - i * 3.0), Vector3(3.0, 0.6, 2.6), "t1")
+		bridge(Vector3(0, 0, -31.4 - i * 3.2), Vector3(3.0, 0.6, 3.15), "t1")
 	spark_line(Vector3(0, 1.2, -32), Vector3(0, 1.2, -38), 4)
 	checkpoint_at(Vector3(-4.5, 0, -24.0))
 	urchin([Vector3(-4, 0, -19), Vector3(4, 0, -19)], 1.5)

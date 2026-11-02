@@ -132,9 +132,6 @@ func _physics_process(delta: float) -> void:
 	for p in players:
 		if p.state != "bubble" and is_out_of_bounds(p.global_position):
 			on_player_fell(p)
-		elif Game.coop and p.state == "normal" and p.partner and not p.partner.is_busy() \
-				and p.global_position.distance_to(p.partner.global_position) > 60.0:
-			on_player_fell(p)  # left far behind: float back to the partner
 
 
 func _process(delta: float) -> void:
@@ -143,9 +140,6 @@ func _process(delta: float) -> void:
 	for i in pcount:
 		yaw += Input.get_action_strength(Game.act(i, "cam_right")) - Input.get_action_strength(Game.act(i, "cam_left"))
 	camera.yaw_input = clampf(yaw, -1.0, 1.0)
-	for i in pcount:
-		if Input.is_action_just_pressed(Game.act(i, "pause")) and not done:
-			_set_paused(not _paused)
 	if not Game.coop and Input.is_action_just_pressed(Game.act(0, "swap")) and not _paused:
 		active = 1 - active
 		_update_control()
@@ -182,6 +176,11 @@ func _update_signs(delta: float) -> void:
 			else:
 				tw.tween_property(l, "scale", Vector3.ONE * 0.01, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 		l.position.y += sin(Time.get_ticks_msec() * 0.003 + l.position.x) * 0.002
+
+
+func toggle_pause() -> void:
+	if not done:
+		_set_paused(not _paused)
 
 
 func _set_paused(on: bool) -> void:

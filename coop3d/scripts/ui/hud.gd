@@ -109,6 +109,9 @@ func setup(lvl: Node) -> void:
 
 
 func _process(delta: float) -> void:
+	for i in (2 if Game.coop else 1):
+		if Input.is_action_just_pressed(Game.act(i, "pause")):
+			level.toggle_pause()
 	_toast_t -= delta
 	if _toast_t <= 0.0 and _toast.modulate.a > 0.0:
 		_toast.modulate.a = move_toward(_toast.modulate.a, 0.0, delta * 3.0)

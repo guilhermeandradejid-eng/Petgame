@@ -7,18 +7,27 @@ var level: LevelBase
 var lumi: Player
 var bolota: Player
 var fails := 0
+var which := 1
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	Game.coop = true
-	Game.current_level = 0
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--level="):
+			which = int(a.substr(8))
+	Game.current_level = which - 1
 	get_tree().change_scene_to_file.call_deferred("res://scenes/level.tscn")
 	await get_tree().create_timer(1.0).timeout
 	level = get_tree().current_scene.get_node("Level")
 	lumi = level.players[0]
 	bolota = level.players[1]
-	await _run()
+	if which == 1:
+		await _run()
+	elif which == 2:
+		await _run2()
+	else:
+		await _run3()
 	print("PLAYTEST DONE, failures: ", fails)
 	get_tree().quit(1 if fails else 0)
 
@@ -106,6 +115,17 @@ func _run() -> void:
 	var sp := Vector2(lumi.velocity.x, lumi.velocity.z).length()
 	release(0, "right")
 	check("lumi reaches run speed", sp > 7.5, "v=%.2f" % sp)
+	await frames(30)
+
+	# --- walk from the island onto the wooden bridge (step-up over the rim)
+	place(lumi, Vector3(0, 0.4, -44))
+	place(bolota, Vector3(1.0, 0.4, -40))
+	press(0, "fwd")
+	press(1, "fwd")
+	await frames(70)
+	release(0, "fwd")
+	release(1, "fwd")
+	check("walks off island onto bridge", lumi.global_position.z < -48.6 and lumi.global_position.y > -0.5, "p=%s" % lumi.global_position)
 	await frames(30)
 
 	# --- two plates open the gate (level 1, island C)
@@ -222,3 +242,123 @@ func _run() -> void:
 	place(bolota, Vector3(1, 9.6, -146))
 	await frames(30)
 	check("goal completes with both", level.done)
+
+
+func of_type(t) -> Array:
+	return level.get_children().filter(func(n): return is_instance_of(n, t))
+
+
+func _run2() -> void:
+	var planets := of_type(Planetoid)
+	var rings := of_type(LaunchRing)
+	var p1: Planetoid = planets[0]
+	place(bolota, Vector3(4, 0.4, 3))
+	place(lumi, rings[0].global_position + Vector3(0, 0.3, 0))
+	await frames(150)
+	var d := lumi.global_position.distance_to(p1.global_position)
+	check("ring flew lumi onto planet 1", d < 8.6 and lumi.is_on_floor(), "d=%.2f state=%s" % [d, lumi.state])
+	check("lumi up is radial", lumi.up.dot((lumi.global_position - p1.global_position).normalized()) > 0.95)
+	press(0, "fwd")
+	var mn := 99.0
+	var mx := 0.0
+	for i in 200:
+		await get_tree().physics_frame
+		var dd := lumi.global_position.distance_to(p1.global_position)
+		mn = minf(mn, dd)
+		mx = maxf(mx, dd)
+	release(0, "fwd")
+	check("walking stays on planet surface", mn > 6.5 and mx < 9.5, "min=%.2f max=%.2f" % [mn, mx])
+	press(0, "jump")
+	var hh := 0.0
+	for i in 40:
+		await get_tree().physics_frame
+		hh = maxf(hh, lumi.global_position.distance_to(p1.global_position) - 7.0)
+	release(0, "jump")
+	await frames(60)
+	check("jump on planet returns to surface", lumi.is_on_floor() and hh > 1.5, "h=%.2f" % hh)
+	# plates on opposite sides
+	var plates := of_type(PressurePlate)
+	place(lumi, plates[0].global_position + plates[0].global_basis.y * 0.5)
+	place(bolota, plates[1].global_position + plates[1].global_basis.y * 0.5)
+	await frames(40)
+	check("opposite plates power ring", level.channel("p1"))
+	# ring 2 -> planet 2
+	var p2: Planetoid = planets[1]
+	place(bolota, rings[1].global_position + rings[1].global_basis.y * 0.5)
+	await frames(160)
+	d = bolota.global_position.distance_to(p2.global_position)
+	check("ring 2 reaches planet 2", d < 6.8, "d=%.2f state=%s" % [d, bolota.state])
+	var sw: PoundSwitch = of_type(PoundSwitch)[0]
+	place(bolota, sw.global_position + sw.global_basis.y * 3.0)
+	await frames(3)
+	await tap(1, "pound")
+	await frames(40)
+	check("pound timed switch on planet", level.channel("p2"), "b=%s" % bolota.state)
+	place(lumi, rings[2].global_position + rings[2].global_basis.y * 0.5)
+	await frames(150)
+	var m1: Planetoid = planets[2]
+	d = lumi.global_position.distance_to(m1.global_position)
+	check("ring 3 reaches moon 1", d < 5.2, "d=%.2f" % d)
+	# hop from moon 1 to moon 2
+	var m2: Planetoid = planets[3]
+	var dir := (m2.global_position - m1.global_position).normalized()
+	place(lumi, m1.global_position + dir * 3.9)
+	await frames(30)
+	press(0, "jump")
+	await frames(30)
+	release(0, "jump")
+	await frames(90)
+	d = lumi.global_position.distance_to(m2.global_position)
+	check("jump between twin moons switches gravity", d < 4.6, "d=%.2f d1=%.2f" % [d, lumi.global_position.distance_to(m1.global_position)])
+	place(lumi, rings[3].global_position + rings[3].global_basis.y * 0.5)
+	await frames(150)
+	check("last ring reaches goal island", lumi.global_position.distance_to(Vector3(55, 10, -129)) < 6.0 and lumi.is_on_floor(), "p=%s" % lumi.global_position)
+
+
+func _run3() -> void:
+	var sw: PoundSwitch = of_type(PoundSwitch)[0]
+	place(lumi, Vector3(0, 0.4, -24))
+	place(bolota, sw.global_position + Vector3(0, 3, 0))
+	await frames(3)
+	await tap(1, "pound")
+	await frames(30)
+	var bridges := of_type(Bridge).filter(func(b): return b.channel == "t1")
+	check("timed switch materializes bridge", bridges[0].solid)
+	press(0, "fwd")
+	await frames(170)
+	release(0, "fwd")
+	check("lumi crossed timed bridge", lumi.global_position.z < -40.0 and lumi.global_position.y > -1.0, "p=%s" % lumi.global_position)
+	await frames(400)
+	check("timed bridge vanishes again", not bridges[0].solid)
+	# rift held open from both sides
+	var plates := of_type(PressurePlate)
+	var rifts := of_type(Rift)
+	place(bolota, plates[0].global_position + Vector3(0, 0.5, 0))
+	await frames(20)
+	check("rift opens with plate", rifts[0].is_open())
+	place(lumi, rifts[0].global_position + Vector3(0, 1.2, 1.5))
+	lumi.velocity = Vector3(0, 0, -3)
+	for i in 30:
+		await get_tree().physics_frame
+		if lumi.global_position.x > 20.0:
+			break
+	check("rift teleports lumi", lumi.global_position.x > 25.0, "p=%s" % lumi.global_position)
+	place(lumi, plates[1].global_position + Vector3(0, 0.5, 0))
+	place(bolota, Vector3(-2, 0.4, -46))
+	await frames(20)
+	check("far plate keeps rift open", rifts[0].is_open())
+	# tide toggle flips the staircase
+	var tide := of_type(Bridge).filter(func(b): return b.channel == "tide")
+	var before: bool = tide[0].solid
+	var tsw: PoundSwitch = of_type(PoundSwitch)[1]
+	place(bolota, tsw.global_position + Vector3(0, 3, 0))
+	await frames(3)
+	await tap(1, "pound")
+	await frames(30)
+	check("tide switch flips blocks", tide[0].solid != before and tide[1].solid == before)
+	# both far plates open the final gate
+	place(lumi, plates[2].global_position + Vector3(0, 0.5, 0))
+	place(bolota, plates[3].global_position + Vector3(0, 0.5, 0))
+	await frames(30)
+	var g: Gate = of_type(Gate)[0]
+	check("plates on two islands open final gate", g.opened)

@@ -9,7 +9,7 @@ var targets: Array = []
 var cam: Camera3D
 var pitch := deg_to_rad(28.0)
 var min_dist := 9.0
-var max_dist := 30.0
+var max_dist := 42.0
 var base_fov := 55.0
 var yaw_input := 0.0
 var focus_override := Vector3.ZERO

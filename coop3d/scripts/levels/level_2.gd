@@ -89,7 +89,7 @@ func build() -> void:
 	var mu1 := on_planet(m2, Vector3(0, 0.2, 1))
 	urchin([mu0["pos"], mu1["pos"]], 1.0, m2.global_position)
 	var r3 := on_planet(m2, Vector3(0, -0.2, -1))
-	launch_ring(r3["pos"], Vector3(55, 10.6, -124), 9.0, 1.6, "", r3["up"])
+	launch_ring(r3["pos"], Vector3(55, 10.6, -129), 9.0, 1.7, "", r3["up"])
 
 	# ---------------------------------------------- goal island
 	island(Vector3(55, 10, -135), 10.0)
