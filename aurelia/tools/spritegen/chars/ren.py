@@ -1,50 +1,56 @@
-"""Ren v2 — the wandering blade. Chibi (~2.4 heads), ~46 px tall, 3/4 facing right (mirrored in-engine).
+"""Ren v4 - arcade hi-bit (KOF / Metal Slug proportions, ~1:4.6), 52 px tall in an 80x80 cell.
 
-Rig: pose = dict of numbers (lean, hand targets, foot targets, weapon angle...). 2-bone IK for legs/arms,
-spring chains for scarf/ponytail, weapons are drawn from the pose ('sword' | 'spear' | 'axe' | None),
-spins squash the body horizontally (engine.Canvas.warp_x) and flip it, face painted after downsampling.
+Rig
+  * a pose is a dict of numbers: hip offset, spine lean/bend/twist, foot targets (+ pitch), near/far
+    hand targets in the torso frame, weapon angle, grip mode (one / two handed), expression;
+  * legs and arms are 2-bone IK chains with FIXED segment lengths and a pole vector (knees forward, elbows
+    down/back) so elbows never flip; the hip is lowered automatically when a grounded foot would be
+    out of reach; hands are attached to real grip points: the near hand IS the weapon grip, the far hand of
+    a two-handed weapon slides along the shaft to the nearest reachable grip;
+  * scarf tails, ponytail and hair locks are spring chains simulated on the dense timeline;
+  * spins squash the body horizontally (Canvas.warp_x) and mirror it, the face is painted after the downsample.
 """
 import math
 
-import numpy as np
+from engine import Canvas, Mask, simulate_chain
 
-from engine import (SS as SSF, Canvas, Mask, ik2, simulate_chain, smooth)
+CELL = 80
+G = (40.0, 74.0)                 # feet row / centre column inside the cell
+HIP_H = 23.8                     # standing hip height above the floor
+THIGH = SHIN = 11.7
+ANKLE_H = 2.0
+TORSO_LO, TORSO_HI = 5.8, 7.6    # pelvis->waist, waist->shoulder line
+HEAD_OFF = 8.3                   # shoulder line -> head centre
+UARM, FARM = 8.8, 8.3            # upper arm / forearm (0.17 H, 0.16 H)
+REACH_LEG = THIGH + SHIN
+REACH_ARM = UARM + FARM
 
 MATERIALS = {
-    # name: (base hex, glossy, [deep, shade, base, light, highlight])  - hand-tuned, hue-shifted ramps
-    "skin": ("#F6CBA6", False, ["#8E4A5A", "#DE9484", "#F6CBA6", "#FFE2C2", "#FFF1DA"]),
-    "hair": ("#C4502A", True, ["#54202F", "#94362E", "#C8552B", "#EE7A38", "#FFB468"]),
-    "scarf": ("#27B3A3", False, ["#103E5C", "#187C86", "#27B3A3", "#62DEB8", "#C2FFDC"]),
-    "tunic": ("#F4EAD2", False, ["#6E5878", "#C2A8AE", "#F4EAD2", "#FFF7E6", "#FFFFFF"]),
-    "sash": ("#E8782A", False, ["#6E1E3A", "#BC4A32", "#E8782A", "#FFA248", "#FFD27E"]),
-    "leather": ("#7A5236", False, ["#341C2A", "#5C3A2E", "#7A5236", "#A67A4A", "#D2A66C"]),
-    "metal": ("#C4D4E2", True, ["#323E6A", "#7488B4", "#C4D4E2", "#E6F0F8", "#FFFFFF"]),
-    "pants": ("#4A5C86", False, ["#1E2046", "#363E72", "#4A5C86", "#6C86B4", "#A4BCDE"]),
-    "boots": ("#6A4030", False, ["#2C1624", "#4E2C2C", "#704430", "#9C6844", "#C89468"]),
-    "bronze": ("#D9A141", True, ["#58283A", "#A25E34", "#D9A141", "#F6CB60", "#FFF0A8"]),
-    "wood": ("#9A6A3C", False, ["#3C2030", "#704232", "#9A6A3C", "#C08C50", "#E4B878"]),
+    # name: (base hex, glossy, [deep, shade, base, light, highlight]) - hand-tuned, hue-shifted ramps
+    "skin": ("#E8A07A", False, ["#6E3A4C", "#B8665E", "#E8A07A", "#F8C79C", "#FFE6C4"]),
+    "skin_f": ("#C4805F", False, ["#58303F", "#90504E", "#C07A5C", "#D89C78", "#ECC09A"]),
+    "hair": ("#B8512C", True, ["#3A1630", "#7A2F2E", "#B8512C", "#E27A38", "#FFB866"]),
+    "scarf": ("#22A69A", False, ["#0E3A46", "#15667A", "#22A69A", "#5CD6B4", "#B6F6D6"]),
+    "tunic": ("#EFE0C0", False, ["#665266", "#AE9C98", "#EFE0C0", "#FFF3D8", "#FFFFFF"]),
+    "tunic_f": ("#B8A890", False, ["#4A3A52", "#85737A", "#B6A68E", "#D0C2A8", "#E8DCC4"]),
+    "leather": ("#86502C", False, ["#2E1A22", "#5A3426", "#86502C", "#B87A3E", "#DEA25A"]),
+    "pants": ("#4F5F98", False, ["#1C2040", "#343E6E", "#4F5F98", "#7486C0", "#A4B4E4"]),
+    "pants_f": ("#3A4878", False, ["#141834", "#262E58", "#3A4878", "#566AA0", "#7E92C8"]),
+    "boots": ("#5E3A2A", False, ["#20121C", "#402620", "#5E3A2A", "#84563A", "#AA7A4E"]),
+    "bronze": ("#C07A2E", True, ["#3A1E24", "#7A4426", "#C07A2E", "#EAA840", "#FFF0A0"]),
+    "steel": ("#9CACC8", True, ["#2A3050", "#56648C", "#9CACC8", "#D4E0F0", "#FFFFFF"]),
+    "wood": ("#8A5A34", False, ["#2E1A1A", "#5A3422", "#8A5A34", "#B98450", "#DCAE72"]),
 }
-CELL = 64
-G = (32.0, 59.0)
-HIP_H = 14.0
-TORSO = 8.0
-HEAD_OFF = 9.6
-THIGH = SHIN = 6.6
-ANKLE_H = 3.1
-UARM, FARM = 5.5, 5.3
-WEAPON_LEN = {"sword": 14.5, "spear": 18.5, "axe": 12.0}
 
-NO_SEAM = {("hair", "head"), ("scarf", "head"), ("scarf", "torso"), ("hair", "scarf"), ("hair", "torso"),
-           ("tail1", "hair"), ("tail1", "torso"), ("tail2", "torso"), ("tail1", "scarf"),
-           ("tail2", "scarf"), ("pony", "hair"), ("pony", "head"), ("pony", "torso"), ("pony", "scarf"),
-           ("tail1", "tail2"), ("tail1", "head"), ("tail2", "head"), ("pauldron", "armF"), ("pauldron", "torso"),
-           ("armF2", "pauldron"), ("armF", "armF2"), ("armB", "armB2"), ("belt", "torso"), ("strap", "torso"),
-           ("hem", "torso"), ("hem", "legF"), ("hem", "legB"), ("bootF", "legF"), ("bootB", "legB"),
-           ("sword", "guard"), ("guard", "blade"), ("sword", "blade")}
+WEAPONS = ("sword", "spear", "axe")
 
-DEFAULT = dict(plant=False, str=1.0, hx=0.0, hy=0.0, lean=0.0, head=0.0, ff=(3.2, 0.0), bf=(-3.2, 0.0),
-               nh=(3.2, 6.6), fh=(-2.4, 6.4), sw=165.0, weapon="sword", two=None, wscale=1.0,
-               spin=None, expr="neutral", wind=0.0)
+DEFAULT = dict(
+    weapon="sword", carry="hand", grip="one", span=11.0,
+    hx=0.0, hy=0.0, lean=0.0, bend=0.0, twist=0.0, head=0.0,
+    ff=(3.5, 0.0), bf=(-3.5, 0.0), fa=0.0, ba=0.0,
+    nh=(5.0, 13.0), fh=(1.5, 13.5), sw=150.0, far_front=False,
+    spin=0.0, expr="neutral", wind=0.0, autohip=True, kpole=(1.0, 0.12),
+)
 
 
 def P(**kw):
@@ -53,484 +59,217 @@ def P(**kw):
     return d
 
 
-def blend(a, b, t):
-    """Pose interpolation for sub-frames: numbers linear, angles shortest-path."""
-    out = {}
-    for k in a:
-        va, vb = a[k], b[k]
-        if k in ("sw", "spin") and va is not None and vb is not None:
-            d = (vb - va + 180.0) % 360.0 - 180.0
-            out[k] = va + d * t
-        elif k == "two":
-            out[k] = va if (va is None or vb is None) else va + (vb - va) * t
-        elif isinstance(va, (tuple, list)):
-            out[k] = tuple(x + (y - x) * t for x, y in zip(va, vb))
-        elif isinstance(va, (int, float)):
-            out[k] = va + (vb - va) * t
-        else:
-            out[k] = va if t < 0.5 else vb
-    return out
-
-
-# ------------------------------------------------------------------ poses
-#
-# Every logical frame of the contract gets ONE key pose. build.py samples a Hermite spline through
-# the keys for every game tick. Per-key tags steer the in-betweens leaving that key:
-#   ease = "in" (accelerate), "out" (decelerate), "snap" (fast, ~4% overshoot), None (spline flow)
-#   stop = True  -> velocity is zero on that key (anticipation extremes, apexes)
-# Hold / last-contact frames of the contract are frozen on their exact key by the builder.
-
-REF_SPEED = {}            # filled below: m/s the walk/run cycles were authored for (32 px = 1 m)
-S_WALK, S_RUN, F_STANCE_RUN = 9.0, 10.0, 0.45
-
-
-def _foot_walk(phi):
-    phi %= 1.0
-    if phi < 0.5:                         # stance: sole glued to the floor, moving back at constant speed
-        return (S_WALK * (1 - 4 * phi), 0.0)
-    u = (phi - 0.5) * 2.0                 # swing
-    e = u * u * (3 - 2 * u)
-    return (-S_WALK + 2 * S_WALK * e, -3.9 * math.sin(math.pi * u) ** 0.85)
-
-
-def walk_pose(phi):
-    ff, bf = _foot_walk(phi), _foot_walk(phi + 0.5)
-    s = -ff[0] / S_WALK                   # +1: near foot is back, near hand forward
-    c2 = math.cos(4 * math.pi * phi)      # +1 at foot contact, -1 at passing
-    lean = 3.4 + 0.9 * c2
-    return P(hx=0.35 * math.sin(2 * math.pi * phi), hy=0.7 + 0.95 * c2, lean=lean, head=-0.55 * (lean - 3.4) - 0.6 * math.sin(2 * math.pi * phi),
-             ff=ff, bf=bf, str=1.0 + 0.012 * c2,
-             nh=(3.2 + 3.0 * s, 6.5 - (1.0 * s if s > 0 else -0.35 * s)),
-             fh=(-2.4 - 3.2 * s, 6.3 - (-1.0 * s if s < 0 else 0.35 * s)),
-             sw=165 - 11 * s, wind=-0.035, expr="neutral")
-
-
-def _foot_run(phi):
-    phi %= 1.0
-    if phi < F_STANCE_RUN:                # stance
-        psi = phi / F_STANCE_RUN
-        return (S_RUN * (1 - 2 * psi), 0.0)
-    u = (phi - F_STANCE_RUN) / (1 - F_STANCE_RUN)
-    e = u * u * (3 - 2 * u)
-    x = -S_RUN + 2 * S_RUN * e - 2.8 * math.sin(math.pi * min(u / 0.4, 1.0))        # heel kick-back first
-    return (x, -8.0 * math.sin(math.pi * u ** 0.8) ** 0.8)
-
-
-def run_pose(phi):
-    ff, bf = _foot_run(phi), _foot_run(phi + 0.5)
-    s = -ff[0] / S_RUN
-    # hip: low through each stance, springs up over the short flight window
-    def hip(ph):
-        ph %= 0.5
-        if ph < F_STANCE_RUN:
-            return 2.6 - 1.3 * math.sin(math.pi * ph / F_STANCE_RUN)
-        v = (ph - F_STANCE_RUN) / (0.5 - F_STANCE_RUN)
-        return 2.6 - 5.0 * math.sin(math.pi * v)
-    c2 = math.cos(4 * math.pi * phi)
-    return P(hx=0.3 * math.sin(2 * math.pi * phi), hy=hip(phi), lean=15.5 + 1.6 * c2, head=-4.0 + 0.8 * c2, ff=ff, bf=bf, str=1.0 + 0.02 * c2,
-             nh=(2.0 + 3.8 * s, 4.5 - 1.2 * abs(s) - (0.8 if s > 0 else 0.0)),
-             fh=(-3.0 - 4.2 * s, 4.3 - 1.2 * abs(s) - (0.8 if s < 0 else 0.0)),
-             sw=208 - 13 * s, wind=-0.24, expr="focus")
-
-
-PROCEDURAL = {"walk": walk_pose, "run": run_pose}
-REF_SPEED["walk"] = round((2 * S_WALK) / 20.0 * 60.0 / 32.0, 3)                       # stance = half of the 40-tick cycle
-REF_SPEED["run"] = round((2 * S_RUN) / (F_STANCE_RUN * 32.0) * 60.0 / 32.0, 3)        # stance = 45% of the 32-tick cycle
-
-
-def _spin(phi, weapon, **kw):
-    """Spin frame: weapon extended around the body; vx/vy = horizontal-plane vector seen from the camera."""
-    r = math.radians(phi)
-    vx, vy = math.cos(r), 0.45 * math.sin(r)
-    sw = math.degrees(math.atan2(vx, -vy)) % 360.0
-    ws = max(0.45, min(1.0, math.hypot(vx, vy)))
-    base = dict(sw=sw, wscale=ws, spin=phi, weapon=weapon, nh=(6.0 * vx + 1.0, 5.0 * vy + 3.2),
-                fh=(-4.5 * vx, -3.0 * vy + 3.4), ff=(2.6, 0.0), bf=(-2.6, 0.0), lean=5.0, expr="angry", wind=-0.25)
-    base.update(kw)
-    return P(**base)
-
-
-# a neutral stance every attack settles into (matches idle frame 0, so the hand-off to idle is invisible)
-def _rest(**kw):
-    d = dict(hx=0.2, hy=0.3, lean=1.5, ff=(3.8, 0.0), bf=(-3.6, 0.0), nh=(3.3, 6.6), fh=(-2.4, 6.4), sw=164)
-    d.update(kw)
-    return P(**d)
-
-
-def poses(anim, n):
-    out = _poses(anim, n)
-    if anim.startswith(("spear", "axe")):
-        for p in out:
-            p["hx"] = p["hx"] * 0.55
-            nh = p["nh"]
-            p["nh"] = (nh[0] * 0.88 if nh[0] > 0 else nh[0], nh[1])
-            ff = p["ff"]
-            p["ff"] = (ff[0] * 0.88 if ff[0] > 0 else ff[0], ff[1])
-    return out
-
-
-def _poses(anim, n):
-    S = "sword"
-    if anim == "idle":              # breathing + weight shift + one blink + a scarf flutter
-        out = []
-        for i in range(6):
-            ph = i / 6.0
-            out.append(P(hx=0.45 * math.sin(2 * math.pi * ph), hy=0.5 - 0.5 * math.cos(2 * math.pi * ph), lean=0.4 + 0.7 * math.sin(2 * math.pi * ph + 0.6),
-                         head=1.0 + 1.0 * math.sin(2 * math.pi * ph - 0.8), str=1.0 + 0.012 * math.sin(2 * math.pi * ph - 1.2),
-                         ff=(3.2 + 0.25 * math.sin(2 * math.pi * ph), 0.0), bf=(-3.2 + 0.25 * math.sin(2 * math.pi * ph), 0.0),
-                         nh=(3.2, 6.6 - 0.35 * math.sin(2 * math.pi * ph - 0.4)), fh=(-2.4, 6.4 - 0.3 * math.sin(2 * math.pi * ph - 0.4)),
-                         sw=164 + 2.0 * math.sin(2 * math.pi * ph), wind=0.03 + (0.07 if i == 2 else 0.0),
-                         expr="blink" if i == 4 else "neutral"))
-        return out[:n]
-    if anim == "ready":             # battle stance: knees bent, weapon up, bouncing on the toes
-        out = []
-        for i in range(6):
-            ph = i / 6.0
-            b = 0.5 - 0.5 * math.cos(2 * math.pi * ph)
-            out.append(P(hy=2.9 + 0.7 * b - 0.0, hx=0.5, lean=6.5 + 0.8 * math.sin(2 * math.pi * ph), head=-1.5, ff=(6.4, -0.35 * b), bf=(-5.4, -0.2 * b),
-                         nh=(6.0, 2.9 - 0.5 * b), fh=(-1.5, 4.9 + 0.3 * b), sw=28 + 3.5 * b, str=1.0 - 0.015 * b, expr="focus", wind=-0.05 + 0.05 * b))
-        return out[:n]
-    if anim == "walk":
-        return [walk_pose(i / 8.0) for i in range(8)][:n]
-    if anim == "run":
-        return [run_pose(i / 8.0) for i in range(8)][:n]
-    if anim == "dash":              # crouch -> explosive launch -> long stretched glide -> brake -> settle
-        return [
-            P(hx=-2.0, hy=3.6, lean=7, head=-3, ff=(6, 0), bf=(-6.5, 0), nh=(-1.5, 6.5), fh=(-3.5, 6), sw=220, str=0.94, expr="focus", wind=-0.15, ease="snap"),
-            P(hx=2.2, hy=3.4, lean=30, head=-8, ff=(10, -1.5), bf=(-13, -2.5), nh=(-3.8, 4.5), fh=(-5.2, 4), sw=236, str=1.06, expr="angry", wind=-0.45),
-            P(hx=3.8, hy=3.0, lean=42, head=-15, ff=(12, -3.0), bf=(-15, -6.0), nh=(-5.5, 3.5), fh=(-6.5, 3), sw=246, str=1.1, expr="angry", wind=-0.55),
-            P(hx=2.4, hy=2.8, lean=28, head=-9, ff=(10.5, -0.6), bf=(-11, -2.4), nh=(-3.5, 4.2), fh=(-5, 3.8), sw=238, str=1.03, expr="focus", wind=-0.35, ease="out"),
-            _rest(hx=0.8, hy=1.6, lean=8, ff=(6.5, 0), bf=(-5.0, 0), nh=(2.0, 6.2), sw=186, wind=-0.1),
-        ][:n]
-    if anim == "jump":
-        return [
-            P(hy=4.2, lean=6, head=-2, ff=(4.8, 0), bf=(-4.8, 0), nh=(2.5, 6.8), fh=(-3, 6.8), sw=176, str=0.93, expr="focus", ease="snap"),
-            P(hy=-4.8, lean=-4, head=-2, ff=(3, -7), bf=(-3.5, -5), nh=(5, 0.2), fh=(-5, 1.2), sw=105, str=1.1, expr="happy"),
-            P(hy=-3.6, lean=3, head=3, ff=(4.5, -4.4), bf=(-1.5, -5.4), nh=(5.5, -3.8), fh=(-4.5, -3.8), sw=75, str=0.97, expr="neutral"),
-            P(hy=5.0, lean=8, head=-3, ff=(5.4, 0), bf=(-5.4, 0), nh=(3, 7.2), fh=(-3, 7.2), sw=170, str=0.9, expr="blink", ease="out"),
-        ][:n]
-    if anim == "sword.1":           # diagonal down-slash: coil back, snap forward, lunge, drag
-        return [
-            P(hx=-1.0, hy=1.9, lean=-4, ff=(5, 0), bf=(-5, 0), nh=(1.0, 3.8), fh=(1, 5.5), sw=262, str=0.97, expr="focus", ease="in"),
-            P(hx=-3.2, hy=3.0, lean=-15, head=-5, ff=(5.5, 0), bf=(-7, 0), nh=(-5.2, -3.6), fh=(2.2, 3), sw=316, str=0.95, expr="focus", wind=-0.05, stop=True, ease="in"),
-            P(hx=1.2, hy=1.0, lean=7, head=1, ff=(8.5, -2.6), bf=(-7.6, 0), nh=(2.0, -7.6), fh=(-4, 3), sw=2, str=1.07, expr="angry", wind=-0.25, ease="snap"),
-            P(hx=4.4, hy=2.7, lean=21, head=3, ff=(11.5, 0), bf=(-8.6, 0), nh=(8.6, 2.8), fh=(-5.2, 3.2), sw=122, str=1.04, expr="angry", wind=-0.3),
-            P(hx=5.0, hy=3.3, lean=25, head=1, ff=(11.5, 0), bf=(-8.2, 0), nh=(8.0, 6.2), fh=(-5.6, 4.0), sw=150, str=0.99, expr="focus", wind=-0.2, ease="out"),
-            P(hx=2.8, hy=2.2, lean=12, ff=(8.5, 0), bf=(-5.2, 0), nh=(5.6, 7.0), fh=(-3.6, 6.0), sw=157, wind=-0.1),
-            _rest(),
-        ][:n]
-    if anim == "sword.2":           # rising reverse slash with a stepping lunge
-        return [
-            P(hx=0.0, hy=2.6, lean=8, ff=(6, 0), bf=(-6, 0), nh=(5.0, 7.0), fh=(-2, 6), sw=172, str=0.97, expr="focus", ease="in"),
-            P(hx=-2.6, hy=3.8, lean=11, head=1, ff=(7, 0), bf=(-8.4, 0), nh=(-0.6, 9.6), fh=(-1.4, 6), sw=214, str=0.94, expr="focus", wind=-0.05, stop=True, ease="in"),
-            P(hx=1.6, hy=2.4, lean=2, ff=(9.6, -2.8), bf=(-7.2, 0), nh=(7.2, 5.2), fh=(-4.2, 4.6), sw=120, str=1.04, expr="angry", wind=-0.25, ease="snap"),
-            P(hx=3.8, hy=1.0, lean=-7, head=-1, ff=(11, 0), bf=(-7.6, 0), nh=(7.6, -3.6), fh=(-5.2, 5.2), sw=38, str=1.07, expr="angry", wind=-0.3),
-            P(hx=3.4, hy=0.4, lean=-12, head=-3, ff=(10, 0), bf=(-6.6, 0), nh=(4.6, -8.2), fh=(-3.6, 6.2), sw=340, str=1.04, expr="focus", wind=-0.15, ease="out"),
-            P(hx=1.6, hy=0.8, lean=-4, ff=(6.6, 0), bf=(-4.4, 0), nh=(2.4, -3.6), fh=(-2.2, 6.2), sw=330, wind=-0.05),
-            _rest(),
-        ][:n]
-    if anim == "sword.3":           # finisher: crouch, leap, arch back, hammer down
-        return [
-            P(hy=5.0, lean=-6, ff=(5.5, 0), bf=(-5.5, 0), nh=(2.6, 7.6), fh=(-2, 6.6), sw=172, str=0.9, expr="focus", ease="snap"),
-            P(hy=-6.2, lean=-9, ff=(3, -5.8), bf=(-2.5, -4.8), nh=(0.6, -8.6), fh=(-3, -6.6), sw=352, str=1.12, expr="focus", wind=-0.1),
-            P(hy=-10.2, lean=-13, head=-7, ff=(4, -6.8), bf=(-3, -5.8), nh=(1.6, -10.6), fh=(-1.6, -9.4), sw=330, str=1.05, expr="angry", wind=0.1, stop=True, ease="in"),
-            P(hx=4.6, hy=3.6, lean=33, head=4, ff=(11.8, 0), bf=(-6, 0), nh=(9.6, 5.4), fh=(-3, 4.2), sw=117, str=0.96, expr="angry", wind=-0.3),
-            P(hx=4.4, hy=5.2, lean=31, ff=(12.4, 0), bf=(-6.2, 0), nh=(8.9, 7.4), fh=(-3.2, 5.4), sw=138, str=0.92, expr="focus", wind=-0.1, ease="out"),
-            P(hx=2.6, hy=3.0, lean=16, ff=(9, 0), bf=(-4.4, 0), nh=(6, 7.2), fh=(-2.4, 6.2), sw=152, str=0.97),
-            _rest(),
-        ][:n]
-    if anim == "spear.1":           # long straight thrust: rear-leg drive, recoil
-        W = dict(weapon="spear", two=6.0)
-        return [
-            P(hx=-0.6, hy=2.4, lean=-3, ff=(6, 0), bf=(-5.6, 0), nh=(0.4, 4.6), sw=88, str=0.97, expr="focus", ease="in", **W),
-            P(hx=-3.2, hy=3.2, lean=-11, head=-3, ff=(6, 0), bf=(-7.8, 0), nh=(-5.8, 3.8), sw=84, str=0.95, expr="focus", stop=True, ease="in", **W),
-            P(hx=1.8, hy=2.2, lean=7, ff=(9.8, -2.2), bf=(-8.2, 0), nh=(2.8, 3.9), sw=88, str=1.05, expr="angry", wind=-0.25, ease="snap", **W),
-            P(hx=5.2, hy=2.8, lean=19, ff=(12.8, 0), bf=(-9, 0), nh=(9.6, 3.2), sw=90, str=1.06, expr="angry", wind=-0.3, **W),
-            P(hx=3.8, hy=2.6, lean=12, ff=(12.2, 0), bf=(-8.4, 0), nh=(6.6, 3.8), sw=94, str=1.0, expr="focus", ease="out", **W),
-            P(hx=2.2, hy=2.0, lean=7, ff=(9, 0), bf=(-5.4, 0), nh=(4.2, 4.6), sw=64, **W),
-            _rest(sw=36, nh=(3.4, 6.0), **W),
-        ][:n]
-    if anim == "spear.2":           # rising stab
-        W = dict(weapon="spear", two=6.0)
-        return [
-            P(hy=3.0, lean=3, ff=(6, 0), bf=(-6, 0), nh=(0.5, 8), sw=120, str=0.96, expr="focus", ease="in", **W),
-            P(hx=-2.6, hy=4.0, lean=-1, ff=(6.5, 0), bf=(-7.4, 0), nh=(-2.4, 9.4), sw=130, str=0.93, expr="focus", stop=True, ease="in", **W),
-            P(hx=1.8, hy=2.8, lean=5, ff=(9.2, -2.2), bf=(-7.4, 0), nh=(4.2, 5.4), sw=94, str=1.03, expr="angry", wind=-0.25, ease="snap", **W),
-            P(hx=5.0, hy=2.4, lean=13, ff=(12.4, 0), bf=(-8, 0), nh=(9.2, -0.8), sw=55, str=1.07, expr="angry", wind=-0.3, **W),
-            P(hx=4.0, hy=2.3, lean=10, ff=(12, 0), bf=(-7.6, 0), nh=(7.0, -0.4), sw=50, str=1.02, expr="focus", ease="out", **W),
-            P(hx=2.2, hy=1.8, lean=6, ff=(9, 0), bf=(-5, 0), nh=(4.5, 2.5), sw=44, **W),
-            _rest(sw=36, nh=(3.4, 6.0), **W),
-        ][:n]
-    if anim == "spear.3":           # wide sweeping finisher
-        W = dict(weapon="spear", two=6.0)
-        return [
-            P(hy=3.4, lean=-4, ff=(6, 0), bf=(-6, 0), nh=(-2, 8), sw=214, str=0.95, expr="focus", ease="in", **W),
-            P(hx=-3.6, hy=3.0, lean=-14, head=-5, ff=(6, 0), bf=(-8, 0), nh=(-5.6, 3), sw=258, str=0.95, expr="focus", stop=True, ease="in", **W),
-            P(hx=-0.6, hy=0.2, lean=-9, ff=(7.4, -2), bf=(-6.4, 0), nh=(-2, -6), sw=336, str=1.08, expr="angry", wind=0.05, ease="snap", **W),
-            P(hx=5.0, hy=3.2, lean=27, head=3, ff=(12.4, 0), bf=(-7.4, 0), nh=(8.4, 3.6), sw=102, str=1.02, expr="angry", wind=-0.3, **W),
-            P(hx=4.4, hy=3.6, lean=23, ff=(12.2, 0), bf=(-7.2, 0), nh=(7.8, 5.2), sw=118, str=0.97, expr="focus", ease="out", **W),
-            P(hx=2.4, hy=2.4, lean=12, ff=(9, 0), bf=(-5, 0), nh=(5.2, 5.8), sw=86, **W),
-            _rest(sw=36, nh=(3.4, 6.0), **W),
-        ][:n]
-    if anim == "axe.1":             # heavy wind-up, huge arc, ground-shake settle
-        W = dict(weapon="axe", two=4.5)
-        return [
-            P(hx=-1.6, hy=3.0, lean=-10, ff=(6, 0), bf=(-6, 0), nh=(-3, 3.5), sw=300, str=0.95, expr="focus", ease="in", **W),
-            P(hx=-3.8, hy=3.6, lean=-19, head=-6, ff=(6, 0), bf=(-7.6, 0), nh=(-5.6, -1.6), sw=284, str=0.93, expr="focus", wind=-0.05, stop=True, ease="in", **W),
-            P(hx=0.4, hy=1.8, lean=-1, ff=(8.4, -2.4), bf=(-6.4, 0), nh=(2, -7), sw=352, str=1.08, expr="angry", wind=-0.3, ease="snap", **W),
-            P(hx=4.0, hy=3.0, lean=23, head=3, ff=(11.6, 0), bf=(-7.6, 0), nh=(7.8, 1.2), sw=97, str=1.03, expr="angry", wind=-0.35, **W),
-            P(hx=3.8, hy=4.0, lean=25, ff=(11.6, 0), bf=(-7.4, 0), nh=(7.2, 5.4), sw=130, str=0.93, expr="focus", ease="out", **W),
-            P(hx=2.2, hy=2.6, lean=13, ff=(8.4, 0), bf=(-5, 0), nh=(5, 6.6), sw=146, str=0.98, **W),
-            _rest(hy=0.8, sw=163, nh=(3.4, 6.4), **W),
-        ][:n]
-    if anim == "axe.2":
-        W = dict(weapon="axe", two=4.5)
-        return [
-            P(hy=3.2, lean=8, ff=(6, 0), bf=(-6, 0), nh=(5.5, 7.5), sw=172, str=0.95, expr="focus", ease="in", **W),
-            P(hx=-2.4, hy=4.0, lean=2, ff=(6, 0), bf=(-7.6, 0), nh=(0.4, 8.8), sw=218, str=0.92, expr="focus", stop=True, ease="in", **W),
-            P(hx=1.6, hy=2.8, lean=-3, ff=(9, -2.6), bf=(-6.4, 0), nh=(7, 4.4), sw=128, str=1.04, expr="angry", wind=-0.3, ease="snap", **W),
-            P(hx=3.4, hy=1.8, lean=-8, ff=(10.4, 0), bf=(-6.6, 0), nh=(8, -2.4), sw=60, str=1.07, expr="angry", wind=-0.35, **W),
-            P(hx=2.8, hy=1.0, lean=-12, ff=(9.4, 0), bf=(-5.4, 0), nh=(5, -7.2), sw=16, str=1.04, expr="focus", ease="out", **W),
-            P(hx=1.4, hy=1.2, lean=-4, ff=(6, 0), bf=(-4, 0), nh=(2.5, -3), sw=335, **W),
-            _rest(hy=0.8, sw=163, nh=(3.4, 6.4), **W),
-        ][:n]
-    if anim == "axe.3":             # overhead leap + slam
-        W = dict(weapon="axe", two=4.5)
-        return [
-            P(hy=5.0, lean=-9, ff=(5.5, 0), bf=(-5.5, 0), nh=(2.5, 7.6), sw=170, str=0.9, expr="focus", ease="in", **W),
-            P(hy=-5.8, lean=-12, ff=(3, -6.4), bf=(-2.5, -5.2), nh=(0.4, -8.8), sw=352, str=1.12, expr="focus", **W),
-            P(hy=-10.6, lean=-9, head=-4, ff=(4, -7.4), bf=(-3, -6.4), nh=(2, -9.8), sw=346, str=1.06, expr="angry", wind=0.1, stop=True, ease="in", **W),
-            P(hx=4.4, hy=3.8, lean=36, head=4, ff=(12.4, 0), bf=(-5.4, 0), nh=(9.2, 6.2), sw=124, str=0.96, expr="angry", wind=-0.35, **W),
-            P(hx=3.8, hy=5.0, lean=31, ff=(12.4, 0), bf=(-5.4, 0), nh=(9, 7.6), sw=140, str=0.9, expr="focus", ease="out", **W),
-            P(hx=2.2, hy=3.4, lean=19, ff=(9.4, 0), bf=(-4.4, 0), nh=(6.2, 7.2), sw=152, str=0.96, **W),
-            _rest(hy=0.8, sw=163, nh=(3.4, 6.4), **W),
-        ][:n]
-    if anim == "sword.sp1":         # Whirlwind: wind-up, full 360 spin, finishing flourish
-        ph = [-30, 40, 110, 180, 250]
-        out = [P(hy=3.4, lean=-13, ff=(5, 0), bf=(-5, 0), nh=(-5, 3), fh=(-3, 4), sw=268, str=0.95, expr="focus", ease="in"),
-               P(hx=-1.8, hy=4.0, lean=-19, head=-7, ff=(5, 0), bf=(-5.4, 0), nh=(-6.4, 1.5), fh=(-2, 3.5), sw=250, str=0.94, expr="angry", wind=-0.15, stop=True, ease="snap")]
-        out += [_spin(p, S, hy=-1.4 - 0.8 * math.sin(i * 1.4), lean=7.0 + 2 * math.sin(i * 1.4)) for i, p in enumerate(ph)]
-        out += [P(hx=1.4, hy=2.0, lean=14, ff=(7.5, 0), bf=(-5.5, 0), nh=(7.4, 3.5), fh=(-4, 5), sw=96, str=1.04, expr="angry", wind=-0.3),
-                P(hx=1.0, hy=2.6, lean=10, ff=(6.6, 0), bf=(-5.0, 0), nh=(5.6, 4.8), fh=(-3, 5), sw=118, expr="focus", wind=-0.2, ease="out"),
-                _rest()]
-        return out[:n]
-    if anim == "axe.sp2":           # Hurricane Axe
-        ph = [-30, 40, 110, 180, 250]
-        W = "axe"
-        out = [P(hy=3.8, lean=-14, ff=(5, 0), bf=(-5, 0), nh=(-5.5, 2), sw=272, weapon=W, two=4.5, str=0.94, expr="focus", ease="in"),
-               P(hx=-1.4, hy=4.4, lean=-19, ff=(5, 0), bf=(-5.6, 0), nh=(-6.2, 0), sw=255, weapon=W, two=4.5, str=0.93, expr="angry", wind=-0.15, stop=True, ease="snap")]
-        out += [_spin(p, W, hy=-3.2 - 1.4 * math.sin(i * 1.3), two=4.5, ff=(2.4, -2.6), bf=(-2.4, -1.6), lean=7.0 + 2 * math.sin(i * 1.3)) for i, p in enumerate(ph)]
-        out += [P(hx=1.4, hy=3.8, lean=16, ff=(7, 0), bf=(-6, 0), nh=(7.2, 5.6), sw=118, weapon=W, two=4.5, str=0.95, expr="angry", wind=-0.3),
-                P(hx=0.8, hy=3.0, lean=10, ff=(6.4, 0), bf=(-5, 0), nh=(5.6, 6.2), sw=140, weapon=W, two=4.5, expr="focus", ease="out"),
-                _rest(hy=0.8, sw=163, nh=(3.4, 6.4), weapon=W, two=4.5)]
-        return out[:n]
-    if anim == "sword.sp2":         # Meteor Dive
-        return [
-            P(hy=4.8, lean=-6, ff=(5, 0), bf=(-5, 0), nh=(3, 8), fh=(-2, 7), sw=172, str=0.9, expr="focus", ease="snap"),
-            P(hx=1, hy=-6.4, lean=-6, ff=(3, -6.8), bf=(-3, -5.2), nh=(3, -8.8), fh=(-2, -7.2), sw=355, str=1.14, expr="angry"),
-            P(hx=2, hy=-12.6, lean=-2, ff=(3, -9.4), bf=(-2, -8.4), nh=(2.5, -10.4), fh=(-1.5, -10.4), sw=2, str=1.06, expr="angry", wind=0.05, ease="snap"),
-            P(hx=5, hy=-9.4, lean=118, head=-12, ff=(-5, -17.5), bf=(-9, -14.5), nh=(6.5, 3.5), fh=(4.5, 1), sw=150, str=1.1, expr="angry", wind=-0.45),
-            P(hx=5.6, hy=5.6, lean=44, ff=(10.4, 0), bf=(-3.4, 0), nh=(8, 8), fh=(3, 6.5), sw=179, str=0.9, expr="angry", plant=True),
-            P(hx=4, hy=5.0, lean=30, ff=(9, 0), bf=(-3, 0), nh=(7.5, 8), fh=(2, 7), sw=176, str=0.94, expr="focus", plant=True, ease="out"),
-            _rest(hx=1, hy=1.0, lean=4),
-        ][:n]
-    if anim == "spear.sp1":         # Gale Thrusts: rapid alternating jabs, then a big finishing lunge
-        W = dict(weapon="spear", two=6.0)
-        T = lambda hx, lean, nh, sw, ff, bf, **k: P(hx=hx, hy=2.6, lean=lean, ff=ff, bf=bf, nh=nh, sw=sw, expr="angry", wind=-0.2, **W, **k)
-        out = [P(hx=-2.4, hy=2.8, lean=-9, ff=(6, 0), bf=(-6.6, 0), nh=(-3.4, 4), sw=86, str=0.95, expr="focus", ease="in", **W)]
-        out += [T(5.0, 19, (9.4, 3.5), 90, (12.6, 0), (-7, 0), str=1.06),
-                T(1.4, 6, (3.0, 3.9), 96, (8.6, -1.2), (-8.8, 0), str=0.96),
-                T(5.2, 20, (9.4, 1.2), 78, (13.2, 0), (-6, 0), str=1.06),
-                T(1.4, 6, (3.2, 5.8), 104, (8.4, -1.2), (-9.4, 0), str=0.96),
-                T(5.4, 21, (9.6, 3.0), 86, (13.6, 0), (-6.5, 0), str=1.07),
-                T(1.8, 8, (3.6, 2.0), 80, (9, -1.0), (-9, 0), str=0.97)]
-        out += [P(hx=6.4, hy=3.0, lean=26, ff=(14.4, 0), bf=(-6.4, 0), nh=(9.6, 3.2), sw=88, str=1.08, expr="angry", wind=-0.35, **W),
-                P(hx=3.5, hy=2.4, lean=12, ff=(10, 0), bf=(-5, 0), nh=(6, 4.5), sw=66, str=1.0, expr="focus", ease="out", **W),
-                _rest(sw=36, nh=(3.4, 6.0), **W)]
-        return out[:n]
-    if anim == "spear.sp2":         # Javelin Toss (empty-handed from the release frame on)
-        return [
-            P(hx=-2, hy=2.4, lean=-12, ff=(6, 0), bf=(-5, 0), nh=(-3.5, 1.5), fh=(5.5, 1.5), sw=84, weapon="spear", str=0.96, expr="focus", ease="in"),
-            P(hx=-3.8, hy=2.9, lean=-21, head=-7, ff=(6, 0), bf=(-7.4, 0), nh=(-6.8, -0.5), fh=(6.6, 1.0), sw=74, weapon="spear", str=0.94, expr="angry", stop=True, ease="in"),
-            P(hx=0.8, hy=2.0, lean=2, ff=(8.4, -2), bf=(-6.4, 0), nh=(2.6, -2.5), fh=(5.5, 2.5), sw=70, weapon="spear", expr="angry", wind=-0.25, str=1.05, ease="snap"),
-            P(hx=3.8, hy=2.6, lean=26, ff=(11.4, 0), bf=(-6.4, 0), nh=(9.0, -3.0), fh=(-3, 4.5), sw=80, weapon=None, str=1.07, expr="shout", wind=-0.35),
-            P(hx=3.8, hy=2.9, lean=21, ff=(11.2, 0), bf=(-6.2, 0), nh=(7.8, 1.5), fh=(-3, 5), sw=100, weapon=None, expr="focus", ease="out"),
-            P(hx=1.0, hy=1.2, lean=6, ff=(7, 0), bf=(-4, 0), nh=(4, 5.5), fh=(-2.4, 6), sw=130, weapon=None),
-        ][:n]
-    if anim == "axe.sp1":           # Quake Cleave: huge overhead wind-up, slam into the ground
-        W = dict(weapon="axe", two=4.5)
-        return [
-            P(hx=-2, hy=3.6, lean=-14, ff=(6, 0), bf=(-6.5, 0), nh=(-3.5, 0.5), sw=318, str=0.94, expr="focus", ease="in", **W),
-            P(hx=-2.8, hy=-1.4, lean=-22, head=-9, ff=(6, 0), bf=(-7.4, 0), nh=(-1.5, -10), sw=358, str=1.12, expr="angry", wind=0.1, stop=True, ease="snap", **W),
-            P(hx=1.0, hy=2.0, lean=7, ff=(8.4, -2.4), bf=(-6.4, 0), nh=(5, -4), sw=50, str=1.06, expr="angry", wind=-0.3, ease="snap", **W),
-            P(hx=5.2, hy=4.6, lean=40, ff=(13.4, 0), bf=(-5, 0), nh=(10, 8), sw=132, str=0.92, expr="shout", plant=True, **W),
-            P(hx=4.6, hy=5.0, lean=35, ff=(13.4, 0), bf=(-5, 0), nh=(9.8, 8.6), sw=138, str=0.9, expr="angry", plant=True, ease="out", **W),
-            _rest(hx=2.0, hy=2.4, lean=14, ff=(8, 0), bf=(-4, 0), nh=(6, 7), sw=152, expr="focus", **W),
-        ][:n]
-    if anim == "cast":              # Ice Lance: gather, push forward
-        return [
-            P(hy=1.4, lean=-5, nh=(2, 6.5), fh=(2.5, 4.5), sw=175, str=0.98, expr="focus", ease="in"),
-            P(hx=-1.8, hy=1.9, lean=-11, head=-5, ff=(5, 0), bf=(-5.4, 0), nh=(1.5, 7), fh=(-1.4, 1), sw=185, str=0.96, expr="focus", stop=True, ease="in"),
-            P(hx=0.6, hy=1.2, lean=4, ff=(6.2, 0), bf=(-5.2, 0), nh=(-1.5, 3.5), fh=(6.5, 0.5), sw=335, str=1.03, expr="angry", ease="snap"),
-            P(hx=2.4, hy=1.0, lean=13, ff=(8.4, 0), bf=(-5.4, 0), nh=(-2.0, 2.5), fh=(10.8, -3.6), sw=330, str=1.06, expr="shout", wind=0.15),
-            P(hx=1.8, hy=1.0, lean=9, ff=(7.2, 0), bf=(-4.6, 0), nh=(-2.0, 3.5), fh=(10.0, -2.8), sw=332, expr="focus", ease="out"),
-            _rest(),
-        ][:n]
-    if anim == "cast.ring":         # Ring of Fire: crouch, arms sweep out and up
-        return [
-            P(hy=3.4, lean=6, ff=(5, 0), bf=(-5, 0), nh=(1.5, 8.5), fh=(0, 8.5), sw=178, str=0.93, expr="focus", ease="in"),
-            P(hy=5.4, lean=11, head=3, ff=(6.4, 0), bf=(-6.4, 0), nh=(1, 9.2), fh=(0.5, 9.2), sw=180, str=0.9, expr="focus", stop=True, ease="snap"),
-            P(hy=1.4, lean=0, ff=(5.6, 0), bf=(-5.6, 0), nh=(5, 5.5), fh=(-5, 5.5), sw=172, str=1.04, expr="angry"),
-            P(hy=-2.0, lean=-6, head=-9, ff=(5.6, -0.6), bf=(-5.6, -0.6), nh=(8.8, 2.4), fh=(-8.4, 2.6), sw=138, str=1.1, expr="shout", wind=0.35),
-            P(hy=-0.6, lean=-3, head=-5, ff=(5.5, 0), bf=(-5.5, 0), nh=(8.4, 3.8), fh=(-7.6, 4.0), sw=142, expr="angry", wind=0.2, ease="out"),
-            _rest(),
-        ][:n]
-    if anim == "cast.sky":          # Comet: both... one arm hauls up to the sky
-        return [
-            P(hy=1.6, lean=-3, nh=(2.5, 6.5), fh=(-1.5, 2), sw=175, str=0.98, expr="focus", ease="in"),
-            P(hy=0.6, lean=-7, head=-11, ff=(4.5, 0), bf=(-4.5, 0), nh=(2, 7), fh=(-3.5, -5), sw=180, str=1.02, expr="focus"),
-            P(hy=-1.0, lean=-9, head=-17, ff=(4.5, 0), bf=(-4.5, 0), nh=(2, 7), fh=(-4.0, -9.0), sw=182, str=1.08, expr="angry", stop=True, ease="snap"),
-            P(hy=-2.8, lean=-11, head=-21, ff=(4.0, -0.5), bf=(-4.0, -0.5), nh=(2, 7), fh=(-4.5, -9.4), sw=184, str=1.1, expr="shout", wind=0.3),
-            P(hy=-1.6, lean=-8, head=-16, ff=(4.0, 0), bf=(-4.0, 0), nh=(2, 7), fh=(-4.2, -8.6), sw=184, str=1.04, expr="focus", ease="out"),
-            _rest(),
-        ][:n]
-    if anim == "hurt":              # instant impact, overshoot, recover
-        return [
-            P(hx=-3.4, hy=1.8, lean=-24, head=-17, ff=(5, -1), bf=(-5.4, 0), nh=(-2, 2), fh=(-4, 1), sw=216, str=0.94, expr="hurt", wind=0.3, ease="snap"),
-            P(hx=-4.6, hy=2.8, lean=-30, head=-20, ff=(5, -0.5), bf=(-6.4, 0), nh=(-3, 4), fh=(-5, 3), sw=226, str=0.92, expr="hurt", wind=0.2, ease="out"),
-            P(hx=-1.4, hy=1.8, lean=-11, head=-6, ff=(4.5, 0), bf=(-4.5, 0), nh=(1, 6.5), fh=(-3.5, 6), sw=195, expr="hurt"),
-        ][:n]
-    if anim == "death":
-        return [
-            P(hx=-3.2, hy=1.8, lean=-27, head=-17, ff=(5, -1), bf=(-4, 0), nh=(-2, 2), fh=(-4, 1), sw=215, str=0.95, expr="hurt", ease="snap"),
-            P(hx=-1.0, hy=3.6, lean=-53, head=-10, ff=(8, -1), bf=(0, 0), nh=(-4, 3), fh=(-5, 2), sw=225, expr="hurt", ease="in"),
-            P(hx=3.0, hy=6.2, lean=-77, head=-4, ff=(14, -3), bf=(9, -1.5), nh=(-1, 4), fh=(-3, 4), sw=240, expr="dead", weapon=None, ease="out"),
-            P(hx=8.0, hy=6.8, lean=-92, head=2, ff=(20, -3.5), bf=(16, -2), nh=(2, 4.5), fh=(0.5, 6.5), sw=250, expr="dead", weapon=None, ease="out"),
-            P(hx=8.0, hy=6.5, lean=-93, head=3, ff=(21, -3), bf=(17, -1.5), nh=(2.2, 4.8), fh=(0.5, 6.8), sw=252, expr="dead", weapon=None),
-            P(hx=8.0, hy=6.5, lean=-94, head=3, ff=(21, -3), bf=(17, -1.5), nh=(2.4, 5), fh=(0.5, 7.0), sw=255, expr="dead", weapon=None),
-        ][:n]
-    if anim == "victory":
-        return [
-            P(hy=4.4, lean=5, ff=(5, 0), bf=(-5, 0), nh=(3, 7.5), fh=(-2.5, 7.5), sw=170, str=0.9, expr="happy", ease="snap"),
-            P(hy=-6.8, lean=-4, head=-6, ff=(3, -6.2), bf=(-3.5, -4.8), nh=(3.5, -8.2), fh=(-4, -3), sw=12, str=1.12, expr="happy", wind=0.1),
-            P(hy=-9.0, lean=-6, head=-9, ff=(3.5, -7.2), bf=(-3, -6.2), nh=(3, -9.8), fh=(-5, -6), sw=18, str=1.06, expr="shout", wind=0.2, stop=True, ease="snap"),
-            P(hy=4.4, lean=6, ff=(5.5, 0), bf=(-5.5, 0), nh=(3.5, 1.5), fh=(-3, 5), sw=30, str=0.9, expr="happy", ease="out"),
-            P(hy=1.0, lean=-2, head=-4, ff=(4.5, 0), bf=(-4, 0), nh=(3.5, -3), fh=(-2.2, 4.5), sw=14, expr="happy"),
-            P(hy=0.8, lean=-3, head=-5, ff=(4.5, 0), bf=(-4, 0), nh=(3.5, -3.5), fh=(-2.2, 4.5), sw=12, expr="happy"),
-        ][:n]
-    raise KeyError(anim)
-
-
-# ----------------------------------------------------------------- skeleton
-
-
 def _rot(v, deg):
     a = math.radians(deg)
     return (v[0] * math.cos(a) - v[1] * math.sin(a), v[0] * math.sin(a) + v[1] * math.cos(a))
 
 
-def skeleton(p, _depth=0):
+def _add(a, b, k=1.0):
+    return (a[0] + b[0] * k, a[1] + b[1] * k)
+
+
+def _dir(deg):
+    """Angle convention: 0 = up, 90 = forward (right), 180 = down."""
+    r = math.radians(deg)
+    return (math.sin(r), -math.cos(r))
+
+
+def _dist(a, b):
+    return math.hypot(a[0] - b[0], a[1] - b[1])
+
+
+# ------------------------------------------------------------------- IK with a pole
+
+def ik_pole(root, target, l1, l2, pole, min_d=3.2, max_frac=0.985):
+    """2-bone IK. Of the two mirror solutions choose the joint closer to the pole direction (so knees stay
+    forward and elbows down/back). Returns (joint, end); segment lengths are exact."""
+    dx, dy = target[0] - root[0], target[1] - root[1]
+    raw = math.hypot(dx, dy)
+    d = max(min(raw, (l1 + l2) * max_frac), max(abs(l1 - l2) + 0.3, min_d))
+    if raw < 1e-6:
+        ux, uy = 0.0, 1.0
+    else:
+        ux, uy = dx / raw, dy / raw
+    end = (root[0] + ux * d, root[1] + uy * d)
+    a = (l1 * l1 - l2 * l2 + d * d) / (2 * d)
+    h = math.sqrt(max(l1 * l1 - a * a, 0.0))
+    mid = (root[0] + ux * a, root[1] + uy * a)
+    cands = [(mid[0] + (-uy) * h * s, mid[1] + ux * h * s) for s in (1.0, -1.0)]
+    best = max(cands, key=lambda j: (j[0] - mid[0]) * pole[0] + (j[1] - mid[1]) * pole[1])
+    return best, end
+
+
+# ------------------------------------------------------------------- weapons
+
+def weapon_pts(kind, g0, d):
+    """Key points of a weapon held with the grip at g0 and its axis along d (unit)."""
+    n = (-d[1], d[0])
+
+    def at(u, v=0.0):
+        return (g0[0] + d[0] * u + n[0] * v, g0[1] + d[1] * u + n[1] * v)
+    if kind == "sword":
+        return {"at": at, "tip": at(19.8), "back": 4.0, "front": 19.8}
+    if kind == "spear":
+        return {"at": at, "tip": at(28.5), "back": 8.0, "front": 28.5}
+    return {"at": at, "tip": at(27.0, 6.0), "back": 6.0, "front": 28.5}
+
+
+# ------------------------------------------------------------------- skeleton
+
+BOX = (3.0, 77.0, 3.0, G[1] - 0.4)      # keep the weapon tip inside the cell and above the floor
+
+
+def clamp_dir(kind, hand, sw):
+    """Rotate the weapon axis (nearest angle) so its tip / head / butt stay inside the cell and above the floor."""
+    L = {"sword": 19.8, "spear": 28.5, "axe": 28.5}[kind]
+    back = {"sword": 4.0, "spear": 8.0, "axe": 6.0}[kind]
+    m = 6.5 if kind == "axe" else 0.0
+    mf = 2.5 if kind == "axe" else 0.0         # the axe head may rest on the floor
+
+    def ok(a):
+        d = _dir(a)
+        tip = (hand[0] + d[0] * L, hand[1] + d[1] * L)
+        butt = (hand[0] - d[0] * back, hand[1] - d[1] * back)
+        for q, mm in ((tip, m), (butt, 0.0)):
+            if q[0] < BOX[0] + mm or q[0] > BOX[1] - mm or q[1] < BOX[2] + mm or q[1] > BOX[3] - (mf if q is tip else 0.0):
+                return False
+        return True
+    if ok(sw):
+        return sw
+    for k in range(1, 91):
+        for sgn in (1, -1):
+            a = sw + sgn * k * 2.0
+            if ok(a):
+                return a
+    return sw
+
+
+def skeleton(p):
     lean = p["lean"]
     lr = math.radians(lean)
-    hip = (G[0] + p["hx"], G[1] - HIP_H + p["hy"])
-    td = (math.sin(lr), -math.cos(lr))
+    ub = lean + p["bend"]
+    ur = math.radians(ub)
+    hip = [G[0] + p["hx"], G[1] - HIP_H + p["hy"]]
     perp = (math.cos(lr), math.sin(lr))
-    sh = (hip[0] + td[0] * TORSO * p["str"], hip[1] + td[1] * TORSO * p["str"])
-    nsh = (sh[0] + perp[0] * 1.5, sh[1] + perp[1] * 1.5)
-    fsh = (sh[0] - perp[0] * 2.6, sh[1] - perp[1] * 2.6)
-    hr = math.radians(lean + p["head"])
-    head = (sh[0] + math.sin(hr) * HEAD_OFF + perp[0] * 0.9, sh[1] - math.cos(hr) * HEAD_OFF + perp[1] * 0.9)
-    if _depth < 8 and (head[0] > 50.0 or head[0] < 11.0):      # keep the big head inside the cell
-        q = dict(p)
-        q["hx"] = p["hx"] - (head[0] - 49.0) if head[0] > 50.0 else p["hx"] + (12.0 - head[0])
-        return skeleton(q, _depth + 1)
-    sk = {"hip": hip, "sh": sh, "nsh": nsh, "fsh": fsh, "head": head, "lean": lean, "td": td}
-    for tag, hp, foot in (("n", (hip[0] + 1.2, hip[1]), p["ff"]), ("f", (hip[0] - 1.4, hip[1]), p["bf"])):
-        ankle = (G[0] + foot[0], G[1] + min(foot[1], 0.0) - ANKLE_H)
-        knee, ankle = ik2(hp, ankle, THIGH, SHIN, -1)
-        sk["hip" + tag], sk["knee" + tag], sk["ankle" + tag] = hp, knee, ankle
-    sa = math.radians(p["sw"])
-    sk["sdir"] = (math.sin(sa), -math.cos(sa))
-    off = _rot(p["nh"], lean)
-    elbow, hand = ik2(nsh, (nsh[0] + off[0], nsh[1] + off[1]), UARM, FARM, 1)
-    sk["elbown"], sk["handn"] = elbow, hand
-    if p.get("two") is not None and p.get("weapon"):
-        tgt = (hand[0] + sk["sdir"][0] * p["two"] * p["wscale"], hand[1] + sk["sdir"][1] * p["two"] * p["wscale"])
-    else:
-        o2 = _rot(p["fh"], lean)
-        tgt = (fsh[0] + o2[0], fsh[1] + o2[1])
-    elbow, hand = ik2(fsh, tgt, UARM, FARM, 1)
-    sk["elbowf"], sk["handf"] = elbow, hand
-    w = p.get("weapon")
-    L = WEAPON_LEN.get(w, 0.0) * p["wscale"]
-    sk["tip"] = (sk["handn"][0] + sk["sdir"][0] * L, sk["handn"][1] + sk["sdir"][1] * L)
-    if _depth < 8:           # keep every extremity inside the cell (shift the whole body, never the pose shape)
-        right = max(sk["handn"][0] + 3.2, sk["handf"][0] + 3.2, sk["anklen"][0] + 5.0, sk["ankled"][0] + 5.0 if "ankled" in sk else 0, sk["anklef"][0] + 5.0, head[0] + 13.0,
-                    sk["tip"][0] + (1.5 if w else 0.0))
-        left = min(sk["handn"][0] - 3.2, sk["handf"][0] - 3.2, sk["anklen"][0] - 4.0, sk["anklef"][0] - 4.0, head[0] - 13.0,
-                   sk["tip"][0] - (1.5 if w else 0.0))
-        if right > 59.4:
-            q = dict(p)
-            q["hx"] = p["hx"] - (right - 59.4)
-            return skeleton(q, _depth + 1)
-        if left < 2.8:
-            q = dict(p)
-            q["hx"] = p["hx"] + (2.8 - left)
-            return skeleton(q, _depth + 1)
-    if w and _depth < 8:
-        # keep the weapon inside the cell and (unless planted) above the ground
-        tx, ty = sk["tip"]
-        if w == "axe":      # the head hangs sideways off the haft: measure its lowest corner
-            d = sk["sdir"]
-            ty = max(ty, sk["handn"][1] + (d[1] * 9.8 + d[0] * 8.2) * p["wscale"])
-        limit = 59.6 if p.get("plant") else 58.4
-        q = dict(p)
-        changed = False
-        if ty > limit and (sk["sdir"][1] > 0 or w == "axe"):
-            a = p["sw"]
-            for _ in range(60):          # swing the blade towards horizontal until it clears the floor
-                a += -3.0 if math.sin(math.radians(a)) > 0 else 3.0
-                dy = -math.cos(math.radians(a))
-                dx = math.sin(math.radians(a))
-                low = sk["handn"][1] + dy * L
-                if w == "axe":
-                    low = max(low, sk["handn"][1] + (dy * 9.8 + dx * 8.2) * p["wscale"])
-                if low <= limit or abs(math.sin(math.radians(a))) > 0.995:
+    nhip_off, fhip_off = 0.9, -1.4
+    ank_n = (G[0] + p["ff"][0], G[1] + p["ff"][1] - ANKLE_H)
+    ank_f = (G[0] + p["bf"][0], G[1] + p["bf"][1] - ANKLE_H)
+    if p["autohip"]:
+        for ank, off, fy in ((ank_n, nhip_off, p["ff"][1]), (ank_f, fhip_off, p["bf"][1])):
+            if fy >= -0.6:       # grounded foot: the hip must be low enough for the leg to reach it
+                hj_x = hip[0] + perp[0] * off
+                dxx = ank[0] - hj_x
+                dy_max = math.sqrt(max((REACH_LEG * 0.975) ** 2 - dxx * dxx, 1.0))
+                hip[1] = max(hip[1], ank[1] - dy_max - perp[1] * off)
+    hip = (hip[0], hip[1])
+    td = (math.sin(lr), -math.cos(lr))
+    waist = (hip[0] + td[0] * TORSO_LO, hip[1] + td[1] * TORSO_LO)
+    tu = (math.sin(ur), -math.cos(ur))
+    perpu = (math.cos(ur), math.sin(ur))
+    S = (waist[0] + tu[0] * TORSO_HI, waist[1] + tu[1] * TORSO_HI)
+    hr = math.radians(ub + p["head"])
+    hd = (math.sin(hr), -math.cos(hr))
+    C = (S[0] + hd[0] * HEAD_OFF + perpu[0] * 0.5, S[1] + hd[1] * HEAD_OFF + perpu[1] * 0.5)
+    sk = {"hip": hip, "waist": waist, "S": S, "C": C, "lean": lean, "ub": ub, "perp": perp, "perpu": perpu,
+          "tu": tu, "td": td, "p": p}
+    knee_pole = tuple(p["kpole"])
+    for tag, off, ank in (("n", nhip_off, ank_n), ("f", fhip_off, ank_f)):
+        hj = (hip[0] + perp[0] * off, hip[1] + perp[1] * off)
+        knee, an = ik_pole(hj, ank, THIGH, SHIN, knee_pole, min_d=6.0, max_frac=1.0)
+        sk["hj" + tag], sk["knee" + tag], sk["ank" + tag] = hj, knee, an
+    sk["fa_n"], sk["fa_f"] = p["fa"], p["ba"]
+    tw = p["twist"]
+    nsh = (S[0] + perpu[0] * (-1.3 + 2.3 * tw), S[1] + perpu[1] * (-1.3 + 2.3 * tw) + 0.3)
+    fsh = (S[0] + perpu[0] * (2.2 - 1.6 * tw), S[1] + perpu[1] * (2.2 - 1.6 * tw) + 0.5)
+    sk["nsh"], sk["fsh"] = nsh, fsh
+    arm_pole = (-0.4, 1.0)
+    kind = p["weapon"] if p["carry"] == "hand" else None
+    d = _dir(p["sw"])
+    sk["kind"] = kind
+    tgt = _add(nsh, _rot(p["nh"], ub))
+    two = bool(kind and p["grip"] == "two")
+    best = None
+    for _it in range(16):
+        elbow, hand = ik_pole(nsh, tgt, UARM, FARM, arm_pole)
+        if kind:
+            d = _dir(clamp_dir(kind, hand, p["sw"]))
+        W = weapon_pts(p["weapon"], hand, d) if kind else None
+        if not two:
+            break
+        # far hand: the nearest grip on the shaft that the far arm can reach; if none exists the near hand
+        # is pulled toward the far shoulder (both hands stay on the shaft, the pose just reaches less far)
+        s0 = p["span"]
+        lo, hi = 3.0, min(W["front"] - 7.0, 24.0)
+        best = None
+        for k in range(0, 80):
+            for sgn in ((1,) if k == 0 else (1, -1)):
+                s = s0 + k * 0.5 * sgn
+                if s < lo or s > hi:
+                    continue
+                gp = (hand[0] + d[0] * s, hand[1] + d[1] * s)
+                if 3.2 <= _dist(fsh, gp) <= REACH_ARM * 0.985:
+                    best = gp
                     break
-            q["sw"] = a % 360.0
-            changed = True
-        elif ty > limit + 0.5:       # blade already horizontal but the hand itself is too low: lift the body
-            q["hy"] = p["hy"] - (ty - limit) * 0.9
-            changed = True
-        if tx > 59.0:
-            q["hx"] = p["hx"] - (tx - 59.0) * 0.8
-            q["nh"] = (p["nh"][0] - (tx - 59.0) * 0.4, p["nh"][1])
-            changed = True
-        elif tx < 3.0:
-            q["hx"] = p["hx"] + (3.0 - tx) * 0.7
-            changed = True
-        if ty < 2.0:
-            q["hy"] = p["hy"] + (2.0 - ty)
-            changed = True
-        if changed:
-            return skeleton(q, _depth + 1)
+            if best:
+                break
+        if best:
+            break
+        tgt = (tgt[0] + (fsh[0] - tgt[0]) * 0.12, tgt[1] + (fsh[1] - tgt[1]) * 0.12)
+    sk["elbown"], sk["handn"] = elbow, hand
+    sk["d"] = d
+    sk["W"] = W
+    if two:
+        if best is None:
+            best = (hand[0] + d[0] * p["span"], hand[1] + d[1] * p["span"])
+        felbow, fhand = ik_pole(fsh, best, UARM, FARM, arm_pole)
+    else:
+        tgtf = _add(fsh, _rot(p["fh"], ub))
+        felbow, fhand = ik_pole(fsh, tgtf, UARM, FARM, arm_pole)
+    sk["elbowf"], sk["handf"] = felbow, fhand
     return sk
 
 
+def validate(sk):
+    """Geometry metrics for QA: segment-length constancy and far-hand-to-shaft distance."""
+    seg = 0.0
+    for tag in ("n", "f"):
+        a, b, c = sk["hj" + tag], sk["knee" + tag], sk["ank" + tag]
+        seg = max(seg, abs(_dist(a, b) - THIGH) / THIGH, abs(_dist(b, c) - SHIN) / SHIN)
+    for tag, shk in (("n", "nsh"), ("f", "fsh")):
+        a, b, c = sk[shk], sk["elbow" + tag], sk["hand" + tag]
+        seg = max(seg, abs(_dist(a, b) - UARM) / UARM, abs(_dist(b, c) - FARM) / FARM)
+    grip = 0.0
+    p = sk["p"]
+    if sk["kind"] and p["grip"] == "two":
+        d, h = sk["d"], sk["handn"]
+        v = (sk["handf"][0] - h[0], sk["handf"][1] - h[1])
+        grip = abs(v[0] * d[1] - v[1] * d[0])
+        s = v[0] * d[0] + v[1] * d[1]
+        if s < 2.0 or s > sk["W"]["front"]:
+            grip = max(grip, 99.0)
+    return {"seg": seg, "grip": grip}
+
+
+# ------------------------------------------------------------------- spring chains
+
 def chain_specs(sk, p):
-    lr = sk["lean"]
+    ub = sk["ub"]
+    S, C = sk["S"], sk["C"]
+    pu = sk["perpu"]
 
     def rests(anchor, offs):
-        return [(anchor[0] + _rot(o, lr)[0], min(anchor[1] + _rot(o, lr)[1], 57.0)) for o in offs]
-    a1 = (sk["sh"][0] + _rot((-4.8, -0.8), lr)[0], sk["sh"][1] + _rot((-4.8, -0.8), lr)[1])
-    a2 = (a1[0] + 0.4, a1[1] + 1.6)
-    hr = math.radians(lr + p["head"])
-    ap = (sk["head"][0] + _rot((-8.4, -3.2), lr + p["head"])[0], sk["head"][1] + _rot((-8.4, -3.2), lr + p["head"])[1])
-    a1, a2, ap = ((a[0], min(a[1], 55.0)) for a in (a1, a2, ap))
+        return [(anchor[0] + _rot(o, ub)[0], anchor[1] + _rot(o, ub)[1]) for o in offs]
+    a1 = (S[0] - pu[0] * 2.4, S[1] - pu[1] * 2.4 - 0.2)
+    a2 = (a1[0] + 0.4, a1[1] + 1.3)
+    ap = (C[0] - 4.8, C[1] - 1.0)
+    ah1 = (C[0] - 3.0, C[1] - 4.8)
+    ah2 = (C[0] - 0.6, C[1] - 5.4)
     return {
-        "tail1": (a1, rests(a1, [(-3, 1.6), (-6, 3.8), (-8.6, 6.8), (-10.6, 10.2), (-11.6, 13.6)])),
-        "tail2": (a2, rests(a2, [(-2.6, 3.2), (-4.6, 6.8), (-5.6, 10.2), (-5.6, 13.4)])),
-        "pony": (ap, rests(ap, [(-2.6, 2.6), (-4.2, 6.2), (-4.6, 10.0)])),
+        "tail1": (a1, rests(a1, [(-3.2, 1.0), (-6.4, 2.4), (-9.6, 4.4), (-12.6, 6.8), (-15.0, 9.6)])),
+        "tail2": (a2, rests(a2, [(-2.4, 2.8), (-4.6, 5.8), (-6.0, 9.0), (-6.6, 12.2)])),
+        "pony": (ap, rests(ap, [(-2.6, 1.8), (-4.6, 4.6), (-5.4, 8.0), (-5.4, 11.2)])),
+        "lock1": (ah1, rests(ah1, [(-2.6, -0.6), (-5.0, 0.4)])),
+        "lock2": (ah2, rests(ah2, [(-2.2, -1.4), (-4.4, -0.6)])),
     }
 
 
@@ -538,27 +277,30 @@ def simulate(sks, poses_, loop):
     specs = [chain_specs(s, p) for s, p in zip(sks, poses_)]
     wind = [p["wind"] for p in poses_]
     out = [dict() for _ in sks]
-    cfg = {"tail1": (0.10, 0.80, 0.16), "tail2": (0.12, 0.78, 0.22), "pony": (0.15, 0.78, 0.20)}
+    cfg = {"tail1": (0.09, 0.80, 0.16), "tail2": (0.11, 0.78, 0.22), "pony": (0.14, 0.78, 0.20),
+           "lock1": (0.20, 0.74, 0.10), "lock2": (0.20, 0.74, 0.10)}
     for name, (st, dm, gr) in cfg.items():
         anchors = [sp[name][0] for sp in specs]
         rests = [sp[name][1] for sp in specs]
-        res = simulate_chain(anchors, rests, stiffness=st, damping=dm, gravity=gr, wind=wind, loop=loop)
+        res = simulate_chain(anchors, rests, stiffness=st, damping=dm, gravity=gr, wind=wind, loop=loop,
+                             floor=G[1] - 1.5)
         for i, pts in enumerate(res):
             out[i][name] = pts
     return out
 
 
-# --------------------------------------------------------------------- face
+# ------------------------------------------------------------------- face
 
-EYE = (36, 28, 62)
-IRIS = (74, 156, 178)
-BROW = (120, 52, 30)
-MOUTH = (118, 52, 62)
-TONGUE = (226, 110, 120)
-BLUSH = (240, 140, 130)
+EYE = (28, 18, 48)
+IRIS = (58, 150, 184)
+BROW = (92, 38, 36)
+MOUTH = (120, 52, 58)
+OPEN = (150, 40, 52)
 
 
-def paint_face(buf, cv, head, expr):
+def paint_face(buf, cv, head, expr, show=True):
+    if not show:
+        return
     rgba, mat, filled = buf["rgba"], buf["mat"], buf["filled"]
     sm = cv.matidx["skin"]
     hx, hy = int(round(head[0])), int(round(head[1]))
@@ -568,237 +310,206 @@ def paint_face(buf, cv, head, expr):
         if 0 <= x < rgba.shape[1] and 0 <= y < rgba.shape[0] and filled[y, x] and mat[y, x] == sm:
             rgba[y, x, :3] = col
 
-    def eye(c0, r0, kind):
-        if kind == "open":           # 2x3 with a highlight and an iris glint
-            put(c0, r0, (255, 255, 255)); put(c0 + 1, r0, EYE)
-            put(c0, r0 + 1, EYE); put(c0 + 1, r0 + 1, EYE)
-            put(c0, r0 + 2, IRIS); put(c0 + 1, r0 + 2, EYE)
-        elif kind == "narrow":       # 2x2 (focused / angry)
-            put(c0, r0 + 1, (255, 255, 255)); put(c0 + 1, r0 + 1, EYE)
-            put(c0, r0 + 2, EYE); put(c0 + 1, r0 + 2, EYE)
-        elif kind == "blink":
-            put(c0, r0 + 2, EYE); put(c0 + 1, r0 + 2, EYE)
-        elif kind == "happy":        # ^ ^
-            put(c0, r0 + 2, EYE); put(c0 + 1, r0 + 1, EYE); put(c0 + 2, r0 + 2, EYE)
-        elif kind == "hurt_l":       # >
-            put(c0, r0, EYE); put(c0 + 1, r0 + 1, EYE); put(c0, r0 + 2, EYE)
-        elif kind == "hurt_r":       # <
-            put(c0 + 1, r0, EYE); put(c0, r0 + 1, EYE); put(c0 + 1, r0 + 2, EYE)
-        elif kind == "dead":         # x
-            put(c0, r0, EYE); put(c0 + 1, r0 + 1, EYE); put(c0, r0 + 2, EYE); put(c0 + 1, r0, EYE); put(c0, r0 + 1, EYE); put(c0 + 1, r0 + 2, EYE)
-
-    back, front = 0, 5      # column of the far and near eye
-    r0 = 1
-    kinds = {
-        "neutral": ("open", "open"), "blink": ("blink", "blink"), "focus": ("narrow", "narrow"),
-        "angry": ("narrow", "narrow"), "shout": ("narrow", "narrow"), "happy": ("happy", "happy"),
-        "hurt": ("hurt_l", "hurt_r"), "dead": ("dead", "dead"),
-    }[expr]
-    eye(back, r0, kinds[0])
-    eye(front, r0, kinds[1])
-    if expr in ("angry", "shout"):       # slanted brows
-        put(back - 1, r0, BROW); put(back, r0, BROW); put(back + 1, r0 + 1 - 1, BROW)
-        put(front + 2, r0, BROW); put(front + 1, r0, BROW); put(front, r0 + 1 - 1, BROW)
-        put(back + 1, r0 - 0, BROW)
-    elif expr == "focus":
-        put(back, r0, BROW); put(back + 1, r0, BROW); put(front, r0, BROW); put(front + 1, r0, BROW)
-    if expr in ("neutral", "blink", "happy", "focus"):
-        put(back - 2, r0 + 3, BLUSH); put(back - 1, r0 + 3, BLUSH)
-        put(front + 2, r0 + 3, BLUSH); put(front + 3, r0 + 3, BLUSH)
-    # mouth
-    if expr == "shout":
-        for dx, dy, c in ((2, 5, MOUTH), (3, 5, MOUTH), (4, 5, MOUTH), (2, 6, MOUTH), (3, 6, TONGUE), (4, 6, MOUTH), (3, 7, MOUTH)):
-            put(dx, dy, c)
+    n, f = 0, 3                      # eye columns: the far eye sits next to the profile edge
+    if expr == "neutral":
+        for c in (n, f):
+            put(c, 0, IRIS); put(c, 1, EYE)
+        put(n, -1, BROW); put(f, -1, BROW)
+        put(1, 3, MOUTH)
+    elif expr == "blink":
+        put(n, 1, EYE); put(f, 1, EYE)
+        put(1, 3, MOUTH)
+    elif expr in ("focus", "angry"):
+        for c in (n, f):
+            put(c, 0, EYE if expr == "angry" else IRIS); put(c, 1, EYE)
+        put(n, -1, BROW); put(n + 1, -1, BROW); put(f - 1, -1 if expr == "focus" else 0, BROW); put(f, -1, BROW)
+        if expr == "angry":
+            put(1, 3, OPEN); put(2, 3, OPEN)
+        else:
+            put(1, 3, MOUTH)
     elif expr == "happy":
-        for dx, dy in ((1, 5), (2, 6), (3, 6), (4, 6), (5, 5)):
-            put(dx, dy, MOUTH)
-        put(3, 7, TONGUE)
+        put(n, 0, EYE); put(f, 0, EYE)
+        put(1, 3, OPEN); put(2, 3, OPEN); put(1, 4, OPEN)
     elif expr == "hurt":
-        for dx, dy in ((2, 6), (3, 6), (4, 6), (3, 7)):
-            put(dx, dy, MOUTH)
+        put(n, 0, EYE); put(n + 1, 1, EYE); put(f - 1, 1, EYE); put(f, 0, EYE)
+        put(n, -1, BROW); put(f, -1, BROW)
+        put(1, 3, OPEN); put(2, 3, OPEN); put(1, 4, OPEN)
     elif expr == "dead":
-        put(3, 6, MOUTH); put(4, 6, MOUTH)
-    elif expr in ("angry", "focus"):
-        put(2, 6, MOUTH); put(3, 6, MOUTH); put(4, 6, MOUTH)
-    else:
-        put(3, 6, MOUTH); put(4, 6, MOUTH); put(5, 5, MOUTH)
+        put(n, 0, EYE); put(n, 1, EYE); put(f, 0, EYE); put(f, 1, EYE)
+        put(1, 3, MOUTH)
 
 
-# --------------------------------------------------------------------- draw
+# ------------------------------------------------------------------- drawing helpers
+
+SEAMS = {("armN", "torso"), ("armF", "torso"), ("legN", "legF"), ("legN", "pelvis"), ("legF", "pelvis"),
+         ("bootN", "legN"), ("bootF", "legF"), ("pauldron", "torso"), ("pauldron", "armN"), ("head", "neck")}
 
 
-def _w(hand, d, a, n=0.0):
-    nx, ny = -d[1], d[0]
-    return (hand[0] + d[0] * a + nx * n, hand[1] + d[1] * a + ny * n)
+def _cap(cv, mat, a, b, ra, rb, group, k=4, **kw):
+    return cv.paint(mat, Mask(CELL).capsule(a, b, ra, rb), group=group, k=k, **kw)
 
 
-def _draw_weapon(cv, kind, hand, d, ws):
+def _poly(cv, mat, pts, group, k=3, **kw):
+    return cv.paint(mat, Mask(CELL).poly(pts), group=group, k=k, **kw)
+
+
+def _foot_poly(ank, ang):
+    """Boot silhouette in world coords. ang > 0 raises the toe."""
+    loc = [(-2.5, -2.0), (0.9, -2.5), (3.8, -1.2), (6.0, 0.7), (6.0, 2.0), (-2.7, 2.0), (-3.1, 0.2)]
+    out = []
+    for x, y in loc:
+        rx, ry = _rot((x, y), -ang)
+        out.append((ank[0] + rx, ank[1] + ry))
+    return out
+
+
+def _arm(cv, sk, tag):
+    sh = sk["nsh" if tag == "n" else "fsh"]
+    el = sk["elbow" + tag]
+    wr = sk["hand" + tag]
+    far = tag == "f"
+    sleeve = "tunic_f" if far else "tunic"
+    skin = "skin_f" if far else "skin"
+    grp = "armN" if tag == "n" else "armF"
+    _cap(cv, sleeve, sh, el, 2.5, 2.0, grp, k=3)
+    _cap(cv, skin, el, wr, 1.9, 1.5, grp, k=3)
+    mid = (el[0] + (wr[0] - el[0]) * 0.42, el[1] + (wr[1] - el[1]) * 0.42)
+    _cap(cv, "leather" if far else "bronze", mid, (wr[0] + (el[0] - wr[0]) * 0.12, wr[1] + (el[1] - wr[1]) * 0.12),
+         2.0, 1.75, grp, k=3, deep=False)
+
+
+def _hand(cv, sk, tag):
+    wr = sk["hand" + tag]
+    cv.paint("skin_f" if tag == "f" else "skin", Mask(CELL).circle(wr, 1.9), group="hand" + tag, k=3, deep=False)
+
+
+def _draw_weapon(cv, sk):
+    kind, W = sk["kind"], sk["W"]
+    at = W["at"]
     if kind == "sword":
-        g0 = _w(hand, d, -2.8 * ws)
-        cv.paint("leather", Mask(CELL).capsule(g0, _w(hand, d, 0.8 * ws), 1.0, 1.0), group="sword", k=2, deep=False)
-        cv.paint("bronze", Mask(CELL).circle(_w(hand, d, -3.2 * ws), 1.3), group="sword", k=2, deep=False)
-        cv.paint("bronze", Mask(CELL).capsule(_w(hand, d, 1.0 * ws, -3.0), _w(hand, d, 1.0 * ws, 3.0), 0.9, 0.9), group="guard", k=2, deep=False, hi=False)
-        b0, tip = _w(hand, d, 1.8 * ws), _w(hand, d, WEAPON_LEN["sword"] * ws)
-        cv.paint("metal", Mask(CELL).poly([_w(hand, d, 1.8 * ws, 1.9), _w(hand, d, 12.5 * ws, 1.8), tip, _w(hand, d, 12.5 * ws, -1.8),
-                                           _w(hand, d, 1.8 * ws, -1.9)]), group="blade", k=2, deep=False)
+        _cap(cv, "leather", at(-3.0), at(2.0), 1.0, 1.0, "wpn", k=2, deep=False)
+        cv.paint("bronze", Mask(CELL).circle(at(-4.0), 1.5), group="wpn", k=2, deep=False)
+        _cap(cv, "bronze", at(2.4, -3.4), at(2.4, 3.4), 1.0, 1.0, "wpn", k=2, deep=False)
+        _poly(cv, "steel", [at(3.0, 1.7), at(16.0, 1.3), at(19.8, 0.0), at(16.0, -1.3), at(3.0, -1.7)], "wpn", k=2, deep=False)
     elif kind == "spear":
-        s0, s1 = _w(hand, d, -5.5 * ws), _w(hand, d, 12.0 * ws)
-        cv.paint("wood", Mask(CELL).capsule(s0, s1, 0.85, 0.85), group="sword", k=2, deep=False)
-        cv.paint("bronze", Mask(CELL).circle(_w(hand, d, -5.6 * ws), 1.1), group="sword", k=2, deep=False, hi=False)
-        cv.paint("sash", Mask(CELL).ribbon([_w(hand, d, 11.2 * ws), _w(hand, d, 9.6 * ws, 2.4), _w(hand, d, 6.4 * ws, 3.4)], 1.0, 0.5), group="tassel", k=2, deep=False, hi=False)
-        tip = _w(hand, d, WEAPON_LEN["spear"] * ws)
-        cv.paint("metal", Mask(CELL).poly([_w(hand, d, 12.0 * ws, 1.3), _w(hand, d, 14.4 * ws, 2.3), tip, _w(hand, d, 14.4 * ws, -2.3),
-                                           _w(hand, d, 12.0 * ws, -1.3)]), group="blade", k=2, deep=False)
-    elif kind == "axe":
-        h0, h1 = _w(hand, d, -3.5 * ws), _w(hand, d, 10.6 * ws)
-        cv.paint("wood", Mask(CELL).capsule(h0, h1, 1.0, 1.0), group="sword", k=2, deep=False)
-        cv.paint("bronze", Mask(CELL).circle(_w(hand, d, -4.0 * ws), 1.3), group="sword", k=2, deep=False, hi=False)
-        cv.paint("metal", Mask(CELL).poly([_w(hand, d, 7.2 * ws, 0.6), _w(hand, d, 6.0 * ws, 4.4), _w(hand, d, 7.2 * ws, 7.2),
-                                           _w(hand, d, 9.8 * ws, 8.2), _w(hand, d, 11.6 * ws, 6.2), _w(hand, d, 10.8 * ws, 1.0)]), group="blade", k=2, deep=False)
-        cv.paint("bronze", Mask(CELL).poly([_w(hand, d, 7.8 * ws, -0.6), _w(hand, d, 7.2 * ws, -3.0), _w(hand, d, 9.6 * ws, -2.0), _w(hand, d, 10.4 * ws, -0.4)]),
-                 group="guard", k=2, deep=False, hi=False)
+        _cap(cv, "wood", at(-8.0), at(21.0), 1.0, 1.0, "wpn", k=2, deep=False)
+        cv.paint("bronze", Mask(CELL).circle(at(-8.0), 1.4), group="wpn", k=2, deep=False)
+        _cap(cv, "bronze", at(19.0), at(22.0), 1.4, 1.4, "wpn", k=2, deep=False)
+        _poly(cv, "steel", [at(21.4, 0.0), at(22.4, 2.0), at(24.8, 2.5), at(28.8, 0.0), at(24.8, -2.5), at(22.4, -2.0)], "wpn", k=2, deep=False)
+        _poly(cv, "scarf", [at(18.0, 0.0), at(19.0, 2.2), at(16.0, 4.0), at(16.5, 1.6)], "wpn", k=2, deep=False, hi=False)
+    else:   # axe
+        _cap(cv, "wood", at(-6.0), at(26.0), 1.1, 1.0, "wpn", k=2, deep=False)
+        cv.paint("bronze", Mask(CELL).circle(at(-6.0), 1.5), group="wpn", k=2, deep=False)
+        _poly(cv, "steel", [at(21.0, 0.9), at(22.4, 5.0), at(25.8, 7.6), at(29.0, 6.6), at(28.0, 3.0), at(28.6, 0.9), at(27.4, -1.9), at(22.0, -2.0)], "wpn", k=2, deep=False)
+        _poly(cv, "steel", [at(25.0, -1.6), at(29.4, -1.2), at(30.6, -2.6), at(26.0, -3.4)], "wpn", k=2, deep=False)
+        _cap(cv, "bronze", at(20.4, -1.8), at(20.4, 1.6), 0.9, 0.9, "wpn", k=2, deep=False)
 
 
-def _arm(cv, sk, tag, front):
-    sh = sk["nsh"] if tag == "n" else sk["fsh"]
-    elbow, hand = sk["elbow" + tag], sk["hand" + tag]
-    g = "armF" if tag == "n" else "armB"
-    cv.paint("tunic", Mask(CELL).capsule(sh, elbow, 2.1, 1.8), group=g, k=3)
-    cv.paint("skin", Mask(CELL).capsule(elbow, hand, 1.4, 1.2).circle(hand, 1.7), group=g + "2", k=3)
-    cv.paint("leather", Mask(CELL).capsule((elbow[0] * 0.5 + hand[0] * 0.5, elbow[1] * 0.5 + hand[1] * 0.5),
-                                          (elbow[0] * 0.15 + hand[0] * 0.85, elbow[1] * 0.15 + hand[1] * 0.85), 1.65, 1.55),
-             group=g + "2", k=2, deep=False, hi=False)
-    if tag == "n":
-        cv.paint("bronze", Mask(CELL).circle((sh[0] + 0.2, sh[1] - 0.2), 2.8), group="pauldron", k=3, cast=3)
+def _draw_sheath(cv, sk):
+    """Sword on the back (casting / death): scabbard diagonal behind the torso."""
+    hip, waist, S, pu, tu = sk["hip"], sk["waist"], sk["S"], sk["perpu"], sk["tu"]
+    a = (waist[0] + pu[0] * 2.4, waist[1] + pu[1] * 2.4 + 2.0)           # scabbard tip rests near the far hip
+    b = (S[0] - pu[0] * 3.4 + tu[0] * 3.0, S[1] - pu[1] * 3.4 + tu[1] * 3.0)
+    _cap(cv, "leather", a, b, 1.1, 1.1, "sheath", k=2, deep=False)
+    _cap(cv, "bronze", b, (b[0] + (b[0] - a[0]) * 0.20, b[1] + (b[1] - a[1]) * 0.20), 0.9, 0.9, "sheath", k=2, deep=False)
+    g = (b[0] + (b[0] - a[0]) * 0.07, b[1] + (b[1] - a[1]) * 0.07)
+    _cap(cv, "bronze", (g[0] - 1.8, g[1] + 0.8), (g[0] + 1.8, g[1] - 0.8), 0.8, 0.8, "sheath", k=2, deep=False)
 
 
-SUPPORTS_TRAIL = True
-SMEAR_COL = (232, 242, 255)
+# ------------------------------------------------------------------- draw
 
-
-BAYER4 = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]], dtype=np.float32) / 16.0
-
-
-def _smear(buf, sk, trail, p):
-    """Dithered, outline-less motion smear: the outer part of the blade swept over the last two ticks.
-    Dense next to the current blade, thinning out behind it."""
-    w = p.get("weapon")
-    if not w or not trail:
-        return
-    ws = p["wscale"]
-    L = WEAPON_LEN[w] * ws
-    inner = 0.55 if w != "axe" else 0.5
-
-    def state(s_):
-        d, h = s_["sdir"], s_["handn"]
-        return h, math.degrees(math.atan2(d[0], -d[1]))
-
-    cur, prev1, prev2 = state(sk), state(trail[0]), state(trail[1])
-    tip_c = (cur[0][0] + sk["sdir"][0] * L, cur[0][1] + sk["sdir"][1] * L)
-    tip_p = (prev1[0][0] + trail[0]["sdir"][0] * L, prev1[0][1] + trail[0]["sdir"][1] * L)
-    sp = math.hypot(tip_c[0] - tip_p[0], tip_c[1] - tip_p[1])
-    if sp < 6.5:
-        return
-
-    def mix(a, b, f):
-        d = (b[1] - a[1] + 180.0) % 360.0 - 180.0
-        return ((a[0][0] + (b[0][0] - a[0][0]) * f, a[0][1] + (b[0][1] - a[0][1]) * f), a[1] + d * f)
-
-    K = 10
-    age = np.full((CELL, CELL), 9.0, np.float32)
-    for k in range(K + 1):
-        f = k / K                                   # 0 = now, 1 = two ticks ago
-        st_ = mix(cur, prev1, f * 2.0) if f <= 0.5 else mix(prev1, prev2, (f - 0.5) * 2.0)
-        (hx, hy), ang = st_
-        d = (math.sin(math.radians(ang)), -math.cos(math.radians(ang)))
-        a0 = (hx + d[0] * L * inner, hy + d[1] * L * inner)
-        a1 = (hx + d[0] * L, hy + d[1] * L)
-        m = Mask(CELL).capsule(a0, a1, 0.6, 0.9).array().reshape(CELL, SSF, CELL, SSF).mean(axis=(1, 3)) > 0.3
-        age = np.where(m & (age > f), f, age)
-    show = (age < 9.0) & ~buf["filled"]
-    show &= BAYER4[np.arange(CELL)[:, None] % 4, np.arange(CELL)[None, :] % 4] < (1.0 - age) * 0.95
-    show[0, :] = show[-1, :] = False
-    show[:, 0] = show[:, -1] = False
-    show[55:, :] = False                      # never smear along the floor
-    rgba = buf["rgba"]
-    rgba[show, :3] = SMEAR_COL
-    rgba[show, 3] = 255
-
-
-def draw(sk, chains, p, trail=None):
+def draw(sk, chains, p):
     cv = Canvas(CELL, MATERIALS)
-    xs, ys = cv.xs, cv.ys
-    lr = math.radians(sk["lean"])
-    head = sk["head"]
-    hx, hy = head
-    spin = p.get("spin")
-    fh = p["fh"]
-    late_far = spin is not None or (p.get("two") is not None and p.get("weapon")) or fh[0] > 3.5 or fh[1] < 1.0
-
-    cv.paint("scarf", Mask(CELL).ribbon(chains["tail1"], 3.0, 1.2), group="tail1", k=3, deep=False, hi=False)
-    cv.paint("scarf", Mask(CELL).ribbon(chains["tail2"], 2.5, 1.0), group="tail2", k=3, deep=False, hi=False)
-    cv.paint("hair", Mask(CELL).ribbon(chains["pony"], 3.0, 1.1), group="pony", k=3, deep=False)
-    cv.paint("hair", Mask(CELL).circle((hx - 2.0, hy - 1.6), 9.7), group="hair", k=5)
-    if not late_far and spin is None:
-        _arm(cv, sk, "f", False)
+    xs = cv.xs
+    hip, waist, S, C = sk["hip"], sk["waist"], sk["S"], sk["C"]
+    pu, pl = sk["perpu"], sk["perp"]
+    cv.paint("scarf", Mask(CELL).ribbon(chains["tail1"], 3.3, 1.2), group="tail1", k=3, deep=False, hi=False)
+    cv.paint("scarf", Mask(CELL).ribbon(chains["tail2"], 2.8, 1.1), group="tail2", k=3, deep=False, hi=False)
+    cv.paint("hair", Mask(CELL).ribbon(chains["pony"], 2.9, 0.9), group="pony", k=3, deep=False)
+    far_front = bool(p["far_front"]) or bool(sk["kind"] and p["grip"] == "two")
+    if not far_front:
+        _arm(cv, sk, "f")
+        _hand(cv, sk, "f")
     # far leg
-    cv.paint("pants", Mask(CELL).capsule(sk["hipf"], sk["kneef"], 3.0, 2.6), group="legB", k=4)
-    kf, af = sk["kneef"], sk["anklef"]
-    cv.paint("boots", Mask(CELL).capsule(kf, af, 2.7, 2.2).capsule((af[0] - 0.9, af[1] + 0.9), (af[0] + 3.4, af[1] + 1.2), 2.2, 1.9), group="bootB", k=3)
-    cv.paint("leather", Mask(CELL).capsule((kf[0] * 0.78 + af[0] * 0.22, kf[1] * 0.78 + af[1] * 0.22), (kf[0] * 0.62 + af[0] * 0.38, kf[1] * 0.62 + af[1] * 0.38), 2.9, 2.9),
-             group="bootB", k=2, deep=False, hi=False)
-    # torso: tunic, hem, belt, strap
-    hip, sh = sk["hip"], sk["sh"]
-    torso = Mask(CELL).capsule(hip, sh, 4.7, 4.2)
+    kf, af = sk["kneef"], sk["ankf"]
+    _cap(cv, "pants_f", sk["hjf"], kf, 3.6, 2.7, "legF", k=4)
+    _cap(cv, "pants_f", kf, af, 2.7, 2.1, "legF", k=3)
+    _cap(cv, "boots", (kf[0] + (af[0] - kf[0]) * 0.45, kf[1] + (af[1] - kf[1]) * 0.45), af, 2.7, 2.3, "bootF", k=3)
+    cv.paint("boots", Mask(CELL).poly(_foot_poly(af, sk["fa_f"])), group="bootF", k=3)
+    # pelvis + torso
+    _cap(cv, "pants", (hip[0] - pl[0] * 0.5, hip[1] + 1.2), (hip[0] + pl[0] * 0.8, hip[1] - 0.2), 4.0, 3.9, "pelvis", k=4)
+    torso = Mask(CELL).capsule(waist, hip, 3.3, 3.8).capsule(S, waist, 4.5, 3.3)
+    torso.poly([(S[0] - pu[0] * 4.2, S[1] - pu[1] * 4.2), (S[0] + pu[0] * 4.8, S[1] + pu[1] * 4.8),
+                (waist[0] + pu[0] * 3.4, waist[1] + pu[1] * 3.4), (waist[0] - pu[0] * 3.6, waist[1] - pu[1] * 3.6)])
     cv.paint("tunic", torso, group="torso", k=5)
-    ta = torso.array()
-    hem = Mask(CELL).ellipse((hip[0] + math.sin(lr) * 0.8, hip[1] - math.cos(lr) * 0.8 + 1.0), 5.8, 2.6, sk["lean"])
-    cv.paint("tunic", hem.array(), group="hem", k=3, deep=True)
-    belt = Mask(CELL).ellipse((hip[0] + math.sin(lr) * 2.6, hip[1] - math.cos(lr) * 2.6), 5.3, 1.7, sk["lean"])
-    cv.paint("sash", belt.array() & (ta | hem.array()), group="belt", k=3, deep=False)
-    bk = (hip[0] + math.sin(lr) * 2.6 + math.cos(lr) * 1.8, hip[1] - math.cos(lr) * 2.6 + math.sin(lr) * 1.8)
-    cv.paint("bronze", Mask(CELL).circle(bk, 1.15), group="belt", k=2, deep=False)
-    strap = Mask(CELL).capsule((sh[0] - 3.4, sh[1] - 0.4), (hip[0] + 3.2, hip[1] - 0.6), 0.9, 0.9)
-    cv.paint("leather", strap.array() & ta, group="strap", k=2, deep=False, hi=False)
+    hem = [(waist[0] - pl[0] * 3.8, waist[1] - pl[1] * 3.8), (waist[0] + pl[0] * 3.9, waist[1] + pl[1] * 3.9),
+           (hip[0] + pl[0] * 5.6, hip[1] + 5.6), (hip[0] - pl[0] * 5.2, hip[1] + 5.4)]
+    cv.paint("tunic", Mask(CELL).poly(hem), group="torso", k=4, deep=True)
+    bl = (waist[0] - pl[0] * 3.6, waist[1] - pl[1] * 3.6)
+    br = (waist[0] + pl[0] * 3.9, waist[1] + pl[1] * 3.9)
+    _cap(cv, "leather", bl, br, 1.2, 1.2, "belt", k=2, deep=False)
+    cv.paint("bronze", Mask(CELL).circle((waist[0] + pl[0] * 1.4, waist[1] + pl[1] * 1.4), 1.2), group="belt", k=2, deep=False)
+    _cap(cv, "leather", (S[0] - pu[0] * 2.8, S[1] - pu[1] * 2.8 + 0.6), (waist[0] + pu[0] * 2.8, waist[1] + pu[1] * 2.8 + 1.0), 0.9, 0.9, "strap", k=2, deep=False)
     # near leg
-    cv.paint("pants", Mask(CELL).capsule(sk["hipn"], sk["kneen"], 3.1, 2.7), group="legF", k=4)
-    kn, an = sk["kneen"], sk["anklen"]
-    cv.paint("boots", Mask(CELL).capsule(kn, an, 2.8, 2.3).capsule((an[0] - 0.9, an[1] + 0.9), (an[0] + 3.6, an[1] + 1.2), 2.3, 2.0), group="bootF", k=3)
-    cv.paint("leather", Mask(CELL).capsule((kn[0] * 0.78 + an[0] * 0.22, kn[1] * 0.78 + an[1] * 0.22), (kn[0] * 0.62 + an[0] * 0.38, kn[1] * 0.62 + an[1] * 0.38), 3.0, 3.0),
-             group="bootF", k=2, deep=False, hi=False)
+    kn, an = sk["kneen"], sk["ankn"]
+    _cap(cv, "pants", sk["hjn"], kn, 3.8, 2.9, "legN", k=4)
+    _cap(cv, "pants", kn, an, 2.9, 2.2, "legN", k=3)
+    cv.paint("bronze", Mask(CELL).ellipse((kn[0] + 0.6, kn[1] - 0.2), 2.0, 1.7, 0), group="legN", k=2, deep=False)
+    _cap(cv, "boots", (kn[0] + (an[0] - kn[0]) * 0.42, kn[1] + (an[1] - kn[1]) * 0.42), an, 2.9, 2.4, "bootN", k=3)
+    cv.paint("boots", Mask(CELL).poly(_foot_poly(an, sk["fa_n"])), group="bootN", k=3)
+    if far_front:
+        _arm(cv, sk, "f")
+    if p["carry"] == "back":
+        _draw_sheath(cv, sk)
     # head
-    face = Mask(CELL).circle(head, 9.0)
-    cv.paint("skin", face, group="head", k=5, cast=5)
-    fa = face.array()
-    bang = Mask(CELL).poly([(hx - 11, hy - 12), (hx + 11, hy - 12), (hx + 10.4, hy - 3.2), (hx + 8.2, hy - 0.6), (hx + 6.9, hy - 3.4),
-                            (hx + 4.4, hy - 0.4), (hx + 2.6, hy - 3.8), (hx - 0.6, hy - 1.0), (hx - 2.8, hy - 3.6), (hx - 6.0, hy - 2.2), (hx - 11, hy - 1.6)])
-    hair_front = (bang.array() & Mask(CELL).circle((hx - 0.3, hy - 0.8), 9.7).array()) | (fa & (xs < hx - 4.6))
-    cv.paint("hair", hair_front, group="hair", k=4)
-    cv.paint("hair", Mask(CELL).ellipse((hx - 0.8, hy - 8.3), 8.6, 3.2, -4), group="hair", k=4)
-    cv.paint("hair", Mask(CELL).capsule((hx + 1.2, hy - 9.4), (hx + 4.6, hy - 14.2), 1.5, 0.35), group="hair", k=2, deep=False)
-    cv.paint("hair", Mask(CELL).capsule((hx - 2.0, hy - 9.6), (hx - 3.4, hy - 13.4), 1.3, 0.35), group="hair", k=2, deep=False)
-    # scarf collar + knot
-    collar = Mask(CELL).ellipse((sh[0] + 0.6, sh[1] - 0.1), 6.4, 2.9, sk["lean"])
+    skull = Mask(CELL).ellipse(C, 5.0, 5.4, 0)
+    skull.poly([(C[0] - 3.0, C[1] + 1.0), (C[0] + 4.9, C[1] + 0.2), (C[0] + 4.6, C[1] + 3.5), (C[0] + 2.4, C[1] + 5.7),
+                (C[0] - 1.6, C[1] + 5.2), (C[0] - 3.2, C[1] + 3.0)])
+    nk = (S[0] + sk["tu"][0] * 1.0, S[1] + sk["tu"][1] * 1.0)
+    cv.paint("skin_f", Mask(CELL).capsule(nk, (C[0] + 0.5, C[1] + 3.6), 1.9, 2.2), group="neck", k=3)
+    cv.paint("hair", Mask(CELL).ellipse((C[0] - 1.8, C[1] - 1.0), 5.6, 5.8, 0), group="hair", k=4)
+    for key in ("lock1", "lock2"):
+        cv.paint("hair", Mask(CELL).ribbon(chains[key], 2.2, 0.8), group="hair", k=3, deep=False)
+    cv.paint("skin", skull, group="head", k=4, cast=3)
+    sk_arr = skull.array()
+    cv.paint("hair", sk_arr & (xs < C[0] - 2.0), group="hair", k=4)
+    fringe = [(C[0] - 5.8, C[1] - 4.8), (C[0] + 1.2, C[1] - 6.8), (C[0] + 5.2, C[1] - 4.2), (C[0] + 5.6, C[1] - 1.0),
+              (C[0] + 3.6, C[1] - 2.6), (C[0] + 3.2, C[1] - 0.6), (C[0] + 1.6, C[1] - 2.4), (C[0] + 0.2, C[1] - 1.2), (C[0] - 1.2, C[1] - 2.8)]
+    cv.paint("hair", Mask(CELL).poly(fringe).array() & (Mask(CELL).ellipse(C, 5.9, 6.2, 0).array() | sk_arr), group="hair", k=3)
+    collar = Mask(CELL).ellipse((S[0] + pu[0] * 0.2, S[1] + pu[1] * 0.2 - 0.2), 5.2, 2.0, sk["ub"])
     cv.paint("scarf", collar, group="scarf", k=3, cast=3)
-    cv.paint("scarf", Mask(CELL).circle(_w(sh, (math.cos(lr), math.sin(lr)), -4.4, 0.2), 2.2), group="scarf", k=2, deep=False)
-    if late_far:
-        _arm(cv, sk, "f", False)
-    if spin is not None:
-        c = math.cos(math.radians(spin))
-        cv.warp_x(sk["hip"][0], max(abs(c), 0.42), mirror=c < 0)
-        if c < 0:      # we are looking at the back of the head
-            cv.paint("hair", Mask(CELL).circle((hx, hy - 0.2), 9.3), group="hair", k=5)
-    _arm(cv, sk, "n", True)
-    if p.get("weapon"):
-        _draw_weapon(cv, p["weapon"], sk["handn"], sk["sdir"], p["wscale"])
-    buf = cv.finish(NO_SEAM)
-    if spin is None or math.cos(math.radians(spin)) > 0.35:
-        paint_face(buf, cv, head, p["expr"])
-    _smear(buf, sk, trail, p)
+    # near arm + pauldron + weapon + hands
+    _arm(cv, sk, "n")
+    nsh = sk["nsh"]
+    cv.paint("bronze", Mask(CELL).ellipse((nsh[0] + 0.2, nsh[1] + 0.1), 3.9, 2.9, sk["ub"] * 0.7), group="pauldron", k=3)
+    if sk["kind"]:
+        _draw_weapon(cv, sk)
+        _hand(cv, sk, "n")
+        if p["grip"] == "two":
+            _hand(cv, sk, "f")
+    else:
+        _hand(cv, sk, "n")
+    cs = math.cos(math.radians(p["spin"]))
+    if abs(cs) < 0.995:
+        cv.warp_x(hip[0], max(abs(cs), 0.22), mirror=cs < 0)
+    groups = set(cv.group.values())
+    no_seam = {(a, b) for a in groups for b in groups} - SEAMS
+    buf = cv.finish(no_seam)
+    paint_face(buf, cv, C, p["expr"], show=cs > 0.55)
     return cv, buf
 
 
 def anchors(sk):
-    d = sk["sdir"]
-    return {"hand": sk["handn"], "hand_dir": d, "off_hand": sk["handf"], "head": sk["head"],
-            "chest": sk["sh"], "weapon_tip": sk["tip"]}
+    if sk["kind"]:
+        tip = sk["W"]["tip"]
+    else:
+        tip = sk["handn"]
+    return {"hand": sk["handn"], "hand_dir": sk["d"], "off_hand": sk["handf"], "head": sk["C"],
+            "chest": sk["S"], "weapon_tip": tip}
+
+
+from chars import ren_anim as _anim  # noqa: E402  (animation authoring lives next door)
+
+PROCEDURAL = _anim.PROCEDURAL
+REF_SPEED = _anim.REF_SPEED
+poses = _anim.poses

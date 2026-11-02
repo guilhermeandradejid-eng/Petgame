@@ -29,9 +29,10 @@ from engine import normal_map  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 COLS = 16
+MAX_TEX = 4096
 META = {"ease", "stop"}
 ANGLE_KEYS = {"sw", "spin"}
-STEP_AT_END = {"weapon", "two", "spin", "plant", "mouth"}     # discrete values switch exactly on the next key
+STEP_AT_END = {"weapon", "carry", "grip", "far_front", "autohip", "plant", "mouth"}     # discrete values switch exactly on the next key
 HOLD_PULSE = 3                                                # springs-only frames inside held frames
 
 
@@ -233,6 +234,7 @@ def render_anim(mod, name, ca):
     sks = [mod.skeleton(p) for p in tick_pose]
     chains = mod.simulate(sks, tick_pose, loop)
     out = []
+    geo = {"seg": 0.0, "grip": 0.0}
     for (l, at) in emit_plan(ca, getattr(mod, "HOLD_PULSE", HOLD_PULSE)):
         t = starts[l] + at
         p, sk = tick_pose[t], sks[t]
@@ -241,6 +243,10 @@ def render_anim(mod, name, ca):
             cv, buf = mod.draw(sk, chains[t], p, trail=trail)
         else:
             cv, buf = mod.draw(sk, chains[t], p)
+        if hasattr(mod, "validate"):
+            m = mod.validate(sk)
+            geo["seg"] = max(geo["seg"], m["seg"])
+            geo["grip"] = max(geo["grip"], m["grip"])
         rgba = buf["rgba"]
         nrm = quantize_normals(normal_map(buf))
         missing = (rgba[..., 3] > 0) & (nrm[..., 3] == 0)      # smear pixels: flat normal
@@ -248,7 +254,7 @@ def render_anim(mod, name, ca):
         anc = mod.anchors(sk)
         out.append({"logical": l, "at": at, "rgba": rgba, "nrm": nrm,
                     "anchors": {a: [round(float(v), 2) for v in val] for a, val in anc.items()}})
-    return out
+    return out, geo
 
 
 def load_char(char):
@@ -263,12 +269,16 @@ def build(char):
     cell = contract["cell"]
     cells, normals, seen = [], [], {}
     sheet_anims = {}
+    geometry = {"seg": 0.0, "grip": 0.0}
     stats = {"display": 0, "ticks": 0}
     for name, ca in contract["anims"].items():
         loop = ca.get("loop", False)
         starts, total = tick_table(ca)
         entries = []
-        for fr in render_anim(mod, name, ca):
+        frames_, geo = render_anim(mod, name, ca)
+        geometry["seg"] = max(geometry["seg"], geo["seg"])
+        geometry["grip"] = max(geometry["grip"], geo["grip"])
+        for fr in frames_:
             key = hashlib.md5(fr["rgba"].tobytes()).hexdigest()
             if key in seen:
                 idx = seen[key]
@@ -284,22 +294,27 @@ def build(char):
                              "hold": ca.get("hold", []), "frames": entries}
         if name in getattr(mod, "REF_SPEED", {}):
             sheet_anims[name]["ref_speed_mps"] = mod.REF_SPEED[name]
-    rows = (len(cells) + COLS - 1) // COLS
-    sheet = np.zeros((rows * cell, COLS * cell, 4), np.uint8)
-    nsheet = np.zeros((rows * cell, COLS * cell, 4), np.uint8)
+    cols = COLS
+    while ((len(cells) + cols - 1) // cols) * cell > MAX_TEX and cols * cell + 8 * cell <= MAX_TEX:
+        cols += 8
+    rows = (len(cells) + cols - 1) // cols
+    ground = list(contract.get("ground", [cell // 2, cell - 5]))
+    sheet = np.zeros((rows * cell, cols * cell, 4), np.uint8)
+    nsheet = np.zeros((rows * cell, cols * cell, 4), np.uint8)
     nsheet[..., :3] = (128, 128, 255)
     for i, (f, nf) in enumerate(zip(cells, normals)):
-        y, x = (i // COLS) * cell, (i % COLS) * cell
+        y, x = (i // cols) * cell, (i % cols) * cell
         sheet[y:y + cell, x:x + cell] = f
         nsheet[y:y + cell, x:x + cell] = nf
     out = os.path.join(ROOT, "art", "chars", char)
     os.makedirs(out, exist_ok=True)
     ncol = save_palette_png(sheet, os.path.join(out, "sheet.png"))
     ncoln = save_palette_png(nsheet, os.path.join(out, "normal.png"))
-    json.dump({"id": char, "cell": cell, "cols": COLS, "frames": len(cells), "format": 3, "anims": sheet_anims},
+    json.dump({"id": char, "cell": cell, "ground": ground, "cols": cols, "frames": len(cells), "format": 3,
+               "geometry": {k: round(v, 4) for k, v in geometry.items()}, "anims": sheet_anims},
               open(os.path.join(out, "sheet.json"), "w"))
     json.dump(contract, open(os.path.join(out, "contract.json"), "w"), indent=1)
-    contact_sheet(char, out, sheet_anims, cells, cell)
+    contact_sheet(char, out, sheet_anims, cells, cell, ground=ground)
     sz = os.path.getsize(os.path.join(out, "sheet.png")) / 1024
     szn = os.path.getsize(os.path.join(out, "normal.png")) / 1024
     print(f"{char}: {stats['display']} display frames over {stats['ticks']} ticks "
@@ -307,13 +322,14 @@ def build(char):
           f"sheet.png {sz:.0f} KB ({ncol} colours), normal.png {szn:.0f} KB ({ncoln} colours)")
 
 
-def contact_sheet(char, out, anims, cells, cell, scale=2, per_row=22):
+def contact_sheet(char, out, anims, cells, cell, scale=2, per_row=22, ground=None):
     """One strip per animation (wrapped), every display frame in order; key frames have a lighter backdrop."""
     blocks = []
     for name, a in anims.items():
         frames = a["frames"]
         for r0 in range(0, len(frames), per_row):
             blocks.append((name if r0 == 0 else "", frames[r0:r0 + per_row]))
+    scale = 1 if cell > 64 else scale
     W = per_row * cell * scale + 90
     H = len(blocks) * (cell * scale + 4)
     img = Image.new("RGBA", (W, H), (70, 78, 70, 255))
@@ -325,7 +341,7 @@ def contact_sheet(char, out, anims, cells, cell, scale=2, per_row=22):
             f = Image.fromarray(cells[e["i"]], "RGBA").resize((cell * scale, cell * scale), Image.NEAREST)
             x = 90 + c * cell * scale
             d.rectangle([x, y, x + cell * scale - 1, y + cell * scale - 1], fill=(112, 126, 112, 255) if e["at"] == 0 else (92, 104, 92, 255))
-            d.line([x, y + 59 * scale, x + cell * scale, y + 59 * scale], fill=(60, 66, 60, 255))
+            d.line([x, y + (ground[1] if ground else 59) * scale, x + cell * scale, y + (ground[1] if ground else 59) * scale], fill=(60, 66, 60, 255))
             img.alpha_composite(f, (x, y))
     img.convert("RGB").save(os.path.join(out, "contact.png"))
 

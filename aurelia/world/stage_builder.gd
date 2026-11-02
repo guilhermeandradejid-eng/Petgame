@@ -82,7 +82,7 @@ func _cliffs() -> void:
 		var n := 7
 		for i in n:
 			var t := (float(i) / (n - 1) - 0.5) * 2.0 * (half + 4.0)
-			var h := rng.randf_range(2.2, 6.0)
+			var h := rng.randf_range(2.0, 4.0)
 			var w := rng.randf_range(5.0, 8.5)
 			var d := rng.randf_range(4.0, 6.0)
 			var pos := Vector3.ZERO
@@ -98,6 +98,8 @@ func _cliffs() -> void:
 					size = Vector3(d, h, w)
 			if side == 1:
 				continue      # nothing between the camera and the glade
+			if side >= 2 and t > 2.0:
+				continue      # side outcrops only on the far half, never beside the camera
 			var m := MeshInstance3D.new()
 			var bm := BoxMesh.new()
 			bm.size = size

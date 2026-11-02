@@ -16,8 +16,11 @@ MIN_FRAMES_PER_TICK = 0.45     # display frames per game tick (smoothness floor)
 MIN_ATTACK_FRAMES = 5
 MIN_HELD_TICKS = 6
 ANCHORS = ("hand", "hand_dir", "off_hand", "head", "chest", "weapon_tip")
-BUDGET_KB = {"ren": 1400}      # per png; everything else 600
+BUDGET_KB = {"ren": 1024}      # per png; everything else 600 (ren: both pngs together must stay <= 2 MB)
 DEFAULT_BUDGET_KB = 600
+MAX_TEXTURE = 4096
+MAX_SEG_ERR = 0.05            # arm / leg segment length constancy (fraction)
+MAX_GRIP_ERR = 0.6            # px: far hand distance from the shaft of a two-handed weapon
 
 
 def check(char):
@@ -28,6 +31,18 @@ def check(char):
     img = np.array(Image.open(os.path.join(cdir, "sheet.png")).convert("RGBA"))
     nimg = Image.open(os.path.join(cdir, "normal.png"))
     cell = contract["cell"]
+    if sheet.get("cell") != cell:
+        errs.append(f"sheet cell {sheet.get('cell')} != contract cell {cell}")
+    if "ground" in contract and sheet.get("ground") != contract["ground"]:
+        errs.append(f"sheet ground {sheet.get('ground')} != contract ground {contract['ground']}")
+    if max(img.shape[0], img.shape[1]) > MAX_TEXTURE:
+        errs.append(f"texture {img.shape[1]}x{img.shape[0]} exceeds {MAX_TEXTURE}")
+    geo = sheet.get("geometry")
+    if geo:
+        if geo["seg"] > MAX_SEG_ERR:
+            errs.append(f"segment length varies by {geo['seg'] * 100:.1f}% (> {MAX_SEG_ERR * 100:.0f}%)")
+        if geo["grip"] > MAX_GRIP_ERR:
+            errs.append(f"two-handed grip off the shaft by {geo['grip']:.2f} px (> {MAX_GRIP_ERR})")
     if nimg.size != (img.shape[1], img.shape[0]):
         errs.append("normal sheet size != color sheet size")
     for fn in ("sheet.png", "normal.png"):
@@ -35,6 +50,9 @@ def check(char):
         cap = BUDGET_KB.get(char, DEFAULT_BUDGET_KB)
         if kb > cap:
             errs.append(f"{fn} is {kb:.0f} KB (> {cap} KB budget)")
+    tot = sum(os.path.getsize(os.path.join(cdir, fn)) for fn in ("sheet.png", "normal.png")) / 1024
+    if char == "ren" and tot > 2048:
+        errs.append(f"sheet.png + normal.png = {tot:.0f} KB (> 2048 KB)")
     if set(sheet["anims"]) != set(contract["anims"]):
         errs.append(f"animation set differs from contract: {set(sheet['anims']) ^ set(contract['anims'])}")
     total_ticks = total_frames = 0
@@ -90,7 +108,7 @@ def check(char):
                 errs.append(f"{name}[{f['i']}]: semi-transparent pixels")
             if a[0, :].any() or a[-1, :].any() or a[:, 0].any() or a[:, -1].any():
                 errs.append(f"{name}[{f['i']}]: sprite touches cell border")
-            if name == "idle" and f["logical"] == 0 and f["at"] == 0:
+            if (name == "idle" or name == "sword.idle") and f["logical"] == 0 and f["at"] == 0:
                 ys = np.nonzero(a.any(1))[0]
                 heights.append(int(ys.max() - ys.min() + 1))
     fpt = total_frames / max(total_ticks, 1)
