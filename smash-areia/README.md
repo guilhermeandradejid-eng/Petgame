@@ -190,7 +190,8 @@ smash-areia/
 - **Cel-shading** com retícula de gibi nas sombras, **contraluz dourada** do sol de fim de tarde,
   **névoa de distância** e **contorno preto** em tudo.
 - **Câmera de TV** com movimento suave (mola amortecida) que antecipa para onde a bola vai:
-  perto e baixa no rali, por cima do ombro no saque, entrada cinematográfica, zoom no smash e no
+  baixa e atrás do fundo da quadra no rali (estilo tênis arcade, com o lado adversário
+  "comprimido"), close da comemoração pela lateral, por cima do ombro no saque, entrada cinematográfica, zoom no smash e no
   super e close na comemoração. Pontos decididos por super, gancho, smash depois de rali ou rali
   longo ganham **replay em câmera lenta** pela lateral (toque para pular).
 - **Rede caprichada**: malha com fios suavizados e caimento no meio, que treme quando a bola
@@ -200,6 +201,10 @@ smash-areia/
   palmas) com cores sorteadas, só nas arquibancadas laterais (o fundo fica livre para ver o mar).
   Eles viram o corpo seguindo a bola e fazem a **ola** quando a sua
   dupla pontua. O juiz na cadeira acompanha a bola com a cabeça e levanta o braço no apito.
+- **Areia viva**: pegadas que somem com o tempo, marca do mergulho, onda de areia quando a bola
+  cai, confete nos pontos (chuva maior no game) e vinheta suave de cinema nas bordas.
+- **Controles de toque** compactos e semitransparentes (acendem ao tocar), com o losango de golpes no
+  canto e SUPER, DEFESA e PEIXINHO num arco ao lado.
 - Letreiros **pequenos e rápidos**, só nos lances especiais. Nas batidas comuns entram faíscas e
   uma estrela de impacto 3D da cor do golpe.
 

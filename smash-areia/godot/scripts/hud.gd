@@ -51,6 +51,24 @@ func _ready() -> void:
 	layer = 10
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	theme_main = _make_theme()
+	# vinheta suave de cinema nas bordas
+	var vig := TextureRect.new()
+	var gt := GradientTexture2D.new()
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(1.05, 1.05)
+	var gg := Gradient.new()
+	gg.offsets = PackedFloat32Array([0.0, 0.62, 1.0])
+	gg.colors = PackedColorArray([Color(0.2, 0.08, 0.1, 0.0), Color(0.2, 0.08, 0.1, 0.0), Color(0.18, 0.06, 0.14, 0.32)])
+	gt.gradient = gg
+	gt.width = 256
+	gt.height = 256
+	vig.texture = gt
+	vig.stretch_mode = TextureRect.STRETCH_SCALE
+	vig.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	vig.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vig.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(vig)
 	fx = ComicFX.new()
 	add_child(fx)
 	score_panel = Control.new()

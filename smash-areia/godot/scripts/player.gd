@@ -76,6 +76,7 @@ var zone_ring: MeshInstance3D
 var aura: MeshInstance3D
 var hittable := false
 var footstep_t := 0.0
+var foot_side := 1.0
 var trail_im: ImmediateMesh
 var trail_mi: MeshInstance3D
 var trail_pts: Array = []
@@ -499,6 +500,8 @@ func update(dt: float) -> void:
 				if game:
 					game.sand_burst(global_position + dive_dir * 1.2, 12)
 					game.sfx("sand", -4.0)
+					game.world.sand_ring(global_position + dive_dir * 0.8, 0.9)
+					game.world.footprint(global_position + dive_dir * 0.7, atan2(dive_dir.x, dive_dir.z), 4.5)
 		State.RECOVER:
 			vel = vel.move_toward(Vector3.ZERO, 20.0 * dt)
 			if state_t > 0.42:
@@ -609,12 +612,16 @@ func _update_normal(dt: float) -> void:
 	elif swing_t < 1.0:
 		face_target = net_yaw + _style_yaw(style) * (1.0 - swing_t)
 	facing = lerp_angle(facing, face_target, 1.0 - exp(-12.0 * dt))
-	if spd > 3.0 and on_ground():
+	if spd > 1.2 and on_ground():
 		footstep_t -= dt
 		if footstep_t <= 0.0:
-			footstep_t = 0.22
+			footstep_t = clampf(0.9 / spd, 0.16, 0.4)
+			foot_side = -foot_side
 			if game:
-				game.sand_burst(global_position, 2)
+				if spd > 3.0:
+					game.sand_burst(global_position, 2)
+				var side_off := Vector3.UP.cross(vel.normalized()) * 0.11 * foot_side
+				game.world.footprint(global_position + side_off, atan2(vel.x, vel.z))
 
 
 # ---------------------------------------------------------------- animação
@@ -832,7 +839,8 @@ func _left_hand_ik(dt: float) -> void:
 			target_w = 1.0
 		elif pending_shot >= 0 and (style == "back" or style == "low_back" or style == "block"):
 			target_w = 1.0
-	lh_w = lerpf(lh_w, target_w, 1.0 - exp(-(14.0 if target_w > lh_w else 22.0) * dt))
+	if game == null or not game.is_replay():
+		lh_w = lerpf(lh_w, target_w, 1.0 - exp(-(14.0 if target_w > lh_w else 22.0) * dt))
 	if lh_w < 0.02:
 		return
 	var sk := rig.sk

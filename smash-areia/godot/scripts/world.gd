@@ -48,9 +48,11 @@ func _ready() -> void:
 	_stands()
 	_boards()
 	_land_side()
+	_setup_marks()
 
 
 func _process(dt: float) -> void:
+	_update_marks(dt)
 	net_hit_t += dt
 	if net_mat:
 		net_mat.set_shader_parameter("hit_t", net_hit_t)
@@ -89,6 +91,81 @@ func _process(dt: float) -> void:
 		(g["wl"] as Node3D).rotation.z = flap
 		(g["wr"] as Node3D).rotation.z = -flap
 	_update_referee(dt)
+
+
+# ---------------------------------------------------------------- marcas na areia
+
+var prints_mm: MultiMesh
+var prints_age: PackedFloat32Array
+var prints_next := 0
+const PRINTS := 180
+var rings: Array[Dictionary] = []
+
+
+func _setup_marks() -> void:
+	prints_mm = MultiMesh.new()
+	prints_mm.transform_format = MultiMesh.TRANSFORM_3D
+	prints_mm.use_colors = true
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(0.16, 0.28)
+	prints_mm.mesh = pm
+	prints_mm.instance_count = PRINTS
+	prints_age.resize(PRINTS)
+	for i in PRINTS:
+		prints_age[i] = 99.0
+		prints_mm.set_instance_transform(i, Transform3D(Basis(), Vector3(0, -5, 0)))
+		prints_mm.set_instance_color(i, Color(1, 1, 1, 0))
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = prints_mm
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/footprint.gdshader")
+	m.render_priority = 0
+	mmi.material_override = m
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mmi)
+	for i in 3:
+		var r := Toon.blob(1.0, Color(1, 0.97, 0.88, 0.0), true)
+		r.visible = false
+		add_child(r)
+		rings.append({"node": r, "t": 1.0, "size": 1.0})
+
+
+## Pegada (ou marca de mergulho) na areia
+func footprint(pos: Vector3, yaw: float, size := 1.0) -> void:
+	var i := prints_next
+	prints_next = (prints_next + 1) % PRINTS
+	prints_age[i] = 0.0
+	var b := Basis(Vector3.UP, yaw).scaled(Vector3(size, 1.0, size))
+	prints_mm.set_instance_transform(i, Transform3D(b, Vector3(pos.x, 0.008, pos.z)))
+	prints_mm.set_instance_color(i, Color(1, 1, 1, 1))
+
+
+## Onda de areia quando a bola cai ou alguém mergulha
+func sand_ring(pos: Vector3, size := 1.0) -> void:
+	for d in rings:
+		if float(d["t"]) >= 1.0:
+			var n: MeshInstance3D = d["node"]
+			n.global_position = Vector3(pos.x, 0.03, pos.z)
+			n.visible = true
+			d["t"] = 0.0
+			d["size"] = size
+			return
+
+
+func _update_marks(dt: float) -> void:
+	for i in PRINTS:
+		if prints_age[i] < 8.0:
+			prints_age[i] += dt
+			prints_mm.set_instance_color(i, Color(1, 1, 1, clampf(1.0 - prints_age[i] / 8.0, 0.0, 1.0)))
+	for d in rings:
+		if float(d["t"]) < 1.0:
+			d["t"] = minf(float(d["t"]) + dt / 0.45, 1.0)
+			var t: float = d["t"]
+			var n: MeshInstance3D = d["node"]
+			n.scale = Vector3.ONE * lerpf(0.4, 2.6, sqrt(t)) * float(d["size"])
+			(n.material_override as ShaderMaterial).set_shader_parameter("color", Color(1, 0.97, 0.88, 0.75 * (1.0 - t)))
+			if t >= 1.0:
+				n.visible = false
 
 
 func set_ball(p: Vector3) -> void:

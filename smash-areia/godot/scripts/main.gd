@@ -125,6 +125,7 @@ func _ready() -> void:
 	add_child(chance_star)
 	_setup_audio()
 	_setup_particles()
+	_setup_confetti()
 	hud = Hud.new()
 	add_child(hud)
 	hud.sfx_cb = func(n: String):
@@ -197,6 +198,10 @@ func _setup_views() -> void:
 		views.append({"svc": svc, "sv": sv, "cam": c, "viewer": null, "pos": Vector3(0, 8, 17),
 			"look": Vector3.ZERO, "vel": Vector3.ZERO, "lvel": Vector3.ZERO, "back": 1.0, "cut": true})
 	_layout_views()
+
+
+func is_replay() -> bool:
+	return state == S.REPLAY
 
 
 func split_active() -> bool:
@@ -435,6 +440,52 @@ func _setup_particles() -> void:
 		mi.visible = false
 		add_child(mi)
 		impacts.append({"node": mi, "t": 1.0, "life": 0.18})
+
+
+var confetti_fx: Array[CPUParticles3D] = []
+
+
+func _setup_confetti() -> void:
+	var q := QuadMesh.new()
+	q.size = Vector2(0.14, 0.09)
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/spark.gdshader")
+	m.set_shader_parameter("star", 0.0)
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.25, 0.5, 0.75, 1.0])
+	g.colors = PackedColorArray([Color("2f8cff"), Color("ffd23f"), Color("ff4b3e"), Color("ffffff"), Color("35e0a1")])
+	for i in 2:
+		var c := CPUParticles3D.new()
+		c.mesh = q
+		c.material_override = m
+		c.emitting = false
+		c.one_shot = true
+		c.explosiveness = 0.9
+		c.amount = 90
+		c.lifetime = 2.4
+		c.direction = Vector3.UP
+		c.spread = 38.0
+		c.initial_velocity_min = 6.0
+		c.initial_velocity_max = 11.0
+		c.gravity = Vector3(0, -5.0, 0)
+		c.damping_min = 1.5
+		c.damping_max = 3.0
+		c.angular_velocity_min = -300.0
+		c.angular_velocity_max = 300.0
+		c.scale_amount_min = 0.7
+		c.scale_amount_max = 1.4
+		c.color_initial_ramp = g
+		add_child(c)
+		confetti_fx.append(c)
+
+
+## Chuva de confete (ponto bonito, game e partida)
+func confetti(pos: Vector3, big := false) -> void:
+	var c := confetti_fx[0] if not confetti_fx[0].emitting else confetti_fx[1]
+	c.global_position = pos
+	c.amount = 140 if big else 70
+	c.restart()
+	c.emitting = true
 
 
 func sand_burst(pos: Vector3, n: int) -> void:
@@ -1334,6 +1385,8 @@ func _on_ball_landed(pos: Vector3) -> void:
 		return
 	sand_burst(pos, 14)
 	sfx("sand", 0.0)
+	world.sand_ring(pos, 1.0)
+	world.footprint(pos, 0.0, 1.6)
 	var in_bounds := absf(pos.x) <= GameData.COURT_HALF_W + 0.06 and absf(pos.z) <= GameData.COURT_HALF_L + 0.06
 	var side_team := 0 if pos.z > 0.0 else 1
 	var loser := side_team
@@ -1408,6 +1461,11 @@ func _award_point(team: int, reason: String) -> void:
 		celeb = null
 	points[team] += 1
 	var game_won: bool = points[team] >= 4
+	if not demo or game_won:
+		var side_z := 6.0 if team == 0 else -6.0
+		confetti(Vector3(0, 0.5, side_z), game_won)
+		if game_won:
+			confetti(Vector3(0, 0.5, -side_z * 0.2), true)
 	var title := ""
 	var sub := ""
 	if game_won:
@@ -1448,7 +1506,7 @@ func _record() -> void:
 	var snap := {"b": ball.global_position, "f": ball.flying, "p": []}
 	for p in players:
 		snap["p"].append([p.position, p.facing, p.body.rotation, p.body.scale, p.rig.cur.duplicate(),
-			p.swing_t, p.swing_type])
+			p.swing_t, p.swing_type, p.style, p.pending_shot, p.lh_w])
 	rec.append(snap)
 	if rec.size() > REC_MAX:
 		rec.pop_front()
@@ -1497,6 +1555,10 @@ func _update_replay(dt: float) -> void:
 		pl.rig.apply(pa[4], 1.0)
 		pl.swing_t = pa[5]
 		pl.swing_type = pa[6]
+		pl.style = pa[7]
+		pl.lh_w = pa[9]
+		# a raquete é posicionada por código: precisa acompanhar a mão no replay também
+		pl._update_racket(dt)
 		pl._update_trail()
 		pl.shadow.global_position = Vector3(pl.position.x + 0.12, 0.015, pl.position.z + 0.08)
 	var bp := (a["b"] as Vector3).lerp(b["b"], k)
@@ -1592,12 +1654,10 @@ func _update_view(v: Dictionary, viewer: Player, dt: float, off: Vector3, split:
 				target_look = Vector3(0, 0.8, 1.0)
 		smooth_t = 0.9
 	elif state == S.POINT and celeb != null and point_timer < 2.2:
+		# close pela lateral da quadra, do lado de quem comemora (a rede nunca fica na frente)
 		var cc := celeb.global_position
 		var sx := signf(cc.x) if absf(cc.x) > 0.3 else 1.0
-		var dir := Vector3(sx * 0.75, 0.0, -celeb.side * 0.66).normalized()
-		target_pos = cc + dir * 3.9 + Vector3(0, 1.35, 0)
-		if target_pos.z * celeb.side < 0.9:
-			target_pos.z = celeb.side * 0.9
+		target_pos = Vector3(cc.x + sx * 3.6, 1.45, cc.z + celeb.side * 1.6)
 		target_look = cc + Vector3(0, 1.1, 0)
 		base_fov = 48.0
 		smooth_t = 0.5
@@ -1606,8 +1666,8 @@ func _update_view(v: Dictionary, viewer: Player, dt: float, off: Vector3, split:
 	elif state == S.SERVE and server == viewer and viewer != null:
 		# por cima do ombro de quem saca (no referencial do lado dele)
 		var c2 := _mirror(server.global_position, s)
-		target_pos = _mirror(c2 + Vector3(1.4, 2.6, 4.3), s)
-		target_look = _mirror(Vector3(c2.x * 0.3, 1.0, -6.0), s)
+		target_pos = _mirror(c2 + Vector3(1.3, 2.2, 4.0), s)
+		target_look = _mirror(Vector3(c2.x * 0.3, 1.1, -6.0), s)
 		base_fov = 52.0
 		smooth_t = 0.45
 	elif state == S.END:
@@ -1632,11 +1692,13 @@ func _update_view(v: Dictionary, viewer: Player, dt: float, off: Vector3, split:
 		v["back"] = lerpf(float(v["back"]), back, 1.0 - exp(-2.5 * dt))
 		var cb: float = v["back"]
 		var far_side := clampf(-ahead.z / 8.0, 0.0, 1.0) if ahead.z < 0.0 else 0.0
-		var zz := lerpf(11.4, 14.6, cb) + (1.2 if split else 0.0)
-		target_pos = _mirror(Vector3(fx * 0.55, lerpf(4.7, 6.0, cb) + lift + (0.4 if split else 0.0), zz), s)
-		target_look = _mirror(Vector3(fx * 0.4, lerpf(1.35, 1.0, cb) + lift * 0.6,
-				lerpf(-3.0, -2.0, cb) - far_side * 1.2), s)
-		base_fov = 54.0 - far_side * 2.0
+		# câmera baixa atrás do fundo da quadra (estilo tênis arcade): pega os jogadores
+		# grandes de costas e "comprime" o lado adversário
+		var zz := lerpf(12.6, 15.0, cb) + (1.2 if split else 0.0)
+		target_pos = _mirror(Vector3(fx * 0.5, lerpf(3.7, 4.4, cb) + lift * 0.7 + (0.4 if split else 0.0), zz), s)
+		target_look = _mirror(Vector3(fx * 0.4, lerpf(1.25, 1.05, cb) + lift * 0.5,
+				lerpf(-4.0, -3.0, cb) - far_side * 1.0), s)
+		base_fov = 50.0 - far_side * 1.5
 		if intro_t < 2.4:
 			var k := smoothstep(0.0, 2.4, intro_t)
 			target_pos = _mirror(Vector3(0, 22, -46), s).lerp(target_pos, k)
