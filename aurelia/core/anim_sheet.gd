@@ -57,16 +57,20 @@ func _load(char_id: String) -> void:
 		for t in ticks:
 			starts.append(acc)
 			acc += int(t)
-		var mains: Array = []
-		var subs: Dictionary = {}
+		# per logical frame: entries sorted by "at" (tick offset inside that frame). Old sheets (one
+		# optional sub-frame) are converted: the sub-frame starts at the middle of the frame.
+		var by_logical: Array = []
+		for l in ticks.size():
+			by_logical.append([])
 		for fr in a["frames"]:
-			if fr["sub"]:
-				subs[int(fr["logical"])] = fr
-			else:
-				mains.append(fr)
+			var l := int(fr["logical"])
+			var at := int(fr["at"]) if fr.has("at") else (int(ceil(int(ticks[l]) / 2.0)) if fr["sub"] else 0)
+			by_logical[l].append({"i": int(fr["i"]), "at": at, "anchors": fr["anchors"]})
+		for l in by_logical.size():
+			(by_logical[l] as Array).sort_custom(func(x, y): return x["at"] < y["at"])
 		anims[name] = {
 			"loop": a["loop"], "ticks": ticks, "starts": starts, "total": acc,
-			"contact": a["contact"], "hold": a["hold"], "mains": mains, "subs": subs,
+			"contact": a["contact"], "hold": a["hold"], "frames": by_logical,
 		}
 
 
@@ -91,10 +95,13 @@ func at(name: String, tick: int) -> Dictionary:
 	while l > 0 and starts[l] > tick:
 		l -= 1
 	var within: int = tick - int(starts[l])
-	var t: int = a["ticks"][l]
-	var fr: Dictionary = a["mains"][l]
-	if a["subs"].has(l) and within >= int(ceil(t / 2.0)):
-		fr = a["subs"][l]
+	var list: Array = a["frames"][l]
+	var fr: Dictionary = list[0]
+	for e in list:
+		if int(e["at"]) <= within:
+			fr = e
+		else:
+			break
 	return {"i": int(fr["i"]), "logical": l, "anchors": fr["anchors"]}
 
 

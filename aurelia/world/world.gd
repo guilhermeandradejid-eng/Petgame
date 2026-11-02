@@ -22,6 +22,7 @@ func _ready() -> void:
 	add_child(actors)
 	fx = Node3D.new()
 	fx.name = "FX"
+	fx.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF   # tweened/free-moving effects
 	add_child(fx)
 	Juice.fx_root = fx
 	cam = CameraRig.new()

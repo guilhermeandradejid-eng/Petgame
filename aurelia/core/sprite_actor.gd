@@ -15,6 +15,10 @@ var mat: ShaderMaterial
 var mesh_inst: MeshInstance3D
 var blob: MeshInstance3D
 var _frame: Dictionary = {}
+var logical := 0                  # logical frame index (gameplay-facing); sub-frames never change it
+var _rate_acc := 0.0
+var _skew := 0.0
+var skew_target := 0.0            # horizontal lean from velocity (set by the owner)
 var _flash: float = 0.0
 var _squash := Vector2.ONE
 var _squash_vel := Vector2.ZERO
@@ -72,6 +76,15 @@ func advance(n: int = 1) -> void:
 	_refresh()
 
 
+## Playback at a fractional rate (locomotion cycles follow the ground speed so feet do not slide).
+func advance_rate(rate: float) -> void:
+	_rate_acc += rate
+	var n := int(_rate_acc)
+	if n > 0:
+		_rate_acc -= n
+		advance(n)
+
+
 func finished() -> bool:
 	return sheet.has_anim(anim) and not sheet.anims[anim]["loop"] and tick >= sheet.total_ticks(anim)
 
@@ -80,6 +93,7 @@ func _refresh() -> void:
 	if not sheet.has_anim(anim):
 		return
 	_frame = sheet.at(anim, tick)
+	logical = _frame["logical"]
 	mat.set_shader_parameter("frame_rect", sheet.uv_rect(_frame["i"]))
 
 
@@ -114,7 +128,13 @@ func _process(delta: float) -> void:
 		_squash_vel += acc * h
 		_squash += _squash_vel * h
 	_squash = _squash.clamp(Vector2(0.4, 0.4), Vector2(1.8, 1.8))
+	_skew = lerpf(_skew, skew_target, clampf(delta * 14.0, 0.0, 1.0))
+	mat.set_shader_parameter("skew", _skew)
 	mat.set_shader_parameter("squash", _squash)
+	# the blob shadow stays on the floor and shrinks with height
+	var height := maxf(global_position.y, 0.0)
+	blob.position.y = 0.02 - global_position.y
+	shadow_scale = clampf(1.0 - height * 0.22, 0.45, 1.0)
 	_flash = maxf(0.0, _flash - delta * 9.0)
 	mat.set_shader_parameter("flash", clampf(_flash, 0.0, 1.0))
 	mesh_inst.position.x = (randf() - 0.5) * shake_px if shake_px > 0.0 else 0.0
@@ -143,6 +163,7 @@ func afterimage(color: Color, life: float = 0.22) -> void:
 	m.set_shader_parameter("flip", facing)
 	m.set_shader_parameter("color", color)
 	m.set_shader_parameter("squash", _squash)
+	m.set_shader_parameter("skew", _skew)
 	g.material_override = m
 	g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	get_parent().add_child(g)

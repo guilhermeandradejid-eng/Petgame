@@ -10,6 +10,7 @@ uniform float flash : hint_range(0.0, 1.0) = 0.0;
 uniform vec4 flash_color : source_color = vec4(1.0);
 uniform vec4 tint : source_color = vec4(1.0);
 uniform vec2 squash = vec2(1.0, 1.0);
+uniform float skew = 0.0;               // lean: shifts the top of the sprite sideways
 uniform float dissolve : hint_range(0.0, 1.0) = 0.0;
 uniform float glow : hint_range(0.0, 1.0) = 0.0; // warm self-illumination (windup telegraph)
 uniform float cell_px = 64.0;
@@ -17,6 +18,7 @@ uniform float cell_px = 64.0;
 void vertex() {
 	VERTEX.x *= squash.x;
 	VERTEX.y *= squash.y;
+	VERTEX.x += skew * max(VERTEX.y, 0.0);
 	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], MODEL_MATRIX[1], INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);
 	MODELVIEW_NORMAL_MATRIX = mat3(MODELVIEW_MATRIX);
 }

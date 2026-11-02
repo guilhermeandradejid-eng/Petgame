@@ -10,8 +10,10 @@ extends CharacterBody3D
 
 enum S { IDLE, DASH, JUMP, ATTACK, SPECIAL, CAST, HURT, DEAD, VICTORY }
 
-const WALK := 3.0
-const RUN := 5.6
+const WALK := 2.3
+const RUN := 4.7
+const REF_WALK := 1.7          # ground speed (m/s) at which the walk cycle's feet do not slide
+const REF_RUN := 2.8
 const DASH_SPEED := 17.0
 const DASH_MOVE_TICKS := 10
 const BUFFER := 8
@@ -222,10 +224,29 @@ func _physics_process(delta: float) -> void:
 		S.DEAD: _tick_dead(f, delta)
 		S.VICTORY: _tick_victory(f, delta)
 	st += 1
-	sprite.advance()
+	_advance_sprite()
 	_anim_fx()
 	sprite.visible = iframes <= 0 or state == S.DEAD or (Game.tick / 3) % 2 == 0 or state == S.DASH or state == S.SPECIAL
 	_publish()
+
+
+## Locomotion cycles play at ground speed / reference speed (no foot sliding); everything else is
+## plain tick playback. Also leans the sprite into its horizontal velocity and fires footsteps on the
+## logical contact frames of the run/walk cycles.
+func _advance_sprite() -> void:
+	var an := sprite.anim
+	var prev_logical := sprite.logical
+	if state == S.IDLE and (an == "run" or an == "walk"):
+		var v := Vector2(velocity.x, velocity.z).length()
+		var ref := REF_RUN if an == "run" else REF_WALK
+		sprite.advance_rate(clampf(v / ref, 0.35, 1.9))
+		if sprite.logical != prev_logical and (sprite.logical == 0 or sprite.logical == 4) and v > 1.0:
+			Sfx.play("step", -13.0, 0.9 + 0.2 * randf())
+			Juice.dust(global_position + Vector3(-facing * 0.15, 0, 0), 2)
+	else:
+		sprite.advance()
+	var lean := clampf(velocity.x * 0.016, -0.1, 0.1) if (state == S.IDLE or state == S.DASH) else 0.0
+	sprite.skew_target = lean
 
 
 func _publish() -> void:
@@ -357,14 +378,16 @@ func _tick_free(f: InputFrame, _delta: float) -> void:
 	var battle := Game.arena_active
 	if mag > 0.1:
 		var spd := (RUN if mag > 0.6 else WALK) * weapon.move_speed_mult
-		_accel_to(dir.normalized() * spd, 0.7)
+		var want := dir.normalized() * spd
+		if velocity.x * want.x < -4.0 and absf(velocity.x) > 3.0:     # hard reversal: skid
+			sprite.squash(Vector2(1.18, 0.88))
+			Juice.dust(global_position, 4)
+			Sfx.play("step", -8.0, 0.7)
+		_accel_to(want, 0.55)
 		_face_to(dir.x)
 		sprite.play("run" if spd >= RUN * 0.9 else "walk")
-		if (Game.tick % 16) == 0 and spd >= RUN * 0.9:
-			Sfx.play("step", -14.0)
-			Juice.dust(global_position, 2)
 	else:
-		_accel_to(Vector3.ZERO, 0.9)
+		_accel_to(Vector3.ZERO, 0.75)
 		sprite.play(_a("ready") if battle else "idle")
 	_apply_physics()
 
@@ -493,10 +516,12 @@ func _tick_attack(f: InputFrame, _delta: float) -> void:
 		_set_state(S.IDLE)
 		return
 	var w0: Vector2i = _windows[0]
-	if st == w0.x:
+	if st == maxi(w0.x - 2, 0):
+		# the step into the strike starts just before the contact frame, so body and blade arrive together
 		var assist: Vector3 = get_meta("assist", Vector3(facing, 0, 0))
 		velocity.x = assist.x * a.lunge
 		velocity.z = assist.z * a.lunge
+	if st == w0.x:
 		Sfx.play(a.sfx, -3.0, 1.0 + 0.06 * combo)
 		sprite.squash(Vector2(1.18, 0.9))
 		Juice.dust(global_position, 3)
@@ -765,6 +790,7 @@ func _tick_dead(_f: InputFrame, _delta: float) -> void:
 		hp = max_hp
 		mp = max_mp
 		global_position = _spawn_pos
+		reset_physics_interpolation()
 		iframes = 100
 		_set_state(S.IDLE)
 		sprite.play("idle", true)

@@ -157,8 +157,17 @@ func _physics_process(_delta: float) -> void:
 	if engaged:
 		global_position = Game.clamp_to_arena(global_position, 0.5)
 	st += 1
-	sprite.advance()
+	_advance_sprite()
 	_publish()
+
+
+func _advance_sprite() -> void:
+	if data.style == "walker" and sprite.anim == "walk" and (state == S.CHASE or state == S.DORMANT):
+		var v := Vector2(velocity.x, velocity.z).length()
+		sprite.advance_rate(clampf(v / 1.7, 0.4, 1.8))      # feet follow the ground
+	else:
+		sprite.advance()
+	sprite.skew_target = clampf(velocity.x * 0.012, -0.08, 0.08)
 
 
 func _publish() -> void:
