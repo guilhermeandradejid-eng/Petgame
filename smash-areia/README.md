@@ -9,19 +9,19 @@ smash com pulo e onomatopeias de quadrinho.
 (Android 7+, arm64 e armv7). Baixe no celular, permita "instalar apps
 desconhecidos" e abra. O jogo roda deitado (paisagem).
 
-| Menu | Smash com pulo | Curtinha |
+| Menu | Super golpe "RAIO!" | Comemoração |
 |---|---|---|
-| ![menu](docs/menu.jpg) | ![smash](docs/smash.jpg) | ![curtinha](docs/curtinha.jpg) |
+| ![menu](docs/menu.jpg) | ![super](docs/super.jpg) | ![comemoracao](docs/comemoracao.jpg) |
 
 ### Gameplay
 
-| Lob, smash, peixinho e defesa | Saque viagem |
+| Super golpe RAIO, empurrão e smash de chance | Estrela de chance, smash e peixinho |
 |---|---|
-| ![rali](docs/gifs/rali-smash-mergulho.gif) | ![saque](docs/gifs/saque-viagem.gif) |
-| **Curtinha e smash** | **Nossa dupla cravando** |
-| ![curtinha](docs/gifs/curtinha-e-smash.gif) | ![smash](docs/gifs/nosso-smash.gif) |
+| ![super](docs/gifs/super-raio.gif) | ![chance](docs/gifs/chance-smash-mergulho.gif) |
+| **Smash de chance e close na comemoração** | **Entrada cinematográfica e primeiro ponto** |
+| ![comemoracao](docs/gifs/nosso-smash-comemoracao.gif) | ![entrada](docs/gifs/entrada-e-smash.gif) |
 
-Os GIFs saem do próprio jogo: `godot --path godot --fixed-fps 30 -- --autoplay --shots=/tmp/rec --shotdt=0 --shotmax=2400`
+Os GIFs saem do próprio jogo: `godot --path godot --fixed-fps 30 -- --autoplay --shots=/tmp/rec --shotdt=0 --shotmax=2700`
 grava um frame por quadro (e imprime no terminal os eventos `EVT` com o número do frame de cada golpe),
 depois o `ffmpeg` recorta os trechos.
 
@@ -40,11 +40,34 @@ As regras são de beach tennis:
 | Controle | O que faz |
 |---|---|
 | Analógico (metade esquerda da tela) | Corre pela areia. Na hora da batida, a direção do analógico **mira** o golpe (lado e profundidade). Sem direção, o boneco mira no buraco entre os adversários. |
-| **FORTE** | Golpe chapado, rápido e baixo. |
-| **LOB** | Bola alta que cai no fundo, boa para tirar a dupla da rede. |
-| **CURTA** | Deixadinha que morre perto da rede. |
+| **FORTE** | **Topspin**: rápido, mergulha no fim e fica difícil de devolver. |
+| **LOB** | Bola alta com topspin que cai no fundo, boa para tirar a dupla da rede. |
+| **CURTA** | **Slice**: flutua, faz curva e morre perto da rede. |
 | **SMASH** | Com a bola alta, o boneco **pula e crava** no tempo certo. Com a bola baixa vira uma pancada. Perto da rede é quase indefensável, do fundo sai mais lento. |
 | **PEIXINHO** | Mergulho para salvar bola longe. Rebate sozinho uma defesa alta. |
+| **SUPER** | Acende quando a barra de energia enche: solta o super golpe do seu personagem. |
+
+### Efeito, golpe carregado, chance e super (inspirado nos tênis arcade)
+
+- **A bola tem efeito de verdade.** Topspin derruba a bola, slice faz ela flutuar e o efeito
+  lateral faz curva. Tudo é física (força de Magnus e resistência do ar), e a bola gira na tela.
+  A mira é calculada por simulação, então a bola curva mas cai onde você mirou.
+- **Golpe carregado:** aperte o golpe **cedo**. Enquanto a bola não chega, o boneco carrega o
+  golpe (aura colorida no chão e tremidinha). Quanto mais carga, mais força e mais efeito.
+- **Estrela de chance:** quando o adversário devolve uma bola fraca, aparece uma estrela colorida
+  na areia. Pare em cima e bata com o golpe da **mesma cor** (laranja = forte, vermelho = smash,
+  azul = curta). Sai um golpe "CHANCE!" mais forte e que enche mais a barra.
+- **Barra de energia e super golpe:** golpes perfeitos, carregados, de chance, smashes e pontos
+  enchem a barra (embaixo do placar). Cheia, o botão SUPER brilha:
+  - **Tuca: TSUNAMI**: topspin monstruoso com rastro de água, que despenca no fundo da quadra.
+  - **Bia: RAIO**: bola chapada em zigue-zague, muito rápida.
+  - **Zeca: METEORO**: pulo altíssimo e uma cravada em chamas.
+  - **Lola: BUMERANGUE**: sai por fora da quadra e volta fazendo uma curva enorme.
+
+  Quem recebe um super é **empurrado para trás** e só consegue uma defesa fraca. Às vezes é o ponto
+  de chance para fechar!
+
+### Outras dicas
 
 - Aperte o golpe **um pouco antes** da bola chegar: o boneco prepara o movimento e
   bate no ponto ideal. O **anel amarelo** no chão acende quando a bola está ao seu alcance.
@@ -54,17 +77,17 @@ As regras são de beach tennis:
 - **Saque:** com a bola na mão, escolha o golpe. FORTE é saque chapado, LOB é saque alto,
   CURTA é saque curto e SMASH é o **saque viagem** (pulando), mais forte e mais arriscado.
 
-No PC: WASD/setas movem, `J` forte, `K` lob, `L` curta, `I` smash, `Espaço` pula,
+No PC: WASD/setas movem, `J` forte, `K` lob, `L` curta, `I` smash, `U` super, `Espaço` pula,
 `Shift` peixinho e `Esc` pausa.
 
 ### Personagens
 
-| | Estilo | Velocidade | Força | Controle |
-|---|---|---|---|---|
-| **Tuca** | Equilibrado | ●●● | ●●● | ●●● |
-| **Bia** | Velocista | ●●●● | ●● | ●●● |
-| **Zeca** | Pancadão | ●● | ●●●● | ●● |
-| **Lola** | Precisa | ●●● | ●● | ●●●● |
+| | Estilo | Velocidade | Força | Controle | Super |
+|---|---|---|---|---|---|
+| **Tuca** | Equilibrado | ●●● | ●●● | ●●● | Tsunami |
+| **Bia** | Velocista | ●●●● | ●● | ●●● | Raio |
+| **Zeca** | Pancadão | ●● | ●●●● | ●● | Meteoro |
+| **Lola** | Precisa | ●●● | ●● | ●●●● | Bumerangue |
 
 A IA tem 3 níveis (fácil, médio e difícil). O nível muda o tempo de reação, a velocidade,
 a precisão, a frequência de smash, o mergulho e a leitura de bola que vai sair ("FORA!", "DEIXA!").
@@ -73,39 +96,47 @@ a precisão, a frequência de smash, o mergulho e a leitura de bola que vai sair
 
 ```
 smash-areia/
-├── blender/build_assets.py   # modela tudo no Blender (bpy): personagem, raquete, palmeira,
-│                             #   guarda-sol, cadeira, posto de salva-vidas, nuvem, postes,
-│                             #   arquibancada, prancha, ilha e siri  ->  godot/assets/models/*.glb
+├── blender/
+│   ├── build_assets.py       # ponto de entrada + cenário (palmeira, guarda-sol, cadeira, posto, nuvem...)
+│   ├── characters.py         # jogador com esqueleto (corpo único via modificador Skin), raquete, torcedores
+│   └── props.py              # morros, veleiro, quiosque, cadeira do juiz, arquibancada
 ├── tools/gen_audio.py        # sintetiza todos os sons e a música (WAV)
 ├── tools/build_apk.sh        # gera assets e exporta o APK
 ├── builds/SmashNaAreia-demo.apk
 └── godot/
     ├── project.godot / export_presets.cfg
-    ├── shaders/              # toon (cel-shading + retícula de gibi), contorno, areia, mar, céu, rede, torcida
+    ├── shaders/              # toon (cel-shading, retícula, contraluz dourada, névoa, vento), contorno,
+    │                         #   areia, mar, céu de fim de tarde, rede, torcida, bandeira, faíscas,
+    │                         #   impacto, estrela de chance, rastros
     └── scripts/
-        ├── main.gd           # regras, saque, placar com ponto de ouro, câmera, efeitos, modo demo do menu
-        ├── player.gd         # movimento na areia, pulo, mergulho, golpes e animação procedural
-        ├── ai_brain.gd       # IA: previsão de interceptação, posicionamento, escolha de golpe e mira
-        ├── shots.gd          # balística exata de cada golpe (passa a rede com folga, erro por qualidade)
-        ├── ball.gd           # física da bola (parábola exata), rede, rastro
-        ├── world.gd          # praia, quadra, rede, cenário e torcida (MultiMesh)
-        ├── hud.gd            # menu com prévia 3D do personagem, placar, pausa, fim de jogo
-        ├── touch_controls.gd # analógico flutuante e botões multi-touch
-        ├── comic_fx.gd       # "POW!", "LOB!", "DEFESA!", linhas de velocidade
+        ├── main.gd           # regras, saque, placar, energia/super, chance, efeitos, câmera, modo demo
+        ├── player.gd         # movimento, pulo, mergulho, golpe carregado, empurrão e animação procedural
+        ├── rig.gd            # poses do esqueleto nos eixos do personagem (joelho, cotovelo, tronco)
+        ├── ai_brain.gd       # IA: previsão da trajetória, posicionamento, escolha de golpe, chance e super
+        ├── shots.gd          # física dos golpes: Magnus, arrasto, mira por simulação, super golpes
+        ├── ball.gd           # bola com efeito, trajetória pré-simulada (previsão exata), rastros
+        ├── world.gd          # praia, quadra, juiz, arquibancadas com torcida, placas, bandeiras, horizonte
+        ├── hud.gd            # menu com prévia 3D, placar com barras de energia, pausa, fim de jogo
+        ├── touch_controls.gd # analógico flutuante e botões multi-touch (com SUPER)
+        ├── comic_fx.gd       # letreiros pequenos, linhas de velocidade, flash
         └── toon.gd, game_data.gd
 ```
 
-### Visual de gibi
+### Visual
 
-- **Cel-shading** em 3 faixas, com **retícula de pontinhos** (halftone) nas sombras
-  e brilho de borda, tudo `unshaded` para ficar igual em qualquer celular.
-- **Contorno preto** em todos os modelos (inverted hull).
-- Personagens de "borracha" modelados no Blender: cabeça grande, nariz de bolinha,
-  olhos de botão. Cada parte do corpo é um objeto com pivô na articulação, e o Godot
-  anima tudo por código (corrida, preparação e batida de cada golpe, pulo com
-  squash & stretch, mergulho, comemoração).
-- Onomatopeias em estrelas de quadrinho, linhas de velocidade e tremida de câmera no smash,
-  com uma pausa curtinha no impacto (hit-stop).
+- **Personagens limpos e articulados**: o corpo é uma malha única gerada no Blender pelo
+  modificador Skin sobre um esqueleto de 16 ossos, com pesos de skinning calculados por
+  distância. Joelhos e cotovelos dobram, os pés ficam no chão (o quadril desce conforme as
+  pernas dobram), o tronco gira nos golpes e a raquete deixa um rastro ("smear").
+- **Cel-shading** com retícula de gibi nas sombras, **contraluz dourada** do sol de fim de tarde,
+  **névoa de distância** e **contorno preto** em tudo.
+- **Câmera de TV**: perto e baixa no rali, por cima do ombro no saque, entrada cinematográfica,
+  zoom no smash e no super e close na comemoração de cada ponto.
+- **Plateia viva**: quatro tipos de torcedor (braços para cima, plaquinha, mãozona de espuma,
+  palmas) com cores sorteadas. Eles viram o corpo seguindo a bola e fazem a **ola** quando a sua
+  dupla pontua. O juiz na cadeira acompanha a bola com a cabeça e levanta o braço no apito.
+- Letreiros **pequenos e rápidos**, só nos lances especiais. Nas batidas comuns entram faíscas e
+  uma estrela de impacto 3D da cor do golpe.
 
 ## Gerando de novo
 

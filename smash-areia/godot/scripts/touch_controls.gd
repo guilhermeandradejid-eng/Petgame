@@ -5,6 +5,7 @@ extends Control
 
 signal shot(type: int)
 signal dive
+signal super_pressed
 signal jump
 
 const FONT := preload("res://assets/fonts/Bangers.woff")
@@ -17,6 +18,8 @@ var joy_vec := Vector2.ZERO
 var pressed := {}      # botão -> tempo de brilho
 var buttons: Array[Dictionary] = []
 var touch_buttons := {}  # índice do toque -> id do botão
+var super_fill := 0.0
+var t := 0.0
 
 
 func _ready() -> void:
@@ -38,6 +41,7 @@ func _layout() -> void:
 		{"id": "drop", "type": Shots.DROP, "pos": c + Vector2(0, d), "r": r, "label": "CURTA", "color": Shots.COLORS[Shots.DROP]},
 		{"id": "drive", "type": Shots.DRIVE, "pos": c + Vector2(-d, 0), "r": r, "label": "FORTE", "color": Shots.COLORS[Shots.DRIVE]},
 		{"id": "dive", "type": -1, "pos": Vector2(vs.x - 412.0 * u, vs.y - 78.0 * u), "r": 52.0 * u, "label": "PEIXINHO", "color": Color("ffffff")},
+		{"id": "super", "type": -2, "pos": c + Vector2(-d * 1.2, -d * 1.2), "r": 50.0 * u, "label": "SUPER", "color": Color("ffe14d")},
 	]
 
 
@@ -92,6 +96,8 @@ func _fire(b: Dictionary) -> void:
 	pressed[b["id"]] = 0.18
 	if b["id"] == "dive":
 		dive.emit()
+	elif b["id"] == "super":
+		super_pressed.emit()
 	else:
 		shot.emit(int(b["type"]))
 
@@ -103,6 +109,7 @@ func flash_button(type: int) -> void:
 
 
 func _process(dt: float) -> void:
+	t += dt
 	for k in pressed.keys():
 		pressed[k] = float(pressed[k]) - dt
 		if pressed[k] <= 0.0:
@@ -129,6 +136,9 @@ func _draw() -> void:
 		var r: float = b["r"]
 		var lit: bool = pressed.has(b["id"])
 		var col: Color = b["color"]
+		if b["id"] == "super":
+			_draw_super(b, u)
+			continue
 		var off := Vector2(0, 6.0 * u) if not lit else Vector2(0, 2.0 * u)
 		draw_circle(p + Vector2(0, 7.0 * u), r, Color(INK, 0.55))
 		draw_circle(p + off - Vector2(0, 6.0 * u), r, INK)
@@ -144,3 +154,25 @@ func _text(center: Vector2, s: String, fs: int, col: Color, u: float) -> void:
 	var p := center + Vector2(-w * 0.5, size * 0.35)
 	draw_string_outline(FONT, p, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, int(8 * u), INK)
 	draw_string(FONT, p, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
+
+
+## Botão do super golpe: enche com a barra de energia e brilha quando está pronto
+func _draw_super(b: Dictionary, u: float) -> void:
+	var p: Vector2 = b["pos"]
+	var r: float = b["r"]
+	var ready := super_fill >= 1.0
+	var pulse := 1.0 + (sin(t * 10.0) * 0.06 if ready else 0.0)
+	var rr := r * pulse
+	if ready:
+		var pts := PackedVector2Array()
+		for i in 20:
+			var a := float(i) / 20.0 * TAU + t * 1.5
+			var k := 1.45 if i % 2 == 0 else 1.05
+			pts.append(p + Vector2(cos(a), sin(a)) * rr * k)
+		draw_colored_polygon(pts, Color(1.0, 0.9, 0.3, 0.55))
+	draw_circle(p + Vector2(0, 6.0 * u), rr, Color(INK, 0.55))
+	draw_circle(p, rr, INK)
+	draw_circle(p, rr - 5.0 * u, Color("ffe14d") if ready else Color("8f8aa3"))
+	if not ready and super_fill > 0.0:
+		draw_arc(p, rr - 10.0 * u, -PI * 0.5, -PI * 0.5 + TAU * super_fill, 32, Color("ffe14d"), 8.0 * u)
+	_text(p + Vector2(0, 4.0 * u), "SUPER", 22, Color.WHITE if ready else Color(1, 1, 1, 0.7), u)

@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://b7em3oih5kdxo"
-path="res://.godot/imported/stands.glb-077c073ac70b709537a909753f9a161f.scn"
+uid="uid://3lh7i6x5lndx"
+path="res://.godot/imported/fan_finger.glb-a49347082c70e3601e2044fb9d18feec.scn"
 
 [deps]
 
-source_file="res://assets/models/stands.glb"
-dest_files=["res://.godot/imported/stands.glb-077c073ac70b709537a909753f9a161f.scn"]
+source_file="res://assets/models/fan_finger.glb"
+dest_files=["res://.godot/imported/fan_finger.glb-a49347082c70e3601e2044fb9d18feec.scn"]
 
 [params]
 

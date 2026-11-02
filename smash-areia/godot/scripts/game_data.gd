@@ -9,22 +9,22 @@ const CHAR_SCALE := 0.86
 
 const CHARACTERS := [
 	{
-		"name": "Tuca", "desc": "Equilibrado", "hair": "Hair_Spiky",
+		"name": "Tuca", "special": "tsunami", "desc": "Equilibrado", "hair": "Hair_Spiky",
 		"skin": Color("f2b98a"), "hair_color": Color("3b2416"), "accent": Color("ff3b3b"),
 		"racket": Color("ff5fa2"), "speed": 1.0, "power": 1.0, "control": 1.0,
 	},
 	{
-		"name": "Bia", "desc": "Velocista", "hair": "Hair_Bun",
+		"name": "Bia", "special": "raio", "desc": "Velocista", "hair": "Hair_Pony",
 		"skin": Color("d39a6a"), "hair_color": Color("ff7a2e"), "accent": Color("7c4dff"),
 		"racket": Color("35e0a1"), "speed": 1.12, "power": 0.9, "control": 1.0,
 	},
 	{
-		"name": "Zeca", "desc": "Pancadão", "hair": "Cap",
+		"name": "Zeca", "special": "meteoro", "desc": "Pancadão", "hair": "Cap",
 		"skin": Color("8d5a3b"), "hair_color": Color("1d1d1d"), "accent": Color("ff9f1c"),
 		"racket": Color("ffd23f"), "speed": 0.93, "power": 1.2, "control": 0.92,
 	},
 	{
-		"name": "Lola", "desc": "Precisa", "hair": "Hair_Afro",
+		"name": "Lola", "special": "bumerangue", "desc": "Precisa", "hair": "Hair_Puffs",
 		"skin": Color("5e3a26"), "hair_color": Color("2a1a14"), "accent": Color("19d3ff"),
 		"racket": Color("9b5de5"), "speed": 0.98, "power": 0.95, "control": 1.18,
 	},

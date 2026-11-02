@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://dmgli1eelokxx"
-path="res://.godot/imported/character.glb-71f295257b7db5b88289c3ce2b8a2603.scn"
+uid="uid://6mxoywboth5b"
+path="res://.godot/imported/kiosk.glb-52aca575b42d6257f8574febdc82d765.scn"
 
 [deps]
 
-source_file="res://assets/models/character.glb"
-dest_files=["res://.godot/imported/character.glb-71f295257b7db5b88289c3ce2b8a2603.scn"]
+source_file="res://assets/models/kiosk.glb"
+dest_files=["res://.godot/imported/kiosk.glb-52aca575b42d6257f8574febdc82d765.scn"]
 
 [params]
 

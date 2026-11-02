@@ -19,7 +19,7 @@ func _ready() -> void:
 
 func pop(screen_pos: Vector2, text: String, color: Color, size := 1.0, star := true) -> void:
 	pops.append({
-		"pos": screen_pos, "text": text, "color": color, "t": 0.0, "life": 0.95,
+		"pos": screen_pos, "text": text, "color": color, "t": 0.0, "life": 0.75,
 		"size": size, "rot": rng.randf_range(-0.25, 0.25), "star": star, "seed": rng.randf() * 10.0,
 	})
 	if pops.size() > 8:
@@ -73,7 +73,7 @@ func _draw_pop(p: Dictionary, ui: float) -> void:
 	var appear := minf(t / 0.12, 1.0)
 	var s := (0.6 + 0.6 * _back_out(appear)) * float(p["size"]) * ui
 	var fade := clampf((life - t) / 0.25, 0.0, 1.0)
-	var pos: Vector2 = p["pos"] + Vector2(0, -t * 40.0 * ui)
+	var pos: Vector2 = p["pos"] + Vector2(0, -t * 30.0 * ui)
 	draw_set_transform(pos, float(p["rot"]), Vector2(s, s))
 	var col: Color = p["color"]
 	col.a = fade

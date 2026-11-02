@@ -112,6 +112,10 @@ func update(dt: float, game: Node) -> void:
 				committed = true
 				var bp: Vector3 = plan["point"]
 				var shot := choose_shot(bp, ball, game)
+				if float(game.energy[p.team]) >= 1.0 and ball.special == "" and rng.randf() < 0.45:
+					shot = Shots.SPECIAL
+					if p.data.get("special", "") == "meteoro":
+						p.jump_boost = 1.45
 				p.request_shot(shot)
 	else:
 		_steer(game.support_position(p), dt, 0.9)
@@ -140,6 +144,9 @@ func _steer(target: Vector3, _dt: float, urgency: float) -> void:
 
 
 func choose_shot(contact: Vector3, ball: Ball, game: Node) -> int:
+	var ch: Dictionary = game.chance
+	if not ch.is_empty() and ch["player"] == p and rng.randf() < float(diff["judge"]):
+		return int(ch["type"])
 	var opps: Array = game.opponents(p)
 	var avg_z := 0.0
 	for o in opps:
@@ -149,7 +156,7 @@ func choose_shot(contact: Vector3, ball: Ball, game: Node) -> int:
 	var close_net := absf(contact.z) < 5.5
 	if contact.y > Player.TOP_REACH - 0.2 and close_net and roll < float(diff["smash"]):
 		return Shots.SMASH
-	if ball.speed_at_hit > 17.0:
+	if ball.speed_at_hit > 17.0 or ball.special != "":
 		return Shots.LOB if roll < 0.55 else Shots.DRIVE
 	roll = rng.randf()
 	if avg_z < 3.6:

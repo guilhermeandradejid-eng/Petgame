@@ -35,6 +35,7 @@ var preview_pivot: Node3D
 var theme_main: Theme
 
 var score := {"points": [0, 0], "games": [0, 0], "serving": 0, "golden": false, "target": 2}
+var energy := [0.0, 0.0]
 var sfx_cb: Callable
 
 
@@ -73,7 +74,7 @@ func _ready() -> void:
 	hint.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.custom_minimum_size = Vector2(1000, 40)
-	hint.position = Vector2(-500, 126)
+	hint.position = Vector2(-500, 150)
 	add_child(hint)
 
 	pause_btn = _button("II", 34, Color.WHITE)
@@ -231,7 +232,7 @@ func _build_menu() -> void:
 	char_name = _label("", 52, Color("ff4b3e"), 12)
 	char_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	namebox.add_child(char_name)
-	char_desc = _label("", 26, INK, 0)
+	char_desc = _label("", 20, INK, 0)
 	char_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	namebox.add_child(char_desc)
 	var nxt := _button(">", 34, Color("4fc3ff"))
@@ -306,16 +307,16 @@ func _build_menu() -> void:
 	txt.theme = theme_main
 	txt.add_theme_font_size_override("font_size", 24)
 	txt.add_theme_color_override("font_color", INK)
-	txt.text = "• No beach tennis a bola NÃO pode quicar: rebata no ar!\n" + \
-		"• Cada dupla dá só UM toque antes de devolver.\n" + \
-		"• Analógico (esquerda): corre. Ao rebater, a direção mira.\n" + \
-		"• FORTE: chapado e rápido.   LOB: alto e no fundo.\n" + \
-		"• CURTA: deixadinha perto da rede.\n" + \
-		"• SMASH: com bola alta você pula e crava! (bola baixa = pancada)\n" + \
-		"• PEIXINHO: mergulho para salvar bolas longe (defesa).\n" + \
-		"• Aperte o golpe um pouco antes: o boneco prepara e bate\n   na hora certa. O anel amarelo acende quando dá para bater.\n" + \
-		"• O alvo no chão mostra onde a bola vai cair.\n" + \
-		"• Teclado: WASD/setas, J forte, K lob, L curta, I smash,\n   Espaço pula, Shift peixinho."
+	txt.text = "• No beach tennis a bola NÃO pode quicar: rebata no ar! Um toque por dupla.\n" + \
+		"• Analógico: corre. Na batida, a direção mira (lado e profundidade).\n" + \
+		"• FORTE: topspin rápido que mergulha.  LOB: alto, cai no fundo.\n" + \
+		"• CURTA: slice que flutua e morre perto da rede.  Bolas curvam com efeito!\n" + \
+		"• SMASH: com bola alta você pula e crava.  PEIXINHO: mergulho de defesa.\n" + \
+		"• Aperte o golpe ANTES: quanto mais cedo, mais o golpe CARREGA (aura colorida).\n" + \
+		"• ESTRELA de chance no chão: pare em cima e use o golpe da mesma cor = CHANCE!\n" + \
+		"• Bons golpes enchem a barra de energia. Cheia: aperte SUPER para o golpe\n" + \
+		"   especial do seu personagem. Quem recebe um super é empurrado para trás!\n" + \
+		"• Teclado: WASD, J forte, K lob, L curta, I smash, U super, Espaço, Shift."
 	hv.add_child(txt)
 	var close := _button("FECHAR", 28, YELLOW)
 	close.pressed.connect(func(): help_panel.visible = false)
@@ -343,7 +344,7 @@ func _set_len(i: int) -> void:
 func _refresh_menu() -> void:
 	var c: Dictionary = GameData.CHARACTERS[GameData.char_index]
 	char_name.text = c["name"]
-	char_desc.text = c["desc"]
+	char_desc.text = "%s  •  SUPER: %s" % [c["desc"], String(Shots.SPECIALS[c["special"]]["name"]).trim_suffix("!")]
 	stat_bars[0].value = c["speed"]
 	stat_bars[1].value = c["power"]
 	stat_bars[2].value = c["control"]
@@ -358,6 +359,7 @@ func _refresh_menu() -> void:
 	preview_player = Player.new()
 	preview_pivot.add_child(preview_player)
 	preview_player.setup(c, 0, false)
+	preview_player.side = -1.0
 	preview_player.reset_state()
 	preview_player.rotation.y = 0.0
 	preview_player.facing = 0.0
@@ -499,6 +501,12 @@ func set_hint(text: String) -> void:
 	hint.text = text
 
 
+func set_energy(e: Array) -> void:
+	energy = e.duplicate()
+	touch.super_fill = energy[0]
+	score_panel.queue_redraw()
+
+
 func set_score(points: Array, games: Array, serving: int, target: int) -> void:
 	score = {"points": points.duplicate(), "games": games.duplicate(), "serving": serving,
 		"golden": points[0] == 3 and points[1] == 3, "target": target}
@@ -532,6 +540,15 @@ func _draw_score() -> void:
 		var g := str(score["games"][side])
 		var gw := FONT.get_string_size(g, HORIZONTAL_ALIGNMENT_LEFT, -1, 40).x
 		ci.draw_string(FONT, Vector2(gx + 18 - gw * 0.5, c.y + 48), g, HORIZONTAL_ALIGNMENT_LEFT, -1, 40, INK)
+		# barra de energia do super
+		var er := Rect2(x0 + 6.0, c.y + h + 6.0, w - 12.0, 12.0)
+		ci.draw_rect(er.grow(3), INK)
+		ci.draw_rect(er, Color(0.25, 0.22, 0.32))
+		var ev: float = clampf(float(energy[side]), 0.0, 1.0)
+		var fill := Rect2(er.position, Vector2(er.size.x * ev, er.size.y))
+		if side == 1:
+			fill.position.x = er.end.x - fill.size.x
+		ci.draw_rect(fill, Color("ffe14d") if ev >= 1.0 else Color("ff9f1c"))
 		if score["serving"] == side:
 			var bx: float = x0 - 22.0 if side == 0 else x0 + w + 22.0
 			ci.draw_circle(Vector2(bx, c.y + h * 0.5), 14, INK)

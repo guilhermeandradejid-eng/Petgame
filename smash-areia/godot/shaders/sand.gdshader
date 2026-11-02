@@ -33,5 +33,7 @@ void fragment() {
 	col *= mix(1.0, 0.97, dune);
 	float wetness = smoothstep(shore_z + 6.0, shore_z + 1.5, wpos.z);
 	col = mix(col, wet.rgb, wetness);
+	col *= vec3(1.02, 0.99, 0.95);
+	col = mix(col, vec3(1.0, 0.84, 0.72), smoothstep(45.0, 300.0, length(VERTEX)) * 0.7);
 	ALBEDO = col;
 }

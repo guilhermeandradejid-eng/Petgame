@@ -95,7 +95,8 @@ class Builder:
             f.smooth = smooth
         return verts
 
-    def sphere(self, center, radius, mat, scale=(1, 1, 1), seg=18, rings=12, rot=None, cut_below=None):
+    def sphere(self, center, radius, mat, scale=(1, 1, 1), seg=18, rings=12, rot=None, cut_below=None,
+               cut_above=None):
         m = Matrix.Translation(Vector(center))
         if rot:
             m = m @ rot
@@ -105,6 +106,10 @@ class Builder:
         self._tag(verts, mat)
         if cut_below is not None:
             kill = [v for v in verts if v.co.z < cut_below]
+            bmesh.ops.delete(self.bm, geom=kill, context="VERTS")
+            verts = [v for v in verts if v.is_valid]
+        if cut_above is not None:
+            kill = [v for v in verts if v.co.z > cut_above]
             bmesh.ops.delete(self.bm, geom=kill, context="VERTS")
             verts = [v for v in verts if v.is_valid]
         return verts
@@ -161,122 +166,6 @@ def export(name):
     bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=False,
                               export_apply=True, export_yup=True)
     print("  ->", path)
-
-
-# ---------------------------------------------------------------- personagem
-
-def build_character():
-    reset_scene()
-    skin = material("Skin", "#f2b98a")
-    shirt = material("Shirt", "#2f8cff")
-    shirt_trim = material("ShirtTrim", "#ffffff")
-    shorts = material("Shorts", "#ffd23f")
-    hair = material("Hair", "#3b2416")
-    eye = material("EyeWhite", "#ffffff", 0.3)
-    pupil = material("Pupil", "#151020", 0.3)
-    mouth = material("Mouth", "#7a1f2b")
-    cheek = material("Cheek", "#ff8a8a")
-    racket = material("Racket", "#ff5fa2", 0.5)
-    racket_rim = material("RacketRim", "#1d1d2b", 0.5)
-    grip = material("Grip", "#ffffff")
-    band = material("Band", "#ff3b3b")
-
-    # Quadril / short: raiz do corpo
-    b = Builder("Hips")
-    b.sphere((0, 0, 0.82), 1.0, shorts, scale=(0.25, 0.19, 0.17), seg=16, rings=10)
-    b.sphere((-0.12, 0, 0.72), 1.0, shorts, scale=(0.12, 0.13, 0.12), seg=12, rings=8)
-    b.sphere((0.12, 0, 0.72), 1.0, shorts, scale=(0.12, 0.13, 0.12), seg=12, rings=8)
-    b.build(pivot=(0, 0, 0.86))
-
-    # Tronco (camiseta regata com faixa)
-    b = Builder("Torso")
-    b.sphere((0, 0, 1.17), 1.0, shirt, scale=(0.27, 0.2, 0.31), seg=20, rings=12)
-    b.sphere((0, -0.02, 1.04), 1.0, shirt, scale=(0.255, 0.2, 0.16), seg=18, rings=10)
-    b.sphere((0, 0, 1.2), 1.0, shirt_trim, scale=(0.276, 0.206, 0.032), seg=20, rings=6)  # faixa
-    b.sphere((0, 0, 1.44), 1.0, skin, scale=(0.09, 0.09, 0.08), seg=12, rings=8)  # pescoco
-    b.build(pivot=(0, 0, 0.94))
-
-    # Cabeca: grande, nariz de bolinha, olhos de botao
-    b = Builder("Head")
-    b.sphere((0, 0, 1.78), 0.33, skin, scale=(1.0, 0.96, 0.95), seg=24, rings=16)
-    for s in (-1, 1):
-        x = 0.12 * s
-        b.sphere((x, -0.255, 1.83), 1.0, eye, scale=(0.088, 0.06, 0.112), seg=16, rings=10)
-        b.sphere((x * 0.96, -0.305, 1.815), 0.048, pupil, seg=12, rings=8)
-        b.sphere((x * 0.96 - 0.012 * s, -0.344, 1.84), 0.014, eye, seg=8, rings=6)  # brilho
-        b.box((x, -0.3, 1.97), (0.13, 0.03, 0.03), hair, rot=rot_y(-12 * s))  # sobrancelha
-        b.sphere((0.33 * s, 0.0, 1.76), 1.0, skin, scale=(0.05, 0.07, 0.085), seg=10, rings=8)  # orelha
-        b.sphere((0.2 * s, -0.25, 1.68), 1.0, cheek, scale=(0.055, 0.03, 0.035), seg=10, rings=6)
-    b.sphere((0, -0.35, 1.72), 1.0, skin, scale=(0.085, 0.085, 0.075), seg=14, rings=10)  # nariz
-    b.sphere((0, -0.295, 1.6), 1.0, mouth, scale=(0.1, 0.04, 0.035), seg=14, rings=8)
-    b.build(pivot=(0, 0, 1.45))
-
-    # Variacoes de cabelo/chapeu (o Godot liga so uma por personagem)
-    b = Builder("Hair_Spiky")
-    b.sphere((0, 0.05, 1.92), 1.0, hair, scale=(0.34, 0.33, 0.27), seg=20, rings=12, cut_below=1.72)
-    for i, (ax, ay) in enumerate([(0, 1), (-0.5, 0.8), (0.5, 0.8), (-0.85, 0.3), (0.85, 0.3),
-                                  (0, 0.4), (-0.4, 0.2), (0.4, 0.2)]):
-        d = Vector((ax * 0.8, 0.35 + ay * 0.3 if i < 5 else -0.25, 1.0)).normalized()
-        base = Vector((ax * 0.2, 0.06 + (0.06 if i < 5 else -0.12), 2.02))
-        b.cone(base, d, 0.26, 0.1, 0.0, hair, seg=6)
-    b.build(pivot=(0, 0, 1.45))
-
-    b = Builder("Hair_Bun")
-    b.sphere((0, 0.05, 1.9), 1.0, hair, scale=(0.345, 0.335, 0.28), seg=20, rings=12, cut_below=1.66)
-    b.sphere((0, 0.12, 2.16), 0.14, hair, seg=14, rings=10)
-    b.sphere((0, 0.1, 2.06), 1.0, band, scale=(0.1, 0.1, 0.04), seg=12, rings=6)
-    b.sphere((0, 0.3, 1.78), 1.0, hair, scale=(0.22, 0.12, 0.2), seg=14, rings=8)
-    b.build(pivot=(0, 0, 1.45))
-
-    b = Builder("Hair_Afro")
-    b.sphere((0, 0.12, 1.98), 0.4, hair, seg=18, rings=12)
-    for s in (-1, 1):
-        b.sphere((0.3 * s, 0.1, 1.86), 0.2, hair, seg=12, rings=8)
-    b.box((0, -0.24, 2.0), (0.62, 0.06, 0.07), band, rot=rot_x(-25))  # faixa
-    b.build(pivot=(0, 0, 1.45))
-
-    b = Builder("Cap")
-    b.sphere((0, 0.02, 1.86), 1.0, band, scale=(0.35, 0.35, 0.27), seg=20, rings=12, cut_below=1.85)
-    b.sphere((0, -0.36, 1.87), 1.0, band, scale=(0.22, 0.17, 0.025), seg=16, rings=6)
-    b.sphere((0, 0.02, 2.13), 0.04, shirt_trim, seg=8, rings=6)
-    b.box((0, 0.2, 1.78), (0.3, 0.12, 0.12), hair)  # cabelo da nuca
-    b.build(pivot=(0, 0, 1.45))
-
-    # Bracos (pivo no ombro). Direita do personagem = -X.
-    for side, name in ((-1, "ArmR"), (1, "ArmL")):
-        sx = 0.31 * side
-        b = Builder(name)
-        b.sphere((sx, 0, 1.33), 1.0, shirt, scale=(0.105, 0.105, 0.095), seg=12, rings=8)  # manga
-        b.sphere((sx + 0.02 * side, 0, 1.13), 1.0, skin, scale=(0.072, 0.072, 0.22), seg=12, rings=10)
-        b.sphere((sx + 0.025 * side, 0, 0.9), 0.08, skin, seg=12, rings=8)  # mao
-        b.sphere((sx + 0.025 * side, 0, 0.98), 1.0, band, scale=(0.078, 0.078, 0.03), seg=12, rings=6)  # munhequeira
-        b.build(pivot=(sx, 0, 1.36))
-
-    # Raquete de beach tennis (pa solida com furinhos), pivo na mao direita
-    hx, hz = -0.335, 0.9
-    b = Builder("Racket")
-    b.cone((hx, 0, hz + 0.04), (0, 0, -1), 0.2, 0.026, 0.024, grip, seg=8)
-    b.cone((hx, 0, hz - 0.16), (0, 0, -1), 0.07, 0.03, 0.05, racket_rim, seg=8)
-    b.sphere((hx, 0, hz - 0.4), 1.0, racket_rim, scale=(0.15, 0.03, 0.19), seg=20, rings=8)
-    b.sphere((hx, 0, hz - 0.4), 1.0, racket, scale=(0.142, 0.036, 0.18), seg=20, rings=8)
-    for ix in range(-2, 3):
-        for iz in range(-3, 4):
-            if ix * ix / 6.0 + iz * iz / 12.0 > 1.0:
-                continue
-            for fy in (-1, 1):
-                b.sphere((hx + ix * 0.045, 0.034 * fy, hz - 0.4 + iz * 0.045), 0.012, racket_rim, seg=6, rings=4)
-    b.build(pivot=(hx, 0, hz))
-
-    # Pernas (pivo no quadril), pe descalco
-    for side, name in ((-1, "LegR"), (1, "LegL")):
-        sx = 0.12 * side
-        b = Builder(name)
-        b.sphere((sx, 0, 0.46), 1.0, skin, scale=(0.085, 0.085, 0.36), seg=12, rings=10)
-        b.sphere((sx, -0.05, 0.05), 1.0, skin, scale=(0.075, 0.13, 0.055), seg=12, rings=8)
-        b.sphere((sx, 0, 0.17), 1.0, shirt_trim, scale=(0.08, 0.08, 0.025), seg=10, rings=6)  # tornozeleira
-        b.build(pivot=(sx, 0, 0.8))
-
-    export("character")
 
 
 # ---------------------------------------------------------------- cenario
@@ -478,14 +367,17 @@ def build_crab():
 
 def main():
     print("Gerando modelos em", OUT_DIR)
-    build_character()
+    sys.path.insert(0, HERE)
+    import characters
+    import props
+    characters.build_all()
+    props.build_all()
     build_palm()
     build_umbrella()
     build_chair()
     build_tower()
     build_cloud()
     build_post()
-    build_stands()
     build_surfboard()
     build_island()
     build_crab()
