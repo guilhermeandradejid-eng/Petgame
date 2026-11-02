@@ -52,7 +52,7 @@ def build(char):
             if t == 0:
                 dposes.append(keyed[i])
             else:
-                dposes.append(lerp_pose(keyed[i], keyed[(i + 1) % n], 0.5))
+                dposes.append(getattr(mod, 'blend', lerp_pose)(keyed[i], keyed[(i + 1) % n], 0.5))
         sks = [mod.skeleton(p) for p in dposes]
         chains = mod.simulate(sks, dposes, ca.get("loop", False))
         entries = []

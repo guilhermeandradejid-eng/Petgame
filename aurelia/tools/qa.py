@@ -41,11 +41,13 @@ def check(char):
             errs.append(f"{name}: logical frame count changed")
         logical += len(mains)
         subs += len(sa["frames"]) - len(mains)
-        for c in ca.get("contact", []):
+        contacts = ca.get("contact", [])
+        if contacts:
             if len(ca["ticks"]) < MIN_ATTACK_FRAMES:
                 errs.append(f"{name}: attack has {len(ca['ticks'])} frames (<{MIN_ATTACK_FRAMES})")
-            if ca["ticks"][c] < MIN_HELD_TICKS:
-                errs.append(f"{name}: contact frame held {ca['ticks'][c]} ticks (<{MIN_HELD_TICKS})")
+            # single hit: the contact frame is held; multi-hit: the LAST contact frame is held
+            if ca["ticks"][contacts[-1]] < MIN_HELD_TICKS:
+                errs.append(f"{name}: last contact frame held {ca['ticks'][contacts[-1]]} ticks (<{MIN_HELD_TICKS})")
         for f in sa["frames"]:
             x, y = (f["i"] % sheet["cols"]) * cell, (f["i"] // sheet["cols"]) * cell
             tile = img[y:y + cell, x:x + cell]

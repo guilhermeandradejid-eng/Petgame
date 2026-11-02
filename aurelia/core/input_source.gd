@@ -18,6 +18,10 @@ class Local extends InputSource:
 		if Input.is_action_pressed("jump"): h |= InputFrame.JUMP
 		if Input.is_action_pressed("dash"): h |= InputFrame.DASH
 		if Input.is_action_pressed("cast"): h |= InputFrame.CAST
+		if Input.is_action_pressed("special1"): h |= InputFrame.SP1
+		if Input.is_action_pressed("special2"): h |= InputFrame.SP2
+		if Input.is_action_pressed("weapon_next"): h |= InputFrame.WEAPON
+		if Input.is_action_pressed("spell_next"): h |= InputFrame.SPELL
 		f.held = h
 		f.pressed = h & ~_prev
 		_prev = h

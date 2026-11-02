@@ -1,7 +1,7 @@
 extends Node
 ## Registers input actions in code and produces one InputFrame per tick per source.
 
-const ACTIONS := ["move_left", "move_right", "move_up", "move_down", "attack", "jump", "dash", "cast"]
+const ACTIONS := ["move_left", "move_right", "move_up", "move_down", "attack", "jump", "dash", "cast", "special1", "special2", "weapon_next", "spell_next"]
 
 
 func _ready() -> void:
@@ -13,6 +13,14 @@ func _ready() -> void:
 	_key("jump", [KEY_K, KEY_SPACE])
 	_key("dash", [KEY_L, KEY_SHIFT])
 	_key("cast", [KEY_I, KEY_C])
+	_key("special1", [KEY_U, KEY_X])
+	_key("special2", [KEY_O, KEY_V])
+	_key("weapon_next", [KEY_Q, KEY_TAB])
+	_key("spell_next", [KEY_E, KEY_R])
+	_btn("special1", JOY_BUTTON_RIGHT_SHOULDER)
+	_btn("special2", JOY_BUTTON_LEFT_SHOULDER)
+	_btn("weapon_next", JOY_BUTTON_DPAD_RIGHT)
+	_btn("spell_next", JOY_BUTTON_DPAD_LEFT)
 	_axis("move_left", JOY_AXIS_LEFT_X, -1.0)
 	_axis("move_right", JOY_AXIS_LEFT_X, 1.0)
 	_axis("move_up", JOY_AXIS_LEFT_Y, -1.0)

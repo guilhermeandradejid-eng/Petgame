@@ -1,0 +1,92 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://combat/weapon_data.gd" id="1"]
+[ext_resource type="Script" path="res://combat/attack_data.gd" id="2"]
+[ext_resource type="Script" path="res://combat/special_data.gd" id="3"]
+
+[sub_resource type="Resource" id="a1"]
+script = ExtResource("2")
+id = "axe.1"
+anim = "axe.1"
+damage = 18
+knockback = 5.0
+reach_px = 24.0
+radius_px = 26.0
+lunge = 2.4
+hitstop = 7
+shake = 0.35
+trail_color = Color(1, 0.75, 0.5, 1)
+sfx = "swing_heavy"
+hit_sfx = "hit_heavy"
+
+[sub_resource type="Resource" id="a2"]
+script = ExtResource("2")
+id = "axe.2"
+anim = "axe.2"
+damage = 20
+knockback = 5.5
+reach_px = 24.0
+radius_px = 28.0
+lunge = 2.6
+hitstop = 7
+shake = 0.4
+trail_color = Color(1, 0.7, 0.45, 1)
+sfx = "swing_heavy"
+hit_sfx = "hit_heavy"
+
+[sub_resource type="Resource" id="a3"]
+script = ExtResource("2")
+id = "axe.3"
+anim = "axe.3"
+damage = 36
+knockback = 9.0
+launch_height_px = 30.0
+reach_px = 24.0
+radius_px = 34.0
+lunge = 3.0
+hitstop = 12
+shake = 0.85
+trail_color = Color(1, 0.6, 0.35, 1)
+sfx = "swing_heavy"
+hit_sfx = "hit_heavy"
+
+[sub_resource type="Resource" id="s1"]
+script = ExtResource("3")
+id = "quake_cleave"
+display_name = "Quake Cleave"
+anim = "axe.sp1"
+kind = "fissure"
+sp_cost = 55
+damage = 34
+reach_px = 20.0
+radius_px = 24.0
+knockback = 4.0
+launch_height_px = 24.0
+hitstop = 8
+shake = 0.8
+color = Color(1, 0.65, 0.3, 1)
+
+[sub_resource type="Resource" id="s2"]
+script = ExtResource("3")
+id = "hurricane_axe"
+display_name = "Hurricane Axe"
+anim = "axe.sp2"
+kind = "spin"
+sp_cost = 70
+damage = 14
+reach_px = 0.0
+radius_px = 54.0
+knockback = 4.5
+hitstop = 4
+shake = 0.35
+color = Color(1, 0.8, 0.5, 1)
+
+[resource]
+script = ExtResource("1")
+id = "stone_axe"
+display_name = "Stone Axe"
+weapon_key = "axe"
+combo = [SubResource("a1"), SubResource("a2"), SubResource("a3")]
+specials = [SubResource("s1"), SubResource("s2")]
+color = Color(1, 0.75, 0.5, 1)
+move_speed_mult = 0.9

@@ -2,7 +2,7 @@ class_name InputFrame
 extends RefCounted
 ## One tick of player intent. Pressed = edge this tick, held = level.
 
-enum { ATTACK = 1, JUMP = 2, DASH = 4, CAST = 8 }
+enum { ATTACK = 1, JUMP = 2, DASH = 4, CAST = 8, SP1 = 16, SP2 = 32, WEAPON = 64, SPELL = 128 }
 
 var move := Vector2.ZERO
 var pressed := 0

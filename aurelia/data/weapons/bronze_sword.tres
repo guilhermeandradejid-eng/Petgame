@@ -1,19 +1,20 @@
-[gd_resource type="Resource" script_class="WeaponData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="WeaponData" load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://combat/weapon_data.gd" id="1"]
 [ext_resource type="Script" path="res://combat/attack_data.gd" id="2"]
+[ext_resource type="Script" path="res://combat/special_data.gd" id="3"]
 
 [sub_resource type="Resource" id="a1"]
 script = ExtResource("2")
 id = "sword.1"
 anim = "sword.1"
 damage = 12
-knockback = 3.5
+knockback = 3.2
 reach_px = 22.0
 radius_px = 20.0
-lunge = 3.2
+lunge = 3.0
 hitstop = 4
-shake = 0.22
+shake = 0.2
 trail_color = Color(0.75, 0.95, 1, 1)
 sfx = "swing"
 hit_sfx = "hit"
@@ -23,12 +24,12 @@ script = ExtResource("2")
 id = "sword.2"
 anim = "sword.2"
 damage = 14
-knockback = 4.0
+knockback = 3.8
 reach_px = 24.0
 radius_px = 22.0
-lunge = 3.4
+lunge = 3.2
 hitstop = 5
-shake = 0.28
+shake = 0.26
 trail_color = Color(0.8, 1, 0.95, 1)
 sfx = "swing"
 hit_sfx = "hit"
@@ -42,16 +43,49 @@ knockback = 7.0
 launch_height_px = 26.0
 reach_px = 26.0
 radius_px = 28.0
-lunge = 4.4
+lunge = 4.2
 hitstop = 9
 shake = 0.6
 trail_color = Color(1, 0.9, 0.55, 1)
 sfx = "swing_heavy"
 hit_sfx = "hit_heavy"
 
+[sub_resource type="Resource" id="s1"]
+script = ExtResource("3")
+id = "whirlwind"
+display_name = "Whirlwind"
+anim = "sword.sp1"
+kind = "spin"
+sp_cost = 40
+damage = 9
+reach_px = 0.0
+radius_px = 44.0
+knockback = 3.0
+hitstop = 3
+shake = 0.2
+color = Color(0.7, 1, 0.9, 1)
+
+[sub_resource type="Resource" id="s2"]
+script = ExtResource("3")
+id = "meteor_dive"
+display_name = "Meteor Dive"
+anim = "sword.sp2"
+kind = "dive"
+sp_cost = 70
+damage = 48
+reach_px = 14.0
+radius_px = 64.0
+knockback = 8.0
+launch_height_px = 30.0
+hitstop = 12
+shake = 0.9
+color = Color(1, 0.7, 0.3, 1)
+
 [resource]
 script = ExtResource("1")
 id = "bronze_sword"
 display_name = "Bronze Sword"
-weapon_class = "sword"
+weapon_key = "sword"
 combo = [SubResource("a1"), SubResource("a2"), SubResource("a3")]
+specials = [SubResource("s1"), SubResource("s2")]
+color = Color(0.75, 0.95, 1, 1)

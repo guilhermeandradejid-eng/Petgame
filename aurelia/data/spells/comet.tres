@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SpellData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://combat/spell_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "comet"
+display_name = "Comet"
+noun = "comet"
+element = "star"
+kind = "comet"
+mp_cost = 40
+cast_anim = "cast.sky"
+life_ticks = 48
+damage = 55
+radius_m = 3.0
+knockback = 8.0
+launch_height_px = 34.0
+hitstop = 12
+shake = 1.0
+color = Color(1, 0.9, 0.45, 1)

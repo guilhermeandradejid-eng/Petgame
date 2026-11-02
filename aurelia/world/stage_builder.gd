@@ -30,7 +30,7 @@ func build(parent: Node3D, seed_val: int = 1337) -> Dictionary:
 	_fireflies()
 	var info := {
 		"player_spawn": Vector3(0, 0.1, 7),
-		"enemy_spawns": [Vector3(-9, 0.1, -6), Vector3(9, 0.1, -4), Vector3(0, 0.1, -16), Vector3(-14, 0.1, 4), Vector3(13, 0.1, 6)],
+		"encounters": [Vector3(-10, 0, -6), Vector3(11, 0, -4), Vector3(0, 0, -9.5), Vector3(-13, 0, 6), Vector3(13, 0, 8)],
 		"dummy": Vector3(5, 0.1, 2),
 		"props": props,
 	}
@@ -96,8 +96,8 @@ func _cliffs() -> void:
 				3:
 					pos = Vector3(half + d * 0.4, h * 0.5, t)
 					size = Vector3(d, h, w)
-			if side == 1 and absf(t) < 10.0:
-				continue      # keep the front open so the camera sees into the glade
+			if side == 1:
+				continue      # nothing between the camera and the glade
 			var m := MeshInstance3D.new()
 			var bm := BoxMesh.new()
 			bm.size = size
@@ -131,8 +131,8 @@ func _tree(pos: Vector3, scale_f: float) -> void:
 	trunk.position = pos + Vector3(0, 1.3 * scale_f, 0)
 	trunk.scale = Vector3.ONE * scale_f
 	root.add_child(trunk)
-	var leaf := _mat_foliage(Color(0.16, 0.42, 0.24), Color(0.5, 0.8, 0.32), 1.0)
 	for k in 3:
+		var leaf := _mat_foliage(Color(0.16, 0.42, 0.24), Color(0.5, 0.8, 0.32), 1.0)
 		var s := MeshInstance3D.new()
 		var sm := SphereMesh.new()
 		sm.radius = rng.randf_range(1.0, 1.5)
@@ -145,6 +145,7 @@ func _tree(pos: Vector3, scale_f: float) -> void:
 		s.position = pos + off * scale_f
 		s.scale = Vector3.ONE * scale_f
 		s.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		s.add_to_group("canopy")
 		root.add_child(s)
 	var cs := CylinderShape3D.new()
 	cs.radius = 0.4 * scale_f

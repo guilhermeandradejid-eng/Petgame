@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="SpellData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://combat/spell_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "ring_of_fire"
+display_name = "Ring of Fire"
+noun = "ring of fire"
+element = "fire"
+kind = "ring"
+mp_cost = 25
+cast_anim = "cast.ring"
+life_ticks = 34
+damage = 26
+radius_m = 4.2
+knockback = 6.5
+launch_height_px = 18.0
+hitstop = 7
+shake = 0.55
+color = Color(1, 0.5, 0.2, 1)

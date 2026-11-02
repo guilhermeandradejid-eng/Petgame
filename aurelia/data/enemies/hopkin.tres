@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://combat/enemy_data.gd" id="1"]
+[ext_resource type="Script" path="res://combat/attack_data.gd" id="2"]
+
+[sub_resource type="Resource" id="pn"]
+script = ExtResource("2")
+id = "hopkin.pounce"
+anim = "pounce"
+damage = 7
+knockback = 4.5
+reach_px = 14.0
+radius_px = 22.0
+lunge = 6.0
+hitstop = 4
+shake = 0.25
+trail_color = Color(0.95, 0.7, 1, 1)
+sfx = "swing"
+hit_sfx = "hit"
+
+[resource]
+script = ExtResource("1")
+id = "hopkin"
+display_name = "Hopkin"
+sprite_id = "hopkin"
+style = "hopper"
+max_hp = 36
+exp = 8
+speed = 2.6
+aggro_m = 7.0
+attack_range_m = 2.3
+windup_ticks = 18
+recover_ticks = 28
+radius_m = 0.42
+attack = SubResource("pn")
+attack_anim = "pounce"
+lunge_tick = 3
+lunge_vy = 5.0
+hop_speed = 3.6
+blood_color = Color(0.95, 0.7, 1, 1)

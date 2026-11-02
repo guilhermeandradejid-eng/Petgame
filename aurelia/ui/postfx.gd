@@ -17,9 +17,16 @@ func _ready() -> void:
 	Juice.postfx = self
 
 
-func set_pulse(chroma: float, flash: float) -> void:
+func set_pulse(chroma: float, flash: float, speed: float = 0.0, hurt: float = 0.0) -> void:
 	_mat.set_shader_parameter("chroma", chroma)
 	_mat.set_shader_parameter("flash", flash)
+	_mat.set_shader_parameter("speed", speed)
+	_mat.set_shader_parameter("hurt", hurt)
+	var low := 0.0
+	for p in get_tree().get_nodes_in_group("players"):
+		if p.is_multiplayer_authority() and p.max_hp > 0:
+			low = clampf((0.35 - float(p.hp) / p.max_hp) / 0.35, 0.0, 1.0) if p.hp > 0 else 0.0
+	_mat.set_shader_parameter("lowhp", low)
 
 
 func _exit_tree() -> void:

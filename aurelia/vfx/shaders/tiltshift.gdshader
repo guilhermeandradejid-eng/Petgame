@@ -2,12 +2,17 @@
 shader_type canvas_item;
 
 uniform sampler2D screen_tex : hint_screen_texture, repeat_disable, filter_linear;
-uniform float blur : hint_range(0.0, 8.0) = 1.3;
-uniform float focus_band = 0.22;
+uniform float blur : hint_range(0.0, 8.0) = 1.1;
+uniform float focus_band = 0.27;
 uniform float vignette : hint_range(0.0, 1.0) = 0.35;
 uniform float chroma : hint_range(0.0, 1.0) = 0.0;
 uniform float flash : hint_range(0.0, 1.0) = 0.0;
 uniform vec4 flash_color : source_color = vec4(1.0);
+uniform float speed : hint_range(0.0, 1.0) = 0.0;
+uniform float hurt : hint_range(0.0, 1.0) = 0.0;
+uniform float lowhp : hint_range(0.0, 1.0) = 0.0;
+
+float h21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 
 void fragment() {
 	vec2 uv = SCREEN_UV;
@@ -30,5 +35,13 @@ void fragment() {
 	float v = smoothstep(0.95, 0.35, length((uv - vec2(0.5)) * vec2(1.1, 1.0)));
 	col *= mix(1.0 - vignette, 1.0, v);
 	col = mix(col, flash_color.rgb, flash * 0.35);
+	// speed lines: thin radial streaks near the screen edge
+	vec2 q = uv - vec2(0.5);
+	float ang = atan(q.y, q.x);
+	float streak = smoothstep(0.82, 1.0, h21(vec2(floor(ang * 26.0), floor(TIME * 24.0))));
+	col += vec3(1.0) * streak * smoothstep(0.28, 0.62, length(q)) * speed * 0.55;
+	// damage vignette
+	float edge = smoothstep(0.25, 0.75, length(q));
+	col = mix(col, vec3(0.9, 0.12, 0.15), edge * (hurt * 0.55 + lowhp * (0.18 + 0.12 * sin(TIME * 5.0))));
 	COLOR = vec4(col, 1.0);
 }

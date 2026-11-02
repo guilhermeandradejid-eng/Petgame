@@ -109,6 +109,23 @@ func contact_range(name: String) -> Vector2i:
 	return Vector2i(s, s + int(a["ticks"][l]))
 
 
+## Every contact window of an animation (multi-hit specials list several contact frames).
+func contact_ranges(name: String) -> Array:
+	var out: Array = []
+	if not anims.has(name):
+		return out
+	var a: Dictionary = anims[name]
+	for c in a["contact"]:
+		var s: int = a["starts"][int(c)]
+		out.append(Vector2i(s, s + int(a["ticks"][int(c)])))
+	return out
+
+
+## First tick of a logical frame.
+func frame_start(name: String, logical: int) -> int:
+	return int(anims[name]["starts"][logical]) if anims.has(name) else 0
+
+
 func uv_rect(i: int) -> Vector4:
 	var cx := i % cols
 	var cy := i / cols

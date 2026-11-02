@@ -5,6 +5,7 @@ render_mode cull_back;
 uniform vec4 base_color : source_color = vec4(0.2, 0.5, 0.25, 1.0);
 uniform vec4 light_color : source_color = vec4(0.5, 0.78, 0.3, 1.0);
 uniform float sway = 0.0;
+uniform float occlude : hint_range(0.0, 1.0) = 0.0;
 
 varying vec3 wn;
 
@@ -15,6 +16,9 @@ void vertex() {
 }
 
 void fragment() {
+	if (occlude > 0.0 && fract(sin(dot(floor(FRAGCOORD.xy * 0.5), vec2(12.9898, 78.233))) * 43758.5453) < occlude) {
+		discard;
+	}
 	float up = clamp(wn.y * 0.5 + 0.5, 0.0, 1.0);
 	vec3 c = mix(base_color.rgb, light_color.rgb, smoothstep(0.35, 0.95, up));
 	ALBEDO = c * (0.85 + COLOR.r * 0.3);

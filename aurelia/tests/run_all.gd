@@ -25,7 +25,7 @@ func _ready() -> void:
 
 func _test_contracts() -> void:
 	print("contracts")
-	for ch in ["ren", "capmook"]:
+	for ch in ["ren", "capmook", "hopkin"]:
 		var contract: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://art/contracts/%s.contract.json" % ch))
 		var sheet := AnimSheet.get_sheet(ch)
 		_check(sheet.tex != null and sheet.ntex != null, "%s textures load" % ch)
@@ -44,27 +44,45 @@ func _test_contracts() -> void:
 			_check(ok, "%s.%s tick->logical frame mapping" % [ch, name])
 			var contact: Array = contract["anims"][name].get("contact", [])
 			if not contact.is_empty():
-				var r := sheet.contact_range(name)
-				_check(r.y - r.x == int(ticks[int(contact[0])]) and r.y - r.x >= 6, "%s.%s contact frame held >= 6 ticks" % [ch, name])
+				var wins := sheet.contact_ranges(name)
+				var last: Vector2i = wins[-1]
+				_check(wins.size() == contact.size() and last.y - last.x >= 6, "%s.%s %d contact window(s), last held >= 6 ticks" % [ch, name, wins.size()])
 
 
 func _test_data() -> void:
 	print("data")
-	var w := Registry.weapon("bronze_sword")
-	_check(w != null and w.combo.size() == 3, "bronze_sword has a 3-hit combo")
 	var ren := AnimSheet.get_sheet("ren")
-	for a in w.combo:
-		_check(ren.has_anim(a.anim) and ren.contact_range(a.anim).x >= 0, "attack '%s' maps to an animation with a contact frame" % a.id)
-	_check(w.combo[2].launch_height_px > 0.0, "finisher defines an explicit launch height")
-	var sp := Registry.spell("ice_lance")
-	_check(sp != null and ren.contact_range(sp.cast_anim).x >= 0, "ice_lance loads and has a release frame")
-	var cm := Registry.enemy("capmook")
-	_check(cm != null and AnimSheet.get_sheet(cm.sprite_id).has_anim(cm.attack.anim), "capmook attack animation exists")
+	_check(Registry.weapon_order.size() == 3, "three weapons registered")
+	for wid in Registry.weapon_order:
+		var w := Registry.weapon(wid)
+		_check(w != null and w.combo.size() == 3 and w.specials.size() == 2, "%s: 3-hit combo + 2 specials" % wid)
+		for a in w.combo:
+			_check(ren.has_anim(a.anim) and ren.contact_range(a.anim).x >= 0, "attack '%s' maps to an animation with a contact frame" % a.id)
+		for sp in w.specials:
+			_check(ren.has_anim(sp.anim) and not ren.contact_ranges(sp.anim).is_empty(), "special '%s' -> %s" % [sp.id, sp.anim])
+			_check(sp.sp_cost > 0 and Registry.special_for_anim(sp.anim) == sp, "special '%s' indexed by animation" % sp.id)
+		_check(w.combo[2].launch_height_px > 0.0, "%s finisher defines an explicit launch height" % wid)
+	_check(Registry.spell_order.size() == 3, "three spells registered")
+	for sid in Registry.spell_order:
+		var sp := Registry.spell(sid)
+		_check(sp != null and ren.has_anim(sp.cast_anim) and ren.contact_range(sp.cast_anim).x >= 0, "spell %s has a cast animation with a release frame" % sid)
+	for eid in ["capmook", "hopkin"]:
+		var e := Registry.enemy(eid)
+		_check(e != null and AnimSheet.get_sheet(e.sprite_id).has_anim(e.attack_anim), "%s attack animation '%s' exists" % [eid, e.attack_anim])
+		_check(AnimSheet.get_sheet(e.sprite_id).has_anim("windup") and AnimSheet.get_sheet(e.sprite_id).has_anim("walk"), "%s has windup + walk" % eid)
 	_check(Registry.enemy("dummy").dummy, "training dummy flagged")
+	for a in ["ready", "victory", "death", "hurt", "jump", "dash", "run", "walk", "idle"]:
+		_check(ren.has_anim(a), "ren has '%s'" % a)
 
 
 func _test_combat_math() -> void:
 	print("combat math")
+	Game.arena_active = true
+	Game.arena_center = Vector3.ZERO
+	Game.arena_radius = 4.0
+	var cl := Game.clamp_to_arena(Vector3(9, 0, 0), 0.5)
+	_check(absf(cl.x - 3.5) < 0.01, "arena clamp keeps bodies inside the ring")
+	Game.arena_active = false
 	var v := Combat.launch_speed(26.0)
 	var apex := v * v / (2.0 * Game.GRAVITY)
 	_check(absf(apex - 26.0 * Game.PX) < 0.001, "launch apex == requested pixels (same launch every hit)")
@@ -82,5 +100,5 @@ func _test_stage() -> void:
 	add_child(holder)
 	var info := StageBuilder.new().build(holder, 1337)
 	_check(int(info["props"]) > 1500, "stage generated %d props" % info["props"])
-	_check((info["enemy_spawns"] as Array).size() >= 3, "stage defines enemy spawns")
+	_check((info["encounters"] as Array).size() >= 3, "stage defines encounters")
 	holder.free()

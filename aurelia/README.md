@@ -3,8 +3,8 @@
 Open-world-ready action RPG inspired by *Legend of Mana*: small, well-animated pixel heroes on an HD-2D
 stage, approach-and-hit melee combos, movement skills, weapons, spells, **online co-op** (up to 4), and a lot of juice.
 
-This is **milestone 1**: one hero (*Ren*), one test stage (the *Glade of Aurel*), one enemy (*Capmook*, plus a
-training dummy), one weapon (Bronze Sword, 3-hit combo) and one spell (**Ice Lance**).
+This is **milestone 1**: one hero (*Ren*, 3 weapons), one test stage (the *Glade of Aurel*), two enemy types (*Capmook*, *Hopkin*, plus a
+training dummy), battle encounters, 6 weapon techniques and 3 spells.
 
 ![preview](docs/preview.png)
 
@@ -13,13 +13,39 @@ training dummy), one weapon (Bronze Sword, 3-hit combo) and one spell (**Ice Lan
 Open `aurelia/` in Godot **4.4+** (Compatibility renderer) and press F5.
 Title screen: **Solo**, **Host co-op game**, or **Join** an IP (ENet, UDP port 24565).
 
-| Action | Keyboard | Gamepad |
-|---|---|---|
-| Move | WASD / arrows | left stick |
-| Attack (tap for a 3-hit combo) | J / Z | X |
-| Jump | K / Space | A |
-| Dash (i-frames, cancels attack recovery) | L / Shift | B |
-| Ice Lance (20 MP) | I / C | Y |
+| Action | Keyboard | Gamepad | Touch |
+|---|---|---|---|
+| Move | WASD / arrows | left stick | floating stick (left half) |
+| Attack (tap for a 3-hit combo) | J / Z | X | ATK |
+| Jump | K / Space | A | JMP |
+| Dash (i-frames; cancels attack recovery) | L / Shift | B | DSH |
+| Technique 1 / 2 (cost SP) | U / O | RB / LB | SP1 / SP2 |
+| Spirit spell (cost MP) | I / C | Y | MAG |
+| Next weapon / next spell | Q / E | D-pad right / left | WPN / SPL |
+
+![round 2](docs/preview_round2.png)
+
+## Battle mode (Legend of Mana style)
+Monsters idle on the field in groups. Walk up to a group and a **battle** starts: a glowing arena ring closes
+around everyone, the camera pulls back and tilts to frame it, a **BATTLE!** banner and letterbox bars play, and
+nobody can leave until every monster is beaten. Victory gives a fanfare, a results card (max combo, damage, time,
+EXP/level), a full-party victory pose and restored HP/MP; a new group respawns after a while. The host owns the
+state; clients receive start/end over RPC and render the same arena.
+
+## Weapons, techniques and spells
+Hits fill the **SP gauge**; techniques spend it (like Legend of Mana, abilities and specials extend combos).
+
+| Weapon | Combo | Technique 1 | Technique 2 |
+|---|---|---|---|
+| Bronze Sword | 3 hits, finisher launches | **Whirlwind** (spinning cyclone, multi-hit) | **Meteor Dive** (leap + flaming slam, crater) |
+| Iron Spear | long reach thrusts, sweeping finisher | **Gale Thrusts** (5-hit flurry) | **Javelin Toss** (piercing projectile) |
+| Stone Axe | slow and heavy | **Quake Cleave** (racing ground fissure) | **Hurricane Axe** (wide spin) |
+
+Spells (MP): **Ice Lance** (crystal projectile), **Ring of Fire** (expanding flame ring), **Comet** (marked ground, star falls, crater).
+Every effect is a drawable noun built from hollow 3D shells + shaders. Adding one = a `.tres` in `data/` plus a small FX script.
+
+## Enemies
+**Capmook** (toadstool, headbutt with glowing windup) and **Hopkin** (hopping bunny-blob, pounce). Attacks telegraph with a red ground warning.
 
 ### Tablet / phone (touch) and HTML5
 

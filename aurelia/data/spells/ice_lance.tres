@@ -5,9 +5,12 @@
 [resource]
 script = ExtResource("1")
 id = "ice_lance"
+display_name = "Ice Lance"
 noun = "ice lance"
 element = "ice"
-mp_cost = 20
+kind = "lance"
+mp_cost = 15
+cast_anim = "cast"
 speed = 15.0
 life_ticks = 54
 damage = 22

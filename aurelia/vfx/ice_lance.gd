@@ -46,7 +46,6 @@ func _ready() -> void:
 	_mesh.material_override = _mat
 	_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_mesh)
-	# scale-in over 4 ticks
 	scale = Vector3.ONE * 0.2
 	create_tween().tween_property(self, "scale", Vector3.ONE, 4.0 / 60.0).set_trans(Tween.TRANS_BACK)
 	_motes = CPUParticles3D.new()
@@ -75,7 +74,7 @@ func _ready() -> void:
 	Sfx.play("lance", -3.0)
 
 
-func _physics_process(delta: float) -> void:
+func _physics_process(_delta: float) -> void:
 	age += 1
 	global_position += dir * spell.speed / Game.TICK_RATE
 	_mat.set_shader_parameter("t", age / 60.0)
@@ -91,20 +90,9 @@ func _check_hits() -> void:
 			continue
 		if Combat.hit_test(global_position, spell.radius_px * Game.PX, e, e.data.radius_m):
 			hit_set.append(e)
-			var d: Vector3 = dir
-			e.predict_hit(spell.hitstop)
-			Juice.hit(e.global_position + Vector3(0, 0.8, 0.2), d, spell.color, 0.8, spell.shake)
-			Sfx.play("ice_shatter", -1.0)
-			var a := AttackData.new()
-			a.damage = spell.damage
-			a.knockback = spell.knockback
-			a.launch_height_px = spell.launch_height_px
-			a.hitstop = spell.hitstop
-			a.shake = spell.shake
-			a.trail_color = spell.color
-			a.hit_sfx = "ice_shatter"
-			e.claim_hit(Combat.payload(a, owner_peer, global_position, d, 0.8, age * 31 + hit_set.size()))
-			Game.log_event("spell_hit", {"peer": owner_peer, "spell": spell.id})
+			Combat.deal(e, owner_peer, global_position, dir, {
+				"dmg": spell.damage, "kb": spell.knockback, "launch": spell.launch_height_px, "hs": spell.hitstop,
+				"sh": spell.shake, "col": spell.color, "sfx": "ice_shatter", "sp": 3.0, "id": spell.id, "seed": age * 31})
 			_shard_burst()
 
 

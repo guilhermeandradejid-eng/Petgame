@@ -87,6 +87,45 @@ def main():
     d = 0.3
     n = int(SR * d)
     save("windup", sweep(180, 420, d) * env(n, 0.05, power=1.2) * 0.8, 0.5)
+    # ---- round 2: techniques, battle, UI ----
+    def mix(*xs):
+        m = max(len(x) for x in xs)
+        return sum(np.pad(x, (0, m - len(x))) for x in xs)
+
+    def tone(f, d, vol=1.0, power=2.0):
+        n = int(SR * d)
+        return np.sin(2 * np.pi * f * t(d)) * env(n, 0.003, power=power) * vol
+
+    save("swap", mix(tone(660, 0.07), tone(990, 0.09, 0.7)), 0.5)
+    save("deny", mix(tone(150, 0.12, 1.0, 1.2), 0.5 * lp(noise(0.12), 0.2) * env(int(SR * 0.12), power=2)), 0.5)
+    save("sp_ready", mix(tone(880, 0.1), tone(1320, 0.14, 0.8), tone(1760, 0.2, 0.6)), 0.55)
+    d = 0.3
+    n = int(SR * d)
+    save("special_call", (sweep(300, 1200, d) * 0.6 + sweep(600, 2400, d) * 0.3) * np.sin(np.linspace(0, np.pi, n)) ** 0.8, 0.7)
+    d = 0.7
+    n = int(SR * d)
+    save("quake", (sweep(90, 28, d) * 1.0 + lp(noise(d), 0.12) * 0.9) * env(n, 0.002, power=2.2))
+    d = 0.6
+    n = int(SR * d)
+    save("fire_ring", (lp(noise(d), 0.3) * 0.8 + sweep(200, 700, d) * 0.4) * np.sin(np.linspace(0, np.pi, n)) ** 0.6)
+    d = 0.25
+    n = int(SR * d)
+    save("fire_hit", (lp(noise(d), 0.45) * 0.9 + sweep(500, 150, d) * 0.5) * env(n, 0.001, power=3))
+    d = 0.7
+    n = int(SR * d)
+    save("comet_call", (sweep(1800, 300, d) * 0.5 + lp(noise(d), 0.5) * 0.3) * np.linspace(0.2, 1.0, n) * env(n, 0.05, power=0.6))
+    d = 0.9
+    n = int(SR * d)
+    save("battle_start", (tone(220, d, 0.7, 1.5) + tone(330, d, 0.5, 1.5) + sweep(120, 60, d) * 0.5 * env(n, power=3)
+                          + lp(noise(d), 0.2) * 0.35 * env(n, 0.001, power=4)))
+    d = 0.5
+    save("victory", mix(tone(523, d, 0.7, 1.3), tone(659, d, 0.6, 1.3), tone(784, d, 0.6, 1.3)), 0.6)
+    notes = [(523, 0.12), (659, 0.12), (784, 0.12), (1047, 0.5)]
+    fan = np.concatenate([mix(tone(f, dd, 0.8, 1.6), tone(f * 1.5, dd, 0.3, 1.6)) for f, dd in notes])
+    save("victory_fanfare", fan, 0.65)
+    save("level_up", np.concatenate([tone(f, 0.1, 0.8, 1.2) for f in (392, 523, 659, 784, 1047)] + [tone(1319, 0.5, 0.7, 1.5)]), 0.6)
+    save("tick", tone(1200, 0.04, 1.0, 3.0), 0.4)
+    save("combo_up", mix(tone(700, 0.08), tone(1050, 0.12, 0.8)), 0.5)
     print("wrote", len(os.listdir(OUT)), "sfx to", os.path.abspath(OUT))
 
 

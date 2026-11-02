@@ -8,8 +8,8 @@ var fx: Node3D
 var cam: CameraRig
 var info: Dictionary = {}
 var _enemy_counter := 0
-var _respawn_cd := 0
-var _spawn_i := 0
+var battle: BattleManager
+var battle_ui: Node
 
 
 func _ready() -> void:
@@ -29,6 +29,8 @@ func _ready() -> void:
 	add_child(cam)
 	add_child(preload("res://ui/postfx.gd").new())
 	add_child(preload("res://ui/hud.gd").new())
+	battle_ui = preload("res://ui/battle_ui.gd").new()
+	add_child(battle_ui)
 	if Game.touch_mode:
 		add_child(preload("res://ui/touch_controls.gd").new())
 	multiplayer.peer_disconnected.connect(_on_peer_left)
@@ -36,11 +38,12 @@ func _ready() -> void:
 	if multiplayer.is_server():
 		_spawn_player(multiplayer.get_unique_id(), info["player_spawn"], true)
 		_spawn_enemy("dummy", info["dummy"])
-		for i in 3:
-			_spawn_enemy("capmook", info["enemy_spawns"][i])
-		_spawn_i = 3
 	else:
 		rpc_id(1, "rpc_client_ready")
+	battle = BattleManager.new()
+	battle.name = "BattleManager"      # fixed name: RPC paths must match on every peer
+	add_child(battle)
+	battle.setup(self, info["encounters"] if multiplayer.is_server() else [])
 	if Game.args.has("autotest") and ResourceLoader.exists("res://tests/autotest.gd"):
 		var at: Node = load("res://tests/autotest.gd").new()   # not preloaded: tests/ is excluded from exports
 		at.name = "AutoTest"
@@ -53,13 +56,13 @@ func _environment() -> void:
 	env.background_color = Color(0.55, 0.7, 0.85)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.55, 0.62, 0.8)
-	env.ambient_light_energy = 0.42
+	env.ambient_light_energy = 0.38
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.72, 0.82, 0.92)
 	env.fog_density = 0.0035
 	env.glow_enabled = true
-	env.glow_intensity = 0.5
+	env.glow_intensity = 0.38
 	env.glow_bloom = 0.08
 	env.glow_hdr_threshold = 1.3
 	env.adjustment_enabled = true
@@ -71,7 +74,7 @@ func _environment() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-48, -32, 0)
 	sun.light_color = Color(1.0, 0.92, 0.78)
-	sun.light_energy = 1.0
+	sun.light_energy = 0.92
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 28.0 if Game.low_quality else 45.0
 	sun.shadow_bias = 0.06
@@ -141,41 +144,63 @@ func rpc_spawn_enemy(nm: String, kind: String, pos: Vector3) -> void:
 
 
 func _on_peer_left(id: int) -> void:
+	Game.log_event("peer_left", {"peer": id})
 	var n := actors.get_node_or_null("P_%d_0" % id)
 	if n != null:
 		n.queue_free()
 
 
-# ------------------------------------------------------------- spells
+# ------------------------------------------------------- spells & specials
 
-func spawn_spell(spell_id: String, pos: Vector3, dir: Vector3, peer: int) -> void:
-	rpc("rpc_spawn_spell", spell_id, pos, dir, peer)
+func player_of(peer: int) -> Player:
+	return actors.get_node_or_null("P_%d_0" % peer) as Player
+
+
+func spawn_fx(kind: String, data_id: String, pos: Vector3, dir: Vector3, peer: int, target: Vector3) -> void:
+	rpc("rpc_spawn_fx", kind, data_id, pos, dir, peer, target)
 
 
 @rpc("any_peer", "call_local", "reliable")
-func rpc_spawn_spell(spell_id: String, pos: Vector3, dir: Vector3, peer: int) -> void:
-	var s := IceLance.new()
-	s.spell = Registry.spell(spell_id)
-	s.dir = dir
-	s.owner_peer = peer
-	fx.add_child(s)
-	s.global_position = pos
+func rpc_spawn_fx(kind: String, data_id: String, pos: Vector3, dir: Vector3, peer: int, target: Vector3) -> void:
+	match kind:
+		"lance":
+			var s := IceLance.new()
+			s.spell = Registry.spell(data_id)
+			s.dir = dir
+			s.owner_peer = peer
+			fx.add_child(s)
+			s.global_position = pos
+		"ring":
+			var r := RingOfFire.new()
+			r.spell = Registry.spell(data_id)
+			r.owner_peer = peer
+			fx.add_child(r)
+			r.global_position = pos
+		"comet":
+			var c := Comet.new()
+			c.spell = Registry.spell(data_id)
+			c.owner_peer = peer
+			c.target = target
+			fx.add_child(c)
+		"javelin":
+			var j := Javelin.new()
+			j.special = _special_by_id(data_id)
+			j.dir = dir
+			j.owner_peer = peer
+			fx.add_child(j)
+			j.global_position = pos
+		"fissure":
+			var f := Fissure.new()
+			f.special = _special_by_id(data_id)
+			f.dir = dir
+			f.owner_peer = peer
+			fx.add_child(f)
+			f.global_position = Vector3(pos.x, 0, pos.z)
 
 
-# ----------------------------------------------------- enemy director
-
-func _physics_process(_d: float) -> void:
-	if not multiplayer.is_server():
-		return
-	_respawn_cd -= 1
-	if _respawn_cd > 0:
-		return
-	_respawn_cd = 180
-	var alive := 0
-	for e in get_tree().get_nodes_in_group("enemies"):
-		if not e.data.dummy and not e.is_dead():
-			alive += 1
-	if alive < 3 and get_tree().get_nodes_in_group("players").size() > 0:
-		var spots: Array = info["enemy_spawns"]
-		_spawn_i = (_spawn_i + 1) % spots.size()
-		_spawn_enemy("capmook", spots[_spawn_i])
+func _special_by_id(id: String) -> SpecialData:
+	for w in Registry.weapons.values():
+		for sp in w.specials:
+			if sp.id == id:
+				return sp
+	return null

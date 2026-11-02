@@ -179,10 +179,15 @@ class Canvas:
         self.tone = np.zeros((S, S), np.uint8)
         self.matidx = {}
         self.ramps = [[(0, 0, 0)] * 5]
-        for i, (name, (hx, glossy)) in enumerate(materials.items(), start=1):
+        for i, (name, spec) in enumerate(materials.items(), start=1):
+            hx, glossy = spec[0], spec[1]
             self.matidx[name] = i
-            self.ramps.append(ramp(hexc(hx), glossy))
-        self.glossy = {self.matidx[n]: g for n, (_, g) in materials.items()}
+            # optional 3rd element: a hand-authored 5-tone ramp (list of 5 rgb tuples / hex strings)
+            if len(spec) > 2 and spec[2]:
+                self.ramps.append([hexc(c) if isinstance(c, str) else tuple(c) for c in spec[2]])
+            else:
+                self.ramps.append(ramp(hexc(hx), glossy))
+        self.glossy = {self.matidx[n]: spec[1] for n, spec in materials.items()}
         self.nparts = 0
         self.group = {}
         self.matof = {}
@@ -219,6 +224,21 @@ class Canvas:
         self.key[m] = (pid << 8) | (mi << 4)
         self.tone[m] = tone[m]
         return pid
+
+    def warp_x(self, cx, scale, mirror=False):
+        """Squash (and optionally mirror) everything painted so far horizontally about column cx
+        (1x px). Used for spins: the body narrows as it turns, then comes back mirrored."""
+        S = self.S
+        xs = np.arange(S, dtype=np.float64)
+        c = cx * SS
+        src = c + (xs - c) / max(scale, 1e-3) * (-1.0 if mirror else 1.0)
+        idx = np.floor(src + 0.5).astype(int)
+        ok = (idx >= 0) & (idx < S)
+        idx = np.clip(idx, 0, S - 1)
+        for arr in (self.key, self.tone):
+            new = arr[:, idx]
+            new[:, ~ok] = 0
+            arr[:] = new
 
     def vote(self):
         n = self.size

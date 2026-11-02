@@ -9,7 +9,11 @@ const BUTTONS := {
 	"attack": {"label": "ATK", "color": Color(1.0, 0.45, 0.4)},
 	"jump": {"label": "JMP", "color": Color(0.5, 0.9, 0.6)},
 	"dash": {"label": "DSH", "color": Color(0.45, 0.8, 1.0)},
-	"cast": {"label": "ICE", "color": Color(0.7, 0.6, 1.0)},
+	"cast": {"label": "MAG", "color": Color(0.7, 0.6, 1.0)},
+	"special1": {"label": "SP1", "color": Color(1.0, 0.85, 0.35)},
+	"special2": {"label": "SP2", "color": Color(1.0, 0.65, 0.3)},
+	"weapon_next": {"label": "WPN", "color": Color(0.8, 0.9, 1.0)},
+	"spell_next": {"label": "SPL", "color": Color(0.9, 0.7, 1.0)},
 }
 
 var _c: Control
@@ -37,12 +41,16 @@ func _relayout() -> void:
 	_last_size = s
 	var u := clampf(minf(s.x / 640.0, s.y / 360.0), 0.9, 1.5) * K
 	_layout = {
-		"attack": {"c": Vector2(s.x - 165 * u, s.y - 160 * u), "r": 82.0 * u},
-		"dash": {"c": Vector2(s.x - 330 * u, s.y - 100 * u), "r": 56.0 * u},
-		"cast": {"c": Vector2(s.x - 330 * u, s.y - 235 * u), "r": 56.0 * u},
-		"jump": {"c": Vector2(s.x - 150 * u, s.y - 345 * u), "r": 56.0 * u},
+		"attack": {"c": Vector2(s.x - 160 * u, s.y - 150 * u), "r": 80.0 * u},
+		"jump": {"c": Vector2(s.x - 160 * u, s.y - 325 * u), "r": 52.0 * u},
+		"dash": {"c": Vector2(s.x - 325 * u, s.y - 92 * u), "r": 52.0 * u},
+		"cast": {"c": Vector2(s.x - 345 * u, s.y - 215 * u), "r": 52.0 * u},
+		"special1": {"c": Vector2(s.x - 335 * u, s.y - 340 * u), "r": 46.0 * u},
+		"special2": {"c": Vector2(s.x - 205 * u, s.y - 455 * u), "r": 46.0 * u},
+		"weapon_next": {"c": Vector2(s.x - 255 * u, 62 * u), "r": 30.0 * u},
+		"spell_next": {"c": Vector2(s.x - 170 * u, 62 * u), "r": 30.0 * u},
 	}
-	_menu_c = Vector2(s.x - 44 * K, 44 * K)
+	_menu_c = Vector2(s.x - 40 * u, 62 * u)
 
 
 func _action_at(p: Vector2) -> String:
@@ -85,7 +93,7 @@ func _on_input(e: InputEvent) -> void:
 			_update_stick(pos)
 		return
 	if down:
-		if pos.distance_to(_menu_c) < 36.0 * K * 1.4:
+		if pos.distance_to(_menu_c) < 18.0:
 			Net.go_offline()
 			get_tree().change_scene_to_file("res://ui/title.tscn")
 			return
@@ -159,9 +167,9 @@ func _draw_pad() -> void:
 		_c.draw_circle(d["c"], d["r"], Color(col.r, col.g, col.b, 0.42 if pressed else 0.2))
 		_c.draw_arc(d["c"], d["r"], 0, TAU, 40, Color(col.r, col.g, col.b, 0.85), 2.0)
 		var label: String = BUTTONS[a]["label"]
-		var fs := int(d["r"] * 0.5)
+		var fs := int(d["r"] * 0.45)
 		var tw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		_c.draw_string(font, d["c"] + Vector2(-tw * 0.5, fs * 0.35), label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.95))
 	# menu
-	_c.draw_circle(_menu_c, 15.0, Color(0, 0, 0, 0.35))
+	_c.draw_circle(_menu_c, 16.0, Color(0, 0, 0, 0.35))
 	_c.draw_string(font, _menu_c + Vector2(-11, 3), "MENU", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(1, 1, 1, 0.85))
