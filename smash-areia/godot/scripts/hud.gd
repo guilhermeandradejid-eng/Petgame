@@ -1159,7 +1159,8 @@ func _build_help() -> void:
 	var rows := [
 		["", "CONTROLE", "TECLADO", "TOQUE"],
 		["MOVER", "ANALÓGICO", "W A S D", "ARRASTE À ESQUERDA"],
-		["FORTE (topspin)", "A", "J", "FORTE"],
+		["PULO (bata no ar com qualquer golpe)", "A", "ESPAÇO", "PULO"],
+		["FORTE (topspin)", "AUTOMÁTICO", "J", "AUTOMÁTICO"],
 		["LOB (alto, fundo)", "X", "K", "LOB"],
 		["CURTA (slice)", "B", "L", "CURTA"],
 		["SMASH (bola alta)", "Y", "I", "SMASH"],

@@ -30,7 +30,9 @@ Feita com um agente de game design que leu o código e os prints; aplicado:
   pegada funda e passo forte.
 - **Câmera** um pouco mais perto e baixa, seguindo o jogador (bonecos maiores); replay pela lateral
   do lado do ponto, sem o poste da rede na frente.
-- **Você na quadra**: anel fraco sempre embaixo do seu jogador; estrela de chance de 5 pontas.
+- **Você na quadra**: seta em cima da cabeça e anel no chão na cor do jogador (J1 amarelo, J2
+  ciano). O marcador de queda da bola é **magenta** quando ela vem para um time humano e branco
+  quando vai para a CPU, para não confundir com os marcadores dos jogadores.
 - **Menos texto**: letreiro só em PERFEITO/CARREGADO/chance/smash/especial, "MINHA!" só na bola do
   meio, faixa de ponto no terço de cima e mais curta, placar mais compacto, aviso do título em
   etiqueta legível. O golpe FORTE se chama FORTE em todo lugar.
@@ -46,7 +48,7 @@ Feita com um agente de game design que leu o código e os prints; aplicado:
 - **CPU** usa o especial na hora certa (bola alta perto da rede ou ponto decisivo) e saca mais rápido;
   apertar um golpe pula a espera entre pontos.
 - **Desempenho**: céu sem animação por tempo (não é redesenhado todo frame), sem reflexo de céu,
-  3D em 80% da resolução nos celulares de tela grande, plano extra da quadra removido.
+  plano extra da quadra removido.
 
 ## Menus
 
@@ -97,7 +99,7 @@ ffmpeg -i partida.avi -vf scale=1024:-2 -c:v libx264 -crf 30 -c:a aac docs/parti
 - **Controles (gamepad)**: com 2 controles conectados, cada jogador usa um. Com 1 controle, o J2 fica
   com ele e o J1 joga no teclado (ou toque no modo co-op). No celular, o VS precisa de dois
   controles Bluetooth, porque os botões de toque somem na tela dividida.
-- Mapeamento do controle: **A** forte, **X** lob, **B** curta, **Y** smash, **LB** (ou RT/R3) defesa,
+- Mapeamento do controle: **A** pulo, **X** lob, **B** curta, **Y** smash, **LB** (ou RT/R3) defesa,
   **RB** especial, **LT** (ou L3) peixinho, **Start** pausa, analógico ou D-pad para correr e mirar.
   Os gatilhos também são lidos como botão (alguns controles no Android não mandam eixo), e o
   mapa aparece na tela no começo da partida e em PAUSA > CONTROLES.
@@ -139,7 +141,8 @@ As regras são de beach tennis:
 | Controle | O que faz |
 |---|---|
 | Analógico (metade esquerda da tela) | Corre pela areia. Na hora da batida, a direção do analógico **mira** o golpe (lado e profundidade). Sem direção, o boneco mira no buraco entre os adversários. |
-| **FORTE** | **Topspin**: rápido, mergulha no fim e fica difícil de devolver. |
+| **PULO** | Pula na hora (no lugar do antigo botão FORTE). No ar dá para bater com qualquer golpe: pule e aperte SMASH, LOB, CURTA ou DEFESA. |
+| FORTE (automático) | **Topspin** rápido que mergulha no fim. Sai sozinho quando a bola chega e você não escolheu outro golpe (bola que vai cair fora não é rebatida: deixe passar). No ar, com a bola alta, o automático vira SMASH. No teclado ainda dá para escolher com `J`. |
 | **LOB** | Bola alta com topspin que cai no fundo, boa para tirar a dupla da rede. |
 | **CURTA** | **Slice**: flutua, faz curva e morre perto da rede. |
 | **SMASH** | Com a bola alta, o boneco **pula e crava** no tempo certo. Com a bola baixa vira uma pancada. Perto da rede é quase indefensável, do fundo sai mais lento. |

@@ -150,6 +150,7 @@ func _ready() -> void:
 	hud.menu_pressed.connect(go_menu)
 	hud.touch.shot.connect(_on_shot_button)
 	hud.touch.dive.connect(_on_dive_button)
+	hud.touch.jump.connect(_on_jump_button)
 	hud.touch.super_pressed.connect(_on_super_button)
 	hud.touch.defense_pressed.connect(func(): _on_shot_button(Shots.DEFENSE))
 	get_viewport().size_changed.connect(_layout_views)
@@ -216,9 +217,6 @@ func _setup_views() -> void:
 		var sv := SubViewport.new()
 		sv.world_3d = get_viewport().world_3d
 		sv.msaa_3d = Viewport.MSAA_2X
-		# celular com tela grande: 3D em 80% da resolução (a interface continua nítida)
-		if OS.has_feature("mobile") and DisplayServer.screen_get_size().y > 800:
-			sv.scaling_3d_scale = 0.8
 		sv.audio_listener_enable_3d = false
 		svc.add_child(sv)
 		var c := Camera3D.new()
@@ -697,7 +695,7 @@ func start_match() -> void:
 		(hud.last_input_pad or Input.get_connected_joypads().size() > 0)))
 	hud.set_pad_mode(pad_on)
 	if pad_on:
-		hud.flash_tip("CONTROLE:  LB DEFESA  •  RB ESPECIAL  •  LT PEIXINHO", 5.0, Color.WHITE)
+		hud.flash_tip("CONTROLE:  A PULO  •  LB DEFESA  •  RB ESPECIAL  •  LT PEIXINHO", 5.0, Color.WHITE)
 	hud.show_banner("VAI COMEÇAR!", "%s x %s" % [GameData.TEAMS[0]["name"], GameData.TEAMS[1]["name"]], Color("ffd23f"), 1.8)
 	sfx("whistle", -6.0)
 	intro_t = 0.0
@@ -995,7 +993,7 @@ func _coach_rally() -> void:
 			if (plan["point"] as Vector3).y > Player.TOP_REACH - 0.25:
 				coach("smash", "BOLA ALTA: SMASH!")
 			else:
-				coach("first", "APERTE O GOLPE ANTES DA BOLA CHEGAR (QUANTO ANTES, MAIS CARREGA)")
+				coach("first", "SEM APERTAR NADA SAI O FORTE. ESCOLHA UM GOLPE ANTES PARA MUDAR E CARREGAR")
 
 
 func _hand_pos(p: Player) -> Vector3:
@@ -1322,7 +1320,10 @@ func _poll_pad_buttons(p: Player) -> void:
 		hud._on_pause()
 	if get_tree().paused:
 		return
-	var pairs := [[JOY_BUTTON_A, Shots.DRIVE], [JOY_BUTTON_X, Shots.LOB], [JOY_BUTTON_B, Shots.DROP], [JOY_BUTTON_Y, Shots.SMASH]]
+	# A pula (o FORTE sai sozinho quando a bola chega e nenhum golpe foi escolhido)
+	if _pad_edge(p, "jump", Input.is_joy_button_pressed(d, JOY_BUTTON_A)):
+		_player_jump(p)
+	var pairs := [[JOY_BUTTON_X, Shots.LOB], [JOY_BUTTON_B, Shots.DROP], [JOY_BUTTON_Y, Shots.SMASH]]
 	for pr in pairs:
 		if _pad_edge(p, "b%d" % pr[0], Input.is_joy_button_pressed(d, pr[0])):
 			_player_shot(p, pr[1])
@@ -1389,6 +1390,27 @@ func _on_shot_button(type: int) -> void:
 func _on_super_button() -> void:
 	if human:
 		_player_super(human)
+
+
+func _on_jump_button() -> void:
+	if human:
+		_player_jump(human)
+
+
+## Pulo: no saque lança a bola (como qualquer golpe); no rali pula e dá para
+## bater no ar com qualquer golpe (sem golpe escolhido sai um FORTE/SMASH automático)
+func _player_jump(p: Player) -> void:
+	if intro_t < 0.4 and not demo:
+		return
+	if state == S.SERVE and server == p:
+		_player_shot(p, Shots.DRIVE)
+		return
+	if state == S.POINT or state == S.REPLAY:
+		_player_shot(p, Shots.DRIVE)   # pula a espera / o replay
+		return
+	if demo or p == null or state != S.RALLY or get_tree().paused:
+		return
+	p.request_jump()
 
 
 func _on_dive_button() -> void:
@@ -1465,8 +1487,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_on_shot_button(pair[1])
 	if event.is_action_pressed("super"):
 		_on_super_button()
-	if event.is_action_pressed("jump") and state == S.RALLY:
-		human.request_jump()
+	if event.is_action_pressed("jump"):
+		_on_jump_button()
 	if event.is_action_pressed("dive"):
 		_on_dive_button()
 	# J2 no teclado (setas + N M , . /)
@@ -1661,11 +1683,12 @@ func _update_marker() -> void:
 		var lp := ball.landing_point()
 		marker.visible = true
 		marker.global_position = Vector3(lp.x, 0.03, lp.z)
-		var col := Color("ff5fa2")
-		if lp.z > 0.0:
-			col = Color("ffd23f") if (assigned[0] == null or assigned[0].is_human or human == null) else Color("4fc3ff")
-		elif team_human(1) != null:
-			col = Color("ffd23f") if (assigned[1] == null or assigned[1].is_human) else Color("4fc3ff")
+		# marcador de queda: magenta quando a bola vem para um time humano, branco quando vai
+		# para a CPU (amarelo e ciano ficam só para os marcadores J1/J2 dos jogadores)
+		var col := Color.WHITE
+		var coming_team := 0 if lp.z > 0.0 else 1
+		if team_human(coming_team) != null:
+			col = Color("ff3fd0")
 		var out := absf(lp.x) > GameData.COURT_HALF_W or absf(lp.z) > GameData.COURT_HALF_L
 		if out:
 			col = Color(0.9, 0.9, 0.9)

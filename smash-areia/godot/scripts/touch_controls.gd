@@ -45,7 +45,8 @@ func _layout() -> void:
 		{"id": "lob", "type": Shots.LOB, "pos": c + Vector2(0, -d), "r": r, "label": "LOB", "color": Shots.COLORS[Shots.LOB]},
 		{"id": "smash", "type": Shots.SMASH, "pos": c + Vector2(d, 0), "r": r, "label": "SMASH", "color": Shots.COLORS[Shots.SMASH]},
 		{"id": "drop", "type": Shots.DROP, "pos": c + Vector2(0, d), "r": r, "label": "CURTA", "color": Shots.COLORS[Shots.DROP]},
-		{"id": "drive", "type": Shots.DRIVE, "pos": c + Vector2(-d, 0), "r": r, "label": "FORTE", "color": Shots.COLORS[Shots.DRIVE]},
+		# PULO no lugar do FORTE: o FORTE sai sozinho quando a bola chega sem golpe escolhido
+		{"id": "jump", "type": -3, "pos": c + Vector2(-d, 0), "r": r, "label": "PULO", "color": Color("35e0a1")},
 		# especial: botão grande de estrela logo acima do losango
 		{"id": "super", "type": -2, "pos": c + Vector2(0, -d * 2.3), "r": 48.0 * u, "label": "ESPECIAL", "color": Color("ffe14d")},
 		{"id": "defense", "type": Shots.DEFENSE, "pos": c + Vector2(-d * 2.15, -d * 0.05), "r": 36.0 * u, "label": "DEFESA", "color": Color("e8e2d4")},
@@ -104,6 +105,8 @@ func _fire(b: Dictionary) -> void:
 	pressed[b["id"]] = 0.18
 	if b["id"] == "dive":
 		dive.emit()
+	elif b["id"] == "jump":
+		jump.emit()
 	elif b["id"] == "defense":
 		defense_pressed.emit()
 	elif b["id"] == "super":

@@ -79,6 +79,7 @@ var aura: MeshInstance3D
 var shield: Node3D             # escudo azul na frente do corpo enquanto a DEFESA está armada
 var shield_mats: Array[StandardMaterial3D] = []
 var shield_flash := 0.0
+var arrow: MeshInstance3D
 var racket_flash_t := 0.0
 var skid_cd := 0.0
 var hittable := false
@@ -216,7 +217,29 @@ func _build_model() -> void:
 
 
 ## Marcador "J1"/"J2" em cima do jogador no multiplayer
+## Marcador do jogador humano: seta em cima da cabeça e anel no chão na cor do
+## jogador (J1 amarelo, J2 ciano); o texto "J1/J2" só aparece com dois humanos.
 func show_tag(on: bool) -> void:
+	var pc := Color("ffd23f") if pid == 1 else Color("4fe0ff")
+	if is_human and pid > 0:
+		if arrow == null:
+			arrow = MeshInstance3D.new()
+			var cm := CylinderMesh.new()
+			cm.top_radius = 0.13
+			cm.bottom_radius = 0.0
+			cm.height = 0.22
+			cm.radial_segments = 3
+			arrow.mesh = cm
+			arrow.position = Vector3(0, 2.3, 0)
+			arrow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(arrow)
+		arrow.material_override = Toon.make(pc, {"outline": 0.016, "halftone": 0.0, "rim": 0.0})
+		arrow.visible = true
+		if zone_ring:
+			var m := zone_ring.material_override as ShaderMaterial
+			var zc: Color = pc
+			zc.a = 0.22
+			m.set_shader_parameter("color", zc)
 	if tag == null:
 		tag = Label3D.new()
 		tag.font = FONT
@@ -226,10 +249,10 @@ func show_tag(on: bool) -> void:
 		tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		tag.no_depth_test = true
 		tag.outline_modulate = Color(0.07, 0.04, 0.12)
-		tag.position = Vector3(0, 2.25, 0)
+		tag.position = Vector3(0, 2.62, 0)
 		add_child(tag)
 	tag.text = "J%d" % pid
-	tag.modulate = Color("ffd23f") if pid == 1 else Color("4fe0ff")
+	tag.modulate = pc
 	tag.visible = on and pid > 0
 
 
@@ -468,8 +491,18 @@ func try_contact(ball: Ball, delta: float) -> Dictionary:
 			last_style = "dive"
 			return {"type": Shots.DEFENSE, "quality": info["quality"], "charge": 0.0, "style": "dive"}
 		return {}
-	if pending_shot < 0 or state != State.NORMAL:
+	if state != State.NORMAL:
 		return {}
+	var auto := false
+	if pending_shot < 0:
+		# humano sem golpe escolhido: FORTE automático (no ar, com a bola alta, vira SMASH)
+		if not is_human or swing_t < 1.0:
+			return {}
+		# bola que vai cair fora: deixa passar (não rebate sozinho)
+		var lp := ball.landing_point()
+		if absf(lp.x) > GameData.COURT_HALF_W + 0.15 or absf(lp.z) > GameData.COURT_HALF_L + 0.15:
+			return {}
+		auto = true
 	var fast := ball.vel.length() > 16.0
 	var info := reach_info(ball.global_position, fast)
 	if not info["in"]:
@@ -483,6 +516,8 @@ func try_contact(ball: Ball, delta: float) -> Dictionary:
 		if d > best_dist + 0.01:
 			q = maxf(q - 0.1, 0.0)
 		var shot := pending_shot
+		if auto:
+			shot = Shots.SMASH if (not on_ground() and ball.global_position.y > 1.9) else Shots.DRIVE
 		var ch := charge()
 		var st := classify(ball.global_position, shot, fast or ball.special != "")
 		_start_swing(shot, ball.global_position, st, true)
@@ -1031,6 +1066,9 @@ func _update_shield(dt: float) -> void:
 
 func _update_decals(dt: float) -> void:
 	_update_shield(dt)
+	if arrow:
+		arrow.position.y = 2.32 + absf(sin(anim_time * 4.0)) * 0.07
+		arrow.rotation.y += dt * 2.0
 	shadow.global_position = Vector3(global_position.x + 0.12, 0.015, global_position.z + 0.08)
 	shadow.scale = Vector3.ONE * lerpf(1.0, 0.6, clampf(y / 1.2, 0.0, 1.0))
 	var am := aura.material_override as ShaderMaterial
@@ -1057,7 +1095,7 @@ func _update_decals(dt: float) -> void:
 	if bubble_t > 0.0:
 		bubble_t -= dt
 		bubble.scale = Vector3.ONE * minf(1.0, bubble.scale.x + dt * 8.0)
-		bubble.position.y = 2.4 + (0.8 - bubble_t) * 0.2
+		bubble.position.y = 2.85 + (0.8 - bubble_t) * 0.2
 		if bubble_t <= 0.0:
 			bubble.visible = false
 
