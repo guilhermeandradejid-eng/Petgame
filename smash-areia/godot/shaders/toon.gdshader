@@ -33,10 +33,13 @@ void fragment() {
 	vec3 base = albedo.rgb * COLOR.rgb;
 	vec3 L = normalize((VIEW_MATRIX * vec4(normalize(KEY), 0.0)).xyz);
 	float ndl = dot(NORMAL, L);
-	float lit = smoothstep(-0.07, 0.12, ndl);   // transição de sombra macia
-	float hi = smoothstep(0.48, 0.68, ndl);
+	// cel-shading de desenho animado: faixas chapadas com borda nítida (antisserrilhada),
+	// sem degradê "de plástico". Sombra colorida + faixa de luz um pouco mais clara.
+	float aa = max(fwidth(ndl), 0.002);
+	float lit = smoothstep(-aa, aa, ndl - 0.02);
+	float hi = smoothstep(-aa, aa, ndl - 0.62);
 	vec3 shadow_col = base * shadow_tint.rgb;
-	vec3 col = mix(shadow_col, base * mix(0.94, 1.03, hi) * vec3(1.02, 1.0, 0.96), lit);
+	vec3 col = mix(shadow_col, mix(base, base * 1.07 + vec3(0.015), hi) * vec3(1.02, 1.0, 0.97), lit);
 
 	float px = max(VIEWPORT_SIZE.y / 720.0, 1.0) * 5.0;
 	vec2 g = FRAGCOORD.xy / px;
@@ -54,8 +57,9 @@ void fragment() {
 	col = mix(col, col * 0.6 + vec3(1.0, 0.82, 0.5) * 0.55, rim * rim_amount);
 
 	vec3 H = normalize(L + VIEW);
-	// brilho especular macio (plástico/borracha de brinquedo), sem borda dura
-	col += vec3(1.0, 0.98, 0.94) * smoothstep(0.955, 0.99, dot(NORMAL, H)) * spec_amount * lit;
+	// brilho chapado de desenho (só onde for pedido, ex.: cabelo), recortado e não degradê
+	float sh = dot(NORMAL, H);
+	col = mix(col, col + vec3(0.55), smoothstep(0.972 - aa * 4.0, 0.972 + aa * 4.0, sh) * spec_amount * lit);
 
 	col = mix(col, flash_color.rgb, flash);
 	col = mix(col, vec3(0.88, 0.84, 0.9) * (0.75 + 0.25 * lit), bg * 0.14);   // véu leve: fundo limpo e vivo

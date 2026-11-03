@@ -22,9 +22,11 @@ desconhecidos" e abra. O jogo roda deitado (paisagem).
 
 Referência: jogos de esporte arcade em cartoon (visual simples, limpo e com bonecos de brinquedo).
 
-- **Personagens mais cartoon**: proporção chibi (cabeça, mãos e tênis maiores), olhos com branco e
-  brilho, **tênis** brancos com solado na cor do personagem, **munhequeiras**, membros mais cheinhos,
-  sombreado macio sem retícula, contorno mais fino e brilho suave no cabelo e nos tênis.
+- **Personagens de desenho animado** (nada de "boneco de plástico"): cel-shading com faixas chapadas
+  e borda nítida, sombras coloridas, contorno preto grosso, rosto em cor chapada, sem brilho
+  especular. Proporção chibi (cabeça, mãos de desenho e tênis maiores), **olhões** com branco e
+  brilho, **sobrancelhas** na cor do cabelo, sorriso largo, **tênis** brancos com solado na cor do
+  personagem e **munhequeiras**.
 - **Cenário sem poluição**: sem cadeiras, bandeiras e torre; só dois guarda-sóis ao longe; fundo
   sem contorno preto e com véu mais leve (cores vivas); céu sem raios desenhados; areia com textura
   discreta para a quadra ser o destaque.

@@ -153,22 +153,21 @@ static func make_model(char_data: Dictionary, team_data: Dictionary, lk: Diction
 	var pals: Array = GameData.PALETTES[team_i]
 	var pal: Dictionary = pals[clampi(int(lk.get("palette", 0)), 0, pals.size() - 1)] if lk.has("palette") else team_data
 	var palette := {
-		"Skin": char_data["skin"], "Hair": char_data["hair_color"], "Band": char_data["accent"],
+		"Skin": char_data["skin"], "Hair": char_data["hair_color"], "Brow": char_data["hair_color"], "Band": char_data["accent"],
 		"Shirt": pal["shirt"], "ShirtTrim": pal["trim"], "Shorts": pal["shorts"],
 	}
-	# visual limpo de jogo de esporte arcade: sem retícula, sombra clara e fria,
-	# contorno fino, brilho macio no cabelo e nos tênis
-	var soft := {"halftone": 0.0, "shadow": Color(0.88, 0.76, 0.82), "rim": 0.45, "spec": 0.05}
-	var flat := {"halftone": 0.0, "outline": 0.0, "rim": 0.0}
-	Toon.apply(m, palette, {"outline": 0.015, "rim": 0.4, "halftone": 0.0, "shadow": Color(0.74, 0.68, 0.88),
-			"spec": 0.06}, [],
+	# visual de desenho animado: cel-shading chapado, sombras coloridas, contorno
+	# grosso e brilho recortado só no cabelo (nada de brilho de plástico)
+	var soft := {"halftone": 0.0, "shadow": Color(0.92, 0.66, 0.68), "rim": 0.35}
+	var flat := {"halftone": 0.0, "outline": 0.0, "rim": 0.0, "shadow": Color.WHITE}   # rosto em cor chapada
+	Toon.apply(m, palette, {"outline": 0.024, "rim": 0.3, "halftone": 0.0, "shadow": Color(0.62, 0.56, 0.86)}, [],
 			{"Skin": soft, "Cheek": flat, "Mouth": flat, "Pupil": flat, "EyeShine": flat, "EyeWhite": flat,
-			"Hair": {"halftone": 0.0, "rim": 0.5, "spec": 0.1, "shadow": Color(0.7, 0.66, 0.82)},
-			"Band": {"halftone": 0.0, "spec": 0.12}, "Shoe": {"spec": 0.15, "shadow": Color(0.8, 0.8, 0.92)}})
+			"Brow": flat, "Hair": {"halftone": 0.0, "rim": 0.35, "spec": 0.0, "shadow": Color(0.58, 0.52, 0.78)},
+			"Band": {"halftone": 0.0}, "Shoe": {"shadow": Color(0.7, 0.72, 0.92)}})
 	var r := Rig.new(sk)
 	# proporção cartoon (chibi): cabeça, mãos e tênis um pouco maiores. O Rig só
 	# mexe na rotação dos ossos, então a escala fica fixa.
-	for bs in [["Head", 1.14], ["Hand.R", 1.12], ["Hand.L", 1.12], ["Foot.R", 1.1], ["Foot.L", 1.1]]:
+	for bs in [["Head", 1.18], ["Hand.R", 1.3], ["Hand.L", 1.3], ["Foot.R", 1.18], ["Foot.L", 1.18]]:
 		var bi := sk.find_bone(bs[0])
 		if bi >= 0:
 			sk.set_bone_pose_scale(bi, Vector3.ONE * float(bs[1]))
@@ -177,7 +176,7 @@ static func make_model(char_data: Dictionary, team_data: Dictionary, lk: Diction
 	var rk: Node3D = (RACKETS[clampi(int(lk.get("racket", 0)), 0, RACKETS.size() - 1)] as PackedScene).instantiate()
 	var rc := GameData.racket_color(char_data, lk)
 	Toon.apply(rk, {"Racket": rc, "RacketDeco": rc.lightened(0.55) if rc.v < 0.9 else rc.darkened(0.4)},
-		{"outline": 0.014, "rim": 0.5, "halftone": 0.0})
+		{"outline": 0.02, "rim": 0.3, "halftone": 0.0})
 	rk.top_level = true
 	m.add_child(rk)
 	return {"model": m, "rig": r, "racket": rk, "skeleton": sk}

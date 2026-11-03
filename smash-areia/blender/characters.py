@@ -194,6 +194,7 @@ def player_materials():
         "shades": B.material("Shades", "#151020", 0.2),
         "shoe": B.material("Shoe", "#f7f5f0"),
         "eyewhite": B.material("EyeWhite", "#ffffff", 0.3),
+        "brow": B.material("Brow", "#3b2416"),
     }
 
 
@@ -384,8 +385,15 @@ def player_head(M):
     for s in (-1, 1):
         b.sphere((0.172 * s, -0.226, 1.69), 1.0, M["cheek"], scale=(0.05, 0.022, 0.03), seg=12, rings=6)
         b.sphere((0.292 * s, 0.0, 1.75), 1.0, M["skin"], scale=(0.04, 0.055, 0.07), seg=12, rings=8)
-    b.sphere((0, -0.279, 1.68), 1.0, M["mouth"], scale=(0.055, 0.02, 0.028), seg=16, rings=10, cut_above=1.68)
+    # sorriso de desenho: mais largo e aberto
+    b.sphere((0, -0.276, 1.675), 1.0, M["mouth"], scale=(0.075, 0.024, 0.042), seg=18, rings=10, cut_above=1.675)
     return b.build()
+
+
+def _brow(b, M, s, z):
+    """Sobrancelha de desenho: um traço só, grosso e levemente inclinado."""
+    rot = Matrix.Rotation(0.18 * s, 4, "Y")
+    b.sphere((0.112 * s, -0.276, z), 1.0, M["brow"], scale=(0.058, 0.014, 0.017), seg=16, rings=8, rot=rot)
 
 
 def eye_variants(M):
@@ -395,18 +403,22 @@ def eye_variants(M):
     for s in (-1, 1):
         x = 0.105 * s
         # branco do olho atrás da pupila: olhar mais expressivo, lê melhor de longe
-        b.sphere((x, -0.255, 1.795), 1.0, M["eyewhite"], scale=(0.06, 0.024, 0.08), seg=18, rings=12)
-        b.sphere((x + 0.006 * s, -0.27, 1.788), 1.0, M["pupil"], scale=(0.04, 0.022, 0.058), seg=16, rings=10)
-        b.sphere((x - 0.008 * s, -0.29, 1.81), 0.015, M["shine"], seg=8, rings=6)
+        # olhos grandes de desenho
+        x = 0.11 * s
+        b.sphere((x, -0.252, 1.795), 1.0, M["eyewhite"], scale=(0.07, 0.026, 0.094), seg=20, rings=12)
+        b.sphere((x + 0.007 * s, -0.27, 1.786), 1.0, M["pupil"], scale=(0.047, 0.024, 0.066), seg=18, rings=10)
+        b.sphere((x - 0.01 * s, -0.292, 1.812), 0.018, M["shine"], seg=8, rings=6)
+        _brow(b, M, s, 1.905)
     out.append(b.build())
     # amendoados: mais largos que altos, com o canto de fora levemente para cima
     b = B.Builder("Eyes_Almond")
     for s in (-1, 1):
         x = 0.108 * s
         rot = Matrix.Rotation(-0.2 * s, 4, "Y")
-        b.sphere((x, -0.256, 1.797), 1.0, M["eyewhite"], scale=(0.07, 0.024, 0.046), seg=18, rings=10, rot=rot)
-        b.sphere((x + 0.006 * s, -0.27, 1.794), 1.0, M["pupil"], scale=(0.042, 0.022, 0.036), seg=18, rings=10, rot=rot)
-        b.sphere((x - 0.01 * s, -0.29, 1.806), 0.011, M["shine"], seg=8, rings=6)
+        b.sphere((x, -0.254, 1.797), 1.0, M["eyewhite"], scale=(0.08, 0.026, 0.054), seg=18, rings=10, rot=rot)
+        b.sphere((x + 0.006 * s, -0.27, 1.794), 1.0, M["pupil"], scale=(0.05, 0.024, 0.042), seg=18, rings=10, rot=rot)
+        b.sphere((x - 0.012 * s, -0.292, 1.808), 0.013, M["shine"], seg=8, rings=6)
+        _brow(b, M, s, 1.87)
     out.append(b.build())
     return out
 
