@@ -38,10 +38,15 @@ var referee: Dictionary = {}
 var ref_whistle := 0.0
 var ball_pos := Vector3(0, 1, 0)
 var rng := RandomNumberGenerator.new()
+var night := false
+var bulbs: Array[Dictionary] = []
+var fire: Dictionary = {}
 
 
 func _ready() -> void:
 	rng.seed = 2026
+	night = GameData.ARENAS[GameData.arena]["id"] == "night"
+	RenderingServer.global_shader_parameter_set("arena_night", 1.0 if night else 0.0)
 	_environment()
 	_ground()
 	_court()
@@ -51,6 +56,8 @@ func _ready() -> void:
 	_stands()
 	_boards()
 	_land_side()
+	if night:
+		_night_props()
 	_setup_marks()
 
 
@@ -94,6 +101,7 @@ func _process(dt: float) -> void:
 		(g["wl"] as Node3D).rotation.z = flap
 		(g["wr"] as Node3D).rotation.z = -flap
 	_update_referee(dt)
+	_update_night(tt)
 
 
 # ---------------------------------------------------------------- marcas na areia
@@ -197,6 +205,7 @@ func _environment() -> void:
 	var sm := ShaderMaterial.new()
 	sm.shader = preload("res://shaders/sky.gdshader")
 	sky.sky_material = sm
+	sm.set_shader_parameter("night", 1.0 if night else 0.0)
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	# tudo é unshaded: sem reflexo do céu (o céu não precisa virar cubemap a cada frame)
@@ -452,7 +461,7 @@ func _props() -> void:
 		var b := _place(SAILBOAT, Vector3(-150 + i * 140, 0, rng.randf_range(-150, -80)),
 				PI * 0.5, rng.randf_range(1.6, 2.2), {"outline": 0.0, "halftone": 0.0})
 		boats.append({"node": b, "speed": rng.randf_range(1.0, 2.0), "ph": rng.randf() * 10.0})
-	for i in 3:
+	for i in (0 if night else 3):   # gaivotas só de dia
 		var g := Node3D.new()
 		add_child(g)
 		_box(Vector3(0.14, 0.12, 0.45), Vector3.ZERO, Color("ffffff"), 0.015, g)
@@ -574,9 +583,162 @@ func _land_side() -> void:
 		var c: Color = cols[r2.randi() % cols.size()]
 		var bld := _box(Vector3(w, h, 10.0), Vector3(x + w * 0.5, h * 0.5, r2.randf_range(118.0, 132.0)), c, 0.08)
 		bld.material_override = Toon.make(c, {"outline": 0.08, "halftone": 0.0, "rim": 0.0, "shadow": Color(0.86, 0.82, 0.92)})
-		# faixas de janelas
+		# faixas de janelas (à noite, algumas acesas)
 		for j in int(h / 4.0):
 			_box(Vector3(w * 0.86, 0.9, 0.2), Vector3(0, -h * 0.5 + 2.5 + j * 4.0, -5.05) / Vector3(1, 1, 1), Color(c.darkened(0.22)), 0.0, bld)
+			if night:
+				for wi in int(w / 2.6):
+					if r2.randf() < 0.45:
+						var lw := MeshInstance3D.new()
+						var lq := QuadMesh.new()
+						lq.size = Vector2(1.5, 0.75)
+						lw.mesh = lq
+						lw.position = Vector3(-w * 0.43 + 1.3 + wi * 2.6, -h * 0.5 + 2.5 + j * 4.0, -5.17)
+						lw.rotation.y = PI
+						lw.material_override = _glow_mat(Color(1.0, 0.85, 0.5) if r2.randf() < 0.7 else Color(0.7, 0.85, 1.0))
+						bld.add_child(lw)
 		x += w + r2.randf_range(1.0, 4.0)
 	_place(MOUNTAINS, Vector3(-140, -1, 330), PI + 0.4, 2.4, {"outline": 0.0, "halftone": 0.0, "rim": 0.0})
 	_place(MOUNTAINS, Vector3(170, -1, 360), 0.2, 2.0, {"outline": 0.0, "halftone": 0.0, "rim": 0.0})
+
+
+# ---------------------------------------------------------------- arena NOITE
+
+## Material que brilha (não escurece com a noite e passa do limiar do bloom)
+func _glow_mat(c: Color, add := false, alpha := 1.0) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = Color(c, alpha)
+	if add or alpha < 1.0:
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD if add else BaseMaterial3D.BLEND_MODE_MIX
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		m.no_depth_test = false
+		m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	return m
+
+
+## Refletores nos quatro cantos, com feixe de luz falso (cone aditivo), varal de
+## lâmpadas no fundo e uma fogueira de luau na areia.
+func _night_props() -> void:
+	var beam_mat := _glow_mat(Color(1.0, 0.95, 0.8), true, 0.028)
+	var lamp_mat := _glow_mat(Color(1.0, 1.0, 0.96))
+	for c in [Vector3(-9.6, 0, -12.5), Vector3(9.6, 0, -12.5), Vector3(-9.6, 0, 12.5), Vector3(9.6, 0, 12.5)]:
+		var h := 11.0
+		_cyl(0.16, h, c + Vector3(0, h * 0.5, 0), Color("4a4f63"), 0.02)
+		var head := Node3D.new()
+		head.position = c + Vector3(0, h + 0.4, 0)
+		add_child(head)
+		head.look_at(Vector3(0, 0, c.z * 0.25), Vector3.UP)
+		_box(Vector3(2.4, 1.3, 0.35), Vector3.ZERO, Color("2f3344"), 0.03, head)
+		for ix in 3:
+			for iy in 2:
+				var lamp := MeshInstance3D.new()
+				var q := QuadMesh.new()
+				q.size = Vector2(0.62, 0.5)
+				lamp.mesh = q
+				lamp.position = Vector3(-0.78 + ix * 0.78, -0.28 + iy * 0.56, -0.19)
+				lamp.rotation.y = PI
+				lamp.material_override = lamp_mat
+				head.add_child(lamp)
+		# feixe: cone aditivo bem transparente do refletor até a quadra
+		var target := Vector3(c.x * 0.2, 0, c.z * 0.25)
+		var from := head.position
+		var len := from.distance_to(target)
+		var beam := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.9
+		cm.bottom_radius = 5.5
+		cm.height = len
+		cm.radial_segments = 20
+		cm.rings = 1
+		cm.cap_top = false
+		cm.cap_bottom = false
+		beam.mesh = cm
+		beam.material_override = beam_mat
+		beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(beam)
+		var dir := (target - from).normalized()
+		beam.position = (from + target) * 0.5
+		var axis := Vector3.DOWN.cross(dir)
+		if axis.length() > 0.001:
+			beam.basis = Basis(axis.normalized(), Vector3.DOWN.angle_to(dir))
+	# varal de lâmpadas coloridas atrás do fundo, de palmeira a palmeira
+	var cols := [Color("ffd23f"), Color("ff5fa2"), Color("4fe0ff"), Color("35e0a1"), Color("ff9f1c")]
+	for side in [-1.0, 1.0]:
+		var a := Vector3(-14.0, 4.6, side * 15.8)   # atrás das câmeras de rali
+		var b := Vector3(14.0, 4.6, a.z)
+		var n := 26
+		var prev := a
+		for i in n + 1:
+			var t := float(i) / float(n)
+			var sag := 1.0 - pow(2.0 * fmod(t * 2.0, 1.0) - 1.0, 2.0)   # caimento entre os postes
+			var p := a.lerp(b, t) + Vector3(0, -sag * 0.9, 0)
+			if i > 0:
+				_rope(prev, p, 0.012, Color("1d1d26"))
+			prev = p
+			if i < n:
+				var bl := MeshInstance3D.new()
+				var sm := SphereMesh.new()
+				sm.radius = 0.11
+				sm.height = 0.24
+				sm.radial_segments = 8
+				sm.rings = 4
+				bl.mesh = sm
+				var col: Color = cols[i % cols.size()]
+				var mat := _glow_mat(col.lightened(0.35))
+				bl.material_override = mat
+				bl.position = p + Vector3(0, -0.14, 0)
+				add_child(bl)
+				bulbs.append({"mat": mat, "col": col.lightened(0.35), "ph": rng.randf() * TAU})
+		for x in [a.x, b.x]:
+			_cyl(0.07, 4.8, Vector3(x, 2.4, a.z), Color("3a2c22"), 0.015)
+	# fogueira de luau perto do quiosque, com toras e faíscas
+	var fp := Vector3(-19.0, 0, -17.0)
+	for k in 4:
+		var lg := _cyl(0.09, 1.1, fp + Vector3(0, 0.1, 0), Color("5a3a24"), 0.012)
+		lg.basis = Basis(Vector3.UP, k * PI * 0.25) * Basis(Vector3.RIGHT, PI * 0.5)
+	var glow := Toon.blob(4.0, Color(1.0, 0.55, 0.2, 0.35))
+	glow.position = fp + Vector3(0, 0.02, 0)
+	add_child(glow)
+	var flames := CPUParticles3D.new()
+	flames.position = fp + Vector3(0, 0.15, 0)
+	flames.amount = 40
+	flames.lifetime = 0.9
+	flames.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	flames.emission_sphere_radius = 0.28
+	flames.direction = Vector3.UP
+	flames.spread = 12.0
+	flames.gravity = Vector3(0, 2.2, 0)
+	flames.initial_velocity_min = 0.6
+	flames.initial_velocity_max = 1.4
+	flames.scale_amount_min = 0.5
+	flames.scale_amount_max = 1.0
+	var sc := Curve.new()
+	sc.add_point(Vector2(0, 1.0))
+	sc.add_point(Vector2(1, 0.1))
+	flames.scale_amount_curve = sc
+	var grad := Gradient.new()
+	grad.offsets = PackedFloat32Array([0.0, 0.4, 1.0])
+	grad.colors = PackedColorArray([Color(1.0, 0.95, 0.6, 1.0), Color(1.0, 0.55, 0.15, 0.9), Color(0.8, 0.15, 0.05, 0.0)])
+	flames.color_ramp = grad
+	var fq := QuadMesh.new()
+	fq.size = Vector2(0.45, 0.6)
+	var fmat := _glow_mat(Color.WHITE, true)
+	fmat.vertex_color_use_as_albedo = true
+	fmat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	fq.material = fmat
+	flames.mesh = fq
+	add_child(flames)
+	fire = {"glow": glow, "pos": fp}
+
+
+func _update_night(tt: float) -> void:
+	if not night:
+		return
+	for b in bulbs:
+		var k := 0.82 + 0.18 * sin(tt * 2.2 + float(b["ph"]))
+		(b["mat"] as StandardMaterial3D).albedo_color = (b["col"] as Color) * k
+	if not fire.is_empty():
+		var g: MeshInstance3D = fire["glow"]
+		g.scale = Vector3.ONE * (1.0 + 0.08 * sin(tt * 13.0) + 0.05 * sin(tt * 7.3))

@@ -7,6 +7,8 @@ extends CanvasLayer
 signal play_pressed
 signal rematch_pressed
 signal menu_pressed
+signal graphics_changed
+signal arena_changed
 
 const FONT := preload("res://assets/fonts/Bangers.woff")
 const INK := Color(0.07, 0.04, 0.12)
@@ -88,6 +90,14 @@ var back_btn: Button
 var mode_back_btn: Button
 var help_btn: Button
 var pads_label: Label
+var opt_btn: Button
+var split_btn: Button
+var arena_btn: Button
+var options: OptionsMenu
+var vig: TextureRect
+var fps_label: Label
+var fps_t := 0.0
+var help_grid: GridContainer
 
 
 func _ready() -> void:
@@ -98,7 +108,7 @@ func _ready() -> void:
 	for pth in PORTRAITS:
 		portraits.append(load(pth) as Texture2D if ResourceLoader.exists(pth) else null)
 	# vinheta suave de cinema nas bordas
-	var vig := TextureRect.new()
+	vig = TextureRect.new()
 	var gt := GradientTexture2D.new()
 	gt.fill = GradientTexture2D.FILL_RADIAL
 	gt.fill_from = Vector2(0.5, 0.5)
@@ -166,10 +176,19 @@ func _ready() -> void:
 	pause_btn.pressed.connect(_on_pause)
 	add_child(pause_btn)
 
+	fps_label = _label("", 22, Color.WHITE, 8)
+	fps_label.position = Vector2(14, 8)
+	fps_label.visible = false
+	add_child(fps_label)
+
 	_build_menu()
 	_build_help()
 	_build_pause()
 	_build_end()
+	options = OptionsMenu.new(self)
+	add_child(options)
+	options.changed.connect(func(): graphics_changed.emit())
+	options.closed.connect(_on_options_closed)
 	get_viewport().size_changed.connect(_layout_menu)
 	show_menu()
 
@@ -412,6 +431,9 @@ func _build_menu() -> void:
 	help_btn = _button("COMO JOGAR?", 30, CYAN)
 	help_btn.pressed.connect(_toggle_help)
 	mode_scr.add_child(help_btn)
+	opt_btn = _button("OPÇÕES", 30, YELLOW)
+	opt_btn.pressed.connect(open_options)
+	mode_scr.add_child(opt_btn)
 	pads_label = _label("", 24, Color.WHITE, 8)
 	pads_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	mode_scr.add_child(pads_label)
@@ -443,6 +465,10 @@ func _build_menu() -> void:
 	music_btn = _button("", 26, Color.WHITE)
 	music_btn.pressed.connect(_cycle_music)
 	char_scr.add_child(music_btn)
+	# VS: qual lado da tela dividida é de quem
+	split_btn = _button("", 26, Color.WHITE)
+	split_btn.pressed.connect(_cycle_split)
+	char_scr.add_child(split_btn)
 	next_btn = _big_button("VESTIÁRIO >", 50, GREEN)
 	next_btn.pressed.connect(func():
 		if _party() and not (party_ready[0] and party_ready[1]):
@@ -465,6 +491,10 @@ func _build_menu() -> void:
 	lb.pressed.connect(_back)
 	locker_scr.add_child(lb)
 	locker_scr.set_meta("back", lb)
+	# arena: o cenário do fundo do menu já troca na hora
+	arena_btn = _button("", 28, Color.WHITE)
+	arena_btn.pressed.connect(_cycle_arena)
+	locker_scr.add_child(arena_btn)
 	play_btn = _big_button("JOGAR!", 66, RED)
 	play_btn.pressed.connect(func():
 		_sfx("ui_start")
@@ -650,6 +680,8 @@ func _layout_menu() -> void:
 	mode_back_btn.size = Vector2(190, 66)
 	help_btn.position = Vector2(vs.x - 268, vs.y - 92)
 	help_btn.size = Vector2(240, 66)
+	opt_btn.position = Vector2(vs.x - 268 - 200, vs.y - 92)
+	opt_btn.size = Vector2(186, 66)
 	pads_label.position = Vector2(vs.x * 0.5 - 300, vs.y - 78)
 	pads_label.size = Vector2(600, 40)
 	# cards dos personagens
@@ -671,6 +703,8 @@ func _layout_menu() -> void:
 	len_btn.size = Vector2(250, 70)
 	music_btn.position = Vector2(cx0 + 474, oy)
 	music_btn.size = Vector2(170, 70)
+	split_btn.position = Vector2(cx0 + 658, oy)
+	split_btn.size = Vector2(maxf(150.0, minf(230.0, full - 330 - 672)), 70)
 	next_btn.position = Vector2(cx0 + full - 330, oy - 14)
 	next_btn.size = Vector2(330, 96)
 	next_btn.pivot_offset = next_btn.size * 0.5
@@ -695,6 +729,11 @@ func _layout_menu() -> void:
 		play_btn.position = Vector2(lx0 + lw + 50, 124 + lh - 120)
 	play_btn.size = Vector2(330, 104)
 	play_btn.pivot_offset = play_btn.size * 0.5
+	arena_btn.size = Vector2(330, 62)
+	if two:
+		arena_btn.position = Vector2(vs.x * 0.5 - 165 - 350, vs.y - 130)
+	else:
+		arena_btn.position = Vector2(play_btn.position.x, play_btn.position.y - 80)
 
 
 func _go_screen(s: String) -> void:
@@ -821,6 +860,44 @@ func _cycle_len() -> void:
 	_refresh_menu()
 
 
+func _cycle_arena() -> void:
+	GameData.arena = (GameData.arena + 1) % GameData.ARENAS.size()
+	_refresh_menu()
+	arena_changed.emit()
+
+
+func _cycle_split() -> void:
+	Settings.split_swap = not Settings.split_swap
+	Settings.save()
+	_refresh_menu()
+	graphics_changed.emit()
+
+
+func open_options() -> void:
+	help_panel.visible = false
+	options.open()
+
+
+func _on_options_closed() -> void:
+	_fill_help()
+	if pause_panel.visible:
+		(pause_panel.get_meta("opt") as Button).grab_focus.call_deferred()
+	elif menu.visible and screen == "mode":
+		opt_btn.grab_focus.call_deferred()
+
+
+## Reaplica opções que mexem na interface (vinheta, FPS, botões de toque)
+func apply_settings() -> void:
+	if vig:
+		vig.visible = not (Settings.postfx and Settings.vignette)
+	if fps_label:
+		fps_label.visible = Settings.show_fps
+	if touch:
+		touch.apply_settings()
+	if split_btn:
+		_refresh_menu()
+
+
 func _cycle_music() -> void:
 	GameData.music_on = not GameData.music_on
 	_sfx("music_toggle")
@@ -844,6 +921,10 @@ func _refresh_menu() -> void:
 	var L: Dictionary = GameData.LENGTHS[GameData.length_index]
 	len_btn.text = "PARTIDA: OFICIAL" if L.get("official", false) else "PARTIDA: %s (%d)" % [L["name"], L["games"]]
 	music_btn.text = "MÚSICA: %s" % ("SIM" if GameData.music_on else "NÃO")
+	split_btn.text = "TELA: J2 | J1" if Settings.split_swap else "TELA: J1 | J2"
+	if arena_btn:
+		arena_btn.text = "ARENA: %s" % GameData.ARENAS[GameData.arena]["name"]
+	split_btn.visible = GameData.mode == "vs"
 	if GameData.char_index_p2 == GameData.char_index:
 		GameData.char_index_p2 = (GameData.char_index + 2) % GameData.CHARACTERS.size()
 	var n := Input.get_connected_joypads().size()
@@ -1357,7 +1438,7 @@ func _tag(ci: CanvasItem, c: Vector2, s: String, col: Color) -> void:
 func _build_help() -> void:
 	help_panel = _panel(CREAM)
 	help_panel.set_anchors_preset(Control.PRESET_CENTER)
-	help_panel.position = Vector2(-470, -320)
+	help_panel.position = Vector2(-470, -340)
 	help_panel.custom_minimum_size = Vector2(940, 0)
 	help_panel.visible = false
 	add_child(help_panel)
@@ -1371,32 +1452,12 @@ func _build_help() -> void:
 	tip.autowrap_mode = TextServer.AUTOWRAP_WORD
 	tip.custom_minimum_size = Vector2(880, 0)
 	v.add_child(tip)
-	var g := GridContainer.new()
-	g.columns = 4
-	g.add_theme_constant_override("h_separation", 26)
-	g.add_theme_constant_override("v_separation", 0)
-	v.add_child(g)
-	var rows := [
-		["", "CONTROLE", "TECLADO", "TOQUE"],
-		["MOVER", "ANALÓGICO", "W A S D", "ARRASTE À ESQUERDA"],
-		["FORTE (topspin)", "A", "J", "FORTE"],
-		["LOB (alto, fundo)", "X", "K", "LOB"],
-		["CURTA (slice)", "B", "L", "CURTA"],
-		["SMASH (bola alta)", "Y", "I", "SMASH"],
-		["DEFESA (bloqueia especial)", "LB  ou  RT", "O", "DEFESA"],
-		["ESPECIAL (barra cheia)", "RB", "U", "ESTRELA ESPECIAL"],
-		["PEIXINHO", "LT  ou  L3", "SHIFT", "PEIXINHO"],
-		["PAUSA", "START", "ESC", "II"],
-	]
-	for ri in rows.size():
-		for ci in 4:
-			var col := INK
-			if ri == 0:
-				col = RED
-			elif ci == 0:
-				col = Color("2f6cd6")
-			var l := _label(rows[ri][ci], 24 if ri > 0 else 26, col, 0)
-			g.add_child(l)
+	help_grid = GridContainer.new()
+	help_grid.columns = 4
+	help_grid.add_theme_constant_override("h_separation", 26)
+	help_grid.add_theme_constant_override("v_separation", 0)
+	v.add_child(help_grid)
+	_fill_help()
 	var tip2 := _label("Estrela de CHANCE no chão: pare em cima e use o golpe da mesma cor.  Bons golpes enchem a barra ESPECIAL.", 22, INK, 0)
 	tip2.autowrap_mode = TextServer.AUTOWRAP_WORD
 	tip2.custom_minimum_size = Vector2(880, 0)
@@ -1405,6 +1466,37 @@ func _build_help() -> void:
 	close.pressed.connect(_toggle_help)
 	v.add_child(close)
 	help_panel.set_meta("close", close)
+
+
+## Tabela de controles da ajuda, sempre com o mapa atual (OPÇÕES > CONTROLES)
+func _fill_help() -> void:
+	if help_grid == null:
+		return
+	for c in help_grid.get_children():
+		c.queue_free()
+	var mv := "%s %s %s %s" % [Settings.key_name("move_up"), Settings.key_name("move_left"),
+		Settings.key_name("move_down"), Settings.key_name("move_right")]
+	var rows := [
+		["", "CONTROLE", "TECLADO", "TOQUE"],
+		["MOVER", "ANALÓGICO", mv, "ARRASTE NO CANTO"],
+	]
+	var desc := {"drive": "FORTE (topspin)", "lob": "LOB (alto, fundo)", "drop": "CURTA (slice)",
+		"smash": "SMASH (bola alta)", "defense": "DEFESA (bloqueia especial)",
+		"super": "ESPECIAL (barra cheia)", "dive": "PEIXINHO", "jump": "PULO"}
+	var touch_name := {"super": "ESTRELA ESPECIAL", "jump": "—"}
+	for a in Settings.ACTIONS:
+		rows.append([desc[a["id"]], Settings.pad_name(a["id"]), Settings.key_name(a["key"]),
+			touch_name.get(a["id"], a["name"])])
+	rows.append(["PAUSA", "START", "ESC", "II"])
+	for ri in rows.size():
+		for ci in 4:
+			var col := INK
+			if ri == 0:
+				col = RED
+			elif ci == 0:
+				col = Color("2f6cd6")
+			var l := _label(rows[ri][ci], 22 if ri > 0 else 26, col, 0)
+			help_grid.add_child(l)
 
 
 func set_split(on: bool) -> void:
@@ -1443,6 +1535,11 @@ func set_pad_mode(on: bool) -> void:
 func _process(dt: float) -> void:
 	t += dt
 	screen_t += dt
+	if fps_label.visible:
+		fps_t -= dt
+		if fps_t <= 0.0:
+			fps_t = 0.5
+			fps_label.text = "%d FPS" % Engine.get_frames_per_second()
 	if menu.visible:
 		menu_bg.queue_redraw()
 		if screen == "title":
@@ -1494,7 +1591,7 @@ func _process(dt: float) -> void:
 func _build_pause() -> void:
 	pause_panel = _panel(CREAM)
 	pause_panel.set_anchors_preset(Control.PRESET_CENTER)
-	pause_panel.position = Vector2(-200, -190)
+	pause_panel.position = Vector2(-200, -230)
 	pause_panel.custom_minimum_size = Vector2(400, 0)
 	pause_panel.visible = false
 	add_child(pause_panel)
@@ -1515,6 +1612,10 @@ func _build_pause() -> void:
 	ctl.pressed.connect(_toggle_help)
 	v.add_child(ctl)
 	pause_panel.set_meta("ctl", ctl)
+	var opt := _button("OPÇÕES", 32, Color.WHITE)
+	opt.pressed.connect(open_options)
+	v.add_child(opt)
+	pause_panel.set_meta("opt", opt)
 	var quit := _button("MENU", 40, RED)
 	quit.pressed.connect(_quit_to_menu)
 	v.add_child(quit)
@@ -1537,6 +1638,8 @@ func _on_pause() -> void:
 	get_tree().paused = p
 	pause_panel.visible = p
 	help_panel.visible = false
+	if not p and options.visible:
+		options.close()
 	touch.reset()
 	_sfx("pause_on" if p else "pause_off")
 	if p and cont_btn:
@@ -1641,7 +1744,7 @@ func set_hint(text: String) -> void:
 
 ## Aviso de especial pronto, com o botão certo para cada jeito de jogar
 func super_ready_hint(pad: bool, who := "") -> void:
-	var how := "APERTE RB" if pad else ("TOQUE NA ESTRELA" if touch.visible else "APERTE U")
+	var how := ("APERTE " + Settings.pad_name("super")) if pad else ("TOQUE NA ESTRELA" if touch.visible else "APERTE " + Settings.key_name("super"))
 	flash_tip("%sESPECIAL PRONTO!  %s" % [(who + ": ") if who != "" else "", how], 3.2)
 
 
@@ -1767,12 +1870,15 @@ func _draw_score() -> void:
 	var pts: Array = score["points"]
 	var golden: bool = score["golden"]
 	var vs_mode := GameData.mode == "vs" and in_game
+	# tela dividida invertida (OPÇÕES): o placar acompanha o lado de cada jogador
+	var flip := split_on and Settings.split_swap and vs_mode
 	for side in [0, 1]:
+		var L: int = (1 - side) if flip else side   # lado da tela onde a dupla aparece
 		var team: Dictionary = GameData.TEAMS[side]
 		var col: Color = team["shirt"]
-		var x0: float = cx - gap * 0.5 - pw if side == 0 else cx + gap * 0.5
+		var x0: float = cx - gap * 0.5 - pw if L == 0 else cx + gap * 0.5
 		var rect := Rect2(x0, top, pw, ph)
-		var sk := 14.0 if side == 0 else -14.0
+		var sk := 14.0 if L == 0 else -14.0
 		var poly := PackedVector2Array([rect.position + Vector2(maxf(sk, 0.0), 0), Vector2(rect.end.x - maxf(-sk, 0.0), rect.position.y),
 			Vector2(rect.end.x - maxf(sk, 0.0), rect.end.y), Vector2(rect.position.x + maxf(-sk, 0.0), rect.end.y)])
 		var shp := PackedVector2Array()
@@ -1782,7 +1888,7 @@ func _draw_score() -> void:
 		_comic_poly(ci, poly, col, 0.14, 4.0)
 		# caixa dos pontos (do lado de dentro, perto do centro)
 		var bw := 76.0
-		var bx: float = rect.end.x - bw - 6.0 if side == 0 else rect.position.x + 6.0
+		var bx: float = rect.end.x - bw - 6.0 if L == 0 else rect.position.x + 6.0
 		var pop: float = pop_t[side]
 		var box := Rect2(bx, top + 6, bw, ph - 12)
 		ci.draw_rect(box.grow(3), INK)
@@ -1793,24 +1899,24 @@ func _draw_score() -> void:
 		_txt(ci, Vector2(0, -2), ps, 44, RED.darkened(0.3) if golden else INK, 0)
 		ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		# nome + games em bolinhas
-		var nx: float = rect.position.x + 24.0 if side == 0 else rect.end.x - 24.0
+		var nx: float = rect.position.x + 24.0 if L == 0 else rect.end.x - 24.0
 		var nm: String = team["name"]
 		if vs_mode:
 			nm = ("J1 " if side == 0 else "J2 ") + nm
 		var fs := 27
 		var tw := FONT.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		_txt(ci, Vector2(nx if side == 0 else nx - tw, top + 22), nm, fs, Color.WHITE, 9, false)
+		_txt(ci, Vector2(nx if L == 0 else nx - tw, top + 22), nm, fs, Color.WHITE, 9, false)
 		var target: int = score["target"]
 		if int(score["games"][side]) > target:
 			target = int(score["games"][side])
 		for g in target:
-			var gx: float = nx + 10.0 + g * 21.0 if side == 0 else nx - 10.0 - g * 21.0
+			var gx: float = nx + 10.0 + g * 21.0 if L == 0 else nx - 10.0 - g * 21.0
 			var gp := Vector2(gx, top + 48)
 			ci.draw_circle(gp, 9, INK)
 			ci.draw_circle(gp, 6.5, YELLOW if g < int(score["games"][side]) else Color(1, 1, 1, 0.3))
 		# saque
 		if score["serving"] == side and in_game:
-			var sx: float = rect.position.x - 26.0 if side == 0 else rect.end.x + 26.0
+			var sx: float = rect.position.x - 26.0 if L == 0 else rect.end.x + 26.0
 			var sp := Vector2(sx, top + ph * 0.5 - 6)
 			ci.draw_circle(sp, 15, INK)
 			ci.draw_circle(sp, 11, Color("d8ff3e"))
@@ -1822,12 +1928,12 @@ func _draw_score() -> void:
 		ci.draw_rect(er, Color(0.25, 0.22, 0.32))
 		var ev: float = clampf(float(energy[side]), 0.0, 1.0)
 		var fill := Rect2(er.position, Vector2(er.size.x * ev, er.size.y))
-		if side == 1:
+		if L == 1:
 			fill.position.x = er.end.x - fill.size.x
 		var full := ev >= 1.0
 		var fc := Color("ffe14d").lerp(Color.WHITE, 0.5 + 0.5 * sin(t * 10.0)) if full else Color("ff9f1c")
 		ci.draw_rect(fill, fc)
-		var stc := Vector2(er.position.x - 4.0 if side == 0 else er.end.x + 4.0, er.get_center().y)
+		var stc := Vector2(er.position.x - 4.0 if L == 0 else er.end.x + 4.0, er.get_center().y)
 		_star(ci, stc, 14.0 * (1.0 + (0.15 * sin(t * 10.0) if full else 0.0)), YELLOW if full else Color(0.6, 0.58, 0.66), 2.5, t if full else 0.0)
 		if full:
 			_txt(ci, Vector2(er.get_center().x, er.get_center().y), "PRONTO!", 15, INK, 0)

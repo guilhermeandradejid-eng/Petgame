@@ -2,6 +2,7 @@
 // leve caimento e tremida quando a bola bate.
 shader_type spatial;
 render_mode unshaded, cull_disabled, blend_mix, depth_draw_always;
+#include "res://shaders/lighting.gdshaderinc"
 
 uniform vec4 color : source_color = vec4(0.1, 0.08, 0.15, 1.0);
 uniform vec2 cells = vec2(92.0, 9.0);
@@ -31,6 +32,6 @@ void fragment() {
 	if (line < 0.02) {
 		discard;
 	}
-	ALBEDO = color.rgb;
+	ALBEDO = night_grade(color.rgb, (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz);
 	ALPHA = line * color.a;
 }

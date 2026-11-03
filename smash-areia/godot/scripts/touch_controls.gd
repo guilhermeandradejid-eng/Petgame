@@ -30,15 +30,29 @@ func _ready() -> void:
 	_layout()
 
 
-const IDLE_ALPHA := 0.55     # botões semitransparentes; acendem ao tocar
+const ALPHAS := [0.32, 0.55, 0.78]   # visibilidade (OPÇÕES > TOQUE)
+const SIZES := [0.84, 1.0, 1.2]
+var IDLE_ALPHA := 0.55     # botões semitransparentes; acendem ao tocar
 const PRESS_ALPHA := 0.95
+
+
+## Canhoto, tamanho e visibilidade vêm das opções
+func apply_settings() -> void:
+	IDLE_ALPHA = ALPHAS[Settings.touch_alpha]
+	_layout()
+	reset()
+
+
+## x espelhado no modo canhoto
+func _mx(x: float) -> float:
+	return get_viewport_rect().size.x - x if Settings.touch_left else x
 
 
 func _layout() -> void:
 	var vs := get_viewport_rect().size
-	var u := vs.y / 720.0
+	var u: float = vs.y / 720.0 * float(SIZES[Settings.touch_size])
 	# losango compacto no canto, botões secundários num arco à esquerda dele
-	var c := Vector2(vs.x - 128.0 * u, vs.y - 122.0 * u)
+	var c: Vector2 = Vector2(vs.x - 128.0 * u, vs.y - 122.0 * u)
 	var d := 72.0 * u
 	var r := 42.0 * u
 	buttons = [
@@ -51,6 +65,11 @@ func _layout() -> void:
 		{"id": "defense", "type": Shots.DEFENSE, "pos": c + Vector2(-d * 2.15, -d * 0.05), "r": 36.0 * u, "label": "DEFESA", "color": Color("e8e2d4")},
 		{"id": "dive", "type": -1, "pos": c + Vector2(-d * 2.05, d * 1.1), "r": 34.0 * u, "label": "PEIXINHO", "color": Color("ffffff")},
 	]
+	if Settings.touch_left:
+		# canhoto: o losango vai para a esquerda (espelhado, FORTE continua do lado de dentro)
+		for b in buttons:
+			var p: Vector2 = b["pos"]
+			b["pos"] = Vector2(vs.x - p.x, p.y)
 
 
 func reset() -> void:
@@ -70,7 +89,7 @@ func _input(event: InputEvent) -> void:
 				touch_buttons[e.index] = b["id"]
 				_fire(b)
 				get_viewport().set_input_as_handled()
-			elif e.position.x < get_viewport_rect().size.x * 0.55 and joy_index < 0:
+			elif _mx(e.position.x) < get_viewport_rect().size.x * 0.55 and joy_index < 0:
 				joy_index = e.index
 				joy_origin = e.position
 				joy_pos = e.position
@@ -137,7 +156,7 @@ func _draw() -> void:
 		draw_circle(k, 36.0 * u, Color(INK, 0.6))
 		draw_circle(k, 31.0 * u, Color(1.0, 0.82, 0.25, 0.75))
 	else:
-		var hint := Vector2(128.0 * u, get_viewport_rect().size.y - 128.0 * u)
+		var hint := Vector2(_mx(128.0 * u), get_viewport_rect().size.y - 128.0 * u)
 		draw_circle(hint, 66.0 * u, Color(1, 1, 1, 0.07))
 		draw_arc(hint, 66.0 * u, 0, TAU, 40, Color(1, 1, 1, 0.25), 3.0 * u)
 		_text(hint + Vector2(0, 6 * u), "MOVER", 24, Color(1, 1, 1, 0.45), u, 0.4)

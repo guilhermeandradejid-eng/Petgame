@@ -1,6 +1,7 @@
 // Bandeirinha balançando ao vento
 shader_type spatial;
 render_mode unshaded, cull_disabled;
+#include "res://shaders/lighting.gdshaderinc"
 
 uniform vec4 color_a : source_color = vec4(1.0, 0.3, 0.25, 1.0);
 uniform vec4 color_b : source_color = vec4(1.0, 0.85, 0.25, 1.0);
@@ -15,5 +16,5 @@ void vertex() {
 void fragment() {
 	vec3 col = mix(color_a.rgb, color_b.rgb, step(0.5, fract(UV.y * 2.0)));
 	float shade = 0.85 + 0.15 * sin(TIME * 5.0 + UV.x * 6.0 + phase);
-	ALBEDO = col * shade;
+	ALBEDO = night_grade(col * shade, (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz);
 }

@@ -85,6 +85,7 @@ var pts_reason := ""
 var replay_cool := 0
 
 var audio: GameAudio
+var post: PostFX
 var sand_small: Array[CPUParticles3D] = []
 var sand_big: Array[CPUParticles3D] = []
 var sand_i := 0
@@ -136,6 +137,9 @@ func _ready() -> void:
 	_setup_confetti()
 	hud = Hud.new()
 	add_child(hud)
+	hud.graphics_changed.connect(apply_graphics)
+	hud.arena_changed.connect(ensure_arena)
+	hud.apply_settings()
 	hud.sfx_cb = func(n: String):
 		if n == "music_toggle":
 			_update_music()
@@ -178,6 +182,21 @@ func _ready() -> void:
 			GameData.char_index = int(a.substr(7))
 		elif a.begins_with("--mode="):
 			GameData.mode = a.substr(7)
+		elif a == "--nobloom":
+			Settings.bloom = false
+			apply_graphics.call_deferred()
+		elif a.begins_with("--arena="):
+			GameData.arena = int(a.substr(8))
+		elif a == "--nopost":
+			Settings.postfx = false
+			apply_graphics.call_deferred()
+		elif a.begins_with("--gfx="):
+			Settings.apply_preset(int(a.substr(6)))
+			apply_graphics.call_deferred()
+		elif a.begins_with("--options"):
+			hud.open_options.call_deferred()
+			if a.begins_with("--options="):
+				hud.options._set_tab.call_deferred(int(a.substr(10)))
 		elif a.begins_with("--diff="):
 			GameData.difficulty = int(a.substr(7))
 		elif a == "--sfxonly":
@@ -207,6 +226,8 @@ func _ready() -> void:
 ## O 3D é desenhado em SubViewports (uma por jogador no modo VS) que dividem a tela.
 func _setup_views() -> void:
 	get_viewport().disable_3d = true
+	post = PostFX.new(self)
+	add_child(post)
 	view_layer = CanvasLayer.new()
 	view_layer.layer = -1
 	add_child(view_layer)
@@ -220,6 +241,7 @@ func _setup_views() -> void:
 		sv.msaa_3d = Viewport.MSAA_2X
 		sv.audio_listener_enable_3d = false
 		svc.add_child(sv)
+		post.attach(svc)
 		var c := Camera3D.new()
 		c.fov = 54
 		c.far = 1000
@@ -227,6 +249,28 @@ func _setup_views() -> void:
 		c.current = true
 		views.append({"svc": svc, "sv": sv, "cam": c, "viewer": null, "pos": Vector3(0, 8, 17),
 			"look": Vector3.ZERO, "vel": Vector3.ZERO, "lvel": Vector3.ZERO, "back": 1.0, "cut": true})
+	_layout_views()
+	apply_graphics()
+
+
+## Aplica as opções de gráfico (chamado no começo e pela tela de OPÇÕES)
+func apply_graphics() -> void:
+	var aa := {0: Viewport.MSAA_DISABLED, 2: Viewport.MSAA_2X, 4: Viewport.MSAA_4X}
+	for v in views:
+		var sv: SubViewport = v["sv"]
+		sv.msaa_3d = aa.get(Settings.msaa, Viewport.MSAA_2X)
+		sv.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+		sv.scaling_3d_scale = Settings.render_scale()
+	Engine.max_fps = Settings.FPS_CAPS[Settings.fps_cap]
+	if not OS.has_feature("mobile") and DisplayServer.get_name() != "headless":
+		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if Settings.vsync else DisplayServer.VSYNC_DISABLED)
+		var fs := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+		if Settings.fullscreen != fs:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if Settings.fullscreen else DisplayServer.WINDOW_MODE_WINDOWED)
+	if post:
+		post.apply()
+	if hud:
+		hud.apply_settings()
 	_layout_views()
 
 
@@ -247,13 +291,15 @@ func _layout_views() -> void:
 		var v: Dictionary = views[i]
 		var svc: SubViewportContainer = v["svc"]
 		var sv: SubViewport = v["sv"]
+		# OPÇÕES > TELA DIVIDIDA invertida: a câmera do J1 vai para a direita
+		var right := (i == 1) != Settings.split_swap
 		if i == 0:
-			svc.position = Vector2.ZERO
-			svc.size = Vector2(vs.x * (0.5 if split else 1.0), vs.y)
 			svc.visible = true
+			svc.position = Vector2(vs.x * 0.5 if split and right else 0.0, 0)
+			svc.size = Vector2(vs.x * (0.5 if split else 1.0), vs.y)
 		else:
 			svc.visible = split
-			svc.position = Vector2(vs.x * 0.5, 0)
+			svc.position = Vector2(vs.x * 0.5 if right else 0.0, 0)
 			svc.size = Vector2(vs.x * 0.5, vs.y)
 		sv.render_target_update_mode = SubViewport.UPDATE_ALWAYS if svc.visible else SubViewport.UPDATE_DISABLED
 		v["cut"] = true
@@ -359,24 +405,16 @@ func _stat(key: String) -> void:
 	stats[key] = int(stats.get(key, 0)) + 1
 
 
+## Teclas das ações vêm das opções (remapeáveis em OPÇÕES > CONTROLES); a pausa é fixa.
 func _setup_input() -> void:
-	var map := {
-		"move_left": [KEY_A], "move_right": [KEY_D], "move_up": [KEY_W], "move_down": [KEY_S],
-		"shot_drive": [KEY_J], "shot_lob": [KEY_K], "shot_drop": [KEY_L], "shot_smash": [KEY_I],
-		"shot_defense": [KEY_O], "super": [KEY_U], "jump": [KEY_SPACE], "dive": [KEY_SHIFT],
-		"pause": [KEY_ESCAPE, KEY_P],
-		# J2 no teclado
-		"p2_left": [KEY_LEFT], "p2_right": [KEY_RIGHT], "p2_up": [KEY_UP], "p2_down": [KEY_DOWN],
-		"p2_drive": [KEY_N], "p2_lob": [KEY_M], "p2_drop": [KEY_COMMA], "p2_smash": [KEY_PERIOD],
-		"p2_defense": [KEY_SLASH], "p2_super": [KEY_B], "p2_dive": [KEY_V],
-	}
-	for action in map:
-		if not InputMap.has_action(action):
-			InputMap.add_action(action)
-		for k in map[action]:
+	Settings.load_settings()
+	Settings.apply_keys()
+	if not InputMap.has_action("pause"):
+		InputMap.add_action("pause")
+		for k in [KEY_ESCAPE, KEY_P]:
 			var e := InputEventKey.new()
 			e.physical_keycode = k
-			InputMap.action_add_event(action, e)
+			InputMap.action_add_event("pause", e)
 	# menus no controle: A (ou Start) confirma, B volta (o Godot não traz isso por padrão)
 	for pair in [["ui_accept", JOY_BUTTON_A], ["ui_accept", JOY_BUTTON_START], ["ui_cancel", JOY_BUTTON_B]]:
 		var jb := InputEventJoypadButton.new()
@@ -594,6 +632,7 @@ func sand_burst(pos: Vector3, n: int) -> void:
 
 ## Impacto 3D no ponto da batida: estrela de gibi + faíscas da cor do golpe
 func impact(pos: Vector3, color: Color, size := 1.0) -> void:
+	post.light(pos, color, size)   # a batida ilumina a areia e os jogadores por um instante
 	var s := sparks[spark_i % sparks.size()]
 	spark_i += 1
 	s.global_position = pos
@@ -683,7 +722,23 @@ func go_menu() -> void:
 	_begin_serve()
 
 
+## Troca a arena (reconstrói o cenário) se a escolhida for outra
+func ensure_arena() -> void:
+	var want: bool = GameData.ARENAS[GameData.arena]["id"] == "night"
+	if world and world.night == want:
+		return
+	var old := world
+	remove_child(old)
+	old.queue_free()
+	world = World.new()
+	add_child(world)
+	move_child(world, 0)
+	if post:
+		post.apply()
+
+
 func start_match() -> void:
+	ensure_arena()
 	demo = false
 	_spawn_players(true)
 	_layout_views()
@@ -696,7 +751,8 @@ func start_match() -> void:
 		(hud.last_input_pad or Input.get_connected_joypads().size() > 0)))
 	hud.set_pad_mode(pad_on)
 	if pad_on:
-		hud.flash_tip("CONTROLE:  LB DEFESA  •  RB ESPECIAL  •  LT PEIXINHO", 5.0, Color.WHITE)
+		hud.flash_tip("CONTROLE:  %s DEFESA  •  %s ESPECIAL  •  %s PEIXINHO" % [Settings.pad_name("defense"),
+				Settings.pad_name("super"), Settings.pad_name("dive")], 5.0, Color.WHITE)
 	hud.show_banner("VAI COMEÇAR!", "%s x %s" % [GameData.TEAMS[0]["name"], GameData.TEAMS[1]["name"]], Color("ffd23f"), 1.8)
 	sfx("whistle", -6.0)
 	intro_t = 0.0
@@ -1127,6 +1183,7 @@ func _launch(p: Player, shot: int, res: Dictionary, quality: float, charge: floa
 			cam_dutch = 0.12 * (1.0 if rng.randf() < 0.5 else -1.0)
 			hud.fx.smash_lines(screen_pos(pos))
 			hud.fx.do_flash(0.5)
+			post.kick(pos, 1.0, 0.7)
 			comic(head + Vector3(0, 0.3, 0), res["label"], col, 0.75)
 			world.cheer(1.0)
 			impact(pos, col, 2.2)
@@ -1136,6 +1193,7 @@ func _launch(p: Player, shot: int, res: Dictionary, quality: float, charge: floa
 			hitstop = 0.06
 			fov_kick = -6.0
 			cam_punch = 0.5
+			post.kick(pos, 0.6)
 			if p.is_human or rng.randf() < 0.5:
 				comic(head, "POW!" if res["label"] == "SMASH" else res["label"], col, 0.6)
 			world.cheer(0.6)
@@ -1162,6 +1220,7 @@ func _launch(p: Player, shot: int, res: Dictionary, quality: float, charge: floa
 			if charge >= 1.0 or quality > 0.88:
 				shake = maxf(shake, 0.18)
 				p.racket_flash()
+				post.kick(pos, 0.25)
 	if chance_shot:
 		comic(head + Vector3(0, 0.35, 0), "CHANCE!", Color("ffe14d"), 0.55)
 		shake = maxf(shake, 0.25)
@@ -1198,6 +1257,7 @@ func _do_hit(p: Player, type: int, quality: float, charge: float, style := "") -
 			comic(p.global_position + Vector3(0, 2.6, 0), "BLOQUEIO!", Color("8fd8ff"), 0.6)
 			hitstop = maxf(hitstop, 0.1)
 			impact(ball.global_position, Color.WHITE, 1.8)
+			post.kick(ball.global_position, 0.5, 0.3)
 			energy[p.team] = minf(1.0, energy[p.team] + 0.15)
 			hud.set_energy(energy)
 			if p.is_human:
@@ -1328,21 +1388,18 @@ func _poll_pad_buttons(p: Player) -> void:
 		hud._on_pause()
 	if get_tree().paused:
 		return
-	var pairs := [[JOY_BUTTON_A, Shots.DRIVE], [JOY_BUTTON_X, Shots.LOB], [JOY_BUTTON_B, Shots.DROP], [JOY_BUTTON_Y, Shots.SMASH]]
+	# mapa remapeável (OPÇÕES > CONTROLES), ver Settings.pad
+	var pairs := [["drive", Shots.DRIVE], ["lob", Shots.LOB], ["drop", Shots.DROP], ["smash", Shots.SMASH],
+		["defense", Shots.DEFENSE]]
 	for pr in pairs:
-		if _pad_edge(p, "b%d" % pr[0], Input.is_joy_button_pressed(d, pr[0])):
+		if _pad_edge(p, pr[0], Settings.pad_down(d, pr[0])):
 			_player_shot(p, pr[1])
-	var def_down := Input.is_joy_button_pressed(d, JOY_BUTTON_LEFT_SHOULDER) \
-		or Input.get_joy_axis(d, JOY_AXIS_TRIGGER_RIGHT) > 0.5 \
-		or Input.is_joy_button_pressed(d, JOY_BUTTON_PADDLE1) or Input.is_joy_button_pressed(d, JOY_BUTTON_RIGHT_STICK)
-	if _pad_edge(p, "def", def_down):
-		_player_shot(p, Shots.DEFENSE)
-	if _pad_edge(p, "rb", Input.is_joy_button_pressed(d, JOY_BUTTON_RIGHT_SHOULDER)):
+	if _pad_edge(p, "super", Settings.pad_down(d, "super")):
 		_player_super(p)
-	var dive_down := Input.get_joy_axis(d, JOY_AXIS_TRIGGER_LEFT) > 0.5 \
-		or Input.is_joy_button_pressed(d, JOY_BUTTON_MISC1) or Input.is_joy_button_pressed(d, JOY_BUTTON_LEFT_STICK)
-	if _pad_edge(p, "dive", dive_down):
+	if _pad_edge(p, "dive", Settings.pad_down(d, "dive")):
 		_player_dive(p)
+	if _pad_edge(p, "jump", Settings.pad_down(d, "jump")) and state == S.RALLY:
+		p.request_jump()
 
 
 ## Estrela de chance: aparece quando o adversário devolve uma bola fraca.
@@ -1459,6 +1516,12 @@ func _player_dive(p: Player) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if state == S.REPLAY and not demo and event.is_pressed() and not event.is_echo():
 		replay_f = float(rec.size())   # toque para pular o replay
+		return
+	if event is InputEventKey and event.is_pressed() and not event.is_echo() \
+			and (event as InputEventKey).physical_keycode == KEY_F11 and not OS.has_feature("mobile"):
+		Settings.fullscreen = not Settings.fullscreen
+		Settings.save()
+		apply_graphics()
 		return
 	if event.is_action_pressed("pause") and not demo and state != S.END:
 		hud._on_pause()
@@ -1988,6 +2051,8 @@ func _update_camera(dt: float) -> void:
 		# tremida na direção da pancada (oscila e some) + um resto aleatório pequeno
 		var osc := sin(time * 62.0) * sh
 		off = Vector3(shake_dir.x * osc, shake_dir.y * osc, 0.0) + Vector3(rng.randf_range(-sh, sh), rng.randf_range(-sh, sh), 0.0) * 0.25
+		if not Settings.shake:
+			off *= 0.15   # tremida de câmera reduzida (opção de conforto)
 	var n := 2 if split_active() else 1
 	for vi in n:
 		var v: Dictionary = views[vi]

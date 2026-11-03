@@ -2,6 +2,7 @@
 // pula, acena, vira o corpo seguindo a bola e faz a "ola".
 shader_type spatial;
 render_mode unshaded;
+#include "res://shaders/lighting.gdshaderinc"
 
 uniform float excitement = 0.0;
 uniform vec3 ball_pos = vec3(0.0, 1.0, 0.0);
@@ -55,5 +56,5 @@ void fragment() {
 	float l = dot(col, vec3(0.3, 0.59, 0.11));
 	col = mix(col, vec3(l) * vec3(1.0, 0.94, 1.0), mute) * 0.94;
 	col = mix(col, vec3(1.0, 0.84, 0.72), smoothstep(45.0, 300.0, length(VERTEX)) * 0.7);
-	ALBEDO = col;
+	ALBEDO = night_grade(col, (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz);
 }

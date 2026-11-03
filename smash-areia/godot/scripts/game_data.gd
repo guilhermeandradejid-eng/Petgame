@@ -94,12 +94,19 @@ const RACKET_COLOR_NAMES := ["ROSA", "VERDE", "AMARELA", "ROXA", "LARANJA", "CIA
 
 const POINT_NAMES := ["0", "15", "30", "40"]
 
+## Arenas: a mesma praia no fim de tarde ou à noite, com refletores e luar
+const ARENAS := [
+	{"id": "sunset", "name": "PÔR DO SOL"},
+	{"id": "night", "name": "NOITE NA ORLA"},
+]
+
 static var char_index := 0
 static var char_index_p2 := 2
 static var mode := "solo"      # solo, vs (tela dividida), coop
 static var difficulty := 1
 static var length_index := 0
 static var music_on := true
+static var arena := 0
 # visual escolhido no vestiário por J1 e J2: roupa, paleta, raquete e cor (-1 = cor do personagem)
 static var looks := [
 	{"outfit": 0, "palette": 0, "racket": 0, "racket_color": -1},

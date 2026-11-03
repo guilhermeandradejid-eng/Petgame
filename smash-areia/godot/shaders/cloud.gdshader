@@ -1,6 +1,7 @@
 // Nuvem de gibi: topo branco, base lilás/rosada, borda dourada contra o sol baixo
 shader_type spatial;
 render_mode unshaded, cull_back;
+#include "res://shaders/lighting.gdshaderinc"
 
 uniform vec4 lit : source_color = vec4(1.0, 0.99, 0.96, 1.0);
 uniform vec4 shade : source_color = vec4(0.82, 0.8, 0.98, 1.0);
@@ -28,5 +29,5 @@ void fragment() {
 	float rim = step(0.72, fres) * (0.55 + 0.45 * clamp(sun * 0.5 + 0.5, 0.0, 1.0));
 	c = mix(c, rim_col.rgb, rim);
 	c = mix(c, haze_col.rgb, haze);
-	ALBEDO = c;
+	ALBEDO = night_grade(c, (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz);
 }

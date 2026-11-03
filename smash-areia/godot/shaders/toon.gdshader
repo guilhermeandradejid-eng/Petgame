@@ -3,6 +3,7 @@
 // Unshaded: fica igual em qualquer celular e custa pouco.
 shader_type spatial;
 render_mode unshaded, cull_back, depth_draw_opaque;
+#include "res://shaders/lighting.gdshaderinc"
 
 uniform vec4 albedo : source_color = vec4(1.0);
 uniform vec4 shadow_tint : source_color = vec4(0.55, 0.45, 0.75, 1.0);
@@ -32,10 +33,10 @@ void fragment() {
 	vec3 base = albedo.rgb * COLOR.rgb;
 	vec3 L = normalize((VIEW_MATRIX * vec4(normalize(KEY), 0.0)).xyz);
 	float ndl = dot(NORMAL, L);
-	float lit = smoothstep(-0.02, 0.04, ndl);
-	float hi = smoothstep(0.55, 0.6, ndl);
+	float lit = smoothstep(-0.07, 0.12, ndl);   // transição de sombra macia
+	float hi = smoothstep(0.48, 0.68, ndl);
 	vec3 shadow_col = base * shadow_tint.rgb;
-	vec3 col = mix(shadow_col, base * mix(0.95, 1.07, hi) * vec3(1.03, 1.0, 0.95), lit);
+	vec3 col = mix(shadow_col, base * mix(0.94, 1.03, hi) * vec3(1.02, 1.0, 0.96), lit);
 
 	float px = max(VIEWPORT_SIZE.y / 720.0, 1.0) * 5.0;
 	vec2 g = FRAGCOORD.xy / px;
@@ -58,6 +59,6 @@ void fragment() {
 	col = mix(col, flash_color.rgb, flash);
 	col = mix(col, vec3(0.88, 0.82, 0.9) * (0.75 + 0.25 * lit), bg * 0.3);
 	float dist = length(VERTEX);
-	col = mix(col, HAZE, smoothstep(45.0, 380.0, dist) * 0.85 * fog);
-	ALBEDO = col;
+	col = mix(col, night_haze(HAZE), smoothstep(45.0, 380.0, dist) * 0.85 * fog);
+	ALBEDO = night_grade(col, (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz);
 }
