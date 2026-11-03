@@ -29,6 +29,12 @@ var is_human := false
 var pid := 0              # 0 = IA, 1 = J1, 2 = J2
 var pad := -1             # -1 toque/teclado J1, -3 teclado J2, >= 0 controle
 var pad_also_kb := false
+# online: jogador de outro PC (o anfitrião recebe os comandos pela rede), vaga na
+# sala e carga do golpe vinda do anfitrião (para o medidor nos convidados)
+var remote := false
+var net_slot := -1
+var net_charge := -1.0
+var net_name := ""
 var stick := Vector2.ZERO
 var tag: Label3D
 var data: Dictionary = {}
@@ -226,7 +232,7 @@ func _build_model() -> void:
 ## jogador (J1 amarelo, J2 ciano); o texto "J1/J2" só aparece com dois humanos.
 func show_tag(on: bool) -> void:
 	var pc := Color("ffd23f") if pid == 1 else Color("4fe0ff")
-	if is_human and pid > 0:
+	if is_human and pid > 0 and not remote:
 		if arrow == null:
 			arrow = MeshInstance3D.new()
 			var cm := CylinderMesh.new()
@@ -256,9 +262,9 @@ func show_tag(on: bool) -> void:
 		tag.outline_modulate = Color(0.07, 0.04, 0.12)
 		tag.position = Vector3(0, 2.62, 0)
 		add_child(tag)
-	tag.text = "J%d" % pid
-	tag.modulate = pc
-	tag.visible = on and pid > 0
+	tag.text = "J%d" % pid if net_name == "" else net_name
+	tag.modulate = pc if net_name == "" or pid > 0 else (Color("ffffff") if team == 0 else Color("ffb3ae"))
+	tag.visible = on and (pid > 0 or net_name != "")
 
 
 func net_dir() -> Vector3:
@@ -270,6 +276,8 @@ func max_speed() -> float:
 
 
 func say(text: String, color: Color = Color.WHITE) -> void:
+	if game and game.has_method("_net_ev"):
+		game._net_ev(["say", [game.players.find(self), text, color]])
 	bubble.text = text
 	bubble.modulate = color
 	bubble.visible = true
@@ -286,6 +294,8 @@ func on_ground() -> bool:
 
 
 func charge() -> float:
+	if net_charge >= 0.0:
+		return net_charge
 	if pending_shot < 0:
 		return 0.0
 	return clampf((pending_age - 0.12) / CHARGE_TIME, 0.0, 1.0)
@@ -1032,11 +1042,15 @@ func _set_racket_flash(v: float) -> void:
 
 ## Raquete pisca branco por um instante (batida perfeita ou carregada)
 func racket_flash() -> void:
+	if game and game.has_method("_net_ev"):
+		game._net_ev(["pfx", [game.players.find(self), "racket_flash"]])
 	racket_flash_t = 0.08
 
 
 ## Flash do escudo quando a defesa pega a bola
 func shield_hit() -> void:
+	if game and game.has_method("_net_ev"):
+		game._net_ev(["pfx", [game.players.find(self), "shield_hit"]])
 	shield_flash = 1.0
 
 

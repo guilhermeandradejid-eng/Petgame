@@ -107,6 +107,7 @@ static var difficulty := 1
 static var length_index := 0
 static var music_on := true
 static var arena := 0
+static var online_locals := 1   # jogadores neste PC numa sala online (1 ou 2)
 # visual escolhido no vestiário por J1 e J2: roupa, paleta, raquete e cor (-1 = cor do personagem)
 static var looks := [
 	{"outfit": 0, "palette": 0, "racket": 0, "racket_color": -1},

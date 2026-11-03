@@ -24,6 +24,7 @@ const MODES := [
 	{"id": "solo", "title": "1 JOGADOR", "tag": "1P", "desc": "Você + parceiro CPU\ncontra a dupla CPU", "color": Color("ffd23f")},
 	{"id": "vs", "title": "VERSUS", "tag": "2P", "desc": "Um contra o outro\ntela dividida", "color": Color("ff4b3e")},
 	{"id": "coop", "title": "CO-OP", "tag": "2P", "desc": "Vocês dois na mesma\ndupla contra a CPU", "color": Color("35e0a1")},
+	{"id": "online", "title": "ONLINE", "tag": "NET", "desc": "Salas pela internet\ncom chat de voz", "color": Color("4fe0ff")},
 ]
 
 var fx: ComicFX
@@ -75,7 +76,7 @@ var screen := "title"
 var screen_t := 0.0
 var booted := false
 var mode_tiles: Array[Button] = []
-var tile_lift := [0.0, 0.0, 0.0]
+var tile_lift := [0.0, 0.0, 0.0, 0.0]
 var cards: Array[Button] = []
 var card_lift: Array = []
 var pick_stage := 0          # 0 = J1 escolhe, 1 = J2 escolhe
@@ -98,6 +99,9 @@ var vig: TextureRect
 var fps_label: Label
 var fps_t := 0.0
 var help_grid: GridContainer
+var online_menu: OnlineMenu
+var online_ok := false
+var net_cb := Callable()   # online: o anfitrião replica letreiros nos convidados
 
 
 func _ready() -> void:
@@ -668,11 +672,13 @@ func _layout_menu() -> void:
 		return
 	var vs := get_viewport().get_visible_rect().size
 	# tiles dos modos
-	var tw := 300.0
+	var nt := 4 if online_ok else 3
+	var tw := 300.0 if nt == 3 else 268.0
 	var th := 380.0
-	var gap := 38.0
-	var x0 := (vs.x - (tw * 3 + gap * 2)) * 0.5
+	var gap := 38.0 if nt == 3 else 24.0
+	var x0 := (vs.x - (tw * nt + gap * (nt - 1))) * 0.5
 	for i in mode_tiles.size():
+		mode_tiles[i].visible = i < nt
 		mode_tiles[i].position = Vector2(x0 + i * (tw + gap), 150)
 		mode_tiles[i].size = Vector2(tw, th)
 		mode_tiles[i].pivot_offset = Vector2(tw, th) * 0.5
@@ -795,6 +801,10 @@ func _on_focus_move() -> void:
 func _on_mode_pressed(i: int) -> void:
 	if screen_t < 0.15:
 		return
+	if MODES[i]["id"] == "online":
+		_sfx("ui_start")
+		open_online()
+		return
 	GameData.mode = MODES[i]["id"]
 	_sfx("ui_start")
 	_go_screen("char")
@@ -871,6 +881,36 @@ func _cycle_split() -> void:
 	Settings.save()
 	_refresh_menu()
 	graphics_changed.emit()
+
+
+func setup_online(o: Online) -> void:
+	online_ok = o.available()
+	online_menu = OnlineMenu.new(self, o)
+	add_child(online_menu)
+	_layout_menu()
+
+
+func open_online() -> void:
+	if online_menu == null:
+		return
+	help_panel.visible = false
+	options.visible = false
+	online_menu.open()
+
+
+## Esconde a tela online (sem sair da sala) quando a partida começa
+func close_online() -> void:
+	if online_menu:
+		online_menu.visible = false
+
+
+func _on_online_closed() -> void:
+	if menu.visible and screen == "mode":
+		mode_tiles[3].grab_focus.call_deferred()
+
+
+func online_in_match() -> bool:
+	return online_menu != null and online_menu.online.active() and online_menu.online.in_match
 
 
 func open_options() -> void:
@@ -1134,7 +1174,8 @@ func _party_after_change() -> void:
 
 ## Algum menu na tela (principal, pausa, fim ou ajuda)?
 func _menu_active() -> bool:
-	return menu.visible or pause_panel.visible or end_panel.visible or help_panel.visible
+	return menu.visible or pause_panel.visible or end_panel.visible or help_panel.visible \
+		or (online_menu != null and online_menu.visible)
 
 
 ## Confirmação e volta pelo controle tratadas aqui, sem depender do mapa
@@ -1323,6 +1364,11 @@ func _draw_tile(b: Button, i: int) -> void:
 		"vs":
 			_head(b, Vector2(cxm - 70, cy), 30, blue, "J1", YELLOW)
 			_head(b, Vector2(cxm + 70, cy), 30, red, "J2", CYAN, Color("d39a6a"))
+		"online":
+			_head(b, Vector2(cxm - 78, cy), 24, blue, "J1", YELLOW)
+			_head(b, Vector2(cxm - 34, cy + 10), 18, blue, "NET", Color.WHITE, Color("d39a6a"))
+			_head(b, Vector2(cxm + 40, cy + 10), 18, red, "NET", Color.WHITE, Color("8d5a3b"))
+			_head(b, Vector2(cxm + 84, cy + 10), 18, red, "NET", Color.WHITE, Color("5e3a26"))
 		"coop":
 			_head(b, Vector2(cxm - 92, cy), 24, blue, "J1", YELLOW)
 			_head(b, Vector2(cxm - 40, cy), 24, blue, "J2", CYAN, Color("d39a6a"))
@@ -1634,6 +1680,18 @@ func _quit_to_menu() -> void:
 
 
 func _on_pause() -> void:
+	if online_in_match():
+		# online o jogo não para: a pausa só abre o menu por cima
+		var show := not pause_panel.visible
+		pause_panel.visible = show
+		help_panel.visible = false
+		if show and cont_btn:
+			cont_btn.grab_focus()
+		elif not show:
+			get_viewport().gui_release_focus()
+			if options.visible:
+				options.close()
+		return
 	var p := not get_tree().paused
 	get_tree().paused = p
 	pause_panel.visible = p
@@ -1720,6 +1778,8 @@ func show_end(won: bool, games: Array, vs := false) -> void:
 
 
 func show_banner(text: String, sub: String = "", color: Color = Color.WHITE, time := 1.4) -> void:
+	if net_cb.is_valid():
+		net_cb.call("h:show_banner", [text, sub, color, time])
 	banner.text = text
 	banner.add_theme_color_override("font_color", color)
 	banner.visible = true
@@ -1758,6 +1818,8 @@ func flash_tip(text: String, time := 3.0, col := YELLOW) -> void:
 
 ## Destaque no placar da dupla que fez o ponto
 func score_pop(team: int) -> void:
+	if net_cb.is_valid():
+		net_cb.call("h:score_pop", [team])
 	if team >= 0 and team < 2:
 		pop_t[team] = 1.0
 
@@ -1811,6 +1873,8 @@ func _draw_charges() -> void:
 
 
 func set_replay(on: bool) -> void:
+	if net_cb.is_valid():
+		net_cb.call("h:set_replay", [on])
 	if replay_layer == null:
 		replay_layer = Control.new()
 		replay_layer.set_anchors_preset(Control.PRESET_FULL_RECT)

@@ -86,6 +86,9 @@ var replay_cool := 0
 
 var audio: GameAudio
 var post: PostFX
+var online: Online
+var net_ball_prev := Vector3.ZERO
+var net_score_key := ""
 var sand_small: Array[CPUParticles3D] = []
 var sand_big: Array[CPUParticles3D] = []
 var sand_i := 0
@@ -139,6 +142,13 @@ func _ready() -> void:
 	add_child(hud)
 	hud.graphics_changed.connect(apply_graphics)
 	hud.arena_changed.connect(ensure_arena)
+	online = Online.new(self)
+	add_child(online)
+	online.match_started.connect(start_online_match)
+	online.room_closed.connect(_on_room_closed)
+	hud.setup_online(online)
+	hud.net_cb = _net_hud_cb
+	world.net_cb = _net_world_cb
 	hud.apply_settings()
 	hud.sfx_cb = func(n: String):
 		if n == "music_toggle":
@@ -182,6 +192,19 @@ func _ready() -> void:
 			GameData.char_index = int(a.substr(7))
 		elif a.begins_with("--mode="):
 			GameData.mode = a.substr(7)
+		elif a.begins_with("--nethost"):
+			# teste: cria sala (código fixo opcional: --nethost=ABCDE)
+			_net_test_host.call_deferred(a.substr(10) if a.length() > 10 else "")
+		elif a.begins_with("--netjoin="):
+			online.join.call_deferred(a.substr(10))
+		elif a == "--hostui":
+			(func():
+				online.host(true)
+				hud.open_online()).call_deferred()
+		elif a == "--onlineui":
+			hud.open_online.call_deferred()
+		elif a == "--netkeys":
+			keytest = true   # teste online: aperta teclas como um jogador (sem IA)
 		elif a == "--nobloom":
 			Settings.bloom = false
 			apply_graphics.call_deferred()
@@ -219,7 +242,7 @@ func _ready() -> void:
 			hud._go_screen.call_deferred(a.substr(7))
 		elif a.begins_with("--portrait="):
 			_portrait.call_deferred(a.substr(11))
-	if autoplay:
+	if autoplay and not " ".join(OS.get_cmdline_user_args()).contains("--net"):
 		start_match.call_deferred()
 
 
@@ -279,7 +302,14 @@ func is_replay() -> bool:
 
 
 func split_active() -> bool:
-	return not demo and GameData.mode == "vs" and humans.size() >= 2 and state != S.REPLAY
+	return not demo and versus_local() and humans.size() >= 2 and state != S.REPLAY
+
+
+## Dois jogadores neste PC em lados opostos (VS local ou online híbrido)
+func versus_local() -> bool:
+	if GameData.mode == "online":
+		return humans.size() >= 2 and humans[0].team != humans[1].team
+	return GameData.mode == "vs"
 
 
 func _layout_views() -> void:
@@ -369,9 +399,9 @@ var input_report := false
 func _process(dt: float) -> void:
 	if keytest and not demo:
 		_keytest_step()
-		if not autoplay and time > 140.0 and not input_report:
+		if not autoplay and time > (40.0 if online and online.active() else 140.0) and not input_report:
 			input_report = true
-			print("INPUTTEST ", stats, " placar ", games, points)
+			printerr("INPUTTEST ", stats, " placar ", games, points)
 	_update_impacts(dt)
 	if shot_dir != "" and time >= shot_next and shot_n < shot_max:
 		shot_next = time + shot_dt
@@ -453,6 +483,7 @@ const CROWD_EVENTS := ["cheer", "aww", "ooh", "applause"]
 
 ## Som sem posição (interface, vinhetas, torcida)
 func sfx(n: String, db := 0.0, pitch_var := 0.04, pitch := 1.0) -> void:
+	_net_ev(["sfx", [n, db, pitch_var, pitch]])
 	if audio == null:
 		return
 	if n in CROWD_EVENTS:
@@ -463,6 +494,7 @@ func sfx(n: String, db := 0.0, pitch_var := 0.04, pitch := 1.0) -> void:
 
 ## Som posicionado no mundo
 func sfx_at(n: String, pos: Vector3, db := 0.0, pitch_var := 0.06, pitch := 1.0) -> void:
+	_net_ev(["sfx_at", [n, pos, db, pitch_var, pitch]])
 	if audio:
 		audio.play3d(SFX_MAP.get(n, n), pos, db, pitch_var, pitch)
 
@@ -614,6 +646,7 @@ func _setup_confetti() -> void:
 
 ## Chuva de confete (ponto bonito, game e partida)
 func confetti(pos: Vector3, big := false) -> void:
+	_net_ev(["confetti", [pos, big]])
 	var c := confetti_fx[0] if not confetti_fx[0].emitting else confetti_fx[1]
 	c.global_position = pos
 	c.amount = 140 if big else 70
@@ -622,6 +655,7 @@ func confetti(pos: Vector3, big := false) -> void:
 
 
 func sand_burst(pos: Vector3, n: int) -> void:
+	_net_ev(["sand_burst", [pos, n]])
 	var pool := sand_big if n >= 8 else sand_small
 	var p := pool[sand_i % pool.size()]
 	sand_i += 1
@@ -632,6 +666,7 @@ func sand_burst(pos: Vector3, n: int) -> void:
 
 ## Impacto 3D no ponto da batida: estrela de gibi + faíscas da cor do golpe
 func impact(pos: Vector3, color: Color, size := 1.0) -> void:
+	_net_ev(["impact", [pos, color, size]])
 	post.light(pos, color, size)   # a batida ilumina a areia e os jogadores por um instante
 	var s := sparks[spark_i % sparks.size()]
 	spark_i += 1
@@ -704,7 +739,22 @@ func screen_pos(p: Vector3, vi := 0) -> Vector2:
 
 
 ## Letreiro pequeno (sem atrapalhar a visão da bola), em cada tela
+## Letreiro pequeno (sem estrela) num ponto 3D, em cada tela
+func pop3d(pos: Vector3, text: String, color: Color, size: float, star: bool) -> void:
+	_net_ev(["pop3d", [pos, text, color, size, star]])
+	for vi in (2 if split_active() else 1):
+		hud.fx.pop(screen_pos(pos, vi), text, color, size, star)
+
+
+## Linhas de velocidade + flash do golpe especial
+func smash_fx(pos: Vector3, flash_a: float) -> void:
+	_net_ev(["smash_fx", [pos, flash_a]])
+	hud.fx.smash_lines(screen_pos(pos))
+	hud.fx.do_flash(flash_a)
+
+
 func comic(p: Vector3, text: String, color: Color, size := 0.6, star := true) -> void:
+	_net_ev(["comic", [p, text, color, size, star]])
 	for vi in (2 if split_active() else 1):
 		hud.fx.pop(screen_pos(p, vi), text, color, size * (0.8 if split_active() else 1.0), star)
 
@@ -713,6 +763,9 @@ func comic(p: Vector3, text: String, color: Color, size := 0.6, star := true) ->
 
 func go_menu() -> void:
 	get_tree().paused = false
+	if online and online.active():
+		online.leave()
+	GameData.mode = "solo" if GameData.mode == "online" else GameData.mode
 	demo = true
 	_spawn_players(false)
 	_reset_score(3)
@@ -733,11 +786,17 @@ func ensure_arena() -> void:
 	world = World.new()
 	add_child(world)
 	move_child(world, 0)
+	world.net_cb = _net_world_cb
 	if post:
 		post.apply()
 
 
 func start_match() -> void:
+	if online and online.active():
+		# online: a revanche é o anfitrião começando de novo pela sala
+		if online.is_host():
+			online.start_match()
+		return
 	ensure_arena()
 	demo = false
 	_spawn_players(true)
@@ -865,6 +924,9 @@ func _on_joy_changed(_device: int, connected: bool) -> void:
 
 ## Vibração no controle (ou no celular, para o J1 no toque)
 func rumble(p: Player, strong: bool) -> void:
+	if p.remote:
+		_net_ev(["rumble", [players.find(p), strong]])
+		return
 	if p.pad >= 0:
 		Input.start_joy_vibration(p.pad, 0.4 if not strong else 0.7, 0.2 if not strong else 0.9, 0.12 if not strong else 0.25)
 	elif p.pid == 1:
@@ -1115,7 +1177,7 @@ func _serve_hit() -> void:
 		res["label"] = "SAQUE VIAGEM!"
 	_launch(server, shot, res, quality, 0.0, false)
 	if perfect:
-		hud.fx.pop(screen_pos(server.global_position + Vector3(0, 2.8, 0)), "SAQUE PERFEITO!", Color("ffe14d"), 0.5, true)
+		pop3d(server.global_position + Vector3(0, 2.8, 0), "SAQUE PERFEITO!", Color("ffe14d"), 0.5, true)
 		hitstop = maxf(hitstop, 0.05)
 		server.racket_flash()
 	ball.is_serve = true
@@ -1181,8 +1243,7 @@ func _launch(p: Player, shot: int, res: Dictionary, quality: float, charge: floa
 			fov_kick = -12.0
 			cam_punch = 0.8
 			cam_dutch = 0.12 * (1.0 if rng.randf() < 0.5 else -1.0)
-			hud.fx.smash_lines(screen_pos(pos))
-			hud.fx.do_flash(0.5)
+			smash_fx(pos, 0.5)
 			post.kick(pos, 1.0, 0.7)
 			comic(head + Vector3(0, 0.3, 0), res["label"], col, 0.75)
 			world.cheer(1.0)
@@ -1233,7 +1294,7 @@ func _launch(p: Player, shot: int, res: Dictionary, quality: float, charge: floa
 			elif charge >= 1.0:
 				txt = "CARREGADO!"
 			if txt != "":
-				hud.fx.pop(screen_pos(head), txt, col.lightened(0.2), 0.42, false)
+				pop3d(head, txt, col.lightened(0.2), 0.42, false)
 		rumble(p, shot == Shots.SMASH or shot == Shots.SPECIAL)
 	chance = {}
 	chance_star.visible = false
@@ -1338,6 +1399,8 @@ func _human_aim(p: Player) -> Vector2:
 ## Lê o analógico e os botões de cada jogador humano.
 func _poll_inputs() -> void:
 	for p in humans:
+		if p.remote:
+			continue
 		var v := Vector2.ZERO
 		if p.pad == -1 or p.pad_also_kb:
 			v = hud.touch.joy_vec if p.pid == 1 else Vector2.ZERO
@@ -1386,7 +1449,7 @@ func _poll_pad_buttons(p: Player) -> void:
 	var d := p.pad
 	if _pad_edge(p, "start", Input.is_joy_button_pressed(d, JOY_BUTTON_START)) and not demo and state != S.END:
 		hud._on_pause()
-	if get_tree().paused:
+	if get_tree().paused or hud.pause_panel.visible:
 		return
 	# mapa remapeável (OPÇÕES > CONTROLES), ver Settings.pad
 	var pairs := [["drive", Shots.DRIVE], ["lob", Shots.LOB], ["drop", Shots.DROP], ["smash", Shots.SMASH],
@@ -1398,8 +1461,8 @@ func _poll_pad_buttons(p: Player) -> void:
 		_player_super(p)
 	if _pad_edge(p, "dive", Settings.pad_down(d, "dive")):
 		_player_dive(p)
-	if _pad_edge(p, "jump", Settings.pad_down(d, "jump")) and state == S.RALLY:
-		p.request_jump()
+	if _pad_edge(p, "jump", Settings.pad_down(d, "jump")):
+		_player_jump(p)
 
 
 ## Estrela de chance: aparece quando o adversário devolve uma bola fraca.
@@ -1460,6 +1523,10 @@ func _on_dive_button() -> void:
 
 
 func _player_shot(p: Player, type: int) -> void:
+	if net_puppet():
+		if p and p.net_slot >= 0:
+			online.send_action(p.net_slot, "shot", type)
+		return
 	if intro_t < 0.4 and not demo:
 		return   # o botão que confirmou o menu não vale como golpe
 	if state == S.REPLAY and not demo:
@@ -1484,6 +1551,10 @@ func _player_shot(p: Player, type: int) -> void:
 
 
 func _player_super(p: Player) -> void:
+	if net_puppet():
+		if p and p.net_slot >= 0:
+			online.send_action(p.net_slot, "super", 0)
+		return
 	if intro_t < 0.4 and not demo:
 		return   # o botão que confirmou o menu não vale como golpe
 	if demo or p == null or state != S.RALLY:
@@ -1501,7 +1572,20 @@ func _player_super(p: Player) -> void:
 	sfx("special_arm", -6.0, 0.0)
 
 
+func _player_jump(p: Player) -> void:
+	if net_puppet():
+		if p and p.net_slot >= 0:
+			online.send_action(p.net_slot, "jump", 0)
+		return
+	if p and state == S.RALLY:
+		p.request_jump()
+
+
 func _player_dive(p: Player) -> void:
+	if net_puppet():
+		if p and p.net_slot >= 0:
+			online.send_action(p.net_slot, "dive", 0)
+		return
 	if intro_t < 0.4 and not demo:
 		return   # o botão que confirmou o menu não vale como golpe
 	if demo or p == null or state != S.RALLY:
@@ -1534,8 +1618,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_on_shot_button(pair[1])
 	if event.is_action_pressed("super"):
 		_on_super_button()
-	if event.is_action_pressed("jump") and state == S.RALLY:
-		human.request_jump()
+	if event.is_action_pressed("jump"):
+		_player_jump(human)
 	if event.is_action_pressed("dive"):
 		_on_dive_button()
 	# J2 no teclado (setas + N M , . /)
@@ -1585,6 +1669,9 @@ func predict_high_contact(p: Player) -> float:
 # ---------------------------------------------------------------- loop
 
 func _physics_process(delta: float) -> void:
+	if net_puppet():
+		_client_frame(delta)
+		return
 	if hitstop > 0.0:
 		hitstop -= delta
 		_update_camera(delta)
@@ -1600,6 +1687,13 @@ func _physics_process(delta: float) -> void:
 				v.y = 0.0
 			# a câmera do J2 olha para o outro lado: o analógico é espelhado
 			hp.move_input = Vector3(v.x, 0, v.y) * hp.side if state != S.POINT else Vector3.ZERO
+		# jogadores de outros PCs (online): o analógico chega pela rede
+		for rp in players:
+			if rp.remote:
+				var rv := rp.stick
+				if state == S.SERVE and server == rp:
+					rv.y = 0.0
+				rp.move_input = Vector3(rv.x, 0, rv.y) * rp.side if state != S.POINT else Vector3.ZERO
 	if state == S.RALLY:
 		assign_t -= dt
 		if assign_t <= 0.0:
@@ -2013,6 +2107,11 @@ func _finish_match() -> void:
 		start_match.call_deferred()
 		return
 	var won: bool = games[0] > games[1]
+	if online and online.is_host() and online.in_match:
+		_net_ev(["net_end", [0 if won else 1]])
+		get_tree().create_timer(6.0).timeout.connect(func():
+			if online.is_host() and online.in_match:
+				online.back_to_room())
 	sfx("win" if won else "lose", -1.0)
 	sfx("whistle_long", -4.0)
 	if won or GameData.mode == "vs":
@@ -2127,7 +2226,7 @@ func _update_view(v: Dictionary, viewer: Player, dt: float, off: Vector3, split:
 		var hp := Vector3(0, 0, 6.0)
 		if viewer:
 			hp = _mirror(viewer.position, s)
-			if GameData.mode == "coop" and humans.size() > 1 and not split:
+			if humans.size() > 1 and humans[0].team == humans[1].team and not split:
 				hp = (hp + _mirror(humans[1].position, s)) * 0.5
 		var ahead := ball.global_position
 		if ball.is_live():
@@ -2182,3 +2281,322 @@ func _update_view(v: Dictionary, viewer: Player, dt: float, off: Vector3, split:
 	var roll_t: float = float(v.get("roll_t", 0.0)) if state == S.RALLY else 0.0
 	v["roll"] = lerpf(float(v.get("roll", 0.0)), roll_t + cam_dutch, 1.0 - exp(-4.0 * dt))
 	c.rotate_object_local(Vector3(0, 0, 1), float(v["roll"]))
+
+
+# ---------------------------------------------------------------- online
+
+## Convidado numa partida online: só desenha o que o anfitrião manda
+func net_puppet() -> bool:
+	return online != null and online.is_client() and online.in_match
+
+
+## Anfitrião: guarda um evento para replicar nos convidados
+func _net_ev(e: Array) -> void:
+	if online and online.is_host() and online.in_match:
+		online.ev(String(e[0]), e[1])
+
+
+func _net_world_cb(kind: String, args: Array) -> void:
+	_net_ev([kind, args])
+
+
+func _net_hud_cb(kind: String, args: Array) -> void:
+	_net_ev([kind, args])
+
+
+## Começa a partida online com as vagas da sala (anfitrião e convidados)
+func start_online_match(cfg: Dictionary) -> void:
+	get_tree().paused = false
+	GameData.mode = "online"
+	GameData.arena = int(cfg.get("arena", 0))
+	GameData.length_index = int(cfg.get("len", 0))
+	GameData.difficulty = int(cfg.get("diff", 1))
+	ensure_arena()
+	demo = false
+	for p in players:
+		p.queue_free()
+	players.clear()
+	humans.clear()
+	human = null
+	var me := online.my_id()
+	var host := online.is_host()
+	var sl: Array = cfg["slots"]
+	online.dbg("start_online_match me=", me, sl.map(func(x): return [x["kind"], x["owner"], x["name"]]))
+	var local_n := 0
+	for i in 4:
+		var s: Dictionary = sl[i]
+		var team := 0 if i < 2 else 1
+		var p := Player.new()
+		add_child(p)
+		var is_h: bool = s["kind"] == "human"
+		var mine: bool = is_h and int(s["owner"]) == me
+		p.setup(GameData.CHARACTERS[int(s["char"])], team, is_h, s["look"])
+		p.game = self
+		p.home_x = 1.8 if i % 2 == 0 else -1.8
+		p.net_slot = i
+		p.net_name = String(s.get("name", ""))
+		if mine:
+			local_n += 1
+			p.pid = local_n
+			if human == null:
+				human = p
+			humans.append(p)
+		elif is_h:
+			p.remote = true
+		elif host:
+			var d: Dictionary = GameData.DIFFICULTIES[GameData.difficulty]
+			p.brain = AIBrain.new(p, d)
+			p.diff_speed = float(d["speed"])
+		if autoplay and is_h and (mine or host):
+			p.brain = AIBrain.new(p, GameData.DIFFICULTIES[1])   # teste: robôs no lugar dos humanos
+		players.append(p)
+	_assign_pads()
+	for p in players:
+		p.show_tag(p.is_human)
+	_layout_views()
+	var L: Dictionary = GameData.LENGTHS[GameData.length_index]
+	_reset_score(L["games"], bool(L.get("official", false)))
+	hud.close_online()
+	hud.show_game()
+	hud.set_pad_mode(human != null and human.pad >= 0)
+	hud.show_banner("VAI COMEÇAR!", "%s x %s" % [GameData.TEAMS[0]["name"], GameData.TEAMS[1]["name"]], Color("ffd23f"), 1.8)
+	sfx("whistle", -2.0)
+	intro_t = 0.0
+	cam_cut = true
+	net_score_key = ""
+	if host:
+		_begin_serve()
+	else:
+		state = S.SERVE
+
+
+## Anfitrião: analógico de um jogador remoto
+func net_stick(slot: int, v: Vector2) -> void:
+	if slot >= 0 and slot < players.size() and players[slot].remote:
+		players[slot].stick = v
+		if v.length() > 0.1:
+			_stat("net_move")
+
+
+## Anfitrião: comando de um jogador remoto
+func net_action(slot: int, kind: String, arg: int) -> void:
+	if slot < 0 or slot >= players.size() or not players[slot].remote:
+		return
+	_stat("net_" + kind)
+	var p := players[slot]
+	match kind:
+		"shot":
+			_player_shot(p, clampi(arg, 0, Shots.DEFENSE))
+		"super":
+			_player_super(p)
+		"dive":
+			_player_dive(p)
+		"jump":
+			if state == S.RALLY:
+				p.request_jump()
+
+
+## Anfitrião: alguém caiu no meio da partida; os jogadores dele viram CPU
+func net_player_left(id: int) -> void:
+	for p in players:
+		if p.remote and int(online.slots[p.net_slot].get("owner", -1)) == id:
+			p.remote = false
+			p.is_human = false
+			p.brain = AIBrain.new(p, GameData.DIFFICULTIES[1])
+			p.net_name = p.net_name + " (CPU)"
+			p.show_tag(true)
+	hud.show_banner("JOGADOR SAIU", "a CPU assume", Color.WHITE, 1.4)
+
+
+## Partida acabou: todos voltam para a sala
+func net_back_to_room() -> void:
+	demo = true
+	_spawn_players(false)
+	_reset_score(3)
+	hud.show_menu()
+	hud.open_online()
+	cam_cut = true
+	_layout_views()
+	_begin_serve()
+
+
+func _on_room_closed(reason: String) -> void:
+	if GameData.mode == "online" and not demo:
+		go_menu()
+		hud.open_online()
+	if reason != "":
+		hud.flash_tip(reason, 4.0, Color.WHITE)
+
+
+## Retrato da quadra mandado pelo anfitrião 30x por segundo
+func net_snapshot() -> Array:
+	var mc: Color = (marker.material_override as ShaderMaterial).get_shader_parameter("color")
+	var ps: Array = []
+	for p in players:
+		ps.append([p.position, p.facing, p.body.rotation, p.body.scale, online._rig_pack(p.rig), p.swing_t,
+			p.swing_type, p.style, p.pending_shot, p.lh_w, p.state, p.serve_mode, p.y, p.charge(), p.hittable])
+	return [time, state, players.find(server), players.find(celeb), point_timer, rally_hits, intro_t,
+		serving_team, games.duplicate(), points.duplicate(), energy.duplicate(), tiebreak, replay_side, replay_cam,
+		ball.global_position, ball.vel, ball.flying, ball.special,
+		marker.visible, marker.global_position, mc, marker.scale.x,
+		chance_star.visible, chance_star.global_position,
+		shake, fov_kick, cam_punch, cam_dutch, shake_dir, games_to_win, serve_phase, serve_press_y, ps]
+
+
+## Convidado: aplica o retrato (misturando dois para o movimento ficar liso)
+func _client_frame(dt: float) -> void:
+	time += dt
+	_poll_inputs()
+	online.send_inputs(dt, humans)
+	var pr := online.snapshot_pair()
+	if not pr.is_empty():
+		_apply_snapshot(pr[0], pr[1], float(pr[2]), dt)
+	_update_charge_marks()
+	_update_camera(dt)
+	_update_audio_mix()
+
+
+func _apply_snapshot(A: Array, B: Array, k: float, dt: float) -> void:
+	if A.size() < 33 or B.size() < 33:
+		return
+	var prev_state := state
+	state = int(B[1]) as S
+	server = players[int(B[2])] if int(B[2]) >= 0 and int(B[2]) < players.size() else null
+	celeb = players[int(B[3])] if int(B[3]) >= 0 and int(B[3]) < players.size() else null
+	point_timer = float(B[4])
+	rally_hits = int(B[5])
+	intro_t = float(B[6])
+	serving_team = int(B[7])
+	games = B[8]
+	points = B[9]
+	energy = B[10]
+	tiebreak = bool(B[11])
+	replay_side = float(B[12])
+	if state == S.REPLAY and prev_state != S.REPLAY:
+		replay_cam = B[13]
+		cam_cut = true
+	games_to_win = int(B[29])
+	serve_phase = int(B[30])
+	serve_press_y = float(B[31])
+	var key := "%s|%s|%d|%s" % [games, points, serving_team, tiebreak]
+	if key != net_score_key:
+		net_score_key = key
+		hud.set_score(points, games, serving_team, games_to_win, tiebreak)
+	hud.set_energy(energy)
+	if human:
+		hud.touch.super_fill = clampf(float(energy[human.team]), 0.0, 1.0)
+	# bola
+	var bp: Vector3 = (A[14] as Vector3).lerp(B[14], k)
+	ball.show_replay(bp, net_ball_prev, bool(B[16]))
+	net_ball_prev = bp
+	ball.vel = (A[15] as Vector3).lerp(B[15], k)
+	if String(B[17]) != ball.special:
+		ball.special = String(B[17])
+		ball._set_fx(ball.special)
+	world.set_ball(bp)
+	# marcador de queda e estrela de chance
+	marker.visible = bool(B[18])
+	if marker.visible:
+		marker.global_position = B[19]
+		var m := marker.material_override as ShaderMaterial
+		m.set_shader_parameter("color", B[20])
+		m.set_shader_parameter("pulse", 1.0)
+		marker.scale = Vector3.ONE * float(B[21])
+	chance_star.visible = bool(B[22])
+	if chance_star.visible:
+		chance_star.global_position = B[23]
+	# câmera: tremida e empurrões vêm do anfitrião
+	shake = maxf(shake, float(B[24]))
+	fov_kick = float(B[25])
+	cam_punch = float(B[26])
+	cam_dutch = float(B[27])
+	shake_dir = B[28]
+	# jogadores (mesmo caminho do replay)
+	var pa_all: Array = A[32]
+	var pb_all: Array = B[32]
+	for j in mini(players.size(), pb_all.size()):
+		var pl := players[j]
+		var pa: Array = pa_all[j]
+		var pb: Array = pb_all[j]
+		pl.position = (pa[0] as Vector3).lerp(pb[0], k)
+		pl.facing = lerp_angle(float(pa[1]), float(pb[1]), k)
+		pl.rotation.y = pl.facing
+		pl.body.rotation = pb[2]
+		pl.body.scale = pb[3]
+		pl.rig.apply(online.rig_unpack(pb[4], pl.rig), clampf(dt * 30.0, 0.35, 1.0))
+		pl.swing_t = float(pb[5])
+		pl.swing_type = int(pb[6])
+		pl.style = String(pb[7])
+		pl.pending_shot = int(pb[8])
+		pl.lh_w = float(pb[9])
+		pl.state = int(pb[10]) as Player.State
+		pl.serve_mode = bool(pb[11])
+		pl.y = float(pb[12])
+		pl.net_charge = float(pb[13])
+		pl.hittable = bool(pb[14])
+		pl.anim_time += dt
+		pl._update_racket(dt)
+		pl._update_trail()
+		pl._update_decals(dt)
+	if state == S.SERVE and serve_phase == 0 and server:
+		ball.position = _hand_pos(server)
+
+
+## Convidado: evento vindo do anfitrião
+func net_event(kind: String, args) -> void:
+	if typeof(args) != TYPE_ARRAY:
+		return
+	var a: Array = args
+	if kind.begins_with("w:"):
+		var fn := kind.substr(2)
+		if fn in ["footprint", "sand_ring", "cheer", "ola", "whistle", "net_hit"]:
+			world.callv(fn, a)
+		return
+	if kind.begins_with("h:"):
+		var fn := kind.substr(2)
+		if fn in ["show_banner", "score_pop", "set_replay"]:
+			hud.callv(fn, a)
+		return
+	match kind:
+		"sfx", "sfx_at", "confetti", "sand_burst", "impact", "comic", "pop3d", "smash_fx":
+			callv(kind, a)
+		"say":
+			var i := int(a[0])
+			if i >= 0 and i < players.size():
+				players[i].say(String(a[1]), a[2])
+		"pfx":
+			var i := int(a[0])
+			if i >= 0 and i < players.size() and String(a[1]) in ["racket_flash", "shield_hit"]:
+				players[i].call(String(a[1]))
+		"rumble":
+			var i := int(a[0])
+			if i >= 0 and i < players.size() and not players[i].remote and players[i].is_human and players[i].pid > 0:
+				var p := players[i]
+				if p.pad >= 0:
+					Input.start_joy_vibration(p.pad, 0.5, 0.5, 0.2)
+		"net_end":
+			var win_team := int(a[0])
+			var my_team := human.team if human else 0
+			state = S.END
+			hud.show_end(win_team == my_team, games, false)
+			sfx("win" if win_team == my_team else "lose", -1.0)
+
+
+## Teste automático do online: cria a sala e começa quando alguém entrar
+func _net_test_host(fixed_code: String) -> void:
+	online.host(false)
+	if fixed_code != "":
+		online.leave()
+		online.code = fixed_code
+		online.room = MatchaRoom.create_server_room({"peer_id": Online.room_peer_id(fixed_code),
+			"identifier": Online.APP_ID, "tracker_urls": online.trackers, "pool_size": 4})
+		multiplayer.multiplayer_peer = online.room
+		online.role = Online.Role.HOST
+		online.members = {1: {"name": online.my_name, "locals": online.my_locals(), "ready": true}}
+		online.join_order = [1]
+		online._compute_slots()
+	printerr("NETTEST host code=", online.code)
+	online.room_changed.connect(func():
+		if online.is_host() and not online.in_match and online.members.size() >= 2:
+			printerr("NETTEST guest joined, starting")
+			online.start_match.call_deferred())

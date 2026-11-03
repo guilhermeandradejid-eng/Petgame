@@ -13,6 +13,64 @@ desconhecidos" e abra. O jogo roda deitado (paisagem).
 |---|---|---|---|
 | ![personagens](docs/personagens.jpg) | ![vestiario](docs/vestiario.jpg) | ![smash](docs/smash.jpg) | ![comemoracao](docs/comemoracao.jpg) |
 
+## Novidades (rodada 0.3)
+
+### Multiplayer online (PC, de graça, sem servidor e sem abrir portas)
+
+Modo **ONLINE** na tela de modos (aparece só no PC, Windows ou Linux). Usa **WebRTC**
+(extensão oficial [`webrtc-native`](https://github.com/godotengine/webrtc-native), em `godot/addons/webrtc`)
+e o [**godot-matcha**](https://github.com/freehuntx/godot-matcha) (MIT, em `godot/addons/matcha`):
+os trackers públicos de WebTorrent servem só para o "aperto de mão" e depois os PCs conversam
+direto (peer-to-peer). Custo: R$ 0,00.
+
+- **Salas com código**: CRIAR SALA PÚBLICA ou PRIVADA gera um código curto (ex.: `K7QPM`). Os amigos
+  entram digitando o código. Salas públicas aparecem na lista do **lobby** (uma sala P2P de anúncios).
+- **Modo híbrido**: cada PC pode ter **1 ou 2 jogadores locais** (teclado J1/J2 e controles). A sala tem
+  4 vagas: no VS cada PC fica de um lado; no CO-OP todos jogam juntos contra a CPU; vagas livres ficam
+  com a CPU. Se alguém cair no meio da partida, a CPU assume os jogadores dele.
+- **Opções do anfitrião**: modo, arena, tamanho da partida, nível da CPU e sala pública/privada. Cada
+  um troca o próprio personagem na sala.
+- **Chat de voz** grátis pelo próprio WebRTC: microfone em 16 kHz comprimido em μ-law (~16 KB/s),
+  com detector de voz. Modos: aberto, **apertar para falar** (segura `T` ou SELECT) ou mudo, volume das
+  vozes e indicador de quem está falando (♪).
+- **Como funciona**: o anfitrião simula a partida inteira e manda 30 retratos por segundo (posição,
+  pose do esqueleto, bola, placar); os convidados desenham com 100 ms de suavização (o mesmo "modo
+  marionete" do replay) e mandam só os comandos. Sons, letreiros, impactos e torcida chegam como eventos.
+- **Limites**: sem servidor TURN, redes muito fechadas (NAT simétrico de algumas operadoras/empresas)
+  podem não conectar; a pausa online não para o jogo.
+
+Teste local sem internet (dois jogos no mesmo PC e um tracker de mentira):
+
+```sh
+pip install websockets && python3 tools/net_tracker_local.py &
+godot --path godot -- --nethost=TESTE --autoplay --tracker=ws://127.0.0.1:8765
+godot --path godot -- --netjoin=TESTE --tracker=ws://127.0.0.1:8765      # (--netdebug mostra o log da rede)
+```
+
+### Gráficos e pós-processamento
+
+- **Pós-processamento suave** num passe só (`shaders/post.gdshader`): cores de cinema (contraste e
+  tons divididos leves), raios de sol, nitidez, vinheta, zoom radial e aberração cromática curtinhos
+  nas pancadas, visual de filme no replay e desfoque atrás da pausa. O **bloom vem desligado**.
+- **Iluminação dinâmica e macia** (`shaders/lighting.gdshaderinc`): sombras de nuvem que atravessam a
+  praia, a batida acende uma luz rápida na cor do golpe, o sol esquenta até a "hora dourada" durante
+  a partida, transição de sombra mais macia e areia sem estourar.
+- **Nova arena: NOITE NA ORLA** (escolha no vestiário): céu com lua e estrelas, mar com o caminho do
+  luar, refletores com feixe de luz, varal de lâmpadas coloridas, fogueira de luau tremulando e janelas
+  acesas nos prédios.
+- **Ícone novo**: pá de beach tennis + bola verde-limão num pôr do sol de gibi (`tools/make_icon.py`
+  gera PNG, `.ico` do Windows e as camadas adaptativas do Android).
+
+### OPÇÕES (menu de modos e pausa)
+
+- **Gráficos**: qualidade (baixa/média/alta), cada efeito liga/desliga, antisserrilhado, resolução 3D,
+  limite de FPS, FPS na tela, tremida da câmera, tela cheia (`F11`), vsync e **tela dividida invertida**
+  (J1 à direita). A troca de lado também aparece na tela de personagens no VS.
+- **Controles**: remapeie as teclas do J1 e do J2 e os botões do controle (clique na célula e aperte a
+  tecla/botão; Esc/Start cancela; se a tecla já era de outra ação, as duas trocam). Tudo fica salvo em
+  `user://settings.cfg`, e a ajuda e as dicas mostram o mapa atual.
+- **Toque**: modo canhoto (golpes à esquerda), tamanho e visibilidade dos botões.
+
 ## Revisão de game design (rodada 0.2)
 
 Feita com um agente de game design que leu o código e os prints; aplicado:
@@ -225,7 +283,7 @@ pela posição da bola:
   CURTA é saque curto e SMASH é o **saque viagem** (pulando), mais forte e mais arriscado.
 
 No PC (J1): WASD move, `J` forte, `K` lob, `L` curta, `I` smash, `O` defesa, `U` super,
-`Espaço` pula, `Shift` peixinho e `Esc` pausa.
+`Espaço` pula, `Shift` peixinho e `Esc` pausa (tudo remapeável em OPÇÕES > CONTROLES; `F11` tela cheia).
 
 ### Personagens
 
@@ -297,6 +355,12 @@ smash-areia/
         ├── hud.gd            # menu com prévia 3D, placar com barras de energia, pausa, fim de jogo
         ├── touch_controls.gd # analógico flutuante e botões multi-touch (com a estrela ESPECIAL)
         ├── comic_fx.gd       # letreiros pequenos, linhas de velocidade, flash
+        ├── settings.gd       # opções salvas: gráficos, teclas/botões remapeáveis, toque
+        ├── options_menu.gd   # tela de OPÇÕES (gráficos, controles, toque)
+        ├── post_fx.gd        # pós-processamento e iluminação dinâmica (parâmetros globais)
+        ├── online_menu.gd    # lobby, salas, vagas e voz
+        ├── net/online.gd     # salas P2P (matcha + WebRTC), retratos, eventos e comandos
+        ├── net/voice.gd      # chat de voz (microfone -> μ-law -> WebRTC)
         └── toon.gd, game_data.gd
 ```
 
@@ -365,10 +429,14 @@ godot --headless --path godot --fixed-fps 60 -- --sim         # 300 pontos IA x 
 godot --headless --path godot --fixed-fps 60 -- --keytest     # aperta teclas como um jogador
 godot --headless --path godot --fixed-fps 60 -- --inputtest --mode=vs   # teclado do J1 e do J2, sem IA
 godot --path godot -- --autoplay --shots=/tmp/fotos           # joga sozinho e tira screenshots
+godot --path godot -- --autoplay --arena=1 --nopost           # arena noturna, sem pós-processamento
+godot --headless --path godot -s tests/voice_codec_test.gd    # codec de voz
+godot --headless --path godot -s tests/rtc_loop_test.gd       # WebRTC local (dois peers no mesmo processo)
 ```
 
 ## Créditos
 
+- Multiplayer: [godot-matcha](https://github.com/freehuntx/godot-matcha) (MIT) e [webrtc-native](https://github.com/godotengine/webrtc-native) (MIT; licenças das bibliotecas em `godot/addons/webrtc/`).
 - Fonte **Bangers** (SIL Open Font License, ver `godot/assets/fonts/OFL.txt`).
 - Modelos, sons e música feitos por código neste repositório.
 - Camadas de impacto gravadas: Kenney (kenney.nl), "Impact Sounds", CC0 1.0 (`tools/kenney/CC0-1.0.txt`).

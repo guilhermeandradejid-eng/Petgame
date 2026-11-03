@@ -39,6 +39,7 @@ var ref_whistle := 0.0
 var ball_pos := Vector3(0, 1, 0)
 var rng := RandomNumberGenerator.new()
 var night := false
+var net_cb := Callable()   # online: o anfitrião replica estes efeitos nos convidados
 var bulbs: Array[Dictionary] = []
 var fire: Dictionary = {}
 
@@ -143,6 +144,8 @@ func _setup_marks() -> void:
 
 ## Pegada (ou marca de mergulho) na areia
 func footprint(pos: Vector3, yaw: float, size := 1.0) -> void:
+	if net_cb.is_valid():
+		net_cb.call("w:footprint", [pos, yaw, size])
 	var i := prints_next
 	prints_next = (prints_next + 1) % PRINTS
 	prints_age[i] = 0.0
@@ -153,6 +156,8 @@ func footprint(pos: Vector3, yaw: float, size := 1.0) -> void:
 
 ## Onda de areia quando a bola cai ou alguém mergulha
 func sand_ring(pos: Vector3, size := 1.0) -> void:
+	if net_cb.is_valid():
+		net_cb.call("w:sand_ring", [pos, size])
 	for d in rings:
 		if float(d["t"]) >= 1.0:
 			var n: MeshInstance3D = d["node"]
@@ -184,15 +189,21 @@ func set_ball(p: Vector3) -> void:
 
 
 func cheer(amount: float) -> void:
+	if net_cb.is_valid():
+		net_cb.call("w:cheer", [amount])
 	crowd_excite = clampf(maxf(crowd_excite, amount), 0.0, 1.0)
 
 
 func ola() -> void:
+	if net_cb.is_valid():
+		net_cb.call("w:ola", [])
 	ola_t = 0.0
 	cheer(1.0)
 
 
 func whistle() -> void:
+	if net_cb.is_valid():
+		net_cb.call("w:whistle", [])
 	ref_whistle = 1.0
 
 
@@ -369,6 +380,8 @@ func _net() -> void:
 
 ## Rede treme quando a bola bate
 func net_hit(pos: Vector3) -> void:
+	if net_cb.is_valid():
+		net_cb.call("w:net_hit", [pos])
 	net_hit_t = 0.0
 	if net_mat:
 		net_mat.set_shader_parameter("hit_x", pos.x)
