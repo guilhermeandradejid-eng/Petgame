@@ -2,3 +2,4 @@ godot/.godot/
 builds/*.keystore
 builds/*.idsig
 blender/__pycache__/
+builds/windows/

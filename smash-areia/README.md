@@ -5,6 +5,11 @@ gerados no **Blender**. Partidas de duplas no estilo arcade (2x2, você + parcei
 controlado pela IA contra uma dupla da IA), com golpes variados, mergulhos,
 smash com pulo e onomatopeias de quadrinho.
 
+**Windows (PC):** [`builds/SmashNaAreia-windows.zip`](builds/SmashNaAreia-windows.zip) — baixe,
+extraia a pasta inteira e abra `SmashNaAreia.exe` (a DLL do WebRTC tem que ficar ao lado do .exe para o
+modo ONLINE funcionar). Windows 10/11 64 bits. Como o .exe não é assinado, o Windows pode mostrar
+"O Windows protegeu o computador": clique em *Mais informações* > *Executar assim mesmo*.
+
 **APK da demo:** [`builds/SmashNaAreia-demo.apk`](builds/SmashNaAreia-demo.apk)
 (Android 7+, arm64 e armv7). Baixe no celular, permita "instalar apps
 desconhecidos" e abra. O jogo roda deitado (paisagem).
@@ -410,6 +415,9 @@ blender -b -P blender/build_assets.py        # ou: python blender/build_assets.p
 
 # sons + importação + APK
 GODOT=/caminho/godot BLENDER_PY=python3 tools/build_apk.sh
+
+# executável do Windows (precisa dos export templates do Windows)
+godot --headless --path godot --export-release "Windows" ../builds/windows/SmashNaAreia.exe
 ```
 
 Para rodar no PC, abra `godot/project.godot` no editor e aperte F5.
