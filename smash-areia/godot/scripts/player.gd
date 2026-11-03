@@ -130,6 +130,11 @@ static func make_model(char_data: Dictionary, team_data: Dictionary, lk: Diction
 		var n := m.find_child(h, true, false)
 		if n:
 			(n as Node3D).visible = (h == char_data.get("hair", ""))
+	# formato dos olhos de cada personagem
+	for e in ["Eyes_Round", "Eyes_Almond"]:
+		var en := m.find_child(e, true, false)
+		if en:
+			(en as Node3D).visible = (e == char_data.get("eyes", "Eyes_Round"))
 	# roupa e paleta escolhidas no vestiário
 	var outfit: Dictionary = GameData.OUTFITS[clampi(int(lk.get("outfit", 0)), 0, GameData.OUTFITS.size() - 1)]
 	for part in GameData.CLOTH_PARTS:

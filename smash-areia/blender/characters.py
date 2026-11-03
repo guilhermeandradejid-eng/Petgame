@@ -359,13 +359,30 @@ def player_head(M):
     b = B.Builder("HeadMesh")
     b.sphere((0, 0, 1.76), 0.3, M["skin"], scale=(1.0, 0.97, 0.95), seg=32, rings=20)
     for s in (-1, 1):
-        x = 0.105 * s
-        b.sphere((x, -0.262, 1.79), 1.0, M["pupil"], scale=(0.046, 0.026, 0.068), seg=16, rings=10)
-        b.sphere((x - 0.014 * s, -0.288, 1.815), 0.017, M["shine"], seg=8, rings=6)
         b.sphere((0.172 * s, -0.226, 1.69), 1.0, M["cheek"], scale=(0.05, 0.022, 0.03), seg=12, rings=6)
         b.sphere((0.292 * s, 0.0, 1.75), 1.0, M["skin"], scale=(0.04, 0.055, 0.07), seg=12, rings=8)
     b.sphere((0, -0.279, 1.68), 1.0, M["mouth"], scale=(0.055, 0.02, 0.028), seg=16, rings=10, cut_above=1.68)
     return b.build()
+
+
+def eye_variants(M):
+    """Olhos separados da cabeça para cada personagem ter o seu formato."""
+    out = []
+    b = B.Builder("Eyes_Round")
+    for s in (-1, 1):
+        x = 0.105 * s
+        b.sphere((x, -0.262, 1.79), 1.0, M["pupil"], scale=(0.046, 0.026, 0.068), seg=16, rings=10)
+        b.sphere((x - 0.014 * s, -0.288, 1.815), 0.017, M["shine"], seg=8, rings=6)
+    out.append(b.build())
+    # amendoados: mais largos que altos, com o canto de fora levemente para cima
+    b = B.Builder("Eyes_Almond")
+    for s in (-1, 1):
+        x = 0.108 * s
+        rot = Matrix.Rotation(-0.2 * s, 4, "Y")
+        b.sphere((x, -0.263, 1.795), 1.0, M["pupil"], scale=(0.058, 0.026, 0.036), seg=18, rings=10, rot=rot)
+        b.sphere((x - 0.016 * s, -0.288, 1.807), 0.012, M["shine"], seg=8, rings=6)
+    out.append(b.build())
+    return out
 
 
 def _hair_cap(b, M, scale=(0.316, 0.31, 0.255), center=(0, 0.06, 1.86)):
@@ -400,19 +417,21 @@ def hair_variants(M):
     out.append(b.build())
     # rabo de cavalo alto com franja reta (lisa, estilo japonês)
     b = B.Builder("Hair_PonyHigh")
-    _hair_cap(b, M, (0.318, 0.312, 0.262), (0, 0.06, 1.86))
-    # franja reta: três elipses largas e sobrepostas (borda lisa, acima dos olhos)
-    for x, w in ((-0.1, 0.13), (0.0, 0.15), (0.1, 0.13)):
-        b.sphere((x, -0.232, 1.96 - abs(x) * 0.2), 1.0, M["hair"], scale=(w, 0.065, 0.068), seg=16, rings=8)
-    # rabo de cavalo: curva densa de esferas sobrepostas (fica um tubo liso que afina)
-    ctrl = [(0.30, 2.03, 0.088), (0.39, 1.96, 0.082), (0.43, 1.85, 0.076), (0.44, 1.73, 0.068),
-            (0.42, 1.62, 0.056), (0.39, 1.53, 0.04)]
+    # cabelo liso: calota justa e lisa, franja reta cortada na horizontal,
+    # mechas retas emoldurando o rosto e rabo de cavalo reto caindo nas costas
+    _hair_cap(b, M, (0.318, 0.314, 0.262), (0, 0.055, 1.86))
+    b.sphere((0, -0.215, 1.965), 1.0, M["hair"], scale=(0.24, 0.085, 0.085), seg=24, rings=10)
+    for sd in (-1, 1):
+        # uma mecha lisa de cada lado, do topo até a altura do queixo
+        b.sphere((0.272 * sd, -0.085, 1.78), 1.0, M["hair"], scale=(0.05, 0.08, 0.19), seg=16, rings=12)
+    ctrl = [(0.30, 2.02, 0.085), (0.36, 1.95, 0.08), (0.38, 1.83, 0.076), (0.385, 1.68, 0.07),
+            (0.38, 1.53, 0.06), (0.37, 1.42, 0.045)]
     for i in range(len(ctrl) - 1):
         (y0, z0, r0), (y1, z1, r1) = ctrl[i], ctrl[i + 1]
         for k in range(4):
             f = k / 4.0
             b.sphere((0, y0 + (y1 - y0) * f, z0 + (z1 - z0) * f), r0 + (r1 - r0) * f, M["hair"], seg=14, rings=10)
-    b.sphere((0, 0.29, 2.05), 1.0, M["band"], scale=(0.062, 0.05, 0.045), seg=12, rings=8)
+    b.sphere((0, 0.29, 2.04), 1.0, M["band"], scale=(0.062, 0.05, 0.045), seg=12, rings=8)
     out.append(b.build())
     # black power: volume redondo em volta da cabeça, com a linha do cabelo
     # recuada para deixar o rosto livre, e montinhos na borda para a textura fofa
@@ -443,6 +462,8 @@ def build_player():
         bind(ob, arm, cw)
     head = player_head(M)
     bind(head, arm, rigid_weights(head.data, "Head"))
+    for e in eye_variants(M):
+        bind(e, arm, rigid_weights(e.data, "Head"))
     for h in hair_variants(M):
         bind(h, arm, rigid_weights(h.data, "Head"))
     B.export("player")

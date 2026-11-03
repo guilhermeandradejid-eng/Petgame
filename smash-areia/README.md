@@ -236,7 +236,7 @@ No PC (J1): WASD move, `J` forte, `K` lob, `L` curta, `I` smash, `O` defesa, `U`
 | **Zeca** | Pancadão | ●● | ●●●● | ●● | Meteoro |
 | **Lola** | Precisa | ●●● | ●● | ●●●● | Bumerangue |
 | **Yham** | Atleta (moreno, cabelo black power) | ●●●● | ●●●● | ●● | Furacão |
-| **Nath** | Técnica (japonesa, rabo de cavalo alto e franja) | ●●●●● | ●● | ●●●●● | Sakura |
+| **Nath** | Técnica (japonesa: olhos amendoados, cabelo liso com franja reta, mechas laterais e rabo de cavalo) | ●●●●● | ●● | ●●●●● | Sakura |
 
 A IA tem 3 níveis (fácil, médio e difícil). O nível muda o tempo de reação, a velocidade,
 a precisão, a frequência de smash, o mergulho e a leitura de bola que vai sair ("FORA!", "DEIXA!").
