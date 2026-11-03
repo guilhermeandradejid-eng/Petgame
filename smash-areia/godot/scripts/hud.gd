@@ -48,6 +48,9 @@ var portraits: Array[Texture2D] = []
 
 var score := {"points": [0, 0], "games": [0, 0], "serving": 0, "golden": false, "target": 2}
 var energy := [0.0, 0.0]
+var special_armed := [false, false]
+var special_key := ["", ""]
+var energy_flash_t := [0.0, 0.0]
 var pop_t := [0.0, 0.0]
 var split_line: ColorRect
 var again_btn: Button
@@ -968,7 +971,7 @@ func _refresh_menu() -> void:
 	if GameData.char_index_p2 == GameData.char_index:
 		GameData.char_index_p2 = (GameData.char_index + 2) % GameData.CHARACTERS.size()
 	var n := Input.get_connected_joypads().size()
-	var tx := "SEM CONTROLE: TOQUE OU TECLADO"
+	var tx := "SEM CONTROLE: TOQUE OU TECLADO" if touch_device() else "SEM CONTROLE: TECLADO E MOUSE"
 	if n == 1:
 		tx = "1 CONTROLE CONECTADO"
 	elif n > 1:
@@ -1302,7 +1305,7 @@ func _draw_title() -> void:
 	var prompt := "APERTE ENTER PARA JOGAR"
 	if Input.get_connected_joypads().size() > 0:
 		prompt = "APERTE (A) PARA JOGAR"
-	elif DisplayServer.is_touchscreen_available():
+	elif touch_device():
 		prompt = "TOQUE NA TELA PARA JOGAR"
 	var a := 0.82 + 0.18 * sin(t * 5.0)
 	var pw2 := FONT.get_string_size(prompt, HORIZONTAL_ALIGNMENT_LEFT, -1, 38).x + 60.0
@@ -1534,8 +1537,10 @@ func _fill_help() -> void:
 		rows.append([desc[a["id"]], Settings.pad_name(a["id"]), Settings.key_name(a["key"]),
 			touch_name.get(a["id"], a["name"])])
 	rows.append(["PAUSA", "START", "ESC", "II"])
+	var ncol := 4 if touch_device() else 3   # no PC não há coluna de toque
+	help_grid.columns = ncol
 	for ri in rows.size():
-		for ci in 4:
+		for ci in ncol:
 			var col := INK
 			if ri == 0:
 				col = RED
@@ -1561,10 +1566,15 @@ func set_split(on: bool) -> void:
 	_update_touch()
 
 
+## Controles de toque só em celular/tablet (no PC: teclado, mouse e controle)
+static func touch_device() -> bool:
+	return OS.has_feature("mobile") or (OS.has_feature("web") and DisplayServer.is_touchscreen_available())
+
+
 ## Botões de toque só aparecem quando fazem sentido
 func _update_touch() -> void:
 	var want := in_game and not menu.visible and not end_panel.visible and not replay_on \
-		and GameData.mode != "vs" and not split_on and not pad_mode
+		and GameData.mode != "vs" and not split_on and not pad_mode and touch_device()
 	if touch.visible != want:
 		touch.reset()
 	touch.visible = want
@@ -1581,6 +1591,8 @@ func set_pad_mode(on: bool) -> void:
 func _process(dt: float) -> void:
 	t += dt
 	screen_t += dt
+	for k in 2:
+		energy_flash_t[k] = maxf(0.0, float(energy_flash_t[k]) - dt * 2.5)
 	if fps_label.visible:
 		fps_t -= dt
 		if fps_t <= 0.0:
@@ -1903,10 +1915,15 @@ func _draw_replay() -> void:
 	if blink:
 		replay_layer.draw_circle(Vector2(46, bar * 0.5), 12, Color("ff3b3b"))
 	replay_layer.draw_string(FONT, Vector2(70, bar * 0.5 + 16), "REPLAY", HORIZONTAL_ALIGNMENT_LEFT, -1, 46, Color.WHITE)
-	var tip := "toque para pular"
+	var tip := "toque para pular" if touch_device() else "aperte qualquer botão para pular"
 	var tw := FONT.get_string_size(tip, HORIZONTAL_ALIGNMENT_LEFT, -1, 26).x
 	if not menu.visible:
 		replay_layer.draw_string(FONT, Vector2(vs.x - tw - 30, vs.y - bar * 0.5 + 9), tip, HORIZONTAL_ALIGNMENT_LEFT, -1, 26, Color(1, 1, 1, 0.7))
+
+
+## O botão do especial foi apertado sem a barra cheia: a barra pisca
+func energy_flash(team: int) -> void:
+	energy_flash_t[team] = 1.0
 
 
 func set_energy(e: Array) -> void:
@@ -1999,8 +2016,16 @@ func _draw_score() -> void:
 		ci.draw_rect(fill, fc)
 		var stc := Vector2(er.position.x - 4.0 if L == 0 else er.end.x + 4.0, er.get_center().y)
 		_star(ci, stc, 14.0 * (1.0 + (0.15 * sin(t * 10.0) if full else 0.0)), YELLOW if full else Color(0.6, 0.58, 0.66), 2.5, t if full else 0.0)
-		if full:
-			_txt(ci, Vector2(er.get_center().x, er.get_center().y), "PRONTO!", 15, INK, 0)
+		var fl: float = energy_flash_t[side]
+		if fl > 0.0:
+			ci.draw_rect(er.grow(5), Color(1, 1, 1, fl), false, 3.0)
+		if special_armed[side]:
+			# armado: barra dourada pulsando
+			ci.draw_rect(er.grow(4), Color(1.0, 0.84, 0.25, 0.6 + 0.4 * sin(t * 12.0)), false, 4.0)
+			_txt(ci, er.get_center(), "ARMADO!", 16, INK, 0)
+		elif full:
+			var k: String = special_key[side]
+			_txt(ci, er.get_center(), "PRONTO!" + (("  APERTE " + k) if k != "" else ""), 15, INK, 0)
 	# centro
 	var mid := Rect2(cx - 24, top + 14, 48, 36)
 	ci.draw_rect(mid.grow(3), INK)

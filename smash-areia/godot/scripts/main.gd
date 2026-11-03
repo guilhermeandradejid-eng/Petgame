@@ -135,6 +135,7 @@ func _ready() -> void:
 	chance_star.material_override = cm
 	chance_star.visible = false
 	add_child(chance_star)
+	_setup_traj()
 	_setup_audio()
 	_setup_particles()
 	_setup_confetti()
@@ -1080,6 +1081,17 @@ func _update_charge_marks() -> void:
 				marks.append({"pos": screen_pos(hp.global_position + Vector3(0, 2.65, 0), vi),
 					"v": hp.charge(), "col": Shots.COLORS[hp.pending_shot], "name": Shots.NAMES[hp.pending_shot]})
 	hud.set_charges(marks)
+	# barra do especial: PRONTO! + botão a apertar, ou ARMADO!
+	for team in 2:
+		var th := team_human(team)
+		hud.special_armed[team] = false
+		hud.special_key[team] = ""
+		for p in players:
+			if p.team == team and p.special_armed:
+				hud.special_armed[team] = true
+		if th:
+			hud.special_key[team] = Settings.pad_name("super") if th.pad >= 0 else \
+				("ESTRELA" if hud.touch.visible else Settings.key_name("super"))
 
 
 # ---------------------------------------------------------------- dicas da primeira partida
@@ -1217,11 +1229,12 @@ func _launch(p: Player, shot: int, res: Dictionary, quality: float, charge: floa
 	if shot == Shots.SPECIAL:
 		energy[p.team] = 0.0
 	else:
-		var gain := 0.012 + (0.02 if quality > 0.85 else 0.0) + charge * 0.03
+		# a barra enche em ~12-15 boas batidas (antes eram ~30: quase nunca ficava pronta)
+		var gain := 0.03 + (0.03 if quality > 0.85 else 0.0) + charge * 0.05
 		if chance_shot:
-			gain += 0.1
+			gain += 0.15
 		if shot == Shots.SMASH:
-			gain += 0.015
+			gain += 0.03
 		var was := float(energy[p.team])
 		energy[p.team] = minf(1.0, energy[p.team] + gain)
 		if was < 1.0 and energy[p.team] >= 1.0 and team_human(p.team) != null:
@@ -1245,7 +1258,7 @@ func _launch(p: Player, shot: int, res: Dictionary, quality: float, charge: floa
 			cam_dutch = 0.12 * (1.0 if rng.randf() < 0.5 else -1.0)
 			smash_fx(pos, 0.5)
 			post.kick(pos, 1.0, 0.7)
-			comic(head + Vector3(0, 0.3, 0), res["label"], col, 0.75)
+			comic(head + Vector3(0, 0.3, 0), res["label"], col, 0.6)
 			world.cheer(1.0)
 			impact(pos, col, 2.2)
 		Shots.SMASH:
@@ -1255,8 +1268,7 @@ func _launch(p: Player, shot: int, res: Dictionary, quality: float, charge: floa
 			fov_kick = -6.0
 			cam_punch = 0.5
 			post.kick(pos, 0.6)
-			if p.is_human or rng.randf() < 0.5:
-				comic(head, "POW!" if res["label"] == "SMASH" else res["label"], col, 0.6)
+			world.ground_ring(p.global_position, Shots.COLORS[Shots.SMASH], 1.5)
 			world.cheer(0.6)
 			impact(pos, col, 1.5)
 		Shots.LOB:
@@ -1282,19 +1294,18 @@ func _launch(p: Player, shot: int, res: Dictionary, quality: float, charge: floa
 				shake = maxf(shake, 0.18)
 				p.racket_flash()
 				post.kick(pos, 0.25)
+				fov_kick = minf(fov_kick, -2.5)   # micro zoom na pancada boa
 	if chance_shot:
-		comic(head + Vector3(0, 0.35, 0), "CHANCE!", Color("ffe14d"), 0.55)
+		world.ground_ring(p.global_position, Color("ffe14d"), 1.6)
 		shake = maxf(shake, 0.25)
 	if p.is_human:
-		# letreiro só nos lances que merecem (menos texto na tela)
-		if shot != Shots.SPECIAL and shot != Shots.SMASH and not chance_shot:
-			var txt := ""
+		# sem texto no meio do rali: golpe perfeito/carregado vira um anel de luz no
+		# chão na cor do golpe (o jogador sente sem tirar o olho da bola)
+		if shot != Shots.SPECIAL and not chance_shot:
 			if quality > 0.88:
-				txt = "PERFEITO!"
+				world.ground_ring(p.global_position, Color("fff3b0"), 1.25)
 			elif charge >= 1.0:
-				txt = "CARREGADO!"
-			if txt != "":
-				pop3d(head, txt, col.lightened(0.2), 0.42, false)
+				world.ground_ring(p.global_position, Shots.COLORS[shot], 1.1)
 		rumble(p, shot == Shots.SMASH or shot == Shots.SPECIAL)
 	chance = {}
 	chance_star.visible = false
@@ -1333,7 +1344,6 @@ func _do_hit(p: Player, type: int, quality: float, charge: float, style := "") -
 			p.knockback(Vector3(ball.vel.x, 0, ball.vel.z), 1.0)
 			if p.is_human:
 				rumble(p, true)
-			comic(p.global_position + Vector3(0, 2.6, 0), "UAAAU!", Color("ffffff"), 0.5, false)
 			shot = Shots.DEFENSE
 			quality = 0.25
 			charge = 0.0
@@ -1343,8 +1353,14 @@ func _do_hit(p: Player, type: int, quality: float, charge: float, style := "") -
 		shot = Shots.DEFENSE
 	if shot == Shots.LOB and incoming_speed > 16.5:
 		quality *= 0.85
+	# especial armado: qualquer batida deste jogador vira o especial
+	if p.special_armed and energy[p.team] >= 1.0 and not blocked and shot != Shots.SPECIAL \
+			and not (ball.special != "" and shot == Shots.DEFENSE):
+		shot = Shots.SPECIAL
 	if shot == Shots.SPECIAL and energy[p.team] < 1.0:
 		shot = Shots.SMASH if ball.position.y > 2.0 else Shots.DRIVE
+	if shot == Shots.SPECIAL:
+		p.special_armed = false
 	var is_chance := false
 	if not chance.is_empty() and int(chance["team"]) == p.team and (int(chance["type"]) == shot):
 		var cpos: Vector3 = chance["pos"]
@@ -1368,7 +1384,6 @@ func _do_hit(p: Player, type: int, quality: float, charge: float, style := "") -
 			float(p.data["power"]), float(p.data["control"]), err, rng, extra)
 	if style == "gancho" and shot != Shots.SPECIAL:
 		res["label"] = "GANCHO!"
-		comic(p.global_position + Vector3(0, 2.9, 0), "GANCHO!", Color("ffe14d"), 0.5, false)
 	_launch(p, shot, res, quality, charge, is_chance)
 
 
@@ -1546,8 +1561,6 @@ func _player_shot(p: Player, type: int) -> void:
 	if state != S.RALLY:
 		return
 	p.request_shot(type)
-	if type == Shots.DEFENSE and p.pending_shot == Shots.DEFENSE:
-		p.say("DEFESA!", Color("8fd8ff"))
 
 
 func _player_super(p: Player) -> void:
@@ -1557,15 +1570,21 @@ func _player_super(p: Player) -> void:
 		return
 	if intro_t < 0.4 and not demo:
 		return   # o botão que confirmou o menu não vale como golpe
-	if demo or p == null or state != S.RALLY:
+	if demo or p == null or state == S.END or state == S.REPLAY:
 		return
 	if energy[p.team] < 1.0:
 		# o botão funcionou, só falta carregar: mostra quanto falta
-		p.say("ESPECIAL %d%%" % int(energy[p.team] * 100.0), Color(1, 1, 1, 0.85))
+		p.say("%d%%" % int(energy[p.team] * 100.0), Color(1, 1, 1, 0.85))
+		hud.energy_flash(p.team)
 		return
-	p.request_shot(Shots.SPECIAL)
-	p.say("ESPECIAL ARMADO!", Color("ffe14d"))
-	if p.data.get("special", "") == "meteoro" and p.on_ground() and not p.smash_wait and absf(p.position.z) < 6.3:
+	if p.special_armed and p.pending_shot == Shots.SPECIAL:
+		return
+	if state == S.RALLY:
+		p.request_shot(Shots.SPECIAL)
+	else:
+		p.special_armed = true   # no saque/entre pontos: arma para a próxima batida do rali
+	p.say("ARMADO!", Color("ffe14d"))
+	if state == S.RALLY and p.data.get("special", "") == "meteoro" and p.on_ground() and not p.smash_wait and absf(p.position.z) < 6.3:
 		p.jump_boost = 1.45
 		if p.jump_timer < 0.0:
 			p.jump_timer = 0.05
@@ -1748,6 +1767,7 @@ func _physics_process(delta: float) -> void:
 	if not ball.is_live():
 		chance_star.visible = false
 	_update_marker()
+	_update_traj()
 	_update_camera(dt)
 	_update_audio_mix()
 
@@ -1813,10 +1833,6 @@ func _assign() -> void:
 			var lpx := absf(ball.landing_point().x)
 			if not best.is_human and best.brain and not best.brain.leaving and lpx < 1.2 and rng.randf() < 0.25:
 				best.say("MINHA!", Color("4fc3ff"))
-			elif best.is_human and rng.randf() < 0.2:
-				var m := teammate(best)
-				if m:
-					m.say("SUA!", Color("ffd23f"))
 
 
 func _update_marker() -> void:
@@ -1834,10 +1850,15 @@ func _update_marker() -> void:
 		if out:
 			col = Color(0.9, 0.9, 0.9)
 		col.a = 0.9
+		var big := 1.0
+		if ball.special != "" and not out:
+			# especial vindo: alvo vermelho maior e pulsando (hora da DEFESA)
+			col = Color(1.0, 0.22, 0.2, 0.95)
+			big = 1.35 + 0.15 * sin(time * 16.0)
 		var m := marker.material_override as ShaderMaterial
 		m.set_shader_parameter("color", col)
 		m.set_shader_parameter("pulse", 1.0)
-		marker.scale = Vector3.ONE * lerpf(0.7, 1.3, clampf(ball.position.y / 6.0, 0.0, 1.0))
+		marker.scale = Vector3.ONE * lerpf(0.7, 1.3, clampf(ball.position.y / 6.0, 0.0, 1.0)) * big
 	else:
 		marker.visible = false
 
@@ -1940,7 +1961,8 @@ func _award_point(team: int, reason: String) -> void:
 		else:
 			sfx("lose_point", -6.0)
 			sfx("aww" if team_human(1) == null else "cheer", -5.0)
-	energy[team] = minf(1.0, energy[team] + 0.04)
+	energy[team] = minf(1.0, energy[team] + 0.08)
+	energy[1 - team] = minf(1.0, energy[1 - team] + 0.05)   # quem perdeu o ponto também carrega (virada)
 	hud.set_energy(energy)
 	for p in players:
 		if p.team == team:
@@ -2434,7 +2456,8 @@ func net_snapshot() -> Array:
 	var ps: Array = []
 	for p in players:
 		ps.append([p.position, p.facing, p.body.rotation, p.body.scale, online._rig_pack(p.rig), p.swing_t,
-			p.swing_type, p.style, p.pending_shot, p.lh_w, p.state, p.serve_mode, p.y, p.charge(), p.hittable])
+			p.swing_type, p.style, p.pending_shot, p.lh_w, p.state, p.serve_mode, p.y, p.charge(), p.hittable,
+			p.special_armed])
 	return [time, state, players.find(server), players.find(celeb), point_timer, rally_hits, intro_t,
 		serving_team, games.duplicate(), points.duplicate(), energy.duplicate(), tiebreak, replay_side, replay_cam,
 		ball.global_position, ball.vel, ball.flying, ball.special,
@@ -2534,6 +2557,7 @@ func _apply_snapshot(A: Array, B: Array, k: float, dt: float) -> void:
 		pl.y = float(pb[12])
 		pl.net_charge = float(pb[13])
 		pl.hittable = bool(pb[14])
+		pl.special_armed = pb.size() > 15 and bool(pb[15])
 		pl.anim_time += dt
 		pl._update_racket(dt)
 		pl._update_trail()
@@ -2549,7 +2573,7 @@ func net_event(kind: String, args) -> void:
 	var a: Array = args
 	if kind.begins_with("w:"):
 		var fn := kind.substr(2)
-		if fn in ["footprint", "sand_ring", "cheer", "ola", "whistle", "net_hit"]:
+		if fn in ["footprint", "sand_ring", "cheer", "ola", "whistle", "net_hit", "ground_ring"]:
 			world.callv(fn, a)
 		return
 	if kind.begins_with("h:"):
@@ -2600,3 +2624,66 @@ func _net_test_host(fixed_code: String) -> void:
 		if online.is_host() and not online.in_match and online.members.size() >= 2:
 			printerr("NETTEST guest joined, starting")
 			online.start_match.call_deferred())
+
+
+
+# ---------------------------------------------------------------- indicador de ataque
+
+const TRAJ_N := 16
+var traj_mm: MultiMesh
+
+
+## Pontinhos com o caminho da bola que vem para um time humano, na cor do golpe
+## (lob alto, curta caindo, smash reto; especial em vermelho piscando).
+func _setup_traj() -> void:
+	traj_mm = MultiMesh.new()
+	traj_mm.transform_format = MultiMesh.TRANSFORM_3D
+	traj_mm.use_colors = true
+	var sm := SphereMesh.new()
+	sm.radius = 0.05
+	sm.height = 0.1
+	sm.radial_segments = 8
+	sm.rings = 4
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.vertex_color_use_as_albedo = true
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	sm.material = mat
+	traj_mm.mesh = sm
+	traj_mm.instance_count = TRAJ_N
+	traj_mm.visible_instance_count = 0
+	var mi := MultiMeshInstance3D.new()
+	mi.multimesh = traj_mm
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+
+
+func _update_traj() -> void:
+	traj_mm.visible_instance_count = 0
+	if demo or state != S.RALLY or not ball.is_live() or ball.into_net:
+		return
+	var lp := ball.landing_point()
+	var team := 0 if lp.z > 0.0 else 1
+	if ball.last_team == team or team_human(team) == null:
+		return
+	var tg := ball.time_to_ground()
+	if tg <= 0.08:
+		return
+	var col := Color.WHITE
+	if ball.last_shot >= 0 and ball.last_shot < Shots.COLORS.size():
+		col = Shots.COLORS[ball.last_shot]
+	if ball.special != "":
+		col = Color(1.0, 0.25, 0.2) if fmod(time, 0.2) < 0.13 else Color(1.0, 0.85, 0.3)
+	var sgn := 1.0 if team == 0 else -1.0
+	var n := 0
+	for i in TRAJ_N:
+		var k := float(i + 1) / float(TRAJ_N + 1)
+		var p := ball.predict(tg * k)
+		if p.z * sgn < 0.0:
+			continue   # só a parte que já passou para o nosso lado (menos poluição)
+		var c := col
+		c.a = lerpf(0.25, 0.85, k)
+		traj_mm.set_instance_transform(n, Transform3D(Basis().scaled(Vector3.ONE * lerpf(0.7, 1.15, k)), p))
+		traj_mm.set_instance_color(n, c)
+		n += 1
+	traj_mm.visible_instance_count = n

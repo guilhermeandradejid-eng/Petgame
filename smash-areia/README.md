@@ -18,6 +18,31 @@ desconhecidos" e abra. O jogo roda deitado (paisagem).
 |---|---|---|---|
 | ![personagens](docs/personagens.jpg) | ![vestiario](docs/vestiario.jpg) | ![smash](docs/smash.jpg) | ![comemoracao](docs/comemoracao.jpg) |
 
+## Polimento visual e de jogo (rodada 0.4)
+
+Referência: jogos de esporte arcade em cartoon (visual simples, limpo e com bonecos de brinquedo).
+
+- **Personagens mais cartoon**: proporção chibi (cabeça, mãos e tênis maiores), olhos com branco e
+  brilho, **tênis** brancos com solado na cor do personagem, **munhequeiras**, membros mais cheinhos,
+  sombreado macio sem retícula, contorno mais fino e brilho suave no cabelo e nos tênis.
+- **Cenário sem poluição**: sem cadeiras, bandeiras e torre; só dois guarda-sóis ao longe; fundo
+  sem contorno preto e com véu mais leve (cores vivas); céu sem raios desenhados; areia com textura
+  discreta para a quadra ser o destaque.
+- **Plateia organizada**: cada arquibancada torce para um time (tons do time + branco), a maioria
+  bate palma, placas e mãozonas na cor da torcida e cabelos naturais.
+- **Menos texto no meio do rali**: saíram POW!, CHANCE!, PERFEITO!, CARREGADO!, GANCHO!, UAAAU!,
+  DEFESA! e SUA!. No lugar, um **anel de luz** abre no chão na cor do golpe (perfeito, carregado,
+  chance, smash), com micro zoom e tremida curta. Ficam só os raros: nome do especial, BLOQUEIO! e MINHA!.
+- **Indicador de ataque**: pontinhos mostram o caminho da bola que vem para o seu lado, na cor do
+  golpe; com o especial vindo, os pontos e o alvo de queda ficam vermelhos, maiores e piscando.
+- **Especial corrigido**: depois de armado, ele fica valendo até a sua próxima batida, **seja qual
+  for o botão apertado** (antes, apertar outro golpe cancelava o especial sem avisar). Dá para armar
+  também no saque e entre os pontos. A barra enche bem mais rápido (~12-15 boas batidas, e os pontos
+  carregam os dois lados), mostra "PRONTO! APERTE U" (ou o botão do controle) e "ARMADO!" pulsando,
+  e o jogador ganha uma aura dourada no chão.
+- **PC sem controles de toque**: os botões de toque só aparecem em celular/tablet; no PC os textos
+  falam de teclado/controle e a aba TOQUE das opções some.
+
 ## Novidades (rodada 0.3)
 
 ### Multiplayer online (PC, de graça, sem servidor e sem abrir portas)

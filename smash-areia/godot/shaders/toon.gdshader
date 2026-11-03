@@ -54,10 +54,11 @@ void fragment() {
 	col = mix(col, col * 0.6 + vec3(1.0, 0.82, 0.5) * 0.55, rim * rim_amount);
 
 	vec3 H = normalize(L + VIEW);
-	col += vec3(1.0) * step(0.965, dot(NORMAL, H)) * spec_amount;
+	// brilho especular macio (plástico/borracha de brinquedo), sem borda dura
+	col += vec3(1.0, 0.98, 0.94) * smoothstep(0.955, 0.99, dot(NORMAL, H)) * spec_amount * lit;
 
 	col = mix(col, flash_color.rgb, flash);
-	col = mix(col, vec3(0.88, 0.82, 0.9) * (0.75 + 0.25 * lit), bg * 0.3);
+	col = mix(col, vec3(0.88, 0.84, 0.9) * (0.75 + 0.25 * lit), bg * 0.14);   // véu leve: fundo limpo e vivo
 	float dist = length(VERTEX);
 	col = mix(col, night_haze(HAZE), smoothstep(45.0, 380.0, dist) * 0.85 * fog);
 	ALBEDO = night_grade(col, (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz);

@@ -112,6 +112,7 @@ var prints_age: PackedFloat32Array
 var prints_next := 0
 const PRINTS := 180
 var rings: Array[Dictionary] = []
+var color_rings: Array[Dictionary] = []   # anéis de luz coloridos (golpe perfeito, carregado, chance)
 
 
 func _setup_marks() -> void:
@@ -140,6 +141,12 @@ func _setup_marks() -> void:
 		r.visible = false
 		add_child(r)
 		rings.append({"node": r, "t": 1.0, "size": 1.0})
+	for i in 4:
+		var r := Toon.blob(1.0, Color(1, 1, 1, 0.0), true)
+		r.material_override = r.material_override.duplicate()
+		r.visible = false
+		add_child(r)
+		color_rings.append({"node": r, "t": 1.0, "size": 1.0, "color": Color.WHITE})
 
 
 ## Pegada (ou marca de mergulho) na areia
@@ -168,7 +175,36 @@ func sand_ring(pos: Vector3, size := 1.0) -> void:
 			return
 
 
+## Anel de luz que abre no chão (feedback sem texto)
+func ground_ring(pos: Vector3, color: Color, size := 1.0) -> void:
+	if net_cb.is_valid():
+		net_cb.call("w:ground_ring", [pos, color, size])
+	var best: Dictionary = color_rings[0]
+	for d in color_rings:
+		if float(d["t"]) >= 1.0:
+			best = d
+			break
+	var n: MeshInstance3D = best["node"]
+	n.global_position = Vector3(pos.x, 0.035, pos.z)
+	n.visible = true
+	best["t"] = 0.0
+	best["size"] = size
+	best["color"] = color
+
+
 func _update_marks(dt: float) -> void:
+	for d in color_rings:
+		if float(d["t"]) < 1.0:
+			d["t"] = minf(float(d["t"]) + dt / 0.38, 1.0)
+			var t: float = d["t"]
+			var n: MeshInstance3D = d["node"]
+			n.scale = Vector3.ONE * lerpf(0.5, 3.0, 1.0 - pow(1.0 - t, 3.0)) * float(d["size"])
+			var c: Color = d["color"]
+			c.a = 0.9 * (1.0 - t)
+			(n.material_override as ShaderMaterial).set_shader_parameter("color", c)
+			(n.material_override as ShaderMaterial).set_shader_parameter("pulse", 0.0)
+			if t >= 1.0:
+				n.visible = false
 	for i in PRINTS:
 		if prints_age[i] < 8.0:
 			prints_age[i] += dt
@@ -389,7 +425,7 @@ func net_hit(pos: Vector3) -> void:
 
 
 func _referee() -> void:
-	var chair := _place(REFCHAIR, Vector3(5.6, 0, 0), -PI * 0.5, 1.0, {"bg": 0.0})
+	var chair := _place(REFCHAIR, Vector3(5.6, 0, 0), -PI * 0.5, 1.0, {"bg": 0.0, "outline": 0.018})
 	var data := {"skin": Color("c98a5b"), "hair_color": Color("1d1d1d"), "accent": Color("1d1d1d"),
 		"hair": "Shades", "racket": Color.WHITE}
 	var team := {"shirt": Color("ffffff"), "trim": Color("1d1d1d"), "shorts": Color("1d1d1d")}
@@ -425,7 +461,7 @@ func _place(scene: PackedScene, pos: Vector3, rot_y := 0.0, s := 1.0, opts: Dict
 	n.position = pos
 	n.rotation.y = rot_y
 	n.scale = Vector3.ONE * s
-	var o := {"outline": 0.03, "halftone": 0.0, "bg": 1.0}
+	var o := {"outline": 0.0, "halftone": 0.0, "bg": 1.0}   # fundo sem contorno: só a quadra e os jogadores têm traço
 	o.merge(opts, true)
 	Toon.apply(n, {}, o, ds, {"Leaf": {"wind": 1.0}, "LeafDark": {"wind": 1.0}})
 	add_child(n)
@@ -438,11 +474,10 @@ func _props() -> void:
 	var palm_spots := [Vector3(-16, 0, -21), Vector3(17, 0, -22), Vector3(-26, 0, -12), Vector3(27, 0, -13),
 		Vector3(-8, 0, -26), Vector3(9, 0, -26.5)]
 	for k in palm_spots.size():
-		_place(PALM, palm_spots[k], 0.7 * k, 1.3 + 0.08 * (k % 3), {"outline": 0.035})
-	for p in [Vector3(-11, 0, -19), Vector3(11.5, 0, -19.5)]:
+		_place(PALM, palm_spots[k], 0.7 * k, 1.3 + 0.08 * (k % 3))
+	# fundo limpo: só dois guarda-sóis longe da quadra (sem cadeiras e sem torre)
+	for p in [Vector3(-12.5, 0, -20), Vector3(13, 0, -20.5)]:
 		_place(UMBRELLA, p, 0.4, 1.2)
-		_place(CHAIR, p + Vector3(0.9, 0, 1.2), 3.0, 1.3)
-	_place(TOWER, Vector3(21, 0, -19), -0.5, 1.4)
 	# horizonte: morros, ilhas, nuvens, veleiros, gaivotas
 	_place(MOUNTAINS, Vector3(-210, -1, -330), 0.3, 2.6, {"outline": 0.0, "halftone": 0.0, "rim": 0.0})
 	_place(MOUNTAINS, Vector3(230, -1, -360), PI - 0.2, 2.2, {"outline": 0.0, "halftone": 0.0, "rim": 0.0})
@@ -488,37 +523,25 @@ func _props() -> void:
 		gulls.append({"node": g, "wl": wl, "wr": wr, "center": Vector3(rng.randf_range(-30, 30), rng.randf_range(20, 28),
 			rng.randf_range(-70, -45)), "r": rng.randf_range(10, 18), "speed": rng.randf_range(0.2, 0.35) * (1 if i % 2 else -1),
 			"ph": rng.randf() * TAU})
-	# duas bandeiras só no fundo
-	for corner in [Vector3(-6.8, 0, -11.2), Vector3(6.8, 0, -11.2)]:
-		_box(Vector3(0.06, 3.6, 0.06), corner + Vector3(0, 1.8, 0), Color("ffffff"), 0.012)
-		var flag := MeshInstance3D.new()
-		var fq := QuadMesh.new()
-		fq.size = Vector2(1.2, 0.7)
-		fq.subdivide_width = 8
-		flag.mesh = fq
-		flag.position = corner + Vector3(0.62, 3.2, 0)
-		var fm := ShaderMaterial.new()
-		fm.shader = preload("res://shaders/flag.gdshader")
-		fm.set_shader_parameter("phase", rng.randf() * TAU)
-		fm.set_shader_parameter("color_a", GameData.TEAMS[0]["shirt"] if corner.x < 0 else GameData.TEAMS[1]["shirt"])
-		fm.set_shader_parameter("color_b", Color("ffffff"))
-		flag.material_override = fm
-		flag.rotation.y = PI * 0.5
-		add_child(flag)
 
 
 func _stands() -> void:
 	crowd_mat = ShaderMaterial.new()
 	crowd_mat.shader = preload("res://shaders/crowd.gdshader")
 	# torcida com as cores dos times + branco e amarelo (menos ruído visual)
-	var shirts := [Color("2f8cff"), Color("2f8cff"), Color("ff4b3e"), Color("ff4b3e"), Color("ffffff"),
-		Color("ffffff"), Color("ffd23f"), Color("5fb8ff")]
+	# cada arquibancada torce para um time: tons do time + branco (organizado, sem ruído)
+	var shirt_sets := [
+		[Color("2f8cff"), Color("2f8cff"), Color("5fb0ff"), Color("1f5fc8"), Color("ffffff"), Color("f2f6ff")],
+		[Color("ff4b3e"), Color("ff4b3e"), Color("ff7a6e"), Color("d0332a"), Color("ffffff"), Color("fff4f2")],
+	]
 	# só nas laterais: o fundo fica livre para ver o mar
 	var stands := [
 		{"pos": Vector3(-11.6, 0, -0.5), "rot": PI * 0.5, "rows": 5},
 		{"pos": Vector3(11.6, 0, -0.5), "rot": -PI * 0.5, "rows": 5},
 	]
-	for st in stands:
+	for si in stands.size():
+		var st: Dictionary = stands[si]
+		var shirts: Array = shirt_sets[si]
 		var b := _place(BLEACHERS, st["pos"], st["rot"], 1.0, {"outline": 0.0, "halftone": 0.0, "rim": 0.0})
 		var per_variant: Array = [[], [], [], []]
 		for row in int(st["rows"]):
@@ -529,9 +552,9 @@ func _stands() -> void:
 				var along := -7.0 + i * (14.0 / float(count - 1)) + rng.randf_range(-0.12, 0.12)
 				# coordenadas locais (Godot): X = comprimento, -Z = fundo (sobe), Y = altura do degrau
 				var lp := Vector3(along, 0.43 + row * 0.5, -(row * 0.75 - 0.12))
-				var v := rng.randi() % 4
-				if rng.randf() < 0.35:
-					v = 3
+				# a maioria bate palma; poucas placas e mãozonas
+				var rv := rng.randf()
+				var v := 3 if rv < 0.55 else (0 if rv < 0.8 else (1 if rv < 0.9 else 2))
 				per_variant[v].append(Transform3D(Basis().scaled(Vector3.ONE * rng.randf_range(0.9, 1.08)), lp))
 		for v in 4:
 			var list: Array = per_variant[v]

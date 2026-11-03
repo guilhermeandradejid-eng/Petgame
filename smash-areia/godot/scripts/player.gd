@@ -35,6 +35,9 @@ var remote := false
 var net_slot := -1
 var net_charge := -1.0
 var net_name := ""
+# especial armado: fica valendo até a próxima batida deste jogador, seja qual for
+# o botão apertado na hora (antes, apertar outro golpe cancelava o especial)
+var special_armed := false
 var stick := Vector2.ZERO
 var tag: Label3D
 var data: Dictionary = {}
@@ -153,12 +156,22 @@ static func make_model(char_data: Dictionary, team_data: Dictionary, lk: Diction
 		"Skin": char_data["skin"], "Hair": char_data["hair_color"], "Band": char_data["accent"],
 		"Shirt": pal["shirt"], "ShirtTrim": pal["trim"], "Shorts": pal["shorts"],
 	}
-	var soft := {"halftone": 0.0, "shadow": Color(0.86, 0.72, 0.8), "rim": 0.45}
+	# visual limpo de jogo de esporte arcade: sem retícula, sombra clara e fria,
+	# contorno fino, brilho macio no cabelo e nos tênis
+	var soft := {"halftone": 0.0, "shadow": Color(0.88, 0.76, 0.82), "rim": 0.45, "spec": 0.05}
 	var flat := {"halftone": 0.0, "outline": 0.0, "rim": 0.0}
-	Toon.apply(m, palette, {"outline": 0.018, "rim": 0.4, "halftone": 0.45}, [],
-			{"Skin": soft, "Cheek": flat, "Mouth": flat, "Pupil": flat, "EyeShine": flat,
-			"Hair": {"halftone": 0.0, "rim": 0.5}, "Band": {"halftone": 0.0}})
+	Toon.apply(m, palette, {"outline": 0.015, "rim": 0.4, "halftone": 0.0, "shadow": Color(0.74, 0.68, 0.88),
+			"spec": 0.06}, [],
+			{"Skin": soft, "Cheek": flat, "Mouth": flat, "Pupil": flat, "EyeShine": flat, "EyeWhite": flat,
+			"Hair": {"halftone": 0.0, "rim": 0.5, "spec": 0.1, "shadow": Color(0.7, 0.66, 0.82)},
+			"Band": {"halftone": 0.0, "spec": 0.12}, "Shoe": {"spec": 0.15, "shadow": Color(0.8, 0.8, 0.92)}})
 	var r := Rig.new(sk)
+	# proporção cartoon (chibi): cabeça, mãos e tênis um pouco maiores. O Rig só
+	# mexe na rotação dos ossos, então a escala fica fixa.
+	for bs in [["Head", 1.14], ["Hand.R", 1.12], ["Hand.L", 1.12], ["Foot.R", 1.1], ["Foot.L", 1.1]]:
+		var bi := sk.find_bone(bs[0])
+		if bi >= 0:
+			sk.set_bone_pose_scale(bi, Vector3.ONE * float(bs[1]))
 	# a raquete é orientada por código a cada frame (cabeça para cima na espera,
 	# face virada para onde o golpe vai), sem depender da torção dos ossos
 	var rk: Node3D = (RACKETS[clampi(int(lk.get("racket", 0)), 0, RACKETS.size() - 1)] as PackedScene).instantiate()
@@ -306,6 +319,8 @@ func charge() -> float:
 func request_shot(type: int) -> void:
 	if state != State.NORMAL or swing_t < 0.6:
 		return
+	if type == Shots.SPECIAL:
+		special_armed = true
 	if pending_shot >= 0 and pending_shot == type:
 		return
 	pending_shot = type
@@ -1082,14 +1097,16 @@ func _update_decals(dt: float) -> void:
 	var ch := charge()
 	var ac: Color = Shots.COLORS[pending_shot] if pending_shot >= 0 else Color.WHITE
 	ac.a = ch * 0.9 if pending_shot >= 0 else 0.0
-	if is_human and pending_shot != Shots.SPECIAL:
+	var sp_on := pending_shot == Shots.SPECIAL or special_armed
+	if is_human and not sp_on:
 		ac.a = 0.0   # o humano já tem o anel de carga na tela
-	if pending_shot == Shots.SPECIAL:
-		ac.a = 0.6 + 0.4 * sin(anim_time * 20.0)
+	if sp_on:
+		ac = Color("ffd23f")   # especial armado: aura dourada pulsando no chão
+		ac.a = 0.6 + 0.4 * sin(anim_time * 14.0)
 	am.set_shader_parameter("color", ac)
 	am.set_shader_parameter("pulse", 1.0)
 	aura.global_position = Vector3(global_position.x, 0.03, global_position.z)
-	aura.scale = Vector3.ONE * (0.8 + ch * 0.4 + (0.3 if pending_shot == Shots.SPECIAL else 0.0))
+	aura.scale = Vector3.ONE * (0.8 + ch * 0.4 + ((0.35 + 0.08 * sin(anim_time * 14.0)) if sp_on else 0.0))
 	if zone_ring:
 		var c := reach_center()
 		zone_ring.global_position = Vector3(c.x, 0.025, c.z)

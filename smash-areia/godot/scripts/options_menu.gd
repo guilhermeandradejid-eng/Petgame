@@ -61,6 +61,7 @@ func _ready() -> void:
 		b.pressed.connect(_set_tab.bind(i))
 		top.add_child(b)
 		tabs.append(b)
+		b.visible = i != 2 or Hud.touch_device()   # aba TOQUE só no celular
 	var body := Control.new()
 	body.custom_minimum_size = Vector2(1000, 452)
 	v.add_child(body)
@@ -400,10 +401,10 @@ func _input(event: InputEvent) -> void:
 				hud._click()
 				close()
 			JOY_BUTTON_LEFT_SHOULDER:
-				_set_tab(posmod(tab - 1, 3))
+				_set_tab(posmod(tab - 1, _ntabs()))
 				hud._sfx("ui_move")
 			JOY_BUTTON_RIGHT_SHOULDER:
-				_set_tab(posmod(tab + 1, 3))
+				_set_tab(posmod(tab + 1, _ntabs()))
 				hud._sfx("ui_move")
 		return
 	if event is InputEventKey and event.is_pressed() and not event.is_echo():
@@ -414,7 +415,7 @@ func _input(event: InputEvent) -> void:
 			close()
 		elif k == KEY_Q or k == KEY_E:
 			get_viewport().set_input_as_handled()
-			_set_tab(posmod(tab + (1 if k == KEY_E else -1), 3))
+			_set_tab(posmod(tab + (1 if k == KEY_E else -1), _ntabs()))
 
 
 func _capture(event: InputEvent) -> void:
@@ -470,3 +471,7 @@ func _capture(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 				_stop_listen()
 				status.text = "Cancelado."
+
+
+func _ntabs() -> int:
+	return 3 if Hud.touch_device() else 2

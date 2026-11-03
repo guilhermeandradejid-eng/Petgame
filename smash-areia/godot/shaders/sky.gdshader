@@ -25,7 +25,7 @@ void sky() {
 	// degradê com leve posterização (faixas de gibi)
 	float k = smoothstep(0.0, 0.75, y);
 	float kb = floor(k * 7.0) / 7.0;
-	k = mix(k, kb, 0.22);
+	k = mix(k, kb, 0.08);
 	vec3 col = mix(horizon.rgb, mid.rgb, smoothstep(0.0, 0.3, k));
 	col = mix(col, top.rgb, smoothstep(0.3, 1.0, k));
 	col = mix(col, blush.rgb, (1.0 - smoothstep(0.0, 0.09, y)) * 0.2);
@@ -41,7 +41,7 @@ void sky() {
 	vec3 side = normalize(cross(s, vec3(0.0, 1.0, 0.0)));
 	vec3 upv = cross(side, s);
 	float ang = atan(dot(EYEDIR, upv), dot(EYEDIR, side));
-	float rays = step(0.0, sin(ang * 12.0)) * smoothstep(0.86, 0.975, d) * 0.04;
+	float rays = 0.0;   // céu limpo, sem raios desenhados
 	col = mix(col, vec3(1.0, 0.92, 0.65), rays);
 	// cirros: fiapos altos esticados na horizontal
 	if (y > 0.04) {

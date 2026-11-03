@@ -46,15 +46,16 @@ void fragment() {
 	float ripples = (1.0 - court) * smoothstep(120.0, 20.0, dist) * (0.55 + 0.45 * noise(p * 0.08));
 	vec2 sp = FRAGCOORD.xy / 5.0;
 	float dots = step(length(fract(sp) - 0.5), 0.26);
-	col = mix(col, sand_light.rgb, crest * ripples * 0.6);
-	col = mix(col, sand_dark.rgb * 0.95, shade * ripples * mix(0.25, 0.5, dots));
+	// ondulações suaves (sem retícula): textura discreta, a quadra é o destaque
+	col = mix(col, sand_light.rgb, crest * ripples * 0.35);
+	col = mix(col, sand_dark.rgb * 0.97, shade * ripples * 0.22 + dots * 0.0);
 	// grãos e conchinhas
 	vec2 cell = floor(p * 9.0);
 	float speck = step(0.93, hash(cell));
-	col = mix(col, sand_dark.rgb * 0.92, speck * 0.22);
+	col = mix(col, sand_dark.rgb * 0.95, speck * 0.1);
 	vec2 sc = floor(p * 1.4);
 	float shell = step(0.985, hash(sc + 3.1)) * step(length(fract(p * 1.4) - 0.5), 0.1) * (1.0 - court);
-	col = mix(col, vec3(1.0, 0.82, 0.86), shell * 0.9);
+	col = mix(col, vec3(1.0, 0.86, 0.88), shell * 0.5);
 	// brilho de grão que pisca perto da câmera
 	float g = hash(floor(p * 22.0));
 	float glint = step(0.996, g) * step(0.6, sin(TIME * 3.0 + g * 60.0)) * smoothstep(30.0, 6.0, dist);

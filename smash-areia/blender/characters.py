@@ -44,8 +44,9 @@ PLAYER_J = sym({
 
 PLAYER_R = sym({
     "pelvis": (0.165, 0.125), "spine": (0.15, 0.112), "chest": (0.19, 0.13), "neck": (0.062, 0.062),
-    "shoulder.R": (0.072, 0.072), "elbow.R": (0.056, 0.056), "wrist.R": (0.046, 0.046), "hand.R": (0.056, 0.05),
-    "hip.R": (0.088, 0.088), "knee.R": (0.068, 0.068), "ankle.R": (0.05, 0.05), "toe.R": (0.052, 0.04),
+    # membros um pouco mais cheinhos (boneco de jogo de esporte arcade, lê melhor de longe)
+    "shoulder.R": (0.076, 0.076), "elbow.R": (0.061, 0.061), "wrist.R": (0.051, 0.051), "hand.R": (0.062, 0.055),
+    "hip.R": (0.092, 0.092), "knee.R": (0.074, 0.074), "ankle.R": (0.056, 0.056), "toe.R": (0.058, 0.045),
 })
 
 PLAYER_EDGES = [("pelvis", "spine"), ("spine", "chest"), ("chest", "neck")]
@@ -191,6 +192,8 @@ def player_materials():
         "band": B.material("Band", "#ff3b3b"),
         "trim": B.material("ShirtTrim", "#ffffff"),
         "shades": B.material("Shades", "#151020", 0.2),
+        "shoe": B.material("Shoe", "#f7f5f0"),
+        "eyewhite": B.material("EyeWhite", "#ffffff", 0.3),
     }
 
 
@@ -344,6 +347,23 @@ def player_clothes(M, body_me, body_w):
     s1, c1 = band(1.23, 1.29)
     sk, sc = shorts(0.55)
     bk, bc = shorts(0.84)
+
+    # tênis: casca do pé + tornozelo, com um solado mais largo na cor do personagem
+    def shoe(c, bn, t):
+        return bn.startswith("Foot") or (bn.startswith("LowerLeg") and t >= 0.84)
+
+    def sole(c, bn, t):
+        return shoe(c, bn, t) and c.z <= 0.07
+
+    shoe_cuts = [leg_plane("LowerLeg.R", 0.84), leg_plane("LowerLeg.L", 0.84)]
+    sole_cuts = shoe_cuts + [(Vector((0, 0, 0.07)), UP)]
+
+    # munhequeiras nos dois pulsos (cor do personagem)
+    def wrist(c, bn, t):
+        return bn.startswith("LowerArm") and 0.72 <= t <= 0.9
+
+    wrist_cuts = [leg_plane("LowerArm.R", 0.72), leg_plane("LowerArm.R", 0.9),
+                  leg_plane("LowerArm.L", 0.72), leg_plane("LowerArm.L", 0.9)]
     out = [
         body_shell("Shirt", body_me, body_w, M["shirt"], shirt, torso_off, shirt_cuts),
         body_shell("Tank", body_me, body_w, M["shirt"], tank, torso_off, tank_cuts),
@@ -351,6 +371,9 @@ def player_clothes(M, body_me, body_w):
         body_shell("Stripe1", body_me, body_w, M["trim"], s1, lambda bn: 0.05, c1),
         body_shell("Shorts", body_me, body_w, M["shorts"], sk, legs_off, sc),
         body_shell("Bermuda", body_me, body_w, M["shorts"], bk, legs_off, bc),
+        body_shell("Shoes", body_me, body_w, M["shoe"], shoe, lambda bn: 0.034 if bn.startswith("Foot") else 0.026, shoe_cuts),
+        body_shell("Soles", body_me, body_w, M["band"], sole, lambda bn: 0.047, sole_cuts),
+        body_shell("Wristbands", body_me, body_w, M["band"], wrist, lambda bn: 0.02, wrist_cuts),
     ]
     return out
 
@@ -371,16 +394,19 @@ def eye_variants(M):
     b = B.Builder("Eyes_Round")
     for s in (-1, 1):
         x = 0.105 * s
-        b.sphere((x, -0.262, 1.79), 1.0, M["pupil"], scale=(0.046, 0.026, 0.068), seg=16, rings=10)
-        b.sphere((x - 0.014 * s, -0.288, 1.815), 0.017, M["shine"], seg=8, rings=6)
+        # branco do olho atrás da pupila: olhar mais expressivo, lê melhor de longe
+        b.sphere((x, -0.255, 1.795), 1.0, M["eyewhite"], scale=(0.06, 0.024, 0.08), seg=18, rings=12)
+        b.sphere((x + 0.006 * s, -0.27, 1.788), 1.0, M["pupil"], scale=(0.04, 0.022, 0.058), seg=16, rings=10)
+        b.sphere((x - 0.008 * s, -0.29, 1.81), 0.015, M["shine"], seg=8, rings=6)
     out.append(b.build())
     # amendoados: mais largos que altos, com o canto de fora levemente para cima
     b = B.Builder("Eyes_Almond")
     for s in (-1, 1):
         x = 0.108 * s
         rot = Matrix.Rotation(-0.2 * s, 4, "Y")
-        b.sphere((x, -0.263, 1.795), 1.0, M["pupil"], scale=(0.058, 0.026, 0.036), seg=18, rings=10, rot=rot)
-        b.sphere((x - 0.016 * s, -0.288, 1.807), 0.012, M["shine"], seg=8, rings=6)
+        b.sphere((x, -0.256, 1.797), 1.0, M["eyewhite"], scale=(0.07, 0.024, 0.046), seg=18, rings=10, rot=rot)
+        b.sphere((x + 0.006 * s, -0.27, 1.794), 1.0, M["pupil"], scale=(0.042, 0.022, 0.036), seg=18, rings=10, rot=rot)
+        b.sphere((x - 0.01 * s, -0.29, 1.806), 0.011, M["shine"], seg=8, rings=6)
     out.append(b.build())
     return out
 
