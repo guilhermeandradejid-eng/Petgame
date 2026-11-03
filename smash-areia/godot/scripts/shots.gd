@@ -20,6 +20,7 @@ const SPECIALS := {
 	"raio": {"name": "RAIO!", "color": Color("fff04d")},
 	"meteoro": {"name": "METEORO!", "color": Color("ff5a1f")},
 	"bumerangue": {"name": "BUMERANGUE!", "color": Color("ff5fd2")},
+	"furacao": {"name": "FURACÃO!", "color": Color("2ee8a0")},
 }
 
 
@@ -33,6 +34,12 @@ static func integrate(pos: Vector3, vel: Vector3, w: Vector3, t: float, special:
 		# zigue-zague: deslocamento lateral periódico (média zero)
 		var k := TAU / 0.3
 		np.x += 0.55 * (sin(k * (t + DT)) - sin(k * t))
+	elif special == "furacao":
+		# saca-rolha: a bola gira em espiral em volta da trajetória (média zero)
+		var k2 := TAU / 0.42
+		var rr := 0.42
+		np.x += rr * (sin(k2 * (t + DT)) - sin(k2 * t))
+		np.y += rr * 0.7 * (cos(k2 * (t + DT)) - cos(k2 * t))
 	w *= exp(-SPIN_DECAY * DT)
 	return [np, vel, w]
 
@@ -227,6 +234,10 @@ static func compute(type: int, from: Vector3, side: float, aim_in: Vector2, qual
 					target.z = side * 4.4
 					style = {"speed": 30.0 if from.y > 1.9 else 22.0}
 					top = 60.0
+				"furacao":
+					target.z = side * 5.8
+					style = {"speed": 24.0}
+					top = 120.0
 				"bumerangue":
 					target.z = side * 5.4
 					target.x = clampf(target.x, -2.6, 2.6)

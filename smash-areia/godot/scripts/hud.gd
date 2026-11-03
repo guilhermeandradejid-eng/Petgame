@@ -16,7 +16,7 @@ const CYAN := Color("4fe0ff")
 const GREEN := Color("35e0a1")
 const CREAM := Color("fff4e0")
 const PORTRAITS := ["res://assets/ui/char_0.png", "res://assets/ui/char_1.png",
-	"res://assets/ui/char_2.png", "res://assets/ui/char_3.png"]
+	"res://assets/ui/char_2.png", "res://assets/ui/char_3.png", "res://assets/ui/char_4.png"]
 const MODES := [
 	{"id": "solo", "title": "1 JOGADOR", "tag": "1P", "desc": "Você + parceiro CPU\ncontra a dupla CPU", "color": Color("ffd23f")},
 	{"id": "vs", "title": "VERSUS", "tag": "2P", "desc": "Um contra o outro\ntela dividida", "color": Color("ff4b3e")},
@@ -71,7 +71,7 @@ var booted := false
 var mode_tiles: Array[Button] = []
 var tile_lift := [0.0, 0.0, 0.0]
 var cards: Array[Button] = []
-var card_lift := [0.0, 0.0, 0.0, 0.0]
+var card_lift: Array = []
 var pick_stage := 0          # 0 = J1 escolhe, 1 = J2 escolhe
 var play_btn: Button
 var next_btn: Button
@@ -426,6 +426,7 @@ func _build_menu() -> void:
 		b.focus_entered.connect(_on_card_focus.bind(i))
 		char_scr.add_child(b)
 		cards.append(b)
+		card_lift.append(0.0)
 	back_btn = _button("< VOLTAR", 28, Color.WHITE)
 	back_btn.pressed.connect(_back)
 	char_scr.add_child(back_btn)
@@ -639,16 +640,17 @@ func _layout_menu() -> void:
 	pads_label.position = Vector2(vs.x * 0.5 - 300, vs.y - 78)
 	pads_label.size = Vector2(600, 40)
 	# cards dos personagens
-	var cw := 236.0
+	var ncards := cards.size()
+	var cw := minf(236.0, (vs.x - 70.0 - 20.0 * (ncards - 1)) / ncards)
 	var chh := 392.0
-	var cg := 26.0
-	var cx0 := (vs.x - (cw * 4 + cg * 3)) * 0.5
+	var cg := 26.0 if ncards <= 4 else 20.0
+	var cx0 := (vs.x - (cw * ncards + cg * (ncards - 1))) * 0.5
 	for i in cards.size():
 		cards[i].position = Vector2(cx0 + i * (cw + cg), 150)
 		cards[i].size = Vector2(cw, chh)
 	back_btn.position = Vector2(24, 20)
 	back_btn.size = Vector2(170, 60)
-	var full := cw * 4 + cg * 3
+	var full := cw * ncards + cg * (ncards - 1)
 	var oy := vs.y - 124.0
 	diff_btn.position = Vector2(cx0, oy)
 	diff_btn.size = Vector2(196, 70)
@@ -944,17 +946,17 @@ func _draw_title() -> void:
 	_burst(ci, c, vs.length() * 0.75, 22, t * 0.12, Color(1.0, 0.86, 0.3, 0.75))
 	ci.draw_circle(c, vs.y * 0.33, Color(1.0, 0.92, 0.5, 0.35))
 	# personagens espiando dos lados
-	var spots := [0.1, 0.24, 0.76, 0.9]
-	for i in 4:
+	var spots := [0.065, 0.18, 0.295, 0.82, 0.935]
+	for i in mini(spots.size(), portraits.size()):
 		var tex: Texture2D = portraits[i]
 		if tex == null:
 			continue
-		var h := vs.y * 0.62
+		var h := vs.y * 0.56
 		var w := h * tex.get_width() / tex.get_height()
 		var bob := sin(t * 2.4 + i * 1.7) * 8.0
 		var px: float = vs.x * spots[i]
 		var r := Rect2(px - w * 0.5, vs.y - h + 40 + bob, w, h)
-		ci.draw_set_transform(Vector2(px, vs.y), (-0.08 if i < 2 else 0.08), Vector2(-1 if i >= 2 else 1, 1))
+		ci.draw_set_transform(Vector2(px, vs.y), (-0.08 if i < 3 else 0.08), Vector2(-1 if i >= 3 else 1, 1))
 		ci.draw_texture_rect(tex, Rect2(r.position - Vector2(px, vs.y), r.size), false)
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	# logo
@@ -1159,8 +1161,7 @@ func _build_help() -> void:
 	var rows := [
 		["", "CONTROLE", "TECLADO", "TOQUE"],
 		["MOVER", "ANALÓGICO", "W A S D", "ARRASTE À ESQUERDA"],
-		["PULO (bata no ar com qualquer golpe)", "A", "ESPAÇO", "PULO"],
-		["FORTE (topspin)", "AUTOMÁTICO", "J", "AUTOMÁTICO"],
+		["FORTE (topspin)", "A", "J", "FORTE"],
 		["LOB (alto, fundo)", "X", "K", "LOB"],
 		["CURTA (slice)", "B", "L", "CURTA"],
 		["SMASH (bola alta)", "Y", "I", "SMASH"],

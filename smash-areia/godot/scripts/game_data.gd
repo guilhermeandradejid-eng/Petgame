@@ -28,6 +28,11 @@ const CHARACTERS := [
 		"skin": Color("5e3a26"), "hair_color": Color("2a1a14"), "accent": Color("19d3ff"),
 		"racket": Color("9b5de5"), "speed": 0.98, "power": 0.95, "control": 1.18,
 	},
+	{
+		"name": "Yham", "special": "furacao", "desc": "Atleta", "hair": "Hair_Afro",
+		"skin": Color("9a6440"), "hair_color": Color("1b120c"), "accent": Color("2ec27e"),
+		"racket": Color("ff6b2e"), "speed": 1.06, "power": 1.08, "control": 0.94,
+	},
 ]
 
 const TEAMS := [

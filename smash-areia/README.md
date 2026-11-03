@@ -99,7 +99,7 @@ ffmpeg -i partida.avi -vf scale=1024:-2 -c:v libx264 -crf 30 -c:a aac docs/parti
 - **Controles (gamepad)**: com 2 controles conectados, cada jogador usa um. Com 1 controle, o J2 fica
   com ele e o J1 joga no teclado (ou toque no modo co-op). No celular, o VS precisa de dois
   controles Bluetooth, porque os botões de toque somem na tela dividida.
-- Mapeamento do controle: **A** pulo, **X** lob, **B** curta, **Y** smash, **LB** (ou RT/R3) defesa,
+- Mapeamento do controle: **A** forte, **X** lob, **B** curta, **Y** smash, **LB** (ou RT/R3) defesa,
   **RB** especial, **LT** (ou L3) peixinho, **Start** pausa, analógico ou D-pad para correr e mirar.
   Os gatilhos também são lidos como botão (alguns controles no Android não mandam eixo), e o
   mapa aparece na tela no começo da partida e em PAUSA > CONTROLES.
@@ -141,8 +141,7 @@ As regras são de beach tennis:
 | Controle | O que faz |
 |---|---|
 | Analógico (metade esquerda da tela) | Corre pela areia. Na hora da batida, a direção do analógico **mira** o golpe (lado e profundidade). Sem direção, o boneco mira no buraco entre os adversários. |
-| **PULO** | Pula na hora (no lugar do antigo botão FORTE). No ar dá para bater com qualquer golpe: pule e aperte SMASH, LOB, CURTA ou DEFESA. |
-| FORTE (automático) | **Topspin** rápido que mergulha no fim. Sai sozinho quando a bola chega e você não escolheu outro golpe (bola que vai cair fora não é rebatida: deixe passar). No ar, com a bola alta, o automático vira SMASH. No teclado ainda dá para escolher com `J`. |
+| **FORTE** | **Topspin**: rápido, mergulha no fim e fica difícil de devolver. |
 | **LOB** | Bola alta com topspin que cai no fundo, boa para tirar a dupla da rede. |
 | **CURTA** | **Slice**: flutua, faz curva e morre perto da rede. |
 | **SMASH** | Com a bola alta, o boneco **pula e crava** no tempo certo. Com a bola baixa vira uma pancada. Perto da rede é quase indefensável, do fundo sai mais lento. |
@@ -166,6 +165,7 @@ As regras são de beach tennis:
   - **Bia: RAIO**: bola chapada em zigue-zague, muito rápida.
   - **Zeca: METEORO**: pulo altíssimo e uma cravada em chamas.
   - **Lola: BUMERANGUE**: sai por fora da quadra e volta fazendo uma curva enorme.
+  - **Yham: FURACÃO**: a bola gira em saca-rolha em volta da trajetória, com rastro verde.
 
   Quem recebe um super é **empurrado para trás** e só consegue uma defesa fraca. Às vezes é o ponto
   de chance para fechar!
@@ -229,6 +229,7 @@ No PC (J1): WASD move, `J` forte, `K` lob, `L` curta, `I` smash, `O` defesa, `U`
 | **Bia** | Velocista | ●●●● | ●● | ●●● | Raio |
 | **Zeca** | Pancadão | ●● | ●●●● | ●● | Meteoro |
 | **Lola** | Precisa | ●●● | ●● | ●●●● | Bumerangue |
+| **Yham** | Atleta (moreno, cabelo black power) | ●●●● | ●●●● | ●● | Furacão |
 
 A IA tem 3 níveis (fácil, médio e difícil). O nível muda o tempo de reação, a velocidade,
 a precisão, a frequência de smash, o mergulho e a leitura de bola que vai sair ("FORA!", "DEIXA!").

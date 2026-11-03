@@ -398,6 +398,17 @@ def hair_variants(M):
     for s in (-1, 1):
         b.sphere((0.21 * s, 0.07, 2.0), 0.15, M["hair"], seg=18, rings=12)
     out.append(b.build())
+    # black power: volume redondo em volta da cabeça, com a linha do cabelo
+    # recuada para deixar o rosto livre, e montinhos na borda para a textura fofa
+    b = B.Builder("Hair_Afro")
+    b.sphere((0, 0.12, 1.95), 1.0, M["hair"], scale=(0.43, 0.405, 0.35), seg=30, rings=18)
+    for ang in range(0, 360, 40):
+        a = math.radians(ang)
+        x, z = math.cos(a) * 0.36, 1.95 + math.sin(a) * 0.29
+        if z < 1.72:
+            continue
+        b.sphere((x, 0.16, z), 0.13, M["hair"], seg=12, rings=8)
+    out.append(b.build())
     b = B.Builder("Shades")
     b.box((0, -0.282, 1.8), (0.32, 0.03, 0.07), M["shades"], smooth=True)
     b.sphere((0, 0.02, 1.9), 1.0, M["trim"], scale=(0.326, 0.326, 0.2), seg=26, rings=14)

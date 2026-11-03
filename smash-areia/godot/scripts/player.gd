@@ -18,7 +18,7 @@ const GRAV := 16.0
 const PENDING_WINDOW := 0.7
 const STRIKE_TIME := 0.24
 const CHARGE_TIME := 0.5
-const HAIRS := ["Hair_Spiky", "Hair_Pony", "Cap", "Hair_Puffs", "Shades"]
+const HAIRS := ["Hair_Spiky", "Hair_Pony", "Cap", "Hair_Puffs", "Shades", "Hair_Afro"]
 const THIGH := 0.41
 const SHIN := 0.42
 
@@ -491,18 +491,8 @@ func try_contact(ball: Ball, delta: float) -> Dictionary:
 			last_style = "dive"
 			return {"type": Shots.DEFENSE, "quality": info["quality"], "charge": 0.0, "style": "dive"}
 		return {}
-	if state != State.NORMAL:
+	if pending_shot < 0 or state != State.NORMAL:
 		return {}
-	var auto := false
-	if pending_shot < 0:
-		# humano sem golpe escolhido: FORTE automático (no ar, com a bola alta, vira SMASH)
-		if not is_human or swing_t < 1.0:
-			return {}
-		# bola que vai cair fora: deixa passar (não rebate sozinho)
-		var lp := ball.landing_point()
-		if absf(lp.x) > GameData.COURT_HALF_W + 0.15 or absf(lp.z) > GameData.COURT_HALF_L + 0.15:
-			return {}
-		auto = true
 	var fast := ball.vel.length() > 16.0
 	var info := reach_info(ball.global_position, fast)
 	if not info["in"]:
@@ -516,8 +506,6 @@ func try_contact(ball: Ball, delta: float) -> Dictionary:
 		if d > best_dist + 0.01:
 			q = maxf(q - 0.1, 0.0)
 		var shot := pending_shot
-		if auto:
-			shot = Shots.SMASH if (not on_ground() and ball.global_position.y > 1.9) else Shots.DRIVE
 		var ch := charge()
 		var st := classify(ball.global_position, shot, fast or ball.special != "")
 		_start_swing(shot, ball.global_position, st, true)
