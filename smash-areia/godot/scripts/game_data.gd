@@ -33,6 +33,11 @@ const CHARACTERS := [
 		"skin": Color("9a6440"), "hair_color": Color("1b120c"), "accent": Color("2ec27e"),
 		"racket": Color("ff6b2e"), "speed": 1.06, "power": 1.08, "control": 0.94,
 	},
+	{
+		"name": "Nath", "special": "sakura", "desc": "Técnica", "hair": "Hair_PonyHigh",
+		"skin": Color("f3d3b5"), "hair_color": Color("15101a"), "accent": Color("ff4f8b"),
+		"racket": Color("ff4f8b"), "speed": 1.1, "power": 0.9, "control": 1.1,
+	},
 ]
 
 const TEAMS := [

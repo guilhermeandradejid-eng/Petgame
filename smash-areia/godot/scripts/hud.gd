@@ -16,7 +16,8 @@ const CYAN := Color("4fe0ff")
 const GREEN := Color("35e0a1")
 const CREAM := Color("fff4e0")
 const PORTRAITS := ["res://assets/ui/char_0.png", "res://assets/ui/char_1.png",
-	"res://assets/ui/char_2.png", "res://assets/ui/char_3.png", "res://assets/ui/char_4.png"]
+	"res://assets/ui/char_2.png", "res://assets/ui/char_3.png", "res://assets/ui/char_4.png",
+	"res://assets/ui/char_5.png"]
 const MODES := [
 	{"id": "solo", "title": "1 JOGADOR", "tag": "1P", "desc": "Você + parceiro CPU\ncontra a dupla CPU", "color": Color("ffd23f")},
 	{"id": "vs", "title": "VERSUS", "tag": "2P", "desc": "Um contra o outro\ntela dividida", "color": Color("ff4b3e")},
@@ -58,6 +59,9 @@ var split_on := false
 var pad_mode := false        # controle em uso pelo J1: esconde os botões de toque
 var last_input_pad := false
 var pad_info := ""
+var party_ready := [false, false]   # 2P: quem já confirmou o personagem
+var locker_row := 0                 # 2P: linha do vestiário que o J2 está mexendo
+var axis_dir := {}                  # analógico de cada controle (para andar um passo por vez)
 
 # menu
 var menu: Control
@@ -441,6 +445,9 @@ func _build_menu() -> void:
 	char_scr.add_child(music_btn)
 	next_btn = _big_button("VESTIÁRIO >", 50, GREEN)
 	next_btn.pressed.connect(func():
+		if _party() and not (party_ready[0] and party_ready[1]):
+			flash_tip("J%d AINDA ESTÁ ESCOLHENDO" % (1 if not party_ready[0] else 2), 1.6, Color.WHITE)
+			return
 		_sfx("ui_start")
 		_go_screen("locker")
 	)
@@ -560,6 +567,12 @@ func _refresh_lockers() -> void:
 		btns[2].text = "RAQUETE: %s" % rk["name"]
 		var rci: int = lk["racket_color"]
 		btns[3].text = "COR: %s" % ("DO PERSONAGEM" if rci < 0 else GameData.RACKET_COLOR_NAMES[rci])
+		if j == 1:
+			# o J2 mexe no próprio painel com o controle dele: linha atual em destaque
+			for k in btns.size():
+				var on2 := _party() and k == locker_row
+				btns[k].add_theme_stylebox_override("normal", _style(CYAN.lightened(0.55) if on2 else Color.WHITE, 6 if on2 else 5))
+				btns[k].focus_mode = Control.FOCUS_NONE if _party() else Control.FOCUS_ALL
 		(L["root"] as Control).queue_redraw()
 		var key := "%d|%d|%s" % [_look_char(j), team, str(lk)]
 		if on and key != L["key"]:
@@ -705,8 +718,15 @@ func _go_screen(s: String) -> void:
 			mode_tiles[idx].grab_focus.call_deferred()
 		"char":
 			pick_stage = 0
-			cards[GameData.char_index].grab_focus.call_deferred()
+			party_ready = [false, false]
+			for c in cards:
+				c.focus_mode = Control.FOCUS_NONE if _party() else Control.FOCUS_ALL
+			if _party():
+				get_viewport().gui_release_focus()
+			else:
+				cards[GameData.char_index].grab_focus.call_deferred()
 		"locker":
+			locker_row = 0
 			((lockers[0]["btns"] as Array)[0] as Button).grab_focus.call_deferred()
 
 
@@ -746,6 +766,8 @@ func _two_players() -> bool:
 
 
 func _on_card_focus(i: int) -> void:
+	if _party():
+		return   # no 2P cada um tem o próprio cursor
 	_on_focus_move()
 	if pick_stage == 0:
 		GameData.char_index = i
@@ -760,6 +782,18 @@ func _on_card_pressed(i: int) -> void:
 	if screen_t < 0.15:
 		return
 	_click()
+	if _party():
+		# toque/mouse: escolhe para quem ainda não confirmou (J1 primeiro)
+		if not party_ready[0]:
+			GameData.char_index = i
+			party_ready[0] = true
+			if GameData.char_index_p2 == i:
+				GameData.char_index_p2 = (i + 1) % GameData.CHARACTERS.size()
+		elif not party_ready[1] and i != GameData.char_index:
+			GameData.char_index_p2 = i
+			party_ready[1] = true
+		_party_after_change()
+		return
 	if pick_stage == 0:
 		GameData.char_index = i
 		if _two_players():
@@ -833,6 +867,8 @@ func _input(event: InputEvent) -> void:
 		last_input_pad = true
 	elif event is InputEventScreenTouch and event.is_pressed():
 		last_input_pad = false
+	if _party_input(event):
+		return
 	if _pad_menu_input(event):
 		return
 	if not menu.visible:
@@ -850,6 +886,169 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		_click()
 		_back()
+
+
+func _party() -> bool:
+	return _two_players() and menu.visible and (screen == "char" or screen == "locker")
+
+
+## De quem é este evento no 2P: 0 = J1, 1 = J2, -1 = toque/mouse.
+## Com 2 controles: o primeiro é do J1 e o segundo do J2. Com 1 controle ele é do J2
+## (o J1 fica com teclado/toque, igual dentro do jogo). Sem controle: setas e N = J2.
+func _event_owner(event: InputEvent) -> int:
+	var pads := Input.get_connected_joypads()
+	if event is InputEventJoypadButton or event is InputEventJoypadMotion:
+		if pads.size() >= 2:
+			return 0 if event.device == pads[0] else 1
+		return 1
+	if event is InputEventKey:
+		if pads.is_empty():
+			var k := (event as InputEventKey).physical_keycode
+			if k in [KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_N, KEY_M, KEY_BACKSPACE]:
+				return 1
+		return 0
+	return -1
+
+
+## Ação de menu do evento: left/right/up/down/ok/back (só na borda do aperto)
+func _event_action(event: InputEvent, who: int) -> String:
+	if event is InputEventJoypadButton:
+		var jb := event as InputEventJoypadButton
+		if not jb.pressed:
+			return ""
+		match jb.button_index:
+			JOY_BUTTON_DPAD_LEFT:
+				return "left"
+			JOY_BUTTON_DPAD_RIGHT:
+				return "right"
+			JOY_BUTTON_DPAD_UP:
+				return "up"
+			JOY_BUTTON_DPAD_DOWN:
+				return "down"
+			JOY_BUTTON_A, JOY_BUTTON_X, JOY_BUTTON_Y, JOY_BUTTON_START:
+				return "ok"
+			JOY_BUTTON_B, JOY_BUTTON_BACK:
+				return "back"
+		return ""
+	if event is InputEventJoypadMotion:
+		var jm := event as InputEventJoypadMotion
+		if jm.axis != JOY_AXIS_LEFT_X and jm.axis != JOY_AXIS_LEFT_Y:
+			return ""
+		var key := "%d_%d" % [jm.device, jm.axis]
+		var dir := 0
+		if jm.axis_value > 0.6:
+			dir = 1
+		elif jm.axis_value < -0.6:
+			dir = -1
+		var was: int = axis_dir.get(key, 0)
+		axis_dir[key] = dir if absf(jm.axis_value) > 0.3 else 0
+		if dir == 0 or dir == was:
+			return ""
+		if jm.axis == JOY_AXIS_LEFT_X:
+			return "right" if dir > 0 else "left"
+		return "down" if dir > 0 else "up"
+	if event is InputEventKey:
+		var ke := event as InputEventKey
+		if not ke.pressed or ke.echo:
+			return ""
+		var k := ke.physical_keycode
+		if who == 1 and Input.get_connected_joypads().is_empty():
+			match k:
+				KEY_LEFT: return "left"
+				KEY_RIGHT: return "right"
+				KEY_UP: return "up"
+				KEY_DOWN: return "down"
+				KEY_N, KEY_M: return "ok"
+				KEY_BACKSPACE: return "back"
+			return ""
+		match k:
+			KEY_A, KEY_LEFT: return "left"
+			KEY_D, KEY_RIGHT: return "right"
+			KEY_W, KEY_UP: return "up"
+			KEY_S, KEY_DOWN: return "down"
+			KEY_ENTER, KEY_KP_ENTER, KEY_SPACE, KEY_J: return "ok"
+			KEY_ESCAPE: return "back"
+	return ""
+
+
+## Seleção simultânea no 2P: cada jogador move o próprio cursor e confirma.
+## Depois que o J1 confirma, o controle dele volta a navegar pelos botões normais.
+func _party_input(event: InputEvent) -> bool:
+	if not _party() or help_panel.visible:
+		return false
+	var who := _event_owner(event)
+	if who < 0:
+		return false
+	var act := _event_action(event, who)
+	if act == "":
+		# eventos do J2 nunca mexem no foco do J1
+		if who == 1 and (event is InputEventJoypadButton or event is InputEventJoypadMotion):
+			get_viewport().set_input_as_handled()
+			return true
+		return false
+	if screen == "char":
+		if who == 0 and party_ready[0]:
+			if act == "back":
+				party_ready[0] = false
+				get_viewport().gui_release_focus()
+				_click()
+				_refresh_menu()
+				get_viewport().set_input_as_handled()
+				return true
+			return false   # J1 pronto: navega nas opções e no VESTIÁRIO
+		var n := GameData.CHARACTERS.size()
+		var other := GameData.char_index_p2 if who == 0 else GameData.char_index
+		var cur := GameData.char_index if who == 0 else GameData.char_index_p2
+		match act:
+			"left", "right":
+				if not party_ready[who]:
+					var d := -1 if act == "left" else 1
+					cur = posmod(cur + d, n)
+					if cur == other:
+						cur = posmod(cur + d, n)
+					if who == 0:
+						GameData.char_index = cur
+					else:
+						GameData.char_index_p2 = cur
+					_sfx("ui_move")
+			"ok":
+				if not party_ready[who]:
+					party_ready[who] = true
+					_click()
+			"back":
+				if party_ready[who]:
+					party_ready[who] = false
+					_click()
+				elif who == 0:
+					_click()
+					_go_screen("mode")
+		_party_after_change()
+		get_viewport().set_input_as_handled()
+		return true
+	if screen == "locker" and who == 1:
+		var keys := ["outfit", "palette", "racket", "racket_color"]
+		match act:
+			"up":
+				locker_row = posmod(locker_row - 1, 4)
+				_sfx("ui_move")
+			"down":
+				locker_row = posmod(locker_row + 1, 4)
+				_sfx("ui_move")
+			"ok", "right", "left":
+				_click()
+				_cycle_look(1, keys[locker_row])
+		_refresh_lockers()
+		get_viewport().set_input_as_handled()
+		return true
+	return false
+
+
+func _party_after_change() -> void:
+	_refresh_menu()
+	if party_ready[0] and not next_btn.has_focus():
+		next_btn.grab_focus()
+	if party_ready[0] and party_ready[1]:
+		_sfx("ui_start")
 
 
 ## Algum menu na tela (principal, pausa, fim ou ajuda)?
@@ -946,7 +1145,7 @@ func _draw_title() -> void:
 	_burst(ci, c, vs.length() * 0.75, 22, t * 0.12, Color(1.0, 0.86, 0.3, 0.75))
 	ci.draw_circle(c, vs.y * 0.33, Color(1.0, 0.92, 0.5, 0.35))
 	# personagens espiando dos lados
-	var spots := [0.065, 0.18, 0.295, 0.82, 0.935]
+	var spots := [0.06, 0.17, 0.28, 0.72, 0.83, 0.94]
 	for i in mini(spots.size(), portraits.size()):
 		var tex: Texture2D = portraits[i]
 		if tex == null:
@@ -1061,6 +1260,9 @@ func _draw_tile(b: Button, i: int) -> void:
 # --- tela de personagens
 
 func _draw_char_header() -> void:
+	if _party():
+		_draw_header(char_scr, "J1 E J2: ESCOLHAM!", "", Color("2f8cff"))
+		return
 	if pick_stage == 0:
 		_draw_header(char_scr, "J1: ESCOLHA SEU JOGADOR" if _two_players() else "ESCOLHA SEU JOGADOR",
 			"", YELLOW.darkened(0.1) if not _two_players() else Color("2f8cff"))
@@ -1086,7 +1288,15 @@ func _draw_card(b: Button, i: int) -> void:
 	for p in pts:
 		sh.append(p + Vector2(9, 12))
 	b.draw_colored_polygon(sh, Color(INK, 0.5))
-	if f:
+	if _party():
+		# 2P: borda na cor de cada cursor (J1 amarelo, J2 ciano)
+		if sel1 and sel2:
+			b.draw_colored_polygon(_grow(pts, 18), CYAN)
+			b.draw_colored_polygon(_grow(pts, 10), YELLOW)
+		elif sel1 or sel2:
+			b.draw_colored_polygon(_grow(pts, 16), YELLOW if sel1 else CYAN)
+		f = sel1 or sel2
+	elif f:
 		b.draw_colored_polygon(_grow(pts, 16), YELLOW)
 	var dim := 0.0 if (f or sel1 or sel2) else 0.3
 	_comic_poly(b, pts, acc.darkened(dim), 0.2, 6.0)
@@ -1113,23 +1323,31 @@ func _draw_card(b: Button, i: int) -> void:
 		var y := info.position.y + 38 + k * 22
 		_txt(b, Vector2(info.position.x + 8, y), stats[k][0], 18, INK, 0, false)
 		var n := _pips(float(stats[k][1]))
+		var step := minf(24.0, (info.size.x - 66.0) / 5.0)
 		for q in 5:
-			var pp := Vector2(info.position.x + 72 + q * 24, y)
-			b.draw_rect(Rect2(pp - Vector2(9, 7), Vector2(18, 14)), INK)
-			b.draw_rect(Rect2(pp - Vector2(7, 5), Vector2(14, 10)), acc if q < n else Color(0.82, 0.78, 0.7))
+			var pp := Vector2(info.position.x + 58 + step * 0.5 + q * step, y)
+			var pw2 := step * 0.75
+			b.draw_rect(Rect2(pp - Vector2(pw2 * 0.5 + 2, 7), Vector2(pw2 + 4, 14)), INK)
+			b.draw_rect(Rect2(pp - Vector2(pw2 * 0.5, 5), Vector2(pw2, 10)), acc if q < n else Color(0.82, 0.78, 0.7))
 	var sp: String = String(Shots.SPECIALS[ch["special"]]["name"]).trim_suffix("!")
 	var sy := info.end.y - 14
 	_star(b, Vector2(info.position.x + 16, sy), 10, YELLOW, 2.0)
-	_txt(b, Vector2(info.position.x + 32, sy), sp, 20, RED.darkened(0.2), 0, false)
-	# marcadores J1 / J2
+	_txt(b, Vector2(info.position.x + 32, sy), sp, 20 if sz.x > 200 else 17, RED.darkened(0.2), 0, false)
+	# marcadores J1 / J2 (com "OK" quando o jogador confirmou)
 	if sel1:
-		_tag(b, Vector2(r.position.x + 36, r.position.y - 26), "J1", YELLOW)
+		_tag(b, Vector2(r.position.x + 36, r.position.y - 26), "J1 OK" if _party() and party_ready[0] else "J1", YELLOW)
 	if sel2:
-		_tag(b, Vector2(r.end.x - 36, r.position.y - 26), "J2", CYAN)
+		_tag(b, Vector2(r.end.x - 36, r.position.y - 26), "J2 OK" if party_ready[1] else "J2", CYAN)
+	if _party() and ((sel1 and party_ready[0]) or (sel2 and party_ready[1])):
+		var pr := Rect2(r.position.x + 10, band_y - 34, sz.x - 20, 30)
+		b.draw_rect(pr.grow(3), INK)
+		b.draw_rect(pr, GREEN)
+		_txt(b, pr.get_center(), "PRONTO!", 24, INK, 0)
 
 
 func _tag(ci: CanvasItem, c: Vector2, s: String, col: Color) -> void:
-	var r := Rect2(c - Vector2(30, 20), Vector2(60, 40))
+	var tw := maxf(60.0, FONT.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, 32).x + 20.0)
+	var r := Rect2(c - Vector2(tw * 0.5, 20), Vector2(tw, 40))
 	ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-10, 18), c + Vector2(10, 18), c + Vector2(0, 32)]), INK)
 	ci.draw_rect(r.grow(4), INK)
 	ci.draw_rect(r, col)
@@ -1237,6 +1455,8 @@ func _process(dt: float) -> void:
 		elif screen == "char":
 			for i in cards.size():
 				var tg2 := 1.0 if cards[i].has_focus() else 0.0
+				if _party():
+					tg2 = 1.0 if (i == GameData.char_index or i == GameData.char_index_p2) else 0.0
 				card_lift[i] = lerpf(card_lift[i], tg2, 1.0 - exp(-14.0 * dt))
 				cards[i].queue_redraw()
 		for pb in [next_btn, play_btn]:

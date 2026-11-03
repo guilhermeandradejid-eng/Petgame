@@ -21,6 +21,7 @@ const SPECIALS := {
 	"meteoro": {"name": "METEORO!", "color": Color("ff5a1f")},
 	"bumerangue": {"name": "BUMERANGUE!", "color": Color("ff5fd2")},
 	"furacao": {"name": "FURACÃO!", "color": Color("2ee8a0")},
+	"sakura": {"name": "SAKURA!", "color": Color("ff8fc8")},
 }
 
 
@@ -34,6 +35,14 @@ static func integrate(pos: Vector3, vel: Vector3, w: Vector3, t: float, special:
 		# zigue-zague: deslocamento lateral periódico (média zero)
 		var k := TAU / 0.3
 		np.x += 0.55 * (sin(k * (t + DT)) - sin(k * t))
+	elif special == "sakura":
+		# flutua leve e depois despenca de repente (como pétala que cai)
+		if t > 0.5:
+			vel.y -= 16.0 * DT
+			np = pos + vel * DT
+		else:
+			vel.y += 3.0 * DT
+			np = pos + vel * DT
 	elif special == "furacao":
 		# saca-rolha: a bola gira em espiral em volta da trajetória (média zero)
 		var k2 := TAU / 0.42
@@ -234,6 +243,10 @@ static func compute(type: int, from: Vector3, side: float, aim_in: Vector2, qual
 					target.z = side * 4.4
 					style = {"speed": 30.0 if from.y > 1.9 else 22.0}
 					top = 60.0
+				"sakura":
+					target.z = side * 4.8
+					style = {"speed": 18.0}
+					top = 30.0
 				"furacao":
 					target.z = side * 5.8
 					style = {"speed": 24.0}

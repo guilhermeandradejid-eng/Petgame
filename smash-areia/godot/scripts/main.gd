@@ -184,6 +184,8 @@ func _ready() -> void:
 			# teste de áudio: só os efeitos (sem música e torcida)
 			AudioServer.set_bus_mute.call_deferred(AudioServer.get_bus_index("Music"), true)
 			AudioServer.set_bus_mute.call_deferred(AudioServer.get_bus_index("Crowd"), true)
+		elif a == "--partytest":
+			add_child(load("res://tests/party_test.gd").new())
 		elif a == "--padtest":
 			var pt: Node = load("res://tests/pad_menu_test.gd").new()
 			add_child(pt)

@@ -398,6 +398,22 @@ def hair_variants(M):
     for s in (-1, 1):
         b.sphere((0.21 * s, 0.07, 2.0), 0.15, M["hair"], seg=18, rings=12)
     out.append(b.build())
+    # rabo de cavalo alto com franja reta (lisa, estilo japonês)
+    b = B.Builder("Hair_PonyHigh")
+    _hair_cap(b, M, (0.318, 0.312, 0.262), (0, 0.06, 1.86))
+    # franja reta: três elipses largas e sobrepostas (borda lisa, acima dos olhos)
+    for x, w in ((-0.1, 0.13), (0.0, 0.15), (0.1, 0.13)):
+        b.sphere((x, -0.232, 1.96 - abs(x) * 0.2), 1.0, M["hair"], scale=(w, 0.065, 0.068), seg=16, rings=8)
+    # rabo de cavalo: curva densa de esferas sobrepostas (fica um tubo liso que afina)
+    ctrl = [(0.30, 2.03, 0.088), (0.39, 1.96, 0.082), (0.43, 1.85, 0.076), (0.44, 1.73, 0.068),
+            (0.42, 1.62, 0.056), (0.39, 1.53, 0.04)]
+    for i in range(len(ctrl) - 1):
+        (y0, z0, r0), (y1, z1, r1) = ctrl[i], ctrl[i + 1]
+        for k in range(4):
+            f = k / 4.0
+            b.sphere((0, y0 + (y1 - y0) * f, z0 + (z1 - z0) * f), r0 + (r1 - r0) * f, M["hair"], seg=14, rings=10)
+    b.sphere((0, 0.29, 2.05), 1.0, M["band"], scale=(0.062, 0.05, 0.045), seg=12, rings=8)
+    out.append(b.build())
     # black power: volume redondo em volta da cabeça, com a linha do cabelo
     # recuada para deixar o rosto livre, e montinhos na borda para a textura fofa
     b = B.Builder("Hair_Afro")

@@ -188,6 +188,10 @@ func _set_fx(sp: String) -> void:
 			g.set_color(0, Color("fff08a"))
 			g.set_color(1, Color(1.0, 0.25, 0.05, 0.0))
 			fx.gravity = Vector3(0, 3, 0)
+		"sakura":
+			g.set_color(0, Color("ffe6f2"))
+			g.set_color(1, Color(1.0, 0.45, 0.75, 0.0))
+			fx.gravity = Vector3(0, -1.0, 0)
 		"furacao":
 			g.set_color(0, Color("ffffff"))
 			g.set_color(1, Color(0.18, 0.9, 0.62, 0.0))

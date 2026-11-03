@@ -18,7 +18,7 @@ const GRAV := 16.0
 const PENDING_WINDOW := 0.7
 const STRIKE_TIME := 0.24
 const CHARGE_TIME := 0.5
-const HAIRS := ["Hair_Spiky", "Hair_Pony", "Cap", "Hair_Puffs", "Shades", "Hair_Afro"]
+const HAIRS := ["Hair_Spiky", "Hair_Pony", "Cap", "Hair_Puffs", "Shades", "Hair_Afro", "Hair_PonyHigh"]
 const THIGH := 0.41
 const SHIN := 0.42
 

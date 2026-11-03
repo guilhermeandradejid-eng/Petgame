@@ -54,10 +54,15 @@ Feita com um agente de game design que leu o código e os prints; aplicado:
 
 1. **Título** com logo de gibi, raios girando e os quatro personagens. Qualquer toque ou botão entra.
 2. **Modo**: três painéis (1 JOGADOR, VERSUS, CO-OP) que mostram quem joga contra quem.
-3. **Personagens**: cards com retrato, atributos em barrinhas e o nome do especial. No 2P o J1
-   escolhe primeiro e depois o J2 (marcadores J1/J2 em cima dos cards). Na mesma tela: nível da CPU,
+3. **Personagens**: cards com retrato, atributos em barrinhas e o nome do especial. No 2P os dois
+   escolhem **ao mesmo tempo, cada um com o seu controle**: cada cursor tem a sua cor (J1 amarelo,
+   J2 ciano), A confirma ("PRONTO!") e B desfaz. Com 2 controles, o primeiro é do J1; com 1
+   controle ele é do J2 e o J1 usa toque/teclado; sem controle, o J2 usa as setas e `N`.
+   Depois que o J1 confirma, o controle dele vai para os botões de baixo (CPU, partida, música,
+   VESTIÁRIO). Na mesma tela: nível da CPU,
    tamanho da partida e música.
-4. **Vestiário**: prévia 3D girando de cada jogador e a escolha de
+4. **Vestiário**: prévia 3D girando de cada jogador (no 2P o J2 mexe no próprio painel com o
+   controle dele: cima/baixo escolhe a linha, A troca) e a escolha de
    - **roupa**: camiseta, regata, listrada (com bermuda) ou atleta;
    - **cores**: 3 paletas por time, sempre no tom da dupla para não confundir em quadra;
    - **raquete**: CLÁSSICA (equilibrada), GOTA (+ controle) ou POWER (+ força). Cada modelo tem
@@ -166,6 +171,7 @@ As regras são de beach tennis:
   - **Zeca: METEORO**: pulo altíssimo e uma cravada em chamas.
   - **Lola: BUMERANGUE**: sai por fora da quadra e volta fazendo uma curva enorme.
   - **Yham: FURACÃO**: a bola gira em saca-rolha em volta da trajetória, com rastro verde.
+  - **Nath: SAKURA**: a bola flutua leve e depois despenca de repente, com pétalas cor-de-rosa.
 
   Quem recebe um super é **empurrado para trás** e só consegue uma defesa fraca. Às vezes é o ponto
   de chance para fechar!
@@ -230,6 +236,7 @@ No PC (J1): WASD move, `J` forte, `K` lob, `L` curta, `I` smash, `O` defesa, `U`
 | **Zeca** | Pancadão | ●● | ●●●● | ●● | Meteoro |
 | **Lola** | Precisa | ●●● | ●● | ●●●● | Bumerangue |
 | **Yham** | Atleta (moreno, cabelo black power) | ●●●● | ●●●● | ●● | Furacão |
+| **Nath** | Técnica (japonesa, rabo de cavalo alto e franja) | ●●●●● | ●● | ●●●●● | Sakura |
 
 A IA tem 3 níveis (fácil, médio e difícil). O nível muda o tempo de reação, a velocidade,
 a precisão, a frequência de smash, o mergulho e a leitura de bola que vai sair ("FORA!", "DEIXA!").
