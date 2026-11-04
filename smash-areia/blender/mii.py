@@ -1505,13 +1505,13 @@ def build_outfit(cfg, M, Mu, U, root, out, ref, tor, w, sh, B, legs, pose):
                 out.append(tube(tag, [p + Vector((0, dy, 0)) for p in path_o], [(0.006, 0.0105)] * 5, [mt],
                                 ref=(1, 0, 0), M=M, n=8, per=6, outline=False))
     else:   # saia de tenis plissada
-        zh = 0.66 if cfg["gender"] == "female" else 0.62
+        zh = 0.73 if cfg["gender"] == "female" else 0.7
         nv3 = 8
         hipR_, kneeR_, hipL_, kneeL_ = legs
 
         def leg_extent(z, v, d):
             """Raio minimo da saia na direcao horizontal d para cobrir as duas coxas na altura z."""
-            mg = 0.014 + 0.04 * smooth(v / 0.5)
+            mg = 0.012 + 0.022 * smooth(v / 0.5)
             need = 0.0
             for hp, kn in ((hipR_, kneeR_), (hipL_, kneeL_)):
                 t = clamp((hp.z - z) / max(hp.z - kn.z, 1e-3), 0.0, 1.0)
@@ -1522,8 +1522,8 @@ def build_outfit(cfg, M, Mu, U, root, out, ref, tor, w, sh, B, legs, pose):
         thr_s = B["thigh"] * w
 
         def skirt_r(phi, v, z, flare):
-            rx0 = (pelvis_r(zw - 0.002)[0] + 0.012) * 1.14 * flare
-            ry0 = (pelvis_r(zw - 0.002)[1] + 0.012) * 1.14 * flare
+            rx0 = (pelvis_r(zw - 0.002)[0] + 0.008) * 1.04 * flare
+            ry0 = (pelvis_r(zw - 0.002)[1] + 0.008) * 1.04 * flare
             d = Vector((math.sin(phi), -math.cos(phi), 0))
             base = (rx0 * ry0) / math.sqrt((ry0 * d.x) ** 2 + (rx0 * d.y) ** 2)
             return d, max(base, leg_extent(z + root.z, v, d))
@@ -1532,7 +1532,7 @@ def build_outfit(cfg, M, Mu, U, root, out, ref, tor, w, sh, B, legs, pose):
             phi = 2 * math.pi * i / 72
             v = j / (nv3 - 1)
             z = lerp(zw, zh, v)
-            flare = 1 + 0.62 * smooth(v) ** 1.0
+            flare = 1 + 0.26 * smooth(v) ** 1.2
             d, r = skirt_r(phi, v, z, flare)
             pleat = 1 + 0.03 * math.sin(phi * 18) * v
             return Vector((d.x * r * pleat, d.y * r * pleat, z)) + root
@@ -1542,7 +1542,7 @@ def build_outfit(cfg, M, Mu, U, root, out, ref, tor, w, sh, B, legs, pose):
         ring = []
         for k in range(48):
             phi = 2 * math.pi * k / 48
-            d, r = skirt_r(phi, 1.0, zh, 1.62)
+            d, r = skirt_r(phi, 1.0, zh, 1.26)
             ring.append(Vector((d.x * r, d.y * r, zh)) + root)
         out.append(tube("SkirtHem", ring, [(0.011, 0.006)] * 48, [stripe_b], ref=(0, 0, 1), M=M, n=8, per=2,
                         closed=True, outline=False))
