@@ -60,7 +60,7 @@ def sheet(gender, out, q):
         objs.append(S.ground((x, -0.02, 0), size=(0.7, 0.45)))
     w, h = int(2400 * Q[q]), int(1500 * Q[q])
     finish(objs, w, h, 96 if q == "final" else 24, ortho=7.3, cam=(0, -12, 4.0), target=(0, 0, 2.02),
-           light_center=(0, 0, 1.6), light_scale=2.4, px=2.8 * Q[q] + 0.6, out=out)
+           light_center=(0, 0, 1.6), light_scale=2.4, px=2.4 * Q[q], out=out)
 
 
 # ---------------------------------------------------------------- grade de personalizacao
@@ -132,7 +132,7 @@ def custom(gender, out, q):
         objs.append(S.ground((x, -0.02, 0), size=(0.62, 0.4)))
     w, h = int(2400 * Q[q]), int(900 * Q[q])
     finish(objs, w, h, 96 if q == "final" else 24, ortho=7.9, cam=(0, -12, 3.0), target=(0, 0, 0.93),
-           light_center=(0, 0, 1.0), light_scale=2.6, px=2.8 * Q[q] + 0.6, out=out)
+           light_center=(0, 0, 1.0), light_scale=2.6, px=2.4 * Q[q], out=out)
 
 
 # ---------------------------------------------------------------- retrato / hero
@@ -144,7 +144,7 @@ def hero(gender, out, q):
     objs.append(S.ground((0, -0.02, 0)))
     w, h = int(1500 * Q[q]), int(1500 * Q[q])
     finish(objs, w, h, 128 if q == "final" else 24, cam=(1.5, -3.5, 1.35), target=(0, 0, 0.92), lens=50,
-           light_center=(0, 0, 1.0), light_scale=1.6, px=3.4 * Q[q] + 0.6, out=out)
+           light_center=(0, 0, 1.0), light_scale=1.6, px=3.0 * Q[q], out=out)
 
 
 # ---------------------------------------------------------------- close de rostos
@@ -157,7 +157,7 @@ def faces(gender, out, q):
         objs += MII.build_character(cfg, origin=((i - 1.5) * 0.8, 0, 0), yaw=yaw, head_only=True, expression=e)
     w, h = int(2400 * Q[q]), int(780 * Q[q])
     finish(objs, w, h, 96 if q == "final" else 24, cam=(0, -6.0, 0.35), target=(0, 0, 0.02), lens=85,
-           light_center=(0, 0, 0.0), light_scale=1.2, px=3.4 * Q[q] + 0.6, out=out)
+           light_center=(0, 0, 0.0), light_scale=1.2, px=3.0 * Q[q], out=out)
 
 
 def sprites(gender, out, q):

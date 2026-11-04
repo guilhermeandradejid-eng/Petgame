@@ -43,7 +43,7 @@ def add_outlines(objs, px=2.2, color="#2b2034"):
     vl = bpy.context.view_layer
     sc.render.use_freestyle = True
     sc.render.line_thickness_mode = "ABSOLUTE"
-    sc.render.line_thickness = px
+    sc.render.line_thickness = px * 2.0   # espessura efetiva ~= cena x estilo / 2
     vl.use_freestyle = True
     fs = vl.freestyle_settings
     fs.crease_angle = math.radians(125)
@@ -70,7 +70,7 @@ def add_outlines(objs, px=2.2, color="#2b2034"):
     ls.collection_negation = "INCLUSIVE"
     st = bpy.data.linestyles.new("OutlineStyle")
     st.color = MII.srgb(color)
-    st.thickness = px
+    st.thickness = 1.0
     st.thickness_position = "CENTER"
     st.caps = "ROUND"
     st.use_chaining = True
