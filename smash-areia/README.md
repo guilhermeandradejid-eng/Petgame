@@ -22,6 +22,11 @@ desconhecidos" e abra. O jogo roda deitado (paisagem).
 
 Referência: jogos de esporte arcade em cartoon (visual simples, limpo e com bonecos de brinquedo).
 
+- **Personagens redesenhados no Blender** (`blender/characters.py`): cabeça maior e "fofa" (bochechas
+  cheias, ~2,7 cabeças de altura), nariz de botão, olhos ovais altos com dois brilhos assentados na
+  curvatura do rosto, sobrancelhas, sorriso em "D" com língua, **mãos de luva-mitene** com polegar,
+  **tênis modelados** (solado colorido, biqueira, calcanhar e faixa lateral) e cabelos refeitos em
+  mechas de desenho (rabo de cavalo com xuxinha, coques com elástico, boné com botão).
 - **Personagens de desenho animado** (nada de "boneco de plástico"): cel-shading com faixas chapadas
   e borda nítida, sombras coloridas, contorno preto grosso, rosto em cor chapada, sem brilho
   especular. Proporção chibi (cabeça, mãos de desenho e tênis maiores), **olhões** com branco e

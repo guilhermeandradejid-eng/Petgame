@@ -162,15 +162,9 @@ static func make_model(char_data: Dictionary, team_data: Dictionary, lk: Diction
 	var flat := {"halftone": 0.0, "outline": 0.0, "rim": 0.0, "shadow": Color.WHITE}   # rosto em cor chapada
 	Toon.apply(m, palette, {"outline": 0.024, "rim": 0.3, "halftone": 0.0, "shadow": Color(0.62, 0.56, 0.86)}, [],
 			{"Skin": soft, "Cheek": flat, "Mouth": flat, "Pupil": flat, "EyeShine": flat, "EyeWhite": flat,
-			"Brow": flat, "Hair": {"halftone": 0.0, "rim": 0.35, "spec": 0.0, "shadow": Color(0.58, 0.52, 0.78)},
+			"Brow": flat, "Tongue": flat, "Hair": {"halftone": 0.0, "rim": 0.35, "spec": 0.0, "shadow": Color(0.58, 0.52, 0.78)},
 			"Band": {"halftone": 0.0}, "Shoe": {"shadow": Color(0.7, 0.72, 0.92)}})
 	var r := Rig.new(sk)
-	# proporção cartoon (chibi): cabeça, mãos e tênis um pouco maiores. O Rig só
-	# mexe na rotação dos ossos, então a escala fica fixa.
-	for bs in [["Head", 1.18], ["Hand.R", 1.3], ["Hand.L", 1.3], ["Foot.R", 1.18], ["Foot.L", 1.18]]:
-		var bi := sk.find_bone(bs[0])
-		if bi >= 0:
-			sk.set_bone_pose_scale(bi, Vector3.ONE * float(bs[1]))
 	# a raquete é orientada por código a cada frame (cabeça para cima na espera,
 	# face virada para onde o golpe vai), sem depender da torção dos ossos
 	var rk: Node3D = (RACKETS[clampi(int(lk.get("racket", 0)), 0, RACKETS.size() - 1)] as PackedScene).instantiate()
