@@ -1,4 +1,4 @@
-// Bandeirinha balançando ao vento
+// Flâmula balançando ao vento
 shader_type spatial;
 render_mode unshaded, cull_disabled;
 #include "res://shaders/lighting.gdshaderinc"
@@ -14,7 +14,12 @@ void vertex() {
 }
 
 void fragment() {
-	vec3 col = mix(color_a.rgb, color_b.rgb, step(0.5, fract(UV.y * 2.0)));
+	// flâmula triangular na cor do time com uma faixa clara perto do mastro
+	// (listras horizontais pareciam bandeira de país)
+	if (abs(UV.y - 0.5) > 0.5 * (1.0 - UV.x) + 0.02) {
+		discard;
+	}
+	vec3 col = mix(color_a.rgb, color_b.rgb, step(UV.x, 0.12) * step(0.04, UV.x));
 	float shade = 0.85 + 0.15 * sin(TIME * 5.0 + UV.x * 6.0 + phase);
 	ALBEDO = night_grade(col * shade, (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz);
 }

@@ -1,13 +1,15 @@
-// Areia clara de aventura (creme quente, manchas macias pintadas): quadra rastelada e lisa, ondulações de vento com crista clara
-// e sombra em retícula fora dela, conchinhas, brilho de grãos e beira molhada.
+// Areia clara de desenho: manchas grandes e macias, quadra rastelada mais clara
+// com borda nítida, faixa molhada e linha da onda na beira curva da praia.
 shader_type spatial;
 render_mode unshaded;
 #include "res://shaders/lighting.gdshaderinc"
 
-uniform vec4 sand : source_color = vec4(0.98, 0.84, 0.6, 1.0);
-uniform vec4 sand_dark : source_color = vec4(0.92, 0.72, 0.5, 1.0);
-uniform vec4 sand_light : source_color = vec4(1.0, 0.95, 0.8, 1.0);
-uniform vec4 wet : source_color = vec4(0.82, 0.66, 0.45, 1.0);
+uniform vec4 sand : source_color = vec4(0.965, 0.867, 0.643, 1.0);        // #F6DDA4
+uniform vec4 sand_dark : source_color = vec4(0.922, 0.776, 0.549, 1.0);   // #EBC68C
+uniform vec4 sand_light : source_color = vec4(0.984, 0.91, 0.745, 1.0);   // #FBE8BE
+uniform vec4 wet : source_color = vec4(0.851, 0.69, 0.494, 1.0);          // #D9B07E
+uniform vec4 wet_edge : source_color = vec4(0.788, 0.604, 0.416, 1.0);    // #C99A6A
+uniform vec2 court_half = vec2(4.0, 8.0);
 uniform float shore_z = -24.0;
 
 varying vec3 wpos;
@@ -30,42 +32,26 @@ void vertex() {
 void fragment() {
 	vec2 p = wpos.xz;
 	float dist = length(VERTEX);
-	float n = noise(p * 0.35) * 0.6 + noise(p * 1.3) * 0.4;
-	vec3 col = mix(sand.rgb, sand_dark.rgb, smoothstep(0.55, 0.78, n) * 0.3);
-	// quadra rastelada: mais clara e lisa, com marcas finas do rastelo
-	vec2 cq = abs(p) - vec2(5.4, 9.6);
-	float court = 1.0 - smoothstep(0.0, 1.6, max(cq.x, cq.y));
-	float rake = smoothstep(0.82, 0.9, fract(p.x * 2.2 + noise(p * 0.6) * 0.6)) * 0.5;
-	col = mix(col, mix(sand_light.rgb, sand.rgb, 0.45 + rake * 0.25), court * 0.45);
-	// ondulações de vento (fora da quadra): crista clara + sombra com retícula
-	vec2 w = vec2(p.x * 0.35 + p.y * 0.94, p.x * 0.94 - p.y * 0.35);
-	float warp = noise(p * 0.12) * 3.0 + noise(p * 0.5) * 0.6;
-	float ph = fract(w.x * 0.9 + warp);
-	float crest = smoothstep(0.0, 0.06, ph) * (1.0 - smoothstep(0.1, 0.2, ph));
-	float shade = smoothstep(0.2, 0.3, ph) * (1.0 - smoothstep(0.42, 0.55, ph));
-	float ripples = (1.0 - court) * smoothstep(120.0, 20.0, dist) * (0.55 + 0.45 * noise(p * 0.08));
-	vec2 sp = FRAGCOORD.xy / 5.0;
-	float dots = step(length(fract(sp) - 0.5), 0.26);
-	// ondulações suaves (sem retícula): textura discreta, a quadra é o destaque
-	col = mix(col, sand_light.rgb, crest * ripples * 0.35);
-	col = mix(col, sand_dark.rgb * 0.97, shade * ripples * 0.22 + dots * 0.0);
-	// grãos e conchinhas
-	vec2 cell = floor(p * 9.0);
-	float speck = step(0.93, hash(cell));
-	col = mix(col, sand_dark.rgb * 0.95, speck * 0.1);
-	vec2 sc = floor(p * 1.4);
-	float shell = step(0.985, hash(sc + 3.1)) * step(length(fract(p * 1.4) - 0.5), 0.1) * (1.0 - court);
-	col = mix(col, vec3(1.0, 0.86, 0.88), shell * 0.5);
-	// brilho de grão que pisca perto da câmera
-	float g = hash(floor(p * 22.0));
-	float glint = step(0.996, g) * step(0.6, sin(TIME * 3.0 + g * 60.0)) * smoothstep(30.0, 6.0, dist);
-	col = mix(col, vec3(1.0, 1.0, 0.95), glint);
-	// beira do mar molhada com linha de espuma seca
-	float wetness = smoothstep(shore_z + 6.0, shore_z + 1.5, wpos.z);
+	float line = shore_z + shore_off(wpos.x);
+	if (wpos.z < line) {
+		discard;   // depois da linha curva da praia é o mar
+	}
+	// areia seca com manchas grandes e macias (pintadas), sem riscos nem pontinhos
+	float big = noise(p * 0.05) * 0.7 + noise(p * 0.13 + 4.0) * 0.3;
+	vec3 col = mix(sand.rgb, sand_dark.rgb, smoothstep(0.45, 0.75, big) * 0.6);
+	// quadra rastelada: retângulo mais claro e liso com borda nítida
+	vec2 cq = abs(p) - (court_half + vec2(0.6));
+	float court = 1.0 - smoothstep(0.0, 0.3, max(cq.x, cq.y));
+	col = mix(col, sand_light.rgb, court * 0.85);
+	// marcas leves do rastelo só dentro da quadra
+	float rake = smoothstep(0.86, 0.94, fract(p.x * 1.6 + noise(p * 0.6) * 0.4)) * court;
+	col = mix(col, sand.rgb, rake * 0.25);
+	// faixa molhada perto do mar (4 m) e a linha escura da última onda
+	float d = wpos.z - line;
+	float wetness = 1.0 - smoothstep(2.5, 4.0, d);
 	col = mix(col, wet.rgb, wetness);
-	float foam_line = smoothstep(0.0, 0.25, 1.0 - abs(wpos.z - (shore_z + 6.3 + sin(p.x * 0.3) * 0.6)) * 2.0);
-	col = mix(col, sand_light.rgb, foam_line * 0.35);
-	col *= vec3(1.02, 0.99, 0.95);
+	float edge = 1.0 - smoothstep(0.0, 0.08, abs(d - (4.0 + sin(wpos.x * 0.4) * 0.3)) - 0.06);
+	col = mix(col, wet_edge.rgb, edge * 0.7);
 	col = mix(col, vec3(0.98, 0.93, 0.86), smoothstep(45.0, 300.0, dist) * 0.6);
 	ALBEDO = night_grade(col, (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz);
 }

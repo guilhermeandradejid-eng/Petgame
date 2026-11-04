@@ -24,17 +24,17 @@ vec3 scene_light(vec3 col, vec3 wp) {
 		vec2 q = wp.xz * 0.022 + vec2(TIME * 0.012, TIME * 0.005);
 		float n = sl_noise(q) * 0.7 + sl_noise(q * 2.3 + 5.0) * 0.3;
 		float cs = smoothstep(0.5, 0.78, n) * day * (1.0 - smoothstep(8.0, 30.0, wp.y));
-		col *= mix(vec3(1.0), vec3(0.82, 0.86, 0.98), cs * 0.6);
+		col *= mix(vec3(1.0), vec3(0.9, 0.86, 0.94), cs * 0.45);   // sombra de nuvem quente: a areia não esverdeia
 		// hora dourada: luz mais quente e um pouco mais baixa
 		col *= mix(vec3(1.0), vec3(1.04, 0.98, 0.9), sun_warmth * 0.3 * day);
 	}
 	// noite: refletores e luar
 	if (arena_night > 0.001) {
 		float d = length(wp.xz * vec2(0.85, 0.6));
-		float pool = 1.0 - smoothstep(7.0, 30.0, d);
+		float pool = 1.0 - smoothstep(9.0, 16.0, d);   // elipse clara e nítida em volta da quadra
 		pool *= 1.0 - smoothstep(9.0, 22.0, wp.y);
 		pool *= 0.97 + 0.03 * sin(TIME * 0.7);
-		vec3 moon = col * vec3(0.25, 0.3, 0.55) + vec3(0.012, 0.018, 0.06);
+		vec3 moon = col * vec3(0.32, 0.36, 0.6) + vec3(0.012, 0.018, 0.06);
 		vec3 lit = col * vec3(0.84, 0.85, 0.93);   // refletor: branco frio, sem estourar
 		vec3 n = mix(moon, lit, pool);
 		// fogueira de luau tremulando
@@ -50,6 +50,11 @@ vec3 scene_light(vec3 col, vec3 wp) {
 		col += hit_light_color.rgb * fall * fall * hit_light.w * mix(0.22, 0.5, arena_night);
 	}
 	return col;
+}
+
+// linha da praia curva (enseada): usada pela areia e pelo mar para casarem
+float shore_off(float x) {
+	return 3.0 * sin(x * 0.035) + 1.4 * sin(x * 0.09 + 1.0);
 }
 
 // compatibilidade com os nomes antigos

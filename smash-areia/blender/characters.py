@@ -693,38 +693,99 @@ def build_racket():
 
 # ---------------------------------------------------------------- plateia
 
-FAN_J = sym({
-    "pelvis": (0, 0, 0.82), "chest": (0, 0, 1.18), "neck": (0, 0, 1.3),
-    "shoulder.R": (-0.17, 0, 1.24), "elbow.R": (-0.22, -0.04, 1.0), "hand.R": (-0.2, -0.12, 0.84),
-    "hip.R": (-0.09, 0, 0.8), "knee.R": (-0.095, -0.02, 0.44), "foot.R": (-0.095, -0.06, 0.05),
-})
+# Torcedores chibi: corpo de pera, cabeção, mãozinhas e olhinhos. Seis tipos
+# (sentado batendo palma, sentado torcendo, sentado inclinado, em pé, em pé com
+# placa e criança), cada um com um cabelo/chapéu. As cores saem do shader da
+# torcida por instância (UV.x = região) e UV.y marca o "braço" para animar.
+REGION_UV = {"Eye": 0.02, "Shirt": 0.1, "Skin": 0.3, "Hair": 0.5, "Prop": 0.7, "Pants": 0.9}
+
 FAN_R = sym({
-    "pelvis": (0.15, 0.11), "chest": (0.17, 0.12), "neck": (0.055, 0.055),
-    "shoulder.R": (0.06, 0.06), "elbow.R": (0.048, 0.048), "hand.R": (0.05, 0.05),
-    "hip.R": (0.075, 0.075), "knee.R": (0.06, 0.06), "foot.R": (0.055, 0.06),
+    "pelvis": (0.17, 0.13), "chest": (0.2, 0.15), "neck": (0.06, 0.06),
+    "shoulder.R": (0.065, 0.065), "elbow.R": (0.052, 0.052), "hand.R": (0.06, 0.06),
+    "hip.R": (0.08, 0.08), "knee.R": (0.065, 0.065), "foot.R": (0.06, 0.065),
 })
 FAN_EDGES = [("pelvis", "chest"), ("chest", "neck")]
 for _s in (".R", ".L"):
     FAN_EDGES += [("chest", "shoulder" + _s), ("shoulder" + _s, "elbow" + _s), ("elbow" + _s, "hand" + _s),
                   ("pelvis", "hip" + _s), ("hip" + _s, "knee" + _s), ("knee" + _s, "foot" + _s)]
 
-REGION_UV = {"Shirt": 0.1, "Skin": 0.3, "Hair": 0.5, "Prop": 0.7, "Pants": 0.9}
+FAN_VARIANTS = ("sit_clap", "sit_cheer", "sit_lean", "stand_up", "stand_sign", "kid")
+FAN_HAIR = {"sit_clap": "bob", "sit_cheer": "cap", "sit_lean": "afro", "stand_up": "spikes", "stand_sign": "bun",
+            "kid": "pony"}
 
 
 def fan_pose(variant):
-    j = dict(FAN_J)
-    if variant in ("up", "sign"):
+    """Juntas no espaço do torcedor (pés na origem, olhando para -Y)."""
+    seated = variant.startswith("sit")
+    if seated:
+        # sentado: quadril 0,47 acima do piso do degrau e 0,27 para trás (em cima do assento)
+        j = sym({
+            "pelvis": (0, 0.27, 0.5), "chest": (0, 0.27 - (0.08 if variant == "sit_lean" else 0.0), 0.84),
+            "neck": (0, 0.27 - (0.12 if variant == "sit_lean" else 0.0), 0.96),
+            "shoulder.R": (-0.16, 0.27, 0.9), "elbow.R": (-0.21, 0.12, 0.72), "hand.R": (-0.12, -0.02, 0.76),
+            "hip.R": (-0.09, 0.27, 0.48), "knee.R": (-0.1, -0.06, 0.5), "foot.R": (-0.1, -0.1, 0.06),
+        })
+    else:
+        j = sym({
+            "pelvis": (0, 0, 0.8), "chest": (0, 0, 1.14), "neck": (0, 0, 1.26),
+            "shoulder.R": (-0.16, 0, 1.2), "elbow.R": (-0.22, -0.04, 0.98), "hand.R": (-0.2, -0.1, 0.8),
+            "hip.R": (-0.09, 0, 0.78), "knee.R": (-0.095, -0.02, 0.43), "foot.R": (-0.095, -0.06, 0.05),
+        })
+    sh = j["shoulder.R"][2]
+    if variant == "sit_clap":
         for s, sx in ((".R", -1), (".L", 1)):
-            j["elbow" + s] = (0.24 * sx, -0.02, 1.48 if variant == "up" else 1.55)
-            j["hand" + s] = (0.2 * sx if variant == "up" else 0.15 * sx, -0.04, 1.72 if variant == "up" else 1.86)
-    elif variant == "finger":
-        j["elbow.R"] = (-0.24, -0.04, 1.47)
-        j["hand.R"] = (-0.22, -0.08, 1.7)
-    elif variant == "clap":
+            j["elbow" + s] = (0.2 * sx, 0.05, sh - 0.16)
+            j["hand" + s] = (0.04 * sx, -0.12, sh - 0.02)
+    elif variant == "sit_cheer":
+        j["elbow.R"] = (-0.24, 0.24, sh + 0.24)
+        j["hand.R"] = (-0.2, 0.2, sh + 0.48)
+    elif variant == "stand_up":
         for s, sx in ((".R", -1), (".L", 1)):
-            j["elbow" + s] = (0.2 * sx, -0.14, 1.06)
-            j["hand" + s] = (0.03 * sx, -0.24, 1.18)
+            j["elbow" + s] = (0.25 * sx, -0.02, sh + 0.24)
+            j["hand" + s] = (0.22 * sx, -0.04, sh + 0.5)
+    elif variant == "stand_sign":
+        for s, sx in ((".R", -1), (".L", 1)):
+            j["elbow" + s] = (0.24 * sx, -0.04, sh + 0.32)
+            j["hand" + s] = (0.16 * sx, -0.06, sh + 0.64)
+    elif variant == "kid":
+        for s, sx in ((".R", -1), (".L", 1)):
+            j["elbow" + s] = (0.24 * sx, -0.02, sh + 0.2)
+            j["hand" + s] = (0.26 * sx, -0.04, sh + 0.44)
     return j
+
+
+def _fan_hair(b, mats, kind, hc, R):
+    H, P = mats["Hair"], mats["Prop"]
+    x, y, z = hc
+    if kind == "bob":
+        b.sphere((x, y + 0.22 * R, z + 0.12 * R), 1.0, H, scale=(1.1 * R, 1.02 * R, 0.98 * R), seg=16, rings=10,
+                 cut_below=z - 0.45 * R)
+        b.sphere((x, y - 0.66 * R, z + 0.55 * R), 1.0, H, scale=(0.8 * R, 0.3 * R, 0.3 * R), seg=14, rings=8)
+    elif kind == "bun":
+        b.sphere((x, y + 0.2 * R, z + 0.18 * R), 1.0, H, scale=(1.05 * R, 1.0 * R, 0.92 * R), seg=16, rings=10,
+                 cut_below=z)
+        b.sphere((x, y + 0.35 * R, z + 1.0 * R), 0.45 * R, H, seg=12, rings=8)
+    elif kind == "afro":
+        b.sphere((x, y + 0.42 * R, z + 0.3 * R), 1.0, H, scale=(1.4 * R, 1.25 * R, 1.2 * R), seg=16, rings=10,
+                 cut_below=z - 0.3 * R)
+    elif kind == "cap":
+        b.sphere((x, y + 0.05 * R, z + 0.2 * R), 1.0, P, scale=(1.06 * R, 1.06 * R, 0.86 * R), seg=16, rings=10,
+                 cut_below=z + 0.1 * R)
+        rbox_simple(b, (x, y - 0.95 * R, z + 0.2 * R), (1.1 * R, 0.7 * R, 0.08 * R), P)
+    elif kind == "spikes":
+        b.sphere((x, y + 0.2 * R, z + 0.2 * R), 1.0, H, scale=(1.05 * R, 1.0 * R, 0.86 * R), seg=16, rings=10,
+                 cut_below=z)
+        for dx, dy in ((-0.4, 0.1), (0.0, -0.15), (0.4, 0.1)):
+            b.cone((x + dx * R, y + dy * R, z + 0.7 * R), (dx * 0.6, dy, 1), 0.55 * R, 0.28 * R, 0.04 * R, H, seg=8)
+    elif kind == "pony":
+        b.sphere((x, y + 0.2 * R, z + 0.15 * R), 1.0, H, scale=(1.05 * R, 1.0 * R, 0.9 * R), seg=16, rings=10,
+                 cut_below=z - 0.1 * R)
+        for k in range(3):
+            b.sphere((x, y + (1.0 + 0.15 * k) * R, z + (0.3 - 0.4 * k) * R), (0.4 - 0.06 * k) * R, H, seg=10, rings=8)
+
+
+def rbox_simple(b, center, size, mat):
+    b.box(center, size, mat, smooth=False)
 
 
 def build_fan(variant):
@@ -736,59 +797,79 @@ def build_fan(variant):
     b.bm.from_mesh(me)
     for k in REGION_UV:
         b._mi(mats[k])
-    arm_segs = []
+    segs = {}
     for s in (".R", ".L"):
-        arm_segs.append((Vector(j["shoulder" + s]), Vector(j["elbow" + s]), Vector(j["hand" + s])))
+        segs["upper" + s] = (Vector(j["shoulder" + s]), Vector(j["elbow" + s]))
+        segs["lower" + s] = (Vector(j["elbow" + s]), Vector(j["hand" + s]))
+        segs["thigh" + s] = (Vector(j["hip" + s]), Vector(j["knee" + s]))
+        segs["shin" + s] = (Vector(j["knee" + s]), Vector(j["foot" + s]))
+    segs["torso"] = (Vector(j["pelvis"]), Vector(j["chest"]))
+    segs["neck"] = (Vector(j["chest"]), Vector(j["neck"]))
     for f in b.bm.faces:
         c = f.calc_center_median()
+        best, bd = "torso", 1e9
+        for n, (a, e) in segs.items():
+            d = seg_dist(c, a, e) / (0.2 if n == "torso" else 0.08)
+            if d < bd:
+                best, bd = n, d
         reg = "Shirt"
-        if c.z < 0.72:
-            reg = "Pants" if c.z > 0.16 else "Skin"
-        elif c.z < 0.86 and abs(c.x) < 0.2:
-            reg = "Pants"
-        for sh, el, ha in arm_segs:
-            if seg_dist(c, el, ha) < 0.07 or (seg_dist(c, sh, el) < 0.065 and (c - sh).length > 0.12):
-                reg = "Skin"
-        if c.z > 1.27 and abs(c.x) < 0.08:
+        if best.startswith("lower") or best.startswith("shin") or best == "neck":
             reg = "Skin"
+        elif best.startswith("thigh"):
+            reg = "Pants"
+        elif best.startswith("upper"):
+            a, e = segs[best]
+            reg = "Shirt" if (c - a).length < 0.07 else "Skin"
+        elif best == "torso" and c.z < Vector(j["pelvis"]).z + 0.04:
+            reg = "Pants"
         f.material_index = b._mi(mats[reg])
         f.smooth = True
-    # cabeça e cabelo/chapéu (ampliados depois: torcida chibi, cabeção)
-    n_before = len(b.bm.verts)
-    b.sphere((0, 0, 1.47), 0.19, mats["Skin"], seg=14, rings=10)
-    hat = {"up": 0, "sign": 1, "finger": 2, "clap": 3}[variant]
-    if hat == 0:
-        b.sphere((0, 0.02, 1.53), 1.0, mats["Hair"], scale=(0.2, 0.2, 0.17), seg=14, rings=8, cut_below=1.47)
-    elif hat == 1:
-        b.sphere((0, 0, 1.55), 1.0, mats["Hair"], scale=(0.2, 0.2, 0.14), seg=14, rings=8, cut_below=1.55)
-        b.sphere((0, -0.2, 1.56), 1.0, mats["Hair"], scale=(0.13, 0.1, 0.015), seg=12, rings=4)
-    elif hat == 2:
-        b.sphere((0, 0, 1.53), 1.0, mats["Hair"], scale=(0.34, 0.34, 0.03), seg=16, rings=4)
-        b.sphere((0, 0, 1.58), 1.0, mats["Hair"], scale=(0.16, 0.16, 0.1), seg=12, rings=6, cut_below=1.56)
-    else:
-        b.sphere((0, 0.04, 1.54), 0.2, mats["Hair"], seg=12, rings=8, cut_below=1.46)
-    b.bm.verts.ensure_lookup_table()
-    piv = Vector((0, 0, 1.3))
-    for v in b.bm.verts[n_before:]:
-        v.co = piv + (v.co - piv) * 1.38
-    # adereços
-    if variant == "sign":
-        b.box((0, -0.06, 2.02), (0.62, 0.03, 0.34), mats["Prop"], smooth=False)
-    elif variant == "finger":
-        b.sphere((-0.22, -0.1, 1.8), 1.0, mats["Prop"], scale=(0.08, 0.05, 0.13), seg=10, rings=8)
-        b.sphere((-0.22, -0.11, 1.95), 1.0, mats["Prop"], scale=(0.03, 0.03, 0.08), seg=8, rings=6)
-    for f in b.bm.faces:
-        f.smooth = f.smooth or True
+    # mãozinhas e cabeção
+    for s in (".R", ".L"):
+        b.sphere(j["hand" + s], 0.062, mats["Skin"], seg=10, rings=6)
+    R = 0.27
+    nk = Vector(j["neck"])
+    hc = (nk.x, nk.y, nk.z + R * 0.82)
+    b.sphere(hc, R, mats["Skin"], seg=16, rings=10)
+    for sd in (-1, 1):
+        b.sphere((hc[0] + 0.32 * R * sd, hc[1] - 0.9 * R, hc[2] - 0.05 * R), 1.0, mats["Eye"],
+                 scale=(0.09 * R, 0.08 * R, 0.13 * R), seg=8, rings=6)
+    _fan_hair(b, mats, FAN_HAIR[variant], hc, R)
+    if variant == "stand_sign":
+        hz = j["hand.R"][2]
+        b.box((0, -0.08, hz + 0.18), (0.72, 0.04, 0.4), mats["Prop"], smooth=False)
+    if variant == "sit_cheer":
+        hx, hy, hz = j["hand.R"]
+        b.sphere((hx, hy - 0.02, hz + 0.1), 1.0, mats["Prop"], scale=(0.09, 0.05, 0.14), seg=10, rings=8)
+        b.sphere((hx, hy - 0.03, hz + 0.27), 1.0, mats["Prop"], scale=(0.035, 0.035, 0.09), seg=8, rings=6)
     ob = b.build()
-    # UV: x = região (cor escolhida no shader), y = quanto o vértice é "braço" (para acenar)
     me2 = ob.data
+    if variant == "kid":
+        # criança: corpo 0,75, cabeça proporcionalmente 1,2x maior (em volta do pescoço)
+        k_body = 0.75
+        for v in me2.vertices:
+            p = v.co.copy()
+            if p.z > nk.z:
+                p = nk + (p - nk) * 1.2
+            v.co = p * k_body
+    # UV: x = região (cor escolhida no shader), y = quanto o vértice é "mão/antebraço" (para animar)
     uv = me2.uv_layers.new(name="UVMap")
     names = [m.name for m in me2.materials]
+    hands = [Vector(j["hand.R"]), Vector(j["hand.L"])]
+    els = [Vector(j["elbow.R"]), Vector(j["elbow.L"])]
+    ks = 0.75 if variant == "kid" else 1.0
     for poly in me2.polygons:
         code = REGION_UV[names[poly.material_index][3:]]
         for li in poly.loop_indices:
-            z = me2.vertices[me2.loops[li].vertex_index].co.z
-            arm = max(0.0, min(1.0, (z - 1.3) / 0.5)) if variant != "clap" else 0.0
+            co = me2.vertices[me2.loops[li].vertex_index].co / ks
+            arm = 0.0
+            for hnd, el in zip(hands, els):
+                d = seg_dist(co, el, hnd)
+                if d < 0.11 and names[poly.material_index][3:] in ("Skin", "Prop", "Shirt"):
+                    t = (co - el).length / max((hnd - el).length, 1e-4)
+                    arm = max(arm, min(1.0, 0.35 + 0.65 * t))
+            if names[poly.material_index][3:] == "Prop" and variant in ("stand_sign", "sit_cheer"):
+                arm = max(arm, 1.0)
             uv.data[li].uv = (code, arm)
     B.export("fan_" + variant)
 
@@ -796,5 +877,5 @@ def build_fan(variant):
 def build_all():
     build_player()
     build_racket()
-    for v in ("up", "sign", "finger", "clap"):
+    for v in FAN_VARIANTS:
         build_fan(v)

@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://vftwakijhuxm"
-path="res://.godot/imported/fan_clap.glb-083e1b5e1df27af80acc6e111ddcb3d0.scn"
+uid="uid://d31oohwpxrgvp"
+path="res://.godot/imported/cooler.glb-1e959ba987cdbf010e8e3506fe7d9457.scn"
 
 [deps]
 
-source_file="res://assets/models/fan_clap.glb"
-dest_files=["res://.godot/imported/fan_clap.glb-083e1b5e1df27af80acc6e111ddcb3d0.scn"]
+source_file="res://assets/models/cooler.glb"
+dest_files=["res://.godot/imported/cooler.glb-1e959ba987cdbf010e8e3506fe7d9457.scn"]
 
 [params]
 

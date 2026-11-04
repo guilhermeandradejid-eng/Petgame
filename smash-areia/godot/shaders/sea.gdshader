@@ -1,9 +1,13 @@
+// Mar de desenho: três tons de água, risquinhos de onda e espuma em festão
+// na linha curva da praia (shore_off, compartilhada com a areia).
 shader_type spatial;
 render_mode unshaded;
 #include "res://shaders/lighting.gdshaderinc"
 
-uniform vec4 deep : source_color = vec4(0.06, 0.42, 0.86, 1.0);
-uniform vec4 shallow : source_color = vec4(0.22, 0.9, 0.88, 1.0);
+uniform vec4 deep : source_color = vec4(0.118, 0.451, 0.784, 1.0);       // #1E73C8
+uniform vec4 mid_water : source_color = vec4(0.133, 0.722, 0.847, 1.0);  // #22B8D8
+uniform vec4 shallow : source_color = vec4(0.373, 0.878, 0.824, 1.0);    // #5FE0D2
+uniform vec4 far_haze : source_color = vec4(0.604, 0.839, 0.949, 1.0);   // #9AD6F2
 uniform vec4 foam : source_color = vec4(1.0, 1.0, 1.0, 1.0);
 uniform float shore_z = -24.0;
 
@@ -14,23 +18,36 @@ void vertex() {
 	VERTEX.y += sin(wpos.x * 0.15 + TIME * 1.2) * 0.12 * smoothstep(shore_z, shore_z - 10.0, wpos.z);
 }
 
+float hash1(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+
 void fragment() {
-	float dist = shore_z - wpos.z;
-	vec3 col = mix(shallow.rgb, deep.rgb, smoothstep(2.0, 40.0, dist));
-	// faixas de ondas de desenho animado
-	float w = sin(wpos.z * 0.45 + sin(wpos.x * 0.12 + TIME * 0.6) * 1.6 + TIME * 1.4);
-	col = mix(col, col * 1.18 + vec3(0.04), step(0.93, w) * smoothstep(80.0, 5.0, dist));
-	// espuma na beira
-	float edge = sin(TIME * 1.3) * 0.9;
-	float f = step(dist, 1.6 + edge + sin(wpos.x * 0.4 + TIME) * 0.4);
-	col = mix(col, foam.rgb, f);
-	// caminho de brilho do sol (fim de tarde, sol à esquerda)
-	float path = smoothstep(90.0, 0.0, abs(wpos.x + (shore_z - wpos.z) * 0.68));
-	float g = step(0.9 - path * 0.12, sin(wpos.x * 1.7 + TIME * 2.0) * sin(wpos.z * 1.3 - TIME));
-	col = mix(col, vec3(1.0, 0.93, 0.75), g * (0.35 + path * 0.6) * smoothstep(6.0, 30.0, dist));
-	col = mix(col, vec3(1.0, 0.95, 0.8), path * 0.12 * smoothstep(40.0, 300.0, dist));
+	// distância até a linha da praia (curva, igual à da areia)
+	float line = shore_z + shore_off(wpos.x);
+	float dist = line - wpos.z;
 	float vd = length(VERTEX);
-	col = mix(col, vec3(0.8, 0.93, 1.0), smoothstep(80.0, 420.0, vd) * 0.8);
+	// degradê em três águas: rasa (0-6 m), média (6-25 m) e funda, com névoa longe
+	vec3 col = mix(shallow.rgb, mid_water.rgb, smoothstep(0.0, 6.0, dist));
+	col = mix(col, deep.rgb, smoothstep(6.0, 25.0, dist));
+	col = mix(col, far_haze.rgb, smoothstep(150.0, 420.0, vd) * 0.85);
+	// "risquinhos" de onda de desenho (cápsulas brancas espalhadas, andando para a praia)
+	vec2 q = vec2(wpos.x, wpos.z + TIME * 0.4);
+	vec2 cell = floor(q / vec2(6.0, 2.5));
+	float h = hash1(cell);
+	vec2 c = (cell + vec2(0.5) + (vec2(hash1(cell + 3.1), hash1(cell + 7.3)) - 0.5) * 0.5) * vec2(6.0, 2.5);
+	vec2 dq = q - c;
+	float cap = length(vec2(max(abs(dq.x) - 1.1, 0.0), dq.y)) - 0.125;
+	float dash = step(0.85, h) * (1.0 - smoothstep(-0.02, 0.02, cap)) * (1.0 - smoothstep(25.0, 80.0, dist))
+		* smoothstep(2.5, 5.0, dist);
+	col = mix(col, foam.rgb, dash * 0.6);
+	// espuma: faixa principal com borda em festão que vai e volta (4 s) e uma linha fina mais para fora
+	float sweep = sin(TIME * 1.5708) * 1.2;
+	float scallop = (sin(wpos.x * 0.9) + 0.3 * sin(wpos.x * 2.3 + 1.0)) * 0.18;
+	float band = step(dist, 0.8 + sweep + scallop);
+	col = mix(col, foam.rgb, band);
+	float sweep2 = sin(TIME * 1.5708 - 1.5708) * 1.0;
+	float thin = 1.0 - smoothstep(0.0, 0.08, abs(dist - (3.0 + sweep2 + scallop * 0.6)) - 0.075);
+	col = mix(col, foam.rgb, thin * 0.85);
+	float f = band;
 	if (arena_night > 0.001) {
 		// noite: mar escuro com o caminho prateado da lua (lua à direita, alta)
 		vec3 ncol = mix(vec3(0.05, 0.16, 0.3), vec3(0.02, 0.05, 0.14), smoothstep(2.0, 60.0, dist));

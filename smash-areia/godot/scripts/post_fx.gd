@@ -6,7 +6,7 @@ extends Node
 ## (o desfoque da pausa entra e sai suave).
 
 const SHADER := preload("res://shaders/post.gdshader")
-const SUN_DIR := Vector3(-0.55, 0.11, -0.83)   # o mesmo do shaders/sky.gdshader
+const SUN_DIR := Vector3(-0.75, 0.32, -0.58)   # o mesmo do shaders/sky.gdshader
 const MOON_DIR := Vector3(0.42, 0.32, -0.85)
 
 var main: Node
@@ -97,14 +97,14 @@ func apply() -> void:
 	for m in mats:
 		m.set_shader_parameter("quality", q)
 		m.set_shader_parameter("rays_amount", 0.22 if on and Settings.sun_rays else 0.0)
-		m.set_shader_parameter("sharpen", (0.06 + 0.04 * q) if on and q > 0 else 0.0)
-		m.set_shader_parameter("vignette", 0.12 if on and Settings.vignette else 0.0)
+		m.set_shader_parameter("sharpen", 0.1 if on and q > 0 else 0.0)
+		m.set_shader_parameter("vignette", 0.15 if on and Settings.vignette else 0.0)
 		m.set_shader_parameter("grain", 0.02 if on and Settings.grain else 0.0)
 		if on and Settings.color_grade:
 			m.set_shader_parameter("exposure", 1.0)
 			# cores vivas e limpas de aventura (sombras levemente azuis, luz neutra)
-			m.set_shader_parameter("contrast", 1.05)
-			m.set_shader_parameter("saturation", 1.14)
+			m.set_shader_parameter("contrast", 1.0)
+			m.set_shader_parameter("saturation", 1.04)
 			m.set_shader_parameter("shadow_tint", Vector3(0.99, 0.99, 1.02))
 			m.set_shader_parameter("highlight_tint", Vector3(1.01, 1.0, 0.98))
 		else:

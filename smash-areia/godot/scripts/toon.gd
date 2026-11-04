@@ -42,6 +42,8 @@ static func make(color: Color, opts: Dictionary = {}) -> ShaderMaterial:
 		m.set_shader_parameter("shadow_tint", opts["shadow"])
 	if opts.has("wind"):
 		m.set_shader_parameter("wind", opts["wind"])
+	if opts.has("fog"):
+		m.set_shader_parameter("fog", opts["fog"])
 	if opts.has("bg"):
 		m.set_shader_parameter("bg", opts["bg"])
 	# traço mais fino que o antigo (de gibi) e na cor da peça, bem escurecida

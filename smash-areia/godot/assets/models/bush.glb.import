@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://jacnjjm3loma"
-path="res://.godot/imported/fan_sign.glb-2337e8de77518d40a1f3b949933a208e.scn"
+uid="uid://dyt3e7ndh3e6n"
+path="res://.godot/imported/bush.glb-1587d984bb2980c95c9efb865b64ffca.scn"
 
 [deps]
 
-source_file="res://assets/models/fan_sign.glb"
-dest_files=["res://.godot/imported/fan_sign.glb-2337e8de77518d40a1f3b949933a208e.scn"]
+source_file="res://assets/models/bush.glb"
+dest_files=["res://.godot/imported/bush.glb-1587d984bb2980c95c9efb865b64ffca.scn"]
 
 [params]
 

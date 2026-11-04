@@ -112,8 +112,11 @@ void fragment() {
 	col = mix(col * shadow_tint, col * highlight_tint, smoothstep(0.15, 0.85, l));
 	col = (col - 0.5) * contrast + 0.5;
 	col = mix(vec3(luma(col)), col, saturation);
-	// "tone map" suave só no topo, para o bloom não estourar o branco
-	col = col / (1.0 + max(col - 0.85, vec3(0.0)) * 1.4);
+	// "tone map" suave só no topo, para o bloom não estourar o branco. É feito pela
+	// luminância (mesmo fator nos três canais): por canal, o creme da areia virava
+	// verde-claro, porque o vermelho era comprimido mais que o verde.
+	float lt = luma(col);
+	col *= 1.0 / (1.0 + max(lt - 0.9, 0.0) * 1.2);
 
 	// flash do golpe especial
 	col = mix(col, vec3(1.0, 0.95, 0.82), clamp(flash, 0.0, 1.0) * 0.4);

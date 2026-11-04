@@ -7,7 +7,7 @@ render_mode unshaded, cull_back, depth_draw_opaque;
 #include "res://shaders/lighting.gdshaderinc"
 
 uniform vec4 albedo : source_color = vec4(1.0);
-uniform vec4 shadow_tint : source_color = vec4(0.55, 0.45, 0.75, 1.0);
+uniform vec4 shadow_tint : source_color = vec4(0.8, 0.75, 0.9, 1.0);   // sombra lilás clara (props brancos não ficam roxos)
 uniform float rim_amount = 0.35;
 uniform float spec_amount = 0.0;
 uniform float halftone = 1.0;
@@ -19,7 +19,7 @@ uniform float bg = 0.0;     // cenário: menos contraste e um véu lilás (o foc
 
 const vec3 KEY = vec3(-0.45, 0.72, 0.53);      // luz principal (frente-esquerda)
 const vec3 SUN_BACK = vec3(-0.55, 0.35, -0.76); // sol baixo atrás da quadra (contraluz)
-const vec3 HAZE = vec3(1.0, 0.84, 0.72);
+const vec3 HAZE = vec3(0.82, 0.93, 1.0);   // névoa de distância azul-céu (perto do horizonte)
 
 void vertex() {
 	if (wind > 0.0) {
@@ -62,7 +62,6 @@ void fragment() {
 	col = mix(col, col + vec3(0.4), smoothstep(0.978 - aa * 4.0, 0.978 + aa * 4.0, sh) * spec_amount * lit * 0.8);
 
 	col = mix(col, flash_color.rgb, flash);
-	col = mix(col, vec3(0.84, 0.92, 1.0) * (0.8 + 0.2 * lit), bg * 0.12);   // véu azul leve: profundidade de ar
 	float dist = length(VERTEX);
 	col = mix(col, night_haze(HAZE), smoothstep(45.0, 380.0, dist) * 0.85 * fog);
 	ALBEDO = night_grade(col, (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz);
