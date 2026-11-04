@@ -13,6 +13,7 @@ ou direto em Python: `merge(MALE, {"skin": "ebano", "hair": {"style": "afro"}})`
 | `head_scale` | 0.9 – 1.15 |
 | `skin` | `porcelana` `pessego` `dourada` `morena` `marrom` `escura` `ebano` ou `#rrggbb` |
 | `face.shape` | `round` `oval` `square` |
+| `face.*` | o rosto é um **sprite 2D** por expressão (olhos, sobrancelhas, boca, bochechas, sardas, cílios): `export_face_sprites()` grava os PNGs |
 | `face.eyes` | `round` (olho grande com íris) · `dot` (ponto estilo Mii clássico) · `wide` · `sleepy` |
 | `face.eye_color` | `preto` `castanho` `azul` `verde` `mel` `cinza` ou `#rrggbb` |
 | `face.eye_size`, `face.eye_gap` | 0.8 – 1.25 |
@@ -20,15 +21,15 @@ ou direto em Python: `merge(MALE, {"skin": "ebano", "hair": {"style": "afro"}})`
 | `face.nose` | `button` `long` `small` `none` |
 | `face.mouth` | `smile` `grin` `smirk` `neutral` `determined` `open` |
 | `face.cheeks`, `face.freckles`, `face.lashes` | `true` / `false` |
-| `hair.style` | `short` `buzz` `spiky` `mohawk` `afro` `ponytail` `pigtails` `bun` `bob` `long` `none` |
+| `hair.style` | `short` `buzz` `spiky` `afro` `ponytail` `pigtails` `bun` `bob` `long` `none` |
 | `hair.color` | `castanho` `preto` `loiro` `ruivo` `grisalho` `azul` `rosa` `roxo` `verde` `branco` ou `#rrggbb` |
 | `accessories.visor` | cor `#rrggbb` ou `null` |
 | `accessories.cap` | cor `#rrggbb` ou `null` (boné com aba) |
 | `accessories.headband` | cor ou `null` |
-| `accessories.sunglasses` | `null` ou `{"mount": "eyes"\|"top", "style": "sport"\|"round"\|"square"\|"aviator", "color": "mirror"\|"azul"\|"preta"\|"verde"\|"rosa"}` |
+| `accessories.sunglasses` | `null` ou `{"style": "sport"\|"round"\|"square"\|"aviator", "color": "mirror"\|"azul"\|"preta"\|"verde"\|"rosa"}` |
 | `accessories.glasses` | `null` ou `{"style": "round"\|"square"\|"sport", "color": "#rrggbb"}` |
 | `accessories.wristband` / `wristband_side` | cor ou `null` / `"R"` ou `"L"` |
-| `outfit.top.style` | `tank` |
+| `outfit.top.style` | `tank` (regata com ombro coberto) · `tee` (camiseta com mangas) |
 | `outfit.top.color_a` / `color_b` | cor de cima e de baixo do degradê da camisa |
 | `outfit.top.number` | texto (ex. `"10"`) ou `null` |
 | `outfit.top.emblem` | `wave` `star` `ball` ou `null` |

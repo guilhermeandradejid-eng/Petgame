@@ -62,7 +62,7 @@ MALE = {
     "accessories": {
         "visor": "#2f7fe0",          # cor ou None
         "cap": None, "headband": None,
-        "sunglasses": {"mount": "top", "style": "sport", "color": "mirror"},   # eyes | top | None
+        "sunglasses": None,          # {"style": "sport|round|square|aviator", "color": "mirror|azul|preta|verde|rosa"}
         "glasses": None,             # {"style": "round", "color": "#222"}
         "wristband": "#f08a2c", "wristband_side": "R",
     },
@@ -85,7 +85,7 @@ FEMALE = {
     "hair": {"style": "ponytail", "color": "castanho"},
     "accessories": {
         "visor": "#ff5f8f", "cap": None, "headband": None,
-        "sunglasses": {"mount": "top", "style": "sport", "color": "mirror"},
+        "sunglasses": None,
         "glasses": None,
         "wristband": "#ffffff", "wristband_side": "R",
     },
@@ -529,78 +529,215 @@ def basis_from_normal(n, up=Vector((0, 0, 1))):
 
 # ---------------------------------------------------------------- rosto
 
-def build_face(cfg, head, M, out):
+# ---------------------------------------------------------------- rosto em sprites 2D
+# O rosto (olhos, sobrancelhas, boca, bochechas, sardas, cilios) e uma textura 2D desenhada por
+# expressao e projetada na frente da cabeca: da para trocar a expressao so trocando o PNG
+# (e e exatamente o que o jogo faz com sprites). Nariz e orelhas continuam 3D.
+
+FACE_X = 0.205          # metade da largura coberta pelo sprite (m)
+FACE_Z0, FACE_Z1 = -0.18, 0.125
+FACE_PX = 4200          # pixels por metro da textura
+
+
+def _catmull_pts(pts, n=24):
+    out = []
+    P = [pts[0]] + list(pts) + [pts[-1]]
+    for i in range(1, len(P) - 2):
+        p0, p1, p2, p3 = P[i - 1], P[i], P[i + 1], P[i + 2]
+        for k in range(n):
+            t = k / n
+            out.append(tuple(0.5 * ((2 * p1[c]) + (-p0[c] + p2[c]) * t + (2 * p0[c] - 5 * p1[c] + 4 * p2[c] - p3[c]) * t * t
+                                   + (-p0[c] + 3 * p1[c] - 3 * p2[c] + p3[c]) * t ** 3) for c in (0, 1)))
+    out.append(tuple(pts[-1]))
+    return out
+
+
+def face_texture(cfg, expression=None):
+    """Desenha o sprite do rosto (PNG RGBA) e devolve o caminho."""
+    from PIL import Image, ImageDraw, ImageFilter
+    f = cfg["face"]
+    mouth = expression or f.get("mouth", "smile")
+    sk = col(cfg["skin"], SKIN_TONES)
+    hair_c = col(cfg["hair"]["color"], HAIR_COLORS)
+    iris_c = col(f.get("eye_color", "preto"), EYE_COLORS)
+    key = "%s_%s_%s_%s_%s_%s_%s_%s_%s_%s_%s" % (
+        mouth, f.get("eyes"), iris_c[1:], f.get("eye_size"), f.get("eye_gap"), f.get("brows"),
+        hair_c[1:], f.get("cheeks"), f.get("freckles"), f.get("lashes"), sk[1:])
+    os.makedirs(DECAL_DIR, exist_ok=True)
+    path = os.path.join(DECAL_DIR, "face_%s.png" % key)
+    if os.path.exists(path):
+        return path
+    SS = 2
+    W = int(2 * FACE_X * FACE_PX)
+    H = int((FACE_Z1 - FACE_Z0) * FACE_PX)
+    img = Image.new("RGBA", (W * SS, H * SS), (0, 0, 0, 0))
+    k = FACE_PX * SS
+
+    def P(x, z):
+        return ((x + FACE_X) * k, (FACE_Z1 - z) * k)
+
+    def ell(d, cx, cz, rx, rz, fill=None, outline=None, width=0):
+        x0, y0 = P(cx - rx, cz + rz)
+        x1, y1 = P(cx + rx, cz - rz)
+        d.ellipse([x0, y0, x1, y1], fill=fill, outline=outline, width=int(width * k))
+
+    def stroke(d, pts, w0, w1, color):
+        cp = _catmull_pts(pts, 18)
+        n = len(cp)
+        for i, (x, z) in enumerate(cp):
+            t = i / max(n - 1, 1)
+            w = (w0 + (w1 - w0) * t) / 2
+            ell(d, x, z, w, w, fill=color)
+
+    ink = "#1c1218"
+    d = ImageDraw.Draw(img)
+    gap = 0.093 * f.get("eye_gap", 1.0)
+    ez = -0.016
+    esz = f.get("eyes_size", f.get("eye_size", 1.0))
+    eyes = f.get("eyes", "round")
+
+    # --- bochechas (camada borrada)
+    if f.get("cheeks", True):
+        ch = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        cd = ImageDraw.Draw(ch)
+        for sgn in (-1, 1):
+            ell(cd, sgn * 0.145, ez - 0.066, 0.036, 0.025, fill=(255, 112, 126, 150))
+        ch = ch.filter(ImageFilter.GaussianBlur(0.011 * k))
+        img = Image.alpha_composite(img, ch)
+        d = ImageDraw.Draw(img)
+    if f.get("freckles"):
+        for sgn in (-1, 1):
+            for (dx, dz) in ((0.115, -0.045), (0.145, -0.04), (0.13, -0.066), (0.165, -0.062), (0.1, -0.067),
+                             (0.15, -0.085)):
+                ell(d, sgn * dx, ez + dz, 0.0055, 0.0055, fill=shade(sk, 0.7))
+
+    # --- olhos
+    sizes = {"round": (0.043, 0.057), "dot": (0.025, 0.038), "wide": (0.052, 0.058), "sleepy": (0.046, 0.04)}[eyes]
+    rx, rz = sizes[0] * esz, sizes[1] * esz
+    squint = {"determined": 0.18, "smirk": 0.0}.get(mouth, 0.0)
+    for sgn in (-1, 1):
+        cx = sgn * gap
+        if eyes == "dot":
+            ell(d, cx, ez, rx, rz, fill=ink)
+            ell(d, cx + rx * 0.3, ez + rz * 0.35, rx * 0.34, rx * 0.34, fill="#ffffff")
+            ell(d, cx - rx * 0.25, ez - rz * 0.35, rx * 0.16, rx * 0.16, fill="#ffffff")
+        else:
+            ell(d, cx, ez, rx, rz, fill="#ffffff", outline=ink, width=0.0034)
+            ir = rx * (0.8 if eyes == "wide" else 0.7)
+            look = -sgn * 0.003
+            ell(d, cx + look, ez - 0.002, ir, ir * 1.16, fill=iris_c)
+            ell(d, cx + look, ez - 0.002, ir * 0.56, ir * 0.66, fill=ink)
+            ell(d, cx + look + ir * 0.4, ez + ir * 0.55, ir * 0.25, ir * 0.25, fill="#ffffff")
+            ell(d, cx + look - ir * 0.35, ez - ir * 0.4, ir * 0.11, ir * 0.11, fill="#ffffff")
+            if eyes == "sleepy" or squint:
+                lid = squint if squint else 0.3
+                x0, y0 = P(cx - rx * 1.2, ez + rz * 1.2)
+                x1, y1 = P(cx + rx * 1.2, ez + rz * (1 - 2 * lid))
+                d.rectangle([x0, y0, x1, y1], fill=sk)
+                stroke(d, [(cx - rx * 1.02, ez + rz * (1 - 2 * lid)), (cx, ez + rz * (1 - 2 * lid) - 0.002),
+                           (cx + rx * 1.02, ez + rz * (1 - 2 * lid))], 0.0045, 0.0045, ink)
+        if f.get("lashes"):
+            o = 1 if sgn > 0 else -1
+            for (dx, dz, ex, ez2) in ((0.78, 0.55, 1.3, 0.85), (0.95, 0.15, 1.55, 0.3), (0.55, 0.85, 0.95, 1.25)):
+                stroke(d, [(cx + o * rx * dx, ez + rz * dz), (cx + o * rx * ex, ez + rz * ez2)], 0.0055, 0.003, ink)
+
+    # --- sobrancelhas
+    brows = f.get("brows", "soft")
+    if brows != "none":
+        th = {"soft": 0.0085, "thick": 0.0135, "thin": 0.0055}[brows]
+        ang = {"determined": 0.04, "grin": -0.012, "smile": -0.004, "open": -0.018}.get(mouth, 0.0)
+        bz = ez + 0.083 * (esz ** 0.3) - (0.012 if mouth == "determined" else 0.0)
+        for sgn in (-1, 1):
+            inner = (sgn * (gap - 0.04), bz - ang)
+            mid = (sgn * gap, bz + 0.013 - ang * 0.2)
+            outer = (sgn * (gap + 0.045), bz - 0.002 + ang * 0.8)
+            stroke(d, [inner, mid, outer], th * 1.4, th * 0.9, hair_c)
+
+    # --- boca
+    mz = -0.128
+    mc = "#6e2432"
+    dark = "#7a1f33"
+    if mouth == "smile":
+        stroke(d, [(-0.042, mz + 0.014), (-0.02, mz - 0.006), (0.02, mz - 0.006), (0.042, mz + 0.014)], 0.0072, 0.0072, mc)
+    elif mouth == "smirk":
+        stroke(d, [(-0.034, mz + 0.003), (-0.01, mz - 0.003), (0.022, mz - 0.003), (0.046, mz + 0.018)], 0.0072, 0.0072, mc)
+    elif mouth == "neutral":
+        stroke(d, [(-0.028, mz), (0, mz - 0.002), (0.028, mz)], 0.007, 0.007, mc)
+    elif mouth == "determined":
+        stroke(d, [(-0.034, mz - 0.01), (-0.013, mz + 0.002), (0.013, mz + 0.002), (0.034, mz - 0.01)], 0.0075, 0.0075, mc)
+    else:   # grin | open
+        w, h = (0.062, 0.05) if mouth == "grin" else (0.034, 0.042)
+        pts = [(-w, mz + 0.02)]
+        for kk in range(0, 21):
+            t = math.pi * kk / 20
+            pts.append((-w * math.cos(t) * 0.98, mz + 0.012 - h * math.sin(t)))
+        pts.append((w, mz + 0.02))
+        poly = [P(x, z) for (x, z) in [(-w, mz + 0.014)] + [(-w * math.cos(math.pi * kk / 20), mz + 0.014 - h * math.sin(math.pi * kk / 20))
+                                                             for kk in range(0, 21)] + [(w, mz + 0.014)]]
+        d.polygon(poly, fill=dark)
+        # lingua e dentes (recortados pela boca)
+        layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        ld = ImageDraw.Draw(layer)
+        ell(ld, 0, mz - h * 0.78, w * 0.62, h * 0.4, fill="#ff7a86")
+        x0, y0 = P(-w * 1.1, mz + 0.016)
+        x1, y1 = P(w * 1.1, mz + 0.016 - h * 0.28)
+        ld.rectangle([x0, y0, x1, y1], fill="#ffffff")
+        mask = Image.new("L", img.size, 0)
+        ImageDraw.Draw(mask).polygon(poly, fill=255)
+        layer.putalpha(Image.composite(layer.getchannel("A"), Image.new("L", img.size, 0), mask))
+        img = Image.alpha_composite(img, layer)
+        d = ImageDraw.Draw(img)
+        d.line(poly + [poly[0]], fill=mc, width=int(0.0045 * k), joint="curve")
+    img = img.resize((W, H), Image.LANCZOS)
+    img.save(path)
+    return path
+
+
+def face_material(path):
+    key = ("FaceSprite", path)
+    if key in _MAT_CACHE:
+        return _MAT_CACHE[key]
+    m = bpy.data.materials.new("FaceSprite")
+    b = _bsdf(m)
+    nt = m.node_tree
+    _set(b, "Roughness", 0.55)
+    _set(b, "Specular IOR Level", 0.2)
+    img = nt.nodes.new("ShaderNodeTexImage")
+    img.image = bpy.data.images.load(path)
+    img.image.colorspace_settings.name = "sRGB"
+    img.extension = "CLIP"
+    nt.links.new(img.outputs["Color"], b.inputs["Base Color"])
+    nt.links.new(img.outputs["Alpha"], b.inputs["Alpha"])
+    _MAT_CACHE[key] = m
+    return m
+
+
+def build_face(cfg, head, M, out, expression=None):
     f = cfg["face"]
     sk = col(cfg["skin"], SKIN_TONES)
     skin_m = skin_mat(sk)
-    hair_c = col(cfg["hair"]["color"], HAIR_COLORS)
-    female = cfg["gender"] == "female"
-    eyes = f.get("eyes", "round")
-    esz = f.get("eye_size", 1.0)
-    gap = 0.093 * f.get("eye_gap", 1.0)
-    ez = -0.016
-    mouth_k = f.get("mouth", "smile")
-    ink = mat("FaceInk", "#1c1218", rough=0.35, spec=0.6)
-    white = mat("EyeWhite", "#ffffff", rough=0.25, spec=0.6)
-    glint = mat("Glint", "#ffffff", rough=0.1, emit="#ffffff", emit_strength=3.0)
-    iris_c = col(f.get("eye_color", "preto"), EYE_COLORS)
-    iris = mat("Iris", iris_c, rough=0.2, spec=0.7)
+    # sprite do rosto: grade (x, z) projetada na superficie da cabeca
+    path = face_texture(cfg, expression)
+    nu, nv = 44, 40
+    uvs = []
+    verts = []
+    for j in range(nv):
+        for i in range(nu):
+            u = i / (nu - 1)
+            v = j / (nv - 1)
+            x = lerp(-FACE_X, FACE_X, u) * 0.98
+            z = lerp(FACE_Z0, FACE_Z1, v)
+            p, n = head.surf(x, z, 0.0014)
+            verts.append(p)
+            uvs.append((u, v))
+    ob = make_obj("FaceSprite", verts, grid_faces(nu, nv, False), [face_material(path)], M=M, recalc=False,
+                  merge=False, outline=False, inside=(0, 0, 0))
+    uv = ob.data.uv_layers.new(name="UVMap")
+    for loop in ob.data.loops:
+        uv.data[loop.index].uv = uvs[loop.vertex_index]
+    out.append(ob)
 
-    # ---- olhos
-    for s in (-1, 1):
-        x = s * gap
-        sizes = {"round": (0.043, 0.057), "dot": (0.026, 0.038), "wide": (0.052, 0.058),
-                 "sleepy": (0.046, 0.04)}[eyes]
-        rx, rz = sizes[0] * esz, sizes[1] * esz
-        p, n = head.surf(x, ez, 0.0)
-        B = basis_from_normal(n)
-        if eyes == "dot":
-            out.append(ellipsoid("EyeDot", p + n * 0.002, (rx, 0.010, rz), [ink], M=M, rot=B, nu=22, nv=12,
-                                 outline=False))
-            out.append(ellipsoid("EyeGlint", p + n * 0.011 + B @ Vector((rx * 0.3, 0, rz * 0.4)),
-                                 (rx * 0.33, 0.004, rz * 0.3), [glint], M=M, rot=B, nu=10, nv=6, outline=False))
-        else:
-            # esclera branca + iris + pupila + brilho (como no desenho de referencia)
-            out.append(ellipsoid("EyeWhite", p + n * 0.002, (rx, 0.011, rz), [white], M=M, rot=B, nu=24, nv=14,
-                                 outline=False))
-            look = Vector((-s * 0.004, 0, -0.002))
-            ir = rx * (0.78 if eyes == "wide" else 0.68)
-            out.append(ellipsoid("Iris", p + n * 0.009 + B @ look, (ir, 0.005, ir * 1.18), [iris], M=M, rot=B,
-                                 nu=20, nv=12, outline=False))
-            out.append(ellipsoid("Pupil", p + n * 0.0125 + B @ look, (ir * 0.55, 0.004, ir * 0.66), [ink], M=M,
-                                 rot=B, nu=16, nv=10, outline=False))
-            out.append(ellipsoid("EyeGlint", p + n * 0.0145 + B @ (look + Vector((ir * 0.42, 0, ir * 0.55))),
-                                 (ir * 0.24, 0.003, ir * 0.24), [glint], M=M, rot=B, nu=10, nv=6, outline=False))
-            if eyes == "sleepy":   # palpebra
-                lid = ellipsoid("Lid", p + n * 0.01 + B @ Vector((0, 0, rz * 0.5)), (rx * 1.08, 0.006, rz * 0.62),
-                                [skin_m], M=M, rot=B, nu=20, nv=10, outline=False)
-                out.append(lid)
-        if f.get("lashes"):
-            lash = mat("Lash", "#1c1218", rough=0.4)
-            q = [Vector(v) for v in ((s * (gap + rx * 0.9), ez + rz * 0.6), (s * (gap + rx * 1.35), ez + rz * 0.95),
-                                     (s * (gap + rx * 1.65), ez + rz * 1.5))]
-            pts = [head.surf(v[0], v[1], 0.009)[0] for v in q]
-            out.append(tube("Lash", pts, [0.0075, 0.0065, 0.0025], [lash], ref=(0, 1, 0), M=M, n=8, per=3,
-                            outline=False))
-
-    # ---- sobrancelhas
-    brows = f.get("brows", "soft")
-    if brows != "none":
-        bm = hair_mat(hair_c)
-        th = {"soft": 0.0085, "thick": 0.0135, "thin": 0.0055}[brows]
-        ang = {"determined": 0.045, "smirk": 0.0, "grin": -0.012, "smile": -0.006,
-               "neutral": 0.0, "open": -0.02}.get(mouth_k, 0.0)
-        for s in (-1, 1):
-            bz = ez + 0.074 * esz ** 0.3
-            inner = (s * (gap - 0.036), bz - ang)
-            mid = (s * gap, bz + 0.012 - ang * 0.2)
-            outer = (s * (gap + 0.042), bz - 0.002 + ang * 0.8)
-            wide = {"soft": 1.0, "thick": 1.05, "thin": 1.0}[brows]
-            pts = [head.surf(v[0], v[1], 0.006)[0] for v in (inner, mid, outer)]
-            out.append(tube("Brow", pts, [th * 0.7, th, th * 0.55], [bm], ref=(0, 1, 0), M=M, n=10, per=4,
-                            outline=False))
-
-    # ---- nariz
+    # ---- nariz (3D, pequeno)
     nose = f.get("nose", "button")
     if nose != "none":
         nz = -0.062
@@ -612,63 +749,24 @@ def build_face(cfg, head, M, out):
         out.append(ellipsoid("NoseShine", p + n * 0.006 + B @ Vector((0.004, -sz[1] * 0.85, sz[2] * 0.35)),
                              (0.007, 0.004, 0.005), [mat("NoseShine", shade(sk, 1.25), rough=0.3)], M=M, rot=B,
                              nu=8, nv=6, outline=False))
-
-    # ---- boca
-    mz = -0.128
-    mouth_m = mat("Mouth", "#8a2b3a" if mouth_k in ("grin", "open") else "#6e2432", rough=0.4)
-    if mouth_k == "smile":
-        pts = [head.surf(v[0], v[1], 0.004)[0] for v in ((-0.04, mz + 0.012), (-0.018, mz - 0.006),
-                                                         (0.018, mz - 0.006), (0.04, mz + 0.012))]
-        out.append(tube("Mouth", pts, [0.0055, 0.0075, 0.0075, 0.0055], [mouth_m], ref=(0, 1, 0), M=M, n=8, per=5,
-                        outline=False))
-    elif mouth_k == "smirk":
-        pts = [head.surf(v[0], v[1], 0.004)[0] for v in ((-0.032, mz + 0.002), (-0.01, mz - 0.003),
-                                                         (0.02, mz - 0.003), (0.045, mz + 0.016))]
-        out.append(tube("Mouth", pts, [0.0055, 0.0075, 0.0075, 0.0055], [mouth_m], ref=(0, 1, 0), M=M, n=8, per=5,
-                        outline=False))
-    elif mouth_k == "neutral":
-        pts = [head.surf(v[0], v[1], 0.004)[0] for v in ((-0.026, mz), (0, mz - 0.002), (0.026, mz))]
-        out.append(tube("Mouth", pts, [0.005, 0.0065, 0.005], [mouth_m], ref=(0, 1, 0), M=M, n=8, per=4,
-                        outline=False))
-    elif mouth_k == "determined":
-        pts = [head.surf(v[0], v[1], 0.004)[0] for v in ((-0.03, mz - 0.007), (-0.012, mz + 0.002),
-                                                         (0.012, mz + 0.002), (0.03, mz - 0.007))]
-        out.append(tube("Mouth", pts, [0.0055, 0.0075, 0.0075, 0.0055], [mouth_m], ref=(0, 1, 0), M=M, n=8, per=5,
-                        outline=False))
-    else:   # grin | open: boca aberta de risada
-        w, h = (0.062, 0.046) if mouth_k == "grin" else (0.034, 0.04)
-        p, n = head.surf(0, mz, 0.0)
-        B = basis_from_normal(n)
-        out.append(ellipsoid("MouthOpen", p + n * 0.0, (w, 0.02, h), [mouth_m], M=M, rot=B, nu=28, nv=14,
-                             outline=False))
-        tongue = mat("Tongue", "#ff7a86", rough=0.4)
-        out.append(ellipsoid("Tongue", p + n * 0.012 + B @ Vector((0, 0, -h * 0.5)), (w * 0.5, 0.008, h * 0.35),
-                             [tongue], M=M, rot=B, nu=16, nv=8, outline=False))
-        teeth = mat("Teeth", "#ffffff", rough=0.25)
-        out.append(ellipsoid("Teeth", p + n * 0.0125 + B @ Vector((0, 0, h * 0.62)), (w * 0.82, 0.006, h * 0.2),
-                             [teeth], M=M, rot=B, nu=22, nv=8, outline=False))
-
-    # ---- bochechas e sardas
-    if f.get("cheeks", True):
-        for s in (-1, 1):
-            p, n = head.surf(s * 0.145, ez - 0.062, 0.0)
-            B = basis_from_normal(n)
-            out.append(ellipsoid("Cheek", p + n * 0.004, (0.036, 0.004, 0.024), [blush_mat()], M=M, rot=B,
-                                 nu=20, nv=8, outline=False))
-    if f.get("freckles"):
-        fm = mat("Freckle", shade(sk, 0.72), rough=0.6)
-        for s in (-1, 1):
-            for (dx, dz) in ((0.115, -0.045), (0.145, -0.04), (0.13, -0.065), (0.165, -0.062), (0.1, -0.067)):
-                p, n = head.surf(s * dx, ez + dz, 0.0)
-                B = basis_from_normal(n)
-                out.append(ellipsoid("Freckle", p + n * 0.003, (0.006, 0.003, 0.006), [fm], M=M, rot=B, nu=8, nv=4,
-                                     outline=False))
-
     # ---- orelhas
     for s in (-1, 1):
         p = Vector((s * head.hx * 0.985, 0.012, -0.012))
         out.append(ellipsoid("Ear", p, (0.017, 0.026, 0.044), [skin_m], M=M,
                              rot=Matrix.Rotation(math.radians(-10 * s), 3, "Y"), nu=16, nv=10))
+
+
+def export_face_sprites(cfg, outdir, expressions=("smile", "grin", "determined", "smirk", "neutral", "open")):
+    """Grava um PNG por expressao (para usar como sprite no jogo)."""
+    import shutil
+    os.makedirs(outdir, exist_ok=True)
+    paths = []
+    for e in expressions:
+        src = face_texture(cfg, e)
+        dst = os.path.join(outdir, "face_%s_%s.png" % (cfg.get("name", "mii").lower(), e))
+        shutil.copyfile(src, dst)
+        paths.append(dst)
+    return paths
 
 
 def build_head_skin(cfg, head, M, out):
@@ -683,7 +781,7 @@ def build_head_skin(cfg, head, M, out):
 
 # ---------------------------------------------------------------- cabelo
 
-HAIR_STYLES = ["short", "buzz", "spiky", "afro", "ponytail", "bun", "bob", "long", "mohawk", "pigtails"]
+HAIR_STYLES = ["short", "buzz", "spiky", "afro", "ponytail", "bun", "bob", "long", "pigtails"]
 
 
 HAIRLINES = {   # (angulo desde a frente em rad, z local): frente alta (testa e sobrancelhas livres), orelha livre
@@ -725,9 +823,6 @@ def hair_cap(name, head, hairline, mats, M, thick=0.012, bulge=None, nu=64, nv=3
     verts = [pos(i, j) for j in range(nv) for i in range(nu)]
     ob = make_obj(name, verts, grid_faces(nu, nv, True), mats, M=M, subsurf=1, solidify=solid,
                   solidify_offset=-1.0, recalc=False, merge=True, inside=(0, 0, 0))
-    for md in ob.modifiers:
-        if md.type == "SOLIDIFY":
-            md.use_even_offset = False
     return ob
 
 
@@ -755,7 +850,7 @@ def build_hair(cfg, head, M, out):
     if style in ("short", "spiky", "mohawk"):
         def bulge(phi, al, v):
             a = ang(phi)
-            front_roll = 0.03 * smooth(1 - a / 1.0) * smooth((al - math.pi * 0.45) / 0.8) * \
+            front_roll = 0.014 * smooth(1 - a / 1.0) * smooth((al - math.pi * 0.45) / 0.8) * \
                 (1 - smooth((al - math.pi * 0.76) / (math.pi * 0.22)))   # topete na frente (some no polo)
             return 0.016 * smooth((al - math.pi * 0.35) / 0.9) + front_roll
         if style == "mohawk":
@@ -851,105 +946,86 @@ def build_hair(cfg, head, M, out):
 
 # ---------------------------------------------------------------- acessorios
 
+def _head_ring(head, zb, off, n=32):
+    """Pontos de um anel horizontal ao redor da cabeca na altura zb, afastado `off` da pele."""
+    al = math.acos(clamp(-zb / head.hz, -1, 1))
+    return [head.point(2 * math.pi * k / n, al) + head.normal(2 * math.pi * k / n, al) * off for k in range(n)]
+
+
+def _brim(name, head, zb, off, length, mat_, M, out, arc=1.15, thick=0.009, droop=0.032):
+    """Aba curva presa na frente do anel (arredondada nas pontas e acompanhando a cabeca)."""
+    al = math.acos(clamp(-zb / head.hz, -1, 1))
+
+    def fn(i, j):
+        u = i / 20
+        phi = (u - 0.5) * 2 * arc
+        v = j / 7
+        e = abs(phi) / arc
+        p = head.point(phi, al) + head.normal(phi, al) * off
+        d = Vector((math.sin(phi), -math.cos(phi), 0)).normalized()
+        L = length * math.sqrt(max(1 - e ** 3, 0.0)) * v
+        z = zb - 0.006 - droop * v * v - 0.03 * e * e * v
+        return Vector((p.x, p.y, z)) + d * L
+    out.append(sheet(name, fn, 21, 8, [mat_], M=M, solidify=thick, solidify_offset=-1.0, subsurf=1, merge=False,
+                     inside=(0, -0.1, -3.0)))
+
+
 def build_accessories(cfg, head, M, out):
     acc = cfg["accessories"]
-    hairless = cfg["hair"].get("style") == "none"
-    # --- viseira / bone / testeira
-    brim_h = 0.112
-    if acc.get("visor"):
-        c = acc["visor"]
-        vm = cloth_mat("Visor", c)
-        zb = brim_h
-        pts = []
-        for k in range(24):
-            phi = 2 * math.pi * k / 24
-            p, n = head.surf(math.sin(phi) * 1.0, zb, 0) if False else (head.point(phi, math.acos(clamp(-zb / head.hz, -1, 1))),
-                                                                       head.normal(phi, math.acos(clamp(-zb / head.hz, -1, 1))))
-            pts.append(p + n * 0.043)
-        out.append(tube("VisorBand", pts, [(0.024, 0.013)] * 24, [vm], ref=(0, 0, 1), M=M, n=12, per=3,
-                        closed=True))
-        # aba
-        def brim(i, j):
-            u = i / 17
-            phi = (u - 0.5) * 2 * 0.95
-            v = j / 6
-            al = math.acos(clamp(-zb / head.hz, -1, 1))
-            p = head.point(phi, al)
-            d = Vector((math.sin(phi * 0.8), -math.cos(phi * 0.8), 0)).normalized()
-            L = (0.012 + 0.105 * (max(0.0, math.cos(phi * 1.5)) ** 1.1)) * v
-            z = zb + 0.012 + 0.016 * v - 0.03 * v * v
-            return Vector((p.x, p.y, z)) + d * (L + 0.05)
-        out.append(sheet("VisorBrim", brim, 18, 7, [vm], M=M, solidify=0.008, solidify_offset=-1.0, subsurf=1,
-                         merge=False, inside=(0, -0.1, -3.0)))
-    if acc.get("cap"):
+    if acc.get("visor"):    # viseira: faixa na testa + aba curva (sem coroa: o cabelo aparece)
+        vm = cloth_mat("Visor", acc["visor"])
+        zb = 0.1
+        out.append(tube("VisorBand", _head_ring(head, zb, 0.038), [(0.028, 0.011)] * 32, [vm], ref=(0, 0, 1), M=M,
+                        n=12, per=2, closed=True))
+        _brim("VisorBrim", head, zb + 0.002, 0.044, 0.095, vm, M, out, arc=1.05, droop=0.03)
+    if acc.get("cap"):      # bone: coroa + aba + botao
         cm = cloth_mat("Cap", acc["cap"])
-        zb = 0.09
-        def bulge(phi, al, v):
-            return 0.022 + 0.018 * smooth((al - math.pi * 0.35) / 0.9)
-        out.append(hair_cap("CapDome", head, lambda phi: zb - 0.02 * smooth(abs(math.cos(phi / 2))), [cm], M,
-                            thick=0.012, bulge=bulge, solid=0.012))
-        def brim(i, j):
-            u = i / 17
-            phi = (u - 0.5) * 2 * 1.15
-            v = j / 6
-            al = math.acos(clamp(-zb / head.hz, -1, 1))
-            p = head.point(phi, al)
-            d = Vector((math.sin(phi), -math.cos(phi), 0))
-            L = (0.03 + 0.17 * (math.cos(phi * 0.85) ** 0.7)) * v
-            return Vector((p.x, p.y, zb + 0.02 - 0.06 * v * v)) + d * (L + 0.035)
-        out.append(sheet("CapBrim", brim, 18, 7, [cm], M=M, solidify=0.012, solidify_offset=-1.0, subsurf=1,
-                         merge=False, inside=(0, -0.1, -3.0)))
-        out.append(ellipsoid("CapButton", Vector((0, 0, head.hz * 0.97 + 0.025)), (0.018, 0.018, 0.014), [cm], M=M,
+        zb = 0.07
+        out.append(hair_cap("CapDome", head, lambda phi: zb, [cm], M, thick=0.056, solid=0.012,
+                            bulge=lambda phi, al, v: 0.012 * smooth(v / 0.4)))
+        out.append(tube("CapBand", _head_ring(head, zb + 0.004, 0.056), [(0.014, 0.01)] * 32,
+                        [cloth_mat("CapTrim", shade(acc["cap"], 0.8))], ref=(0, 0, 1), M=M, n=10, per=2, closed=True))
+        _brim("CapBrim", head, zb + 0.012, 0.062, 0.13, cm, M, out, arc=1.25, droop=0.04)
+        out.append(ellipsoid("CapButton", Vector((0, 0, head.hz + 0.062)), (0.017, 0.017, 0.012), [cm], M=M,
                              nu=12, nv=8))
     if acc.get("headband"):
         hb = cloth_mat("Headband", acc["headband"])
-        zb = 0.07
-        pts = []
-        for k in range(24):
-            phi = 2 * math.pi * k / 24
-            al = math.acos(clamp(-zb / head.hz, -1, 1))
-            pts.append(head.point(phi, al) + head.normal(phi, al) * 0.02)
-        out.append(tube("Headband", pts, [(0.024, 0.01)] * 24, [hb], ref=(0, 0, 1), M=M, n=10, per=3, closed=True))
+        out.append(tube("Headband", _head_ring(head, 0.07, 0.05), [(0.024, 0.011)] * 32, [hb], ref=(0, 0, 1), M=M,
+                        n=10, per=2, closed=True))
 
-    # --- oculos escuros / de grau
+    # --- oculos escuros / de grau (sempre usados nos olhos)
     for key in ("sunglasses", "glasses"):
         g = acc.get(key)
         if not g:
             continue
-        mount = g.get("mount", "eyes") if key == "sunglasses" else "eyes"
         style = g.get("style", "sport" if key == "sunglasses" else "round")
-        gap = 0.092 * cfg["face"].get("eye_gap", 1.0)
-        z0 = -0.016 + (0.2 if mount == "top" else 0.0)
-        frame_c = "#1a1a24" if key == "sunglasses" else (g.get("color") or "#222")
+        gap = 0.093 * cfg["face"].get("eye_gap", 1.0)
+        z0 = -0.016
         if key == "sunglasses":
             lens = mirror_mat(g.get("color", "mirror") if g.get("color") in ("mirror", "azul", "preta", "verde", "rosa")
                               else "mirror")
+            frame = mat("FrameDark", "#1a1a24", rough=0.35, spec=0.7)
         else:
             lens = mat("GlassLens", "#d6ecff", rough=0.05, spec=1.0, coat=1.0)
-        frame = mat("Frame", frame_c if frame_c.startswith("#") else "#222222", rough=0.35, spec=0.7)
-        rx, rz = {"sport": (0.074, 0.046), "round": (0.056, 0.056), "square": (0.066, 0.05),
-                  "aviator": (0.068, 0.058)}[style]
-        off = 0.034 if mount == "eyes" else 0.045
-        lift = Vector((0, 0, 0))
-        for s in (-1, 1):
-            p, n = head.surf(s * gap, z0, off)
-            if mount == "top":
-                n = (n + Vector((0, 0, 0.35))).normalized()
+            fc = g.get("color") or "#222222"
+            frame = mat("Frame", fc if fc.startswith("#") else "#222222", rough=0.35, spec=0.7)
+        rx, rz = {"sport": (0.074, 0.05), "round": (0.058, 0.058), "square": (0.066, 0.052),
+                  "aviator": (0.07, 0.06)}[style]
+        pw = {"sport": 3.2, "round": 2.0, "square": 4.0, "aviator": 2.4}[style]
+        off = 0.036
+        for s_ in (-1, 1):
+            p, n = head.surf(s_ * gap, z0, off)
             B = basis_from_normal(n)
-            # lente = superelipse achatada
-            pw = {"sport": 3.2, "round": 2.0, "square": 4.0, "aviator": 2.4}[style]
+
             def lensfn(i, j, B=B, p=p, rx=rx, rz=rz, pw=pw):
                 t = 2 * math.pi * i / 36
                 r = j / 5
                 cx, sx = math.cos(t), math.sin(t)
                 x = rx * r * (abs(cx) ** (2 / pw)) * (1 if cx >= 0 else -1)
                 z = rz * r * (abs(sx) ** (2 / pw)) * (1 if sx >= 0 else -1)
-                if style == "aviator":
-                    z -= rz * 0.1 * (1 + cx * 0) * 0
                 return p + B @ Vector((x, 0.004 * (1 - r * r), z))
-            out.append(sheet("Lens", lensfn, 36, 6, [lens], M=M, closed_u=True, solidify=0.006,
-                             solidify_offset=0.0, subsurf=1, merge=False, outline=False, inside=(0, 0.3, 0)))
-            # aro
+            out.append(sheet("Lens", lensfn, 36, 6, [lens], M=M, closed_u=True, solidify=0.006, solidify_offset=0.0,
+                             subsurf=1, merge=False, outline=False, inside=(0, 0.3, 0)))
             ring = []
             for k in range(36):
                 t = 2 * math.pi * k / 36
@@ -960,17 +1036,16 @@ def build_accessories(cfg, head, M, out):
             thick = 0.0075 if key == "sunglasses" else 0.0048
             out.append(tube("Rim", ring, [thick] * 36, [frame], ref=(0, 0, 1), M=M, n=8, per=2, closed=True,
                             outline=False))
-            # haste ate a orelha
-            a = head.surf(s * (gap + rx), z0, off * 0.8)[0]
-            b = head.surf(s * 0.205, z0 + (-0.01 if mount == "eyes" else 0.02), 0.012)[0]
-            c = head.surf(s * 0.238, z0 - 0.0, 0.0)[0] if False else head.point(s * 1.5, math.acos(clamp(-(z0 - 0.0) / head.hz, -1, 1))) + Vector((0, 0.0, 0))
-            out.append(tube("Temple", [a, b, c], [0.0065, 0.0065, 0.006], [frame], ref=(0, 0, 1), M=M, n=8, per=4,
+            # haste: da lente ate a orelha, colada na lateral da cabeca
+            a_ = head.surf(s_ * (gap + rx), z0, off * 0.8)[0]
+            b_ = head.surf(s_ * 0.205, z0 + 0.0, 0.016)[0]
+            c_ = head.point(s_ * 1.46, math.acos(clamp(-z0 / head.hz, -1, 1))) + Vector((0, 0.0, 0))
+            out.append(tube("Temple", [a_, b_, c_], [0.0065, 0.0065, 0.006], [frame], ref=(0, 0, 1), M=M, n=8, per=4,
                             outline=False))
-        # ponte
-        a = head.surf(-gap + rx * 0.95, z0 + rz * 0.25, off)[0]
-        b = head.surf(0, z0 + rz * 0.3, off + 0.004)[0]
-        c = head.surf(gap - rx * 0.95, z0 + rz * 0.25, off)[0]
-        out.append(tube("Bridge", [a, b, c], [0.006, 0.006, 0.006], [frame], ref=(0, 0, 1), M=M, n=8, per=4,
+        a_ = head.surf(-gap + rx * 0.95, z0 + rz * 0.25, off)[0]
+        b_ = head.surf(0, z0 + rz * 0.3, off + 0.004)[0]
+        c_ = head.surf(gap - rx * 0.95, z0 + rz * 0.25, off)[0]
+        out.append(tube("Bridge", [a_, b_, c_], [0.006, 0.006, 0.006], [frame], ref=(0, 0, 1), M=M, n=8, per=4,
                         outline=False))
 
 
@@ -980,16 +1055,16 @@ BODY = {
     "male": dict(
         shoulder_x=0.19, shoulder_z=1.3, elbow=(0.295, 0.0, 1.03), wrist=(0.365, -0.01, 0.83),
         hip_x=0.098, hip_z=0.905, knee=(0.108, -0.004, 0.482), ankle=(0.112, 0.0, 0.085),
-        torso=[(0.935, 0.136, 0.096), (1.05, 0.141, 0.1), (1.17, 0.155, 0.104), (1.27, 0.176, 0.104),
-               (1.34, 0.145, 0.09), (1.4, 0.075, 0.066)],
+        torso=[(0.935, 0.136, 0.096), (1.05, 0.141, 0.1), (1.17, 0.155, 0.104), (1.27, 0.178, 0.104),
+               (1.335, 0.172, 0.098), (1.385, 0.12, 0.08), (1.425, 0.066, 0.062)],
         thigh=0.075, calf=0.055, arm=0.044, forearm=0.039, neck=0.058, head_z=1.645, belly=0.0,
         hips=(0.158, 0.108),
     ),
     "female": dict(
         shoulder_x=0.165, shoulder_z=1.3, elbow=(0.262, 0.0, 1.04), wrist=(0.322, -0.01, 0.85),
         hip_x=0.098, hip_z=0.915, knee=(0.106, -0.004, 0.488), ankle=(0.108, 0.0, 0.085),
-        torso=[(0.945, 0.118, 0.09), (1.04, 0.124, 0.094), (1.17, 0.134, 0.098), (1.265, 0.15, 0.099),
-               (1.335, 0.124, 0.086), (1.39, 0.068, 0.062)],
+        torso=[(0.945, 0.118, 0.09), (1.04, 0.124, 0.094), (1.17, 0.134, 0.098), (1.265, 0.152, 0.099),
+               (1.33, 0.146, 0.093), (1.38, 0.105, 0.076), (1.42, 0.062, 0.058)],
         thigh=0.07, calf=0.05, arm=0.038, forearm=0.034, neck=0.05, head_z=1.64, belly=0.0,
         hips=(0.158, 0.106),
     ),
@@ -1138,11 +1213,11 @@ def build_body(cfg, M, pose_name, out, head_info):
         return v * (sh if which == 1 else 1.0) * (w if which == 1 else (w ** 0.5)) if False else \
             (v * sh * (w ** 0.5) if which == 1 else v * w)
     path, radii = [], []
-    for z in (0.935, 1.0, 1.08, 1.17, 1.26, 1.335, 1.4):
+    for z in (0.935, 1.0, 1.08, 1.17, 1.26, 1.33, 1.385, 1.425):
         path.append(U(Vector((0, 0, z)) + root))
         radii.append((tprof(z, 1), tprof(z, 2)))
     out.append(tube("Torso", path, radii, [sk], ref=ref, M=M, n=24, per=5))
-    neck = Vector((0, 0, 1.38)) + root
+    neck = Vector((0, 0, 1.40)) + root
     out.append(tube("Neck", [U(neck), U(neck + Vector((0, 0, 0.06)))], [B["neck"], B["neck"] * 0.95], [sk],
                     ref=ref, M=M, n=14, per=3, cap0=False, cap1=False))
 
@@ -1169,9 +1244,26 @@ def build_body(cfg, M, pose_name, out, head_info):
         hand = wriU + axis * 0.05
         hand_info[nm] = {"wrist": wriU, "hand": hand, "axis": axis, "elbow": elbU, "shoulder": shoU}
         hs = 0.066 * (w ** 0.4)
-        out.append(ellipsoid("Hand" + nm, hand, (hs, hs * 0.92, hs * 0.95), [sk], M=M, nu=22, nv=14))
-        out.append(ellipsoid("Thumb" + nm, hand + Vector((0.0, -0.05, 0.012)), (0.02, 0.026, 0.02), [sk], M=M,
-                             nu=12, nv=8))
+        out.append(ellipsoid("Hand" + nm, hand, (hs, hs, hs), [sk], M=M, nu=22, nv=14))
+        top_cfg = cfg["outfit"]["top"]
+        if top_cfg.get("style", "tank") == "tee":
+            lo_z = (M @ Vector((0, 0, 0.93))).z
+            hi_z = (M @ Vector((0, 0, 1.42))).z
+            sl_m = shirt_material(top_cfg, lo_z, hi_z, decal=False)
+            e_ = shoU.lerp(elbU, 0.5)
+            sd = (e_ - shoU).normalized()
+            out.append(tube("Sleeve" + nm, [shoU - sd * 0.03, shoU.lerp(e_, 0.5), e_],
+                            [arm_r * 1.12 + 0.017, arm_r * 1.1 + 0.017, arm_r * 1.02 + 0.021], [sl_m], ref=(0, 1, 0),
+                            M=M, n=18, per=5, cap0=True, cap1=False))
+            ua = sd.cross(Vector((0, 1, 0)))
+            if ua.length < 1e-3:
+                ua = sd.cross(Vector((1, 0, 0)))
+            ua.normalize()
+            va = sd.cross(ua).normalized()
+            rr = arm_r * 1.02 + 0.023
+            ring = [e_ + (ua * math.cos(t) + va * math.sin(t)) * rr for t in [2 * math.pi * kq / 20 for kq in range(20)]]
+            out.append(tube("SleeveHem" + nm, ring, [(0.009, 0.007)] * 20, [cloth_mat("Trim", top_cfg.get("trim", "#ffffff"))],
+                            ref=tuple(sd), M=M, n=8, per=2, closed=True, outline=False))
 
     # ---------- roupa
     build_outfit(cfg, M, Mu, U, root, out, ref, tor, w, sh, B,
@@ -1267,26 +1359,37 @@ def make_decal(top):
     return path
 
 
-def shirt_material(top):
-    key = ("Shirt", top["color_a"], top["color_b"], top.get("number"), top.get("emblem"))
+def shirt_material(top, z_lo=None, z_hi=None, decal=True):
+    """Camisa com degrade vertical em coordenadas de mundo (continua entre corpo e mangas)."""
+    key = ("Shirt", top["color_a"], top["color_b"], top.get("number"), top.get("emblem"), round(z_lo or 0, 3),
+           round(z_hi or 0, 3), decal)
     if key in _MAT_CACHE:
         return _MAT_CACHE[key]
-    path = make_decal(top)
     m = bpy.data.materials.new("Shirt")
     b = _bsdf(m)
     nt = m.node_tree
     _set(b, "Roughness", 0.7)
     _set(b, "Sheen Weight", 0.35)
     coord = nt.nodes.new("ShaderNodeTexCoord")
+    sepo = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(coord.outputs["Object"], sepo.inputs[0])
+    mp = nt.nodes.new("ShaderNodeMapRange")
+    mp.inputs["From Min"].default_value = z_lo if z_lo is not None else 0.93
+    mp.inputs["From Max"].default_value = z_hi if z_hi is not None else 1.42
+    nt.links.new(sepo.outputs["Z"], mp.inputs["Value"])
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].position = 0.12
+    ramp.color_ramp.elements[0].color = (*srgb(top["color_b"]), 1)
+    ramp.color_ramp.elements[1].position = 0.82
+    ramp.color_ramp.elements[1].color = (*srgb(top["color_a"]), 1)
+    nt.links.new(mp.outputs[0], ramp.inputs[0])
+    if not decal:
+        nt.links.new(ramp.outputs[0], b.inputs["Base Color"])
+        _MAT_CACHE[key] = m
+        return m
+    path = make_decal(top)
     sep = nt.nodes.new("ShaderNodeSeparateXYZ")
     nt.links.new(coord.outputs["Generated"], sep.inputs[0])
-    # gradiente vertical azul (cima) -> laranja (baixo)
-    ramp = nt.nodes.new("ShaderNodeValToRGB")
-    ramp.color_ramp.elements[0].position = 0.18
-    ramp.color_ramp.elements[0].color = (*srgb(top["color_b"]), 1)
-    ramp.color_ramp.elements[1].position = 0.78
-    ramp.color_ramp.elements[1].color = (*srgb(top["color_a"]), 1)
-    nt.links.new(sep.outputs["Z"], ramp.inputs[0])
     img = nt.nodes.new("ShaderNodeTexImage")
     img.image = bpy.data.images.load(path)
     img.image.colorspace_settings.name = "sRGB"
@@ -1295,7 +1398,6 @@ def shirt_material(top):
     nt.links.new(sep.outputs["X"], comb.inputs["X"])
     nt.links.new(sep.outputs["Z"], comb.inputs["Y"])
     nt.links.new(comb.outputs[0], img.inputs["Vector"])
-    # so na frente (Generated.y pequeno = -Y)
     front = nt.nodes.new("ShaderNodeMath")
     front.operation = "LESS_THAN"
     front.inputs[1].default_value = 0.5
@@ -1319,20 +1421,25 @@ def build_outfit(cfg, M, Mu, U, root, out, ref, tor, w, sh, B, legs, pose):
     bot = cfg["outfit"]["bottom"]
     female = cfg["gender"] == "female"
     trim = cloth_mat("Trim", top.get("trim", "#ffffff"))
-    sm = shirt_material(top)
+    sm = shirt_material(top, (M @ Vector((0, 0, 0.93))).z, (M @ Vector((0, 0, 1.42))).z)
     off = 0.011
 
     # ---- camiseta regata (grade phi x altura com decote e cavas)
     z_bot = 0.925 if not female else 0.945
+    tee = top.get("style", "tank") == "tee"
     def top_z(phi):
         a = abs(math.sin(phi))               # 0 centro, 1 lado
         fb = math.cos(phi)                   # +1 frente, -1 costas
-        strap = 1.385
-        armhole = 1.165 if not female else 1.175
-        neck_f = lerp(1.275 if not female else 1.262, strap, smooth((a - 0.15) / 0.34))
-        neck_b = lerp(1.345, strap, smooth((a - 0.1) / 0.3))
-        neck = lerp(neck_b, neck_f, (fb + 1) / 2) if abs(fb) < 0.0001 else (neck_f if fb > 0 else neck_b)
-        ah = lerp(strap, armhole, smooth((a - 0.64) / 0.34))
+        strap = 1.405
+        if tee:    # gola careca, sem cava: a manga cobre o ombro
+            neck_f = lerp(1.352, strap, smooth((a - 0.12) / 0.2))
+            neck_b = lerp(1.392, strap, smooth((a - 0.1) / 0.2))
+            return neck_f if fb > 0 else neck_b
+        armhole = 1.18 if not female else 1.19
+        neck_f = lerp(1.305 if not female else 1.295, strap, smooth((a - 0.2) / 0.3))
+        neck_b = lerp(1.365, strap, smooth((a - 0.12) / 0.26))
+        neck = neck_f if fb > 0 else neck_b
+        ah = lerp(strap, armhole, smooth((a - 0.8) / 0.19))     # alca larga: cobre o ombro
         return min(neck, ah)
     nu, nv = 64, 12
     def shirt(i, j):
@@ -1395,47 +1502,48 @@ def build_outfit(cfg, M, Mu, U, root, out, ref, tor, w, sh, B, legs, pose):
             path_o = [top_o, mid_o, p0 + Vector((s_ * (rs[0] + 0.004), 0, 0.0)),
                       p1 + Vector((s_ * (rs[1] + 0.004), 0, 0)), p2 + Vector((s_ * (rs[2] + 0.004), 0, 0.015))]
             for tag, dy, mt in (("StripeW", -0.011, stripe_a), ("StripeO", 0.011, stripe_b)):
-                out.append(tube(tag, [p + Vector((0, dy, 0)) for p in path_o], [(0.0045, 0.0102)] * 5, [mt],
+                out.append(tube(tag, [p + Vector((0, dy, 0)) for p in path_o], [(0.006, 0.0105)] * 5, [mt],
                                 ref=(1, 0, 0), M=M, n=8, per=6, outline=False))
     else:   # saia de tenis plissada
         zh = 0.66 if cfg["gender"] == "female" else 0.62
         nv3 = 8
         hipR_, kneeR_, hipL_, kneeL_ = legs
 
-        def leg_need(z):
-            """Raio minimo (x, y) para a saia cobrir as duas coxas na altura z."""
-            nx, ny = 0.0, 0.0
+        def leg_extent(z, v, d):
+            """Raio minimo da saia na direcao horizontal d para cobrir as duas coxas na altura z."""
+            mg = 0.014 + 0.04 * smooth(v / 0.5)
+            need = 0.0
             for hp, kn in ((hipR_, kneeR_), (hipL_, kneeL_)):
                 t = clamp((hp.z - z) / max(hp.z - kn.z, 1e-3), 0.0, 1.0)
                 c = hp.lerp(kn, t)
                 r = thr_s * lerp(0.95, 0.78, t)
-                nx = max(nx, abs(c.x) + r * 1.1 + 0.05)
-                ny = max(ny, abs(c.y) + r * 1.1 + 0.04)
-            return nx, ny
+                need = max(need, c.x * d.x + c.y * d.y + r * 1.05 + mg)
+            return need
         thr_s = B["thigh"] * w
+
+        def skirt_r(phi, v, z, flare):
+            rx0 = (pelvis_r(zw - 0.002)[0] + 0.012) * 1.14 * flare
+            ry0 = (pelvis_r(zw - 0.002)[1] + 0.012) * 1.14 * flare
+            d = Vector((math.sin(phi), -math.cos(phi), 0))
+            base = (rx0 * ry0) / math.sqrt((ry0 * d.x) ** 2 + (rx0 * d.y) ** 2)
+            return d, max(base, leg_extent(z + root.z, v, d))
 
         def skirt(i, j):
             phi = 2 * math.pi * i / 72
             v = j / (nv3 - 1)
             z = lerp(zw, zh, v)
-            rx0, ry0 = (pelvis_r(zw - 0.002)[0] + 0.012) * 1.14, (pelvis_r(zw - 0.002)[1] + 0.012) * 1.14
             flare = 1 + 0.62 * smooth(v) ** 1.0
-            nx, ny = leg_need(z + root.z)
-            rx = max(rx0 * flare, nx)
-            ry = max(ry0 * flare, ny)
+            d, r = skirt_r(phi, v, z, flare)
             pleat = 1 + 0.03 * math.sin(phi * 18) * v
-            return Vector((rx * pleat * math.sin(phi), -ry * pleat * math.cos(phi), z)) + root
+            return Vector((d.x * r * pleat, d.y * r * pleat, z)) + root
         out.append(sheet("Skirt", skirt, 72, nv3, [pc], M=M, closed_u=True, solidify=0.008,
                          solidify_offset=-1.0, subsurf=1, merge=False))
         # barra listrada
         ring = []
         for k in range(48):
             phi = 2 * math.pi * k / 48
-            rx0, ry0 = (pelvis_r(zw - 0.002)[0] + 0.012) * 1.14, (pelvis_r(zw - 0.002)[1] + 0.012) * 1.14
-            nx, ny = leg_need(zh + root.z)
-            rx = max(rx0 * 1.62, nx)
-            ry = max(ry0 * 1.62, ny)
-            ring.append(Vector((rx * math.sin(phi), -ry * math.cos(phi), zh)) + root)
+            d, r = skirt_r(phi, 1.0, zh, 1.62)
+            ring.append(Vector((d.x * r, d.y * r, zh)) + root)
         out.append(tube("SkirtHem", ring, [(0.011, 0.006)] * 48, [stripe_b], ref=(0, 0, 1), M=M, n=8, per=2,
                         closed=True, outline=False))
         # shorts por baixo (shortinho tenis)
@@ -1609,7 +1717,7 @@ def build_character(cfg, pose="stand", origin=(0, 0, 0), yaw=0.0, with_racket=Fa
     if head_only:
         Mh_head = Matrix.Translation(Vector(origin)) @ yaw_t @ Matrix.Scale(sc, 4)
     build_head_skin(cfg, head, Mh_head, out)
-    build_face(cfg, head, Mh_head, out)
+    build_face(cfg, head, Mh_head, out, expression)
     build_hair(cfg, head, Mh_head, out)
     build_accessories(cfg, head, Mh_head, out)
     if with_racket and hinfo:

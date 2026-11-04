@@ -72,18 +72,18 @@ MALE_VARIANTS = [
                                      "bottom": {"color": "#22325a"}}}),
     ("dourada + spiky ruivo", {"skin": "dourada", "hair": {"style": "spiky", "color": "ruivo"},
                                "face": {"eyes": "wide", "mouth": "grin", "brows": "thick"},
-                               "accessories": {"visor": "#ffd23f", "sunglasses": {"mount": "eyes", "style": "sport", "color": "mirror"}},
-                               "outfit": {"top": {"color_a": "#2ec4b6", "color_b": "#ff9f1c", "number": "8", "emblem": "ball"},
+                               "accessories": {"visor": "#ffd23f", "sunglasses": {"style": "sport", "color": "mirror"}},
+                               "outfit": {"top": {"style": "tee", "color_a": "#2ec4b6", "color_b": "#ff9f1c", "number": "8", "emblem": "ball"},
                                           "bottom": {"color": "#243b53"}}}),
     ("morena + afro", {"skin": "morena", "hair": {"style": "afro", "color": "preto"}, "weight": 1.12,
                        "face": {"eyes": "dot", "nose": "long", "mouth": "smirk"},
                        "accessories": {"visor": None, "headband": "#f25c54", "glasses": {"style": "round", "color": "#1d3557"}, "sunglasses": None},
                        "outfit": {"top": {"color_a": "#845ef7", "color_b": "#f783ac", "number": "21", "emblem": "star"},
                                   "bottom": {"color": "#343a40"}}}),
-    ("escura + mohawk azul", {"skin": "escura", "hair": {"style": "mohawk", "color": "azul"}, "height": 1.05,
+    ("escura + mohawk azul", {"skin": "escura", "hair": {"style": "spiky", "color": "azul"}, "height": 1.05,
                               "face": {"eyes": "round", "eye_color": "verde", "mouth": "determined", "freckles": False},
-                              "accessories": {"visor": None, "sunglasses": {"mount": "eyes", "style": "square", "color": "azul"}},
-                              "outfit": {"top": {"color_a": "#fcc419", "color_b": "#ff6b6b", "number": "99", "emblem": "wave"},
+                              "accessories": {"visor": None, "sunglasses": {"style": "square", "color": "azul"}},
+                              "outfit": {"top": {"style": "tee", "color_a": "#fcc419", "color_b": "#ff6b6b", "number": "99", "emblem": "wave"},
                                          "bottom": {"color": "#101828"}}}),
     ("ebano + curto grisalho", {"skin": "ebano", "hair": {"style": "short", "color": "grisalho"}, "weight": 0.92,
                                 "face": {"shape": "square", "eyes": "sleepy", "brows": "thick", "mouth": "smile"},
@@ -104,8 +104,8 @@ FEMALE_VARIANTS = [
                                               "bottom": {"style": "shorts", "color": "#364fc7"}}}),
     ("morena + bob", {"skin": "morena", "hair": {"style": "bob", "color": "roxo"},
                       "face": {"eyes": "wide", "eye_color": "verde", "mouth": "smirk"},
-                      "accessories": {"visor": None, "sunglasses": {"mount": "eyes", "style": "round", "color": "rosa"}},
-                      "outfit": {"top": {"color_a": "#38d9a9", "color_b": "#ffe066", "number": "11", "emblem": "ball"},
+                      "accessories": {"visor": None, "sunglasses": {"style": "round", "color": "rosa"}},
+                      "outfit": {"top": {"style": "tee", "color_a": "#38d9a9", "color_b": "#ffe066", "number": "11", "emblem": "ball"},
                                  "bottom": {"style": "skirt", "color": "#087f5b"}}}),
     ("marrom + cabelao", {"skin": "marrom", "hair": {"style": "long", "color": "preto"},
                           "face": {"shape": "round", "eye_color": "castanho", "mouth": "smile", "brows": "soft"},
@@ -115,7 +115,7 @@ FEMALE_VARIANTS = [
     ("escura + afro", {"skin": "escura", "hair": {"style": "afro", "color": "castanho"}, "weight": 1.1,
                        "face": {"eyes": "dot", "mouth": "grin", "nose": "button"},
                        "accessories": {"visor": None, "headband": "#fab005", "glasses": {"style": "round", "color": "#c2255c"}, "sunglasses": None},
-                       "outfit": {"top": {"color_a": "#ffa8a8", "color_b": "#ffe8cc", "number": "1", "emblem": "star"},
+                       "outfit": {"top": {"style": "tee", "color_a": "#ffa8a8", "color_b": "#ffe8cc", "number": "1", "emblem": "star"},
                                   "bottom": {"style": "skirt", "color": "#5f3dc4"}}}),
 ]
 
@@ -160,10 +160,19 @@ def faces(gender, out, q):
            light_center=(0, 0, 0.0), light_scale=1.2, px=3.4 * Q[q] + 0.6, out=out)
 
 
+def sprites(gender, out, q):
+    """Grava os sprites de expressao (PNG com transparencia) do rosto, em <out>/ (pasta)."""
+    S.reset()
+    cfg = base(gender)
+    for p in MII.export_face_sprites(cfg, out):
+        print("sprite", p)
+
+
 if __name__ == "__main__":
     kind, out = sys.argv[1], sys.argv[2]
     gender = sys.argv[3] if len(sys.argv) > 3 else "male"
     q = sys.argv[4] if len(sys.argv) > 4 else "draft"
-    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
-    {"sheet": sheet, "custom": custom, "hero": hero, "faces": faces}[kind](gender, out, q)
+    if kind != "sprites":
+        os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
+    {"sheet": sheet, "custom": custom, "hero": hero, "faces": faces, "sprites": sprites}[kind](gender, out, q)
     print("OK", out)
