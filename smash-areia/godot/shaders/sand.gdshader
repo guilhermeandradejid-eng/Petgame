@@ -1,12 +1,12 @@
-// Areia de gibi: quadra rastelada e lisa, ondulações de vento com crista clara
+// Areia clara de aventura (creme quente, manchas macias pintadas): quadra rastelada e lisa, ondulações de vento com crista clara
 // e sombra em retícula fora dela, conchinhas, brilho de grãos e beira molhada.
 shader_type spatial;
 render_mode unshaded;
 #include "res://shaders/lighting.gdshaderinc"
 
-uniform vec4 sand : source_color = vec4(0.95, 0.8, 0.56, 1.0);
-uniform vec4 sand_dark : source_color = vec4(0.86, 0.66, 0.43, 1.0);
-uniform vec4 sand_light : source_color = vec4(0.97, 0.88, 0.68, 1.0);
+uniform vec4 sand : source_color = vec4(0.98, 0.84, 0.6, 1.0);
+uniform vec4 sand_dark : source_color = vec4(0.92, 0.72, 0.5, 1.0);
+uniform vec4 sand_light : source_color = vec4(1.0, 0.95, 0.8, 1.0);
 uniform vec4 wet : source_color = vec4(0.82, 0.66, 0.45, 1.0);
 uniform float shore_z = -24.0;
 
@@ -66,6 +66,6 @@ void fragment() {
 	float foam_line = smoothstep(0.0, 0.25, 1.0 - abs(wpos.z - (shore_z + 6.3 + sin(p.x * 0.3) * 0.6)) * 2.0);
 	col = mix(col, sand_light.rgb, foam_line * 0.35);
 	col *= vec3(1.02, 0.99, 0.95);
-	col = mix(col, vec3(1.0, 0.84, 0.72), smoothstep(45.0, 300.0, dist) * 0.7);
+	col = mix(col, vec3(0.98, 0.93, 0.86), smoothstep(45.0, 300.0, dist) * 0.6);
 	ALBEDO = night_grade(col, (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz);
 }

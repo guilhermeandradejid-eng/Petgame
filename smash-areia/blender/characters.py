@@ -43,10 +43,11 @@ PLAYER_J = sym({
 })
 
 PLAYER_R = sym({
-    "pelvis": (0.172, 0.13), "spine": (0.152, 0.115), "chest": (0.19, 0.132), "neck": (0.062, 0.062),
-    # membros um pouco mais cheinhos (boneco de jogo de esporte arcade, lê melhor de longe)
-    "shoulder.R": (0.076, 0.076), "elbow.R": (0.061, 0.061), "wrist.R": (0.05, 0.05), "hand.R": (0.042, 0.038),
-    "hip.R": (0.092, 0.092), "knee.R": (0.074, 0.074), "ankle.R": (0.052, 0.052), "toe.R": (0.04, 0.034),
+    # estilo "cavaleirinho" de aventura fofa: tronco de feijão (barriguinha cheia),
+    # membros roliços que afinam pouco, como um bonequinho de vinil
+    "pelvis": (0.19, 0.15), "spine": (0.175, 0.135), "chest": (0.198, 0.142), "neck": (0.07, 0.07),
+    "shoulder.R": (0.086, 0.086), "elbow.R": (0.071, 0.071), "wrist.R": (0.06, 0.06), "hand.R": (0.05, 0.046),
+    "hip.R": (0.102, 0.102), "knee.R": (0.083, 0.083), "ankle.R": (0.064, 0.064), "toe.R": (0.046, 0.04),
 })
 
 PLAYER_EDGES = [("pelvis", "spine"), ("spine", "chest"), ("chest", "neck")]
@@ -382,8 +383,8 @@ def player_clothes(M, body_me, body_w):
 # ampliada em volta do pescoço (HEAD_XF): proporção de desenho, ~2,7 cabeças de
 # altura, sem precisar redesenhar cada detalhe do rosto e do cabelo.
 HEAD_C = Vector((0, 0, 1.76))
-HEAD_K = 1.18
-HEAD_XF = Matrix.Translation(Vector((0, 0, 1.80))) @ Matrix.Diagonal((HEAD_K, HEAD_K, HEAD_K, 1.0)) \
+HEAD_K = 1.42     # cabeção chibi (~2,2 cabeças de altura)
+HEAD_XF = Matrix.Translation(Vector((0, 0, 1.885))) @ Matrix.Diagonal((HEAD_K, HEAD_K, HEAD_K, 1.0)) \
     @ Matrix.Translation(-HEAD_C)
 
 
@@ -415,47 +416,51 @@ def player_head(M):
             r.z *= 0.97
         v.co = HEAD_C + r
     for sd in (-1, 1):
-        # bochechas rosadas e orelhas
-        b.sphere((0.178 * sd, -0.232, 1.69), 1.0, M["cheek"], scale=(0.052, 0.02, 0.03), seg=14, rings=6,
-                 rot=face_rot(0.178 * sd, 1.69))
-        b.sphere((0.302 * sd, 0.0, 1.745), 1.0, M["skin"], scale=(0.045, 0.06, 0.075), seg=14, rings=8)
-    # nariz de botão
-    b.sphere((0, -0.288, 1.73), 1.0, M["skin"], scale=(0.036, 0.03, 0.03), seg=14, rings=8)
-    # sorriso em "D" com língua
-    b.sphere((0, -0.27, 1.668), 1.0, M["mouth"], scale=(0.08, 0.03, 0.05), seg=20, rings=12, cut_above=1.668)
-    b.sphere((0, -0.279, 1.636), 1.0, M["tongue"], scale=(0.042, 0.02, 0.018), seg=14, rings=6)
+        # bochechas rosadas bem redondas (logo abaixo e por fora dos olhos) e orelhinhas
+        b.sphere((0.17 * sd, -0.238, 1.682), 1.0, M["cheek"], scale=(0.05, 0.02, 0.032), seg=16, rings=8,
+                 rot=face_rot(0.17 * sd, 1.682))
+        b.sphere((0.3 * sd, 0.01, 1.74), 1.0, M["skin"], scale=(0.04, 0.055, 0.065), seg=14, rings=8)
+    # narizinho quase imperceptível (só um volume)
+    b.sphere((0, -0.292, 1.716), 1.0, M["skin"], scale=(0.022, 0.016, 0.016), seg=12, rings=6)
+    # boquinha pequena e sorridente (meia-lua) com a língua aparecendo
+    b.sphere((0, -0.279, 1.668), 1.0, M["mouth"], scale=(0.046, 0.02, 0.034), seg=18, rings=10, cut_above=1.668)
+    b.sphere((0, -0.287, 1.648), 1.0, M["tongue"], scale=(0.024, 0.012, 0.011), seg=12, rings=6)
     return head_fit(b.build())
 
 
 def _brow(b, M, s, z):
-    """Sobrancelha de desenho: traço grosso deitado sobre a testa."""
-    x = 0.112 * s
-    b.sphere((x, -0.272, z), 1.0, M["brow"], scale=(0.058, 0.016, 0.018), seg=16, rings=8,
-             rot=face_rot(x, z, 0.2 * s))
+    """Sobrancelha curtinha e arredondada (traço de feijão)."""
+    x = 0.104 * s
+    b.sphere((x, -0.268, z), 1.0, M["brow"], scale=(0.036, 0.014, 0.013), seg=14, rings=8,
+             rot=face_rot(x, z, 0.12 * s))
 
 
 def eye_variants(M):
     """Olhos de desenho (ovais altos, branco, pupila grande e dois brilhos)."""
     out = []
+    # olhos de "feijão": ovais pretos brilhantes, bem separados e na metade de baixo
+    # do rosto (fofura de jogo de aventura chibi), com um brilho grande e um pequeno
     b = B.Builder("Eyes_Round")
     for s in (-1, 1):
-        x = 0.108 * s
-        rot = face_rot(x, 1.79)
-        b.sphere((x, -0.252, 1.79), 1.0, M["eyewhite"], scale=(0.068, 0.028, 0.094), seg=22, rings=14, rot=rot)
-        b.sphere((x + 0.006 * s, -0.266, 1.782), 1.0, M["pupil"], scale=(0.048, 0.026, 0.07), seg=20, rings=12, rot=rot)
-        b.sphere((x - 0.012 * s, -0.292, 1.812), 0.019, M["shine"], seg=10, rings=6)
-        b.sphere((x + 0.022 * s, -0.29, 1.758), 0.009, M["shine"], seg=8, rings=4)
-        _brow(b, M, s, 1.905)
+        x, z = 0.112 * s, 1.752
+        rot = face_rot(x, z)
+        b.sphere((x, -0.262, z), 1.0, M["pupil"], scale=(0.042, 0.03, 0.066), seg=22, rings=14, rot=rot)
+        b.sphere((x - 0.012 * s, -0.29, z + 0.026), 1.0, M["shine"], scale=(0.016, 0.01, 0.02), seg=10, rings=6,
+                 rot=rot)
+        b.sphere((x + 0.014 * s, -0.291, z - 0.028), 0.008, M["shine"], seg=8, rings=4)
+        _brow(b, M, s, 1.85)
     out.append(head_fit(b.build()))
-    # amendoados (Nath): mais largos que altos, canto de fora levemente para cima
+    # amendoados (Nath): feijão deitado com o canto de fora puxado para cima e um cílio
     b = B.Builder("Eyes_Almond")
     for s in (-1, 1):
-        x = 0.11 * s
-        rot = face_rot(x, 1.795, -0.2 * s)
-        b.sphere((x, -0.254, 1.795), 1.0, M["eyewhite"], scale=(0.08, 0.028, 0.054), seg=20, rings=10, rot=rot)
-        b.sphere((x + 0.006 * s, -0.268, 1.792), 1.0, M["pupil"], scale=(0.05, 0.026, 0.044), seg=18, rings=10, rot=rot)
-        b.sphere((x - 0.012 * s, -0.292, 1.806), 0.013, M["shine"], seg=8, rings=6)
-        _brow(b, M, s, 1.87)
+        x, z = 0.114 * s, 1.758
+        rot = face_rot(x, z, -0.25 * s)
+        b.sphere((x, -0.262, z), 1.0, M["pupil"], scale=(0.052, 0.03, 0.044), seg=20, rings=12, rot=rot)
+        b.sphere((x + 0.05 * s, -0.255, z + 0.026), 1.0, M["pupil"], scale=(0.022, 0.016, 0.008), seg=10, rings=6,
+                 rot=face_rot(x + 0.05 * s, z + 0.026, -0.6 * s))
+        b.sphere((x - 0.014 * s, -0.29, z + 0.014), 1.0, M["shine"], scale=(0.014, 0.01, 0.014), seg=10, rings=6,
+                 rot=rot)
+        _brow(b, M, s, 1.845)
     out.append(head_fit(b.build()))
     return out
 
@@ -490,7 +495,7 @@ def hair_variants(M):
     for d in [(0, -0.25, 1), (-0.55, 0.05, 0.85), (0.55, 0.05, 0.85), (-0.35, 0.6, 0.72), (0.35, 0.6, 0.72),
               (0, 0.85, 0.5), (-0.2, 0.25, 1), (0.2, 0.25, 1)]:
         dn = Vector(d).normalized()
-        _lock(b, M, Vector((0, 0.05, 1.86)) + dn * 0.2, dn, 0.21, 0.1, 0.012)
+        _lock(b, M, Vector((0, 0.05, 1.86)) + dn * 0.2, dn, 0.17, 0.1, 0.03)
     out.append(head_fit(b.build()))
     # BIA: franja de lado + rabo de cavalo com xuxinha
     b = B.Builder("Hair_Pony")
@@ -568,8 +573,9 @@ def mittens(M):
     for sd, side in ((-1, ".R"), (1, ".L")):
         b = B.Builder("Hand" + side + "Mesh")
         hx, hy, hz = PLAYER_J["hand" + side]
-        b.sphere((hx, hy - 0.005, hz - 0.02), 1.0, M["skin"], scale=(0.048, 0.064, 0.078), seg=18, rings=12)
-        b.sphere((hx - 0.012 * sd, hy - 0.058, hz + 0.004), 1.0, M["skin"], scale=(0.026, 0.03, 0.038), seg=12, rings=8,
+        # mãozinha de bonequinho: bolinha cheia + polegar rechonchudo
+        b.sphere((hx, hy - 0.005, hz - 0.022), 1.0, M["skin"], scale=(0.058, 0.07, 0.078), seg=18, rings=12)
+        b.sphere((hx - 0.014 * sd, hy - 0.062, hz + 0.006), 1.0, M["skin"], scale=(0.03, 0.032, 0.04), seg=12, rings=8,
                  rot=Matrix.Rotation(0.5, 4, "X"))
         ob = b.build()
         ob.name = "Mitten" + side
@@ -577,20 +583,33 @@ def mittens(M):
     return out
 
 
-def sneakers(M):
-    """Tênis de desenho: solado colorido, cabedal branco, biqueira e faixa lateral."""
+def bare_feet(M):
+    """Pés descalços (na areia ninguém joga de tênis): sola de feijão, calcanhar
+    redondo, cinco dedinhos e uma tornozeleira de miçangas na cor do personagem."""
     out = []
     for sd, side in ((-1, ".R"), (1, ".L")):
-        b = B.Builder("Shoe" + side + "Mesh")
+        b = B.Builder("Foot" + side + "Mesh")
         ax, ay, az = PLAYER_J["ankle" + side]
         x = ax
-        b.sphere((x, -0.05, 0.026), 1.0, M["band"], scale=(0.078, 0.158, 0.03), seg=20, rings=10)
-        b.sphere((x, -0.045, 0.07), 1.0, M["shoe"], scale=(0.07, 0.13, 0.066), seg=20, rings=12, cut_below=0.03)
-        b.sphere((x, -0.145, 0.055), 1.0, M["shoe"], scale=(0.062, 0.058, 0.045), seg=16, rings=10, cut_below=0.03)
-        b.sphere((x, 0.02, 0.1), 1.0, M["shoe"], scale=(0.062, 0.06, 0.062), seg=16, rings=10)
-        b.sphere((x + 0.066 * sd, -0.05, 0.075), 1.0, M["band"], scale=(0.012, 0.075, 0.022), seg=12, rings=6)
+        inner = -sd    # o dedão fica do lado de dentro
+        # peito do pé e sola (achatados embaixo, apoiados no chão)
+        b.sphere((x, -0.06, 0.042), 1.0, M["skin"], scale=(0.07, 0.128, 0.046), seg=22, rings=12, cut_below=0.0)
+        b.sphere((x, -0.058, 0.004), 1.0, M["skin"], scale=(0.068, 0.124, 0.008), seg=22, rings=6)
+        # calcanhar e tornozelo
+        b.sphere((x, 0.018, 0.06), 1.0, M["skin"], scale=(0.06, 0.058, 0.062), seg=16, rings=10, cut_below=0.0)
+        b.sphere((x, 0.0, 0.1), 0.064, M["skin"], seg=16, rings=10)
+        # dedinhos em arco (dedão maior, do lado de dentro)
+        toes = [(0.042, -0.176, 0.025, 0.024), (0.012, -0.186, 0.02, 0.018), (-0.014, -0.181, 0.018, 0.016),
+                (-0.036, -0.17, 0.016, 0.014), (-0.054, -0.152, 0.014, 0.012)]
+        for ox, oy, oz, r in toes:
+            b.sphere((x + ox * inner, oy, oz), 1.0, M["skin"], scale=(r, r * 1.15, r * 0.9), seg=10, rings=6)
+        # tornozeleira de miçangas
+        for i in range(14):
+            a = i / 14.0 * math.tau
+            b.sphere((x + math.cos(a) * 0.068, math.sin(a) * 0.068, 0.142 + 0.008 * math.sin(a * 2.0)), 0.014,
+                     M["band"] if i % 2 == 0 else M["trim"], seg=8, rings=5)
         ob = b.build()
-        ob.name = "Sneaker" + side
+        ob.name = "BareFoot" + side
         out.append((ob, "Foot" + side))
     return out
 
@@ -609,7 +628,7 @@ def build_player():
         bind(e, arm, rigid_weights(e.data, "Head"))
     for h in hair_variants(M):
         bind(h, arm, rigid_weights(h.data, "Head"))
-    for ob, bone in mittens(M) + sneakers(M):
+    for ob, bone in mittens(M) + bare_feet(M):
         bind(ob, arm, rigid_weights(ob.data, bone))
     B.export("player")
 
@@ -696,8 +715,8 @@ def fan_pose(variant):
     j = dict(FAN_J)
     if variant in ("up", "sign"):
         for s, sx in ((".R", -1), (".L", 1)):
-            j["elbow" + s] = (0.24 * sx, -0.02, 1.48)
-            j["hand" + s] = (0.2 * sx if variant == "up" else 0.15 * sx, -0.04, 1.72 if variant == "up" else 1.7)
+            j["elbow" + s] = (0.24 * sx, -0.02, 1.48 if variant == "up" else 1.55)
+            j["hand" + s] = (0.2 * sx if variant == "up" else 0.15 * sx, -0.04, 1.72 if variant == "up" else 1.86)
     elif variant == "finger":
         j["elbow.R"] = (-0.24, -0.04, 1.47)
         j["hand.R"] = (-0.22, -0.08, 1.7)
@@ -734,7 +753,8 @@ def build_fan(variant):
             reg = "Skin"
         f.material_index = b._mi(mats[reg])
         f.smooth = True
-    # cabeça e cabelo/chapéu
+    # cabeça e cabelo/chapéu (ampliados depois: torcida chibi, cabeção)
+    n_before = len(b.bm.verts)
     b.sphere((0, 0, 1.47), 0.19, mats["Skin"], seg=14, rings=10)
     hat = {"up": 0, "sign": 1, "finger": 2, "clap": 3}[variant]
     if hat == 0:
@@ -747,9 +767,13 @@ def build_fan(variant):
         b.sphere((0, 0, 1.58), 1.0, mats["Hair"], scale=(0.16, 0.16, 0.1), seg=12, rings=6, cut_below=1.56)
     else:
         b.sphere((0, 0.04, 1.54), 0.2, mats["Hair"], seg=12, rings=8, cut_below=1.46)
+    b.bm.verts.ensure_lookup_table()
+    piv = Vector((0, 0, 1.3))
+    for v in b.bm.verts[n_before:]:
+        v.co = piv + (v.co - piv) * 1.38
     # adereços
     if variant == "sign":
-        b.box((0, -0.06, 1.86), (0.62, 0.03, 0.34), mats["Prop"], smooth=False)
+        b.box((0, -0.06, 2.02), (0.62, 0.03, 0.34), mats["Prop"], smooth=False)
     elif variant == "finger":
         b.sphere((-0.22, -0.1, 1.8), 1.0, mats["Prop"], scale=(0.08, 0.05, 0.13), seg=10, rings=8)
         b.sphere((-0.22, -0.11, 1.95), 1.0, mats["Prop"], scale=(0.03, 0.03, 0.08), seg=8, rings=6)

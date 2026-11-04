@@ -18,6 +18,39 @@ desconhecidos" e abra. O jogo roda deitado (paisagem).
 |---|---|---|---|
 | ![personagens](docs/personagens.jpg) | ![vestiario](docs/vestiario.jpg) | ![smash](docs/smash.jpg) | ![comemoracao](docs/comemoracao.jpg) |
 
+## Novo estilo de arte: aventura fofa chibi (rodada 0.5)
+
+Referência: o visual "cutesy" de RPG de aventura online em cel-shading macio (bonequinhos chibi de
+cabeção, cores vivas de dia claro). Os personagens, o esqueleto e **todas as animações continuam os
+mesmos**; mudou o desenho de tudo.
+
+- **Personagens remodelados no Blender** (`blender/characters.py`), mesmo esqueleto e mesmos ossos:
+  cabeção chibi (~2,2 cabeças de altura), **olhos de feijão** pretos e brilhantes (Nath com o
+  feijão deitado e cílio), boquinha pequena, bochechas redondas, narizinho quase invisível, corpo
+  de feijão com membros roliços e mãozinhas de bonequinho. Cabelo espetado do Tuca com pontas
+  arredondadas.
+- **Descalços na areia**: saíram os tênis. Pés modelados com sola de feijão, calcanhar e cinco
+  dedinhos (dedão do lado de dentro), mais uma **tornozeleira de miçangas** na cor do personagem.
+  As **pegadas** na areia agora são de pé descalço (calcanhar, planta e dedinhos); mergulho e
+  carrinho continuam deixando a marca oval.
+- **Sombreado novo** (`shaders/toon.gdshader`): no lugar do gibi (faixa dura, retícula e traço preto
+  grosso), luz e sombra com transição macia, sombra quente e colorida, luz azul do céu por cima,
+  rebote quente da areia por baixo e contorno de luz claro. O **contorno ficou fino e na cor da
+  própria peça** (tom escurecido, puxado para ameixa), não mais preto chapado. Cabelo e olhos com
+  brilho pintado.
+- **Cenário de dia claro**: céu azul limpo com horizonte quase branco, sol pequeno sem traço de
+  gibi, nuvens de algodão com sombra azulada, mar mais vivo, areia creme, névoa de distância
+  azul-céu, sombras de nuvem e "hora dourada" mais discretas, cores do pós-processamento mais vivas
+  e vinheta mais leve.
+- **Plateia chibi** (cabeças 38% maiores; as placas sobem junto com as mãos).
+- **Princípios de animação da Disney** aplicados por cima das animações que já existiam:
+  *ação sobreposta / continuidade* (o cabeção atrasa e balança como mola quando o corpo arranca,
+  freia ou bate na bola) e *estica e achata* no pulo (o corpo estica na subida e encolhe na descida,
+  somado ao achatamento de batida e de aterrissagem que já havia). Antecipação (preparação do golpe),
+  arcos e tempo dos golpes ficaram como estavam.
+- Marcador do jogador, balão e etiqueta J1/J2 sobem para não encostar no cabeção; cards dos
+  personagens e executável do Windows regenerados.
+
 ## Polimento visual e de jogo (rodada 0.4)
 
 Referência: jogos de esporte arcade em cartoon (visual simples, limpo e com bonecos de brinquedo).

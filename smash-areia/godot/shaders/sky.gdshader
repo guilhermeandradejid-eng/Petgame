@@ -1,13 +1,14 @@
-// Céu de fim de tarde em estilo gibi: degradê em faixas suaves, sol com contorno
+// Céu de dia claro de aventura (azul limpo, horizonte quase branco);
+// antes: céu de fim de tarde em estilo gibi: degradê em faixas suaves, sol com contorno
 // e halos em anéis, raios girando devagar e fiapos de nuvem altos (cirros).
 shader_type sky;
 render_mode use_debanding;
 
-uniform vec4 top : source_color = vec4(0.2, 0.42, 0.9, 1.0);
-uniform vec4 mid : source_color = vec4(0.52, 0.72, 1.0, 1.0);
-uniform vec4 horizon : source_color = vec4(1.0, 0.78, 0.62, 1.0);
-uniform vec4 blush : source_color = vec4(1.0, 0.66, 0.7, 1.0);
-uniform vec4 bottom : source_color = vec4(1.0, 0.86, 0.72, 1.0);
+uniform vec4 top : source_color = vec4(0.16, 0.45, 0.96, 1.0);
+uniform vec4 mid : source_color = vec4(0.42, 0.74, 1.0, 1.0);
+uniform vec4 horizon : source_color = vec4(0.8, 0.94, 1.0, 1.0);
+uniform vec4 blush : source_color = vec4(0.96, 0.98, 0.9, 1.0);
+uniform vec4 bottom : source_color = vec4(0.86, 0.95, 1.0, 1.0);
 uniform vec3 sun_dir = vec3(-0.55, 0.11, -0.83);
 uniform float night = 0.0;                         // arena NOITE: luar, estrelas e lua
 uniform vec3 moon_dir = vec3(0.42, 0.32, -0.85);
@@ -33,10 +34,10 @@ void sky() {
 	vec3 s = normalize(sun_dir);
 	float d = dot(EYEDIR, s);
 	// brilho quente em volta do sol + halos em anel
-	col = mix(col, vec3(1.0, 0.75, 0.45), smoothstep(0.7, 1.0, d) * 0.5 * smoothstep(-0.1, 0.3, y + 0.2));
+	col = mix(col, vec3(1.0, 0.95, 0.78), smoothstep(0.7, 1.0, d) * 0.35 * smoothstep(-0.1, 0.3, y + 0.2));
 	float halo1 = smoothstep(0.975, 0.977, d) * (1.0 - smoothstep(0.979, 0.981, d));
 	float halo2 = smoothstep(0.955, 0.957, d) * (1.0 - smoothstep(0.9585, 0.9605, d));
-	col = mix(col, vec3(1.0, 0.93, 0.72), halo1 * 0.16 + halo2 * 0.08);
+	col = mix(col, vec3(1.0, 0.98, 0.9), halo1 * 0.05 + halo2 * 0.03);
 	// raios de gibi girando
 	vec3 side = normalize(cross(s, vec3(0.0, 1.0, 0.0)));
 	vec3 upv = cross(side, s);
@@ -53,9 +54,10 @@ void sky() {
 		col = mix(col, wc, wisp * 0.5);
 	}
 	// sol: contorno laranja escuro, disco e miolo claro
-	col = mix(col, vec3(0.93, 0.45, 0.2), smoothstep(0.9905, 0.9915, d));
-	col = mix(col, vec3(1.0, 0.84, 0.42), smoothstep(0.9925, 0.9932, d));
-	col = mix(col, vec3(1.0, 0.98, 0.86), smoothstep(0.9968, 0.9976, d));
+	// sol de dia: disco branco-amarelado pequeno com brilho macio (sem traço de gibi)
+	col = mix(col, vec3(1.0, 0.97, 0.84), smoothstep(0.985, 0.999, d) * 0.6);
+	col = mix(col, vec3(1.0, 0.95, 0.7), smoothstep(0.9965, 0.9972, d));
+	col = mix(col, vec3(1.0, 1.0, 0.94), smoothstep(0.9982, 0.9988, d));
 	if (night > 0.5) {
 		// céu noturno de gibi: faixas de azul-marinho, brilho no horizonte da cidade,
 		// estrelas piscando e lua cheia com halo

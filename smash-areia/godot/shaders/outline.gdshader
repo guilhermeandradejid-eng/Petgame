@@ -1,4 +1,4 @@
-// Contorno preto "inverted hull": a malha é inflada e desenhada de costas.
+// Contorno "inverted hull" colorido (tom escuro da própria cor, não preto chapado).
 shader_type spatial;
 render_mode unshaded, cull_front, depth_draw_opaque;
 

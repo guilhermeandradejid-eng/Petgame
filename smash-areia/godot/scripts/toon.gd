@@ -1,5 +1,6 @@
 class_name Toon
-## Fábrica de materiais "gibi": cel-shading + contorno preto.
+## Fábrica de materiais toon (estilo aventura fofa): luz macia + contorno fino
+## no tom escuro da própria cor.
 
 const TOON_SHADER := preload("res://shaders/toon.gdshader")
 const OUTLINE_SHADER := preload("res://shaders/outline.gdshader")
@@ -9,13 +10,14 @@ static var _outline_cache := {}
 static var _cache := {}
 
 
-static func outline(width: float) -> ShaderMaterial:
-	var key := snappedf(width, 0.001)
+static func outline(width: float, tint := Color(0.07, 0.04, 0.12)) -> ShaderMaterial:
+	var key := "%s|%s" % [snappedf(width, 0.001), tint.to_html(false)]
 	if _outline_cache.has(key):
 		return _outline_cache[key]
 	var m := ShaderMaterial.new()
 	m.shader = OUTLINE_SHADER
 	m.set_shader_parameter("width", width)
+	m.set_shader_parameter("color", tint)
 	# traços finos (jogadores, bola, raquete) mantêm a espessura de longe;
 	# os grossos do cenário não crescem, para o fundo não ficar pesado
 	m.set_shader_parameter("max_scale", 2.6 if width <= 0.025 else 1.0)
@@ -42,9 +44,10 @@ static func make(color: Color, opts: Dictionary = {}) -> ShaderMaterial:
 		m.set_shader_parameter("wind", opts["wind"])
 	if opts.has("bg"):
 		m.set_shader_parameter("bg", opts["bg"])
-	var w: float = opts.get("outline", 0.025)
+	# traço mais fino que o antigo (de gibi) e na cor da peça, bem escurecida
+	var w: float = opts.get("outline", 0.025) * 0.72
 	if w > 0.0:
-		m.next_pass = outline(w)
+		m.next_pass = outline(w, line_tint(color))
 	if not unique:
 		_cache[key] = m
 	return m
@@ -53,6 +56,12 @@ static func make(color: Color, opts: Dictionary = {}) -> ShaderMaterial:
 ## Troca os materiais importados do .glb pelos materiais toon.
 ## palette: nome do material do Blender -> Color. Materiais fora da paleta usam
 ## a cor original do Blender.
+## Tom do contorno: a cor da peça escurecida e puxada para um roxo-ameixa.
+static func line_tint(c: Color) -> Color:
+	var d := Color(c.r * 0.3, c.g * 0.24, c.b * 0.3).lerp(Color(0.16, 0.08, 0.16), 0.45)
+	return Color(snappedf(d.r, 0.02), snappedf(d.g, 0.02), snappedf(d.b, 0.02))
+
+
 static func apply(root: Node, palette: Dictionary = {}, opts: Dictionary = {}, double_sided: Array = [],
 		per_mat: Dictionary = {}) -> void:
 	for mi in _meshes(root):

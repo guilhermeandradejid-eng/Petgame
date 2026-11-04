@@ -158,7 +158,8 @@ func footprint(pos: Vector3, yaw: float, size := 1.0) -> void:
 	prints_age[i] = 0.0
 	var b := Basis(Vector3.UP, yaw).scaled(Vector3(size, 1.0, size))
 	prints_mm.set_instance_transform(i, Transform3D(b, Vector3(pos.x, 0.008, pos.z)))
-	prints_mm.set_instance_color(i, Color(1, 1, 1, 1))
+	# pegada de pé descalço só nos passos; mergulho/carrinho deixa a marca oval
+	prints_mm.set_instance_color(i, Color(1.0 if size < 2.0 else 0.0, 1, 1, 1))
 
 
 ## Onda de areia quando a bola cai ou alguém mergulha
@@ -208,7 +209,7 @@ func _update_marks(dt: float) -> void:
 	for i in PRINTS:
 		if prints_age[i] < 8.0:
 			prints_age[i] += dt
-			prints_mm.set_instance_color(i, Color(1, 1, 1, clampf(1.0 - prints_age[i] / 8.0, 0.0, 1.0)))
+			prints_mm.set_instance_color(i, Color(prints_mm.get_instance_color(i).r, 1, 1, clampf(1.0 - prints_age[i] / 8.0, 0.0, 1.0)))
 	for d in rings:
 		if float(d["t"]) < 1.0:
 			d["t"] = minf(float(d["t"]) + dt / 0.45, 1.0)

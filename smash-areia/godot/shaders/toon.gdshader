@@ -1,5 +1,6 @@
-// Cel-shading de gibi: faixas de luz, sombra com retícula (halftone), contorno
-// de luz dourada do sol de fim de tarde, vento opcional e névoa de distância.
+// Toon pintado no estilo de aventura fofa (chibi): luz e sombra com transição
+// macia, sombra colorida, luz de céu e rebote da areia, contorno de luz claro,
+// vento opcional e névoa azul de distância.
 // Unshaded: fica igual em qualquer celular e custa pouco.
 shader_type spatial;
 render_mode unshaded, cull_back, depth_draw_opaque;
@@ -32,37 +33,36 @@ void vertex() {
 void fragment() {
 	vec3 base = albedo.rgb * COLOR.rgb;
 	vec3 L = normalize((VIEW_MATRIX * vec4(normalize(KEY), 0.0)).xyz);
+	vec3 UPV = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
 	float ndl = dot(NORMAL, L);
-	// cel-shading de desenho animado: faixas chapadas com borda nítida (antisserrilhada),
-	// sem degradê "de plástico". Sombra colorida + faixa de luz um pouco mais clara.
+	// estilo "aventura fofa" (toon pintado): duas faixas com transição macia,
+	// sombra colorida e quente, luz do céu por cima e rebote da areia por baixo.
+	// Nada de retícula nem de brilho de plástico.
 	float aa = max(fwidth(ndl), 0.002);
-	float lit = smoothstep(-aa, aa, ndl - 0.02);
-	float hi = smoothstep(-aa, aa, ndl - 0.62);
-	vec3 shadow_col = base * shadow_tint.rgb;
-	vec3 col = mix(shadow_col, mix(base, base * 1.07 + vec3(0.015), hi) * vec3(1.02, 1.0, 0.97), lit);
+	float lit = smoothstep(-0.07 - aa, 0.07 + aa, ndl - 0.0);
+	float hi = smoothstep(0.5, 0.78, ndl);
+	vec3 shadow_col = base * mix(shadow_tint.rgb, vec3(0.78, 0.66, 0.86), 0.35);
+	vec3 col = mix(shadow_col, base * (1.0 + 0.06 * hi), lit);
+	// céu (azul claro) nas faces de cima e rebote quente da areia nas de baixo
+	float up = dot(NORMAL, UPV);
+	col += base * vec3(0.05, 0.08, 0.14) * clamp(up, 0.0, 1.0) * (1.0 - bg * 0.5);
+	col += base * vec3(0.16, 0.1, 0.03) * clamp(-up, 0.0, 1.0) * (1.0 - lit * 0.6) * (1.0 - bg);
+	// "halftone" agora vira só uma sombra de oclusão macia (sem pontinhos)
+	col *= 1.0 - clamp(-ndl - 0.35, 0.0, 1.0) * 0.18 * halftone;
 
-	float px = max(VIEWPORT_SIZE.y / 720.0, 1.0) * 5.0;
-	vec2 g = FRAGCOORD.xy / px;
-	g = mat2(vec2(0.7071, -0.7071), vec2(0.7071, 0.7071)) * g;
-	float d = length(fract(g) - 0.5);
-	float amount = clamp((-0.04 - ndl) * 1.5, 0.0, 1.0) * halftone * (1.0 - bg);
-	float r = 0.48 * sqrt(amount);
-	float dots = 1.0 - smoothstep(r - 0.08, r, d);
-	col = mix(col, col * 0.74, dots * step(0.001, amount));
-
-	// contorno de luz dourada (contraluz do sol baixo)
+	// contorno de luz (rim) macio e claro: destaca a silhueta sem traço preto
 	vec3 S = normalize((VIEW_MATRIX * vec4(normalize(SUN_BACK), 0.0)).xyz);
 	float fres = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
-	float rim = step(0.55, fres) * smoothstep(-0.1, 0.4, dot(NORMAL, S));
-	col = mix(col, col * 0.6 + vec3(1.0, 0.82, 0.5) * 0.55, rim * rim_amount);
+	float rim = smoothstep(0.5, 0.82, fres) * (0.45 + 0.55 * smoothstep(-0.3, 0.5, dot(NORMAL, S)));
+	col = mix(col, col * 0.55 + vec3(1.0, 0.93, 0.78) * 0.5, rim * rim_amount);
 
 	vec3 H = normalize(L + VIEW);
-	// brilho chapado de desenho (só onde for pedido, ex.: cabelo), recortado e não degradê
+	// brilho pintado (cabelo, olhos): mancha recortada, só onde for pedido
 	float sh = dot(NORMAL, H);
-	col = mix(col, col + vec3(0.55), smoothstep(0.972 - aa * 4.0, 0.972 + aa * 4.0, sh) * spec_amount * lit);
+	col = mix(col, col + vec3(0.4), smoothstep(0.978 - aa * 4.0, 0.978 + aa * 4.0, sh) * spec_amount * lit * 0.8);
 
 	col = mix(col, flash_color.rgb, flash);
-	col = mix(col, vec3(0.88, 0.84, 0.9) * (0.75 + 0.25 * lit), bg * 0.14);   // véu leve: fundo limpo e vivo
+	col = mix(col, vec3(0.84, 0.92, 1.0) * (0.8 + 0.2 * lit), bg * 0.12);   // véu azul leve: profundidade de ar
 	float dist = length(VERTEX);
 	col = mix(col, night_haze(HAZE), smoothstep(45.0, 380.0, dist) * 0.85 * fog);
 	ALBEDO = night_grade(col, (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz);

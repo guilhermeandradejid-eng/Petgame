@@ -24,9 +24,9 @@ vec3 scene_light(vec3 col, vec3 wp) {
 		vec2 q = wp.xz * 0.022 + vec2(TIME * 0.012, TIME * 0.005);
 		float n = sl_noise(q) * 0.7 + sl_noise(q * 2.3 + 5.0) * 0.3;
 		float cs = smoothstep(0.5, 0.78, n) * day * (1.0 - smoothstep(8.0, 30.0, wp.y));
-		col *= mix(vec3(1.0), vec3(0.8, 0.8, 0.92), cs * 0.75);
+		col *= mix(vec3(1.0), vec3(0.82, 0.86, 0.98), cs * 0.6);
 		// hora dourada: luz mais quente e um pouco mais baixa
-		col *= mix(vec3(1.0), vec3(1.05, 0.95, 0.84), sun_warmth * 0.55 * day);
+		col *= mix(vec3(1.0), vec3(1.04, 0.98, 0.9), sun_warmth * 0.3 * day);
 	}
 	// noite: refletores e luar
 	if (arena_night > 0.001) {

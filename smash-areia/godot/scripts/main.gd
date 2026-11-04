@@ -384,7 +384,7 @@ func _portrait(path: String) -> void:
 	elif card:
 		# retrato do card: 3/4 para mostrar o cabelo de cada personagem
 		cam.fov = 30
-		cam.look_at_from_position(Vector3(-1.9, 1.5, 3.0), Vector3(0.0, 1.12, 0.0))
+		cam.look_at_from_position(Vector3(-2.45, 1.7, 3.85), Vector3(0.0, 1.2, 0.0))   # cabeção chibi: mais aberto
 	else:
 		cam.fov = 30
 		cam.look_at_from_position(Vector3(0.75, 1.62, 3.1), Vector3(0.02, 1.32, 0.0))

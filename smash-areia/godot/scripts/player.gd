@@ -79,6 +79,10 @@ var squash := 1.0
 var squash_v := 0.0
 var anim_time := 0.0
 var lean := Vector2.ZERO
+# ação sobreposta (Disney): o cabeção chibi atrasa e balança como uma mola
+# quando o corpo arranca, freia ou bate; cada eixo tem posição e velocidade
+var head_lag := Vector2.ZERO
+var head_lag_v := Vector2.ZERO
 var prev_lv := Vector3.ZERO
 var bubble: Label3D
 var bubble_t := 0.0
@@ -156,14 +160,15 @@ static func make_model(char_data: Dictionary, team_data: Dictionary, lk: Diction
 		"Skin": char_data["skin"], "Hair": char_data["hair_color"], "Brow": char_data["hair_color"], "Band": char_data["accent"],
 		"Shirt": pal["shirt"], "ShirtTrim": pal["trim"], "Shorts": pal["shorts"],
 	}
-	# visual de desenho animado: cel-shading chapado, sombras coloridas, contorno
-	# grosso e brilho recortado só no cabelo (nada de brilho de plástico)
-	var soft := {"halftone": 0.0, "shadow": Color(0.92, 0.66, 0.68), "rim": 0.35}
+	# estilo aventura fofa (chibi): luz macia, sombra quente e colorida, contorno
+	# fino no tom da peça, cabelo com brilho pintado e olhinhos de feijão brilhantes
+	var soft := {"halftone": 0.6, "shadow": Color(0.96, 0.7, 0.68), "rim": 0.45}
 	var flat := {"halftone": 0.0, "outline": 0.0, "rim": 0.0, "shadow": Color.WHITE}   # rosto em cor chapada
-	Toon.apply(m, palette, {"outline": 0.024, "rim": 0.3, "halftone": 0.0, "shadow": Color(0.62, 0.56, 0.86)}, [],
-			{"Skin": soft, "Cheek": flat, "Mouth": flat, "Pupil": flat, "EyeShine": flat, "EyeWhite": flat,
-			"Brow": flat, "Tongue": flat, "Hair": {"halftone": 0.0, "rim": 0.35, "spec": 0.0, "shadow": Color(0.58, 0.52, 0.78)},
-			"Band": {"halftone": 0.0}, "Shoe": {"shadow": Color(0.7, 0.72, 0.92)}})
+	Toon.apply(m, palette, {"outline": 0.022, "rim": 0.4, "halftone": 0.6, "shadow": Color(0.7, 0.62, 0.9)}, [],
+			{"Skin": soft, "Cheek": flat, "Mouth": flat, "EyeShine": flat, "EyeWhite": flat, "Tongue": flat,
+			"Pupil": {"halftone": 0.0, "outline": 0.0, "rim": 0.0, "spec": 1.0, "shadow": Color(0.8, 0.8, 0.9)},
+			"Brow": flat, "Hair": {"halftone": 0.5, "rim": 0.5, "spec": 0.55, "shadow": Color(0.62, 0.55, 0.82)},
+			"Band": {"halftone": 0.0}})
 	var r := Rig.new(sk)
 	# a raquete é orientada por código a cada frame (cabeça para cima na espera,
 	# face virada para onde o golpe vai), sem depender da torção dos ossos
@@ -228,7 +233,7 @@ func _build_model() -> void:
 	bubble.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	bubble.no_depth_test = true
 	bubble.outline_modulate = Color(0.08, 0.04, 0.12)
-	bubble.position = Vector3(0, 2.4, 0)
+	bubble.position = Vector3(0, 2.75, 0)
 	bubble.visible = false
 	add_child(bubble)
 
@@ -247,7 +252,7 @@ func show_tag(on: bool) -> void:
 			cm.height = 0.22
 			cm.radial_segments = 3
 			arrow.mesh = cm
-			arrow.position = Vector3(0, 2.3, 0)
+			arrow.position = Vector3(0, 2.62, 0)
 			arrow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			add_child(arrow)
 		arrow.material_override = Toon.make(pc, {"outline": 0.016, "halftone": 0.0, "rim": 0.0})
@@ -266,7 +271,7 @@ func show_tag(on: bool) -> void:
 		tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 		tag.no_depth_test = true
 		tag.outline_modulate = Color(0.07, 0.04, 0.12)
-		tag.position = Vector3(0, 2.62, 0)
+		tag.position = Vector3(0, 2.95, 0)
 		add_child(tag)
 	tag.text = "J%d" % pid if net_name == "" else net_name
 	tag.modulate = pc if net_name == "" or pid > 0 else (Color("ffffff") if team == 0 else Color("ffb3ae"))
@@ -878,6 +883,16 @@ func _animate(dt: float) -> void:
 	var sp: Vector3 = p["Spine"]
 	sp.z += float(L["tilt"])
 	p["Spine"] = sp
+	# continuidade e ação sobreposta: a aceleração empurra a mola da cabeça para
+	# trás (arrancada) ou para a frente (freada); o impacto da batida também.
+	head_lag_v += (Vector2(-la.y, la.x) * 1.6 - head_lag) * 120.0 * dt
+	head_lag_v *= exp(-9.0 * dt)
+	if swing_t < 0.12 and swing_type >= 0:
+		head_lag_v.x += 14.0 * dt
+	head_lag += head_lag_v * dt
+	head_lag = head_lag.clamp(Vector2(-0.35, -0.3), Vector2(0.35, 0.3))
+	var hd: Vector3 = p.get("Head", Vector3.ZERO)
+	p["Head"] = hd + Vector3(head_lag.x * 0.5, 0.0, head_lag.y * 0.45)
 	var drop := minf(_leg_drop(tr, kr, zr), _leg_drop(tl, kl, zl))
 	if not on_ground() or state == State.DIVE:
 		drop = 0.0
@@ -890,7 +905,11 @@ func _animate(dt: float) -> void:
 		body.rotation.y = 0.0
 	body.rotation.x = lerp_angle(body.rotation.x, body_rot.x, 1.0 - exp(-16.0 * dt))
 	body.rotation.z = lerp_angle(body.rotation.z, body_rot.z, 1.0 - exp(-16.0 * dt))
-	squash_v += (1.0 - squash) * 180.0 * dt
+	# estica e achata: no ar o corpo estica na subida e encolhe um pouco na descida
+	var sq_rest := 1.0
+	if not on_ground() and state != State.DIVE:
+		sq_rest += clampf(vy / JUMP_V, -1.0, 1.0) * 0.07
+	squash_v += (sq_rest - squash) * 180.0 * dt
 	squash_v *= exp(-11.0 * dt)
 	squash += squash_v * dt
 	var sq := clampf(squash, 0.78, 1.25)
@@ -1082,7 +1101,7 @@ func _update_shield(dt: float) -> void:
 func _update_decals(dt: float) -> void:
 	_update_shield(dt)
 	if arrow:
-		arrow.position.y = 2.32 + absf(sin(anim_time * 4.0)) * 0.07
+		arrow.position.y = 2.62 + absf(sin(anim_time * 4.0)) * 0.07
 		arrow.rotation.y += dt * 2.0
 	shadow.global_position = Vector3(global_position.x + 0.12, 0.015, global_position.z + 0.08)
 	shadow.scale = Vector3.ONE * lerpf(1.0, 0.6, clampf(y / 1.2, 0.0, 1.0))
@@ -1112,7 +1131,7 @@ func _update_decals(dt: float) -> void:
 	if bubble_t > 0.0:
 		bubble_t -= dt
 		bubble.scale = Vector3.ONE * minf(1.0, bubble.scale.x + dt * 8.0)
-		bubble.position.y = 2.85 + (0.8 - bubble_t) * 0.2
+		bubble.position.y = 3.0 + (0.8 - bubble_t) * 0.2
 		if bubble_t <= 0.0:
 			bubble.visible = false
 
