@@ -18,6 +18,39 @@ desconhecidos" e abra. O jogo roda deitado (paisagem).
 |---|---|---|---|
 | ![personagens](docs/personagens.jpg) | ![vestiario](docs/vestiario.jpg) | ![smash](docs/smash.jpg) | ![comemoracao](docs/comemoracao.jpg) |
 
+## Cenário com direção de arte (rodada 0.6)
+
+O cenário foi revisado por um agente de direção de arte e game design, em duas passadas sobre os
+prints do jogo. As regras que ficaram:
+
+- **Paleta fechada:** areia #F6DDA4, mar #5FE0D2 / #22B8D8 / #1E73C8, céu #3A8DF0 / #D2EEFF e
+  acentos só azul, vermelho, amarelo, coral, menta e off-white.
+- **Valores:** a quadra é clara; o meio (palmeiras, arquibancadas, quiosque) é médio e saturado; o
+  fundo é claro e azulado.
+- **Formas:** gordinhas, sem nada mais fino que 10 cm perto da câmera, com bisel nas caixas.
+- **Contorno:** fino e na cor de cada peça; o fundo distante fica sem contorno.
+
+O que mudou:
+
+- **Modelos novos** (`blender/scenery.py`): palmeiras com tronco em "S" e folhas serrilhadas, em
+  duas alturas, com arbusto na base; guarda-sóis de 8 gomos com toalha; caixa térmica; cadeira de
+  lona; poste da rede gordinho; placas com bisel; cadeira do juiz em "A"; quiosque de palha; torre
+  do salva-vidas; arquibancada com laterais, encosto e toldo listrado na cor do time; morro, ilhota
+  e nuvens de base reta.
+- **Torcida chibi:** 6 tipos (sentados, em pé, com placa e criança), 6 cabelos, olhinhos e lugares
+  vazios em grupos. As camisas misturam a cor do time, branco e cores "civis". Cada torcedor tem um
+  jeito de torcer (balança, bate palma, pula ou acena). Também há contorno, faixa da torcida e
+  flâmulas.
+- **Composição:** palmeiras inclinadas emoldurando a quadra, quiosque à esquerda, salva-vidas com
+  pranchas à direita e 4 placas coloridas. O céu por onde a bola passa fica livre.
+- **Mar e areia:** linha da praia curva, mar em três tons com risquinhos de onda e espuma em festão,
+  areia limpa com a quadra rastelada e faixa molhada.
+- **Areia que esverdeava:** era o "tone map" do pós-processamento, que comprimia cada canal de cor
+  separado. Agora ele usa a luminância e mantém o tom.
+- **Noite:** refletores fora do quadro, varal de lâmpadas entre as palmeiras, tochas tiki e círculo
+  de luz nítido na quadra.
+- **Lado da terra:** prédios com janelas, topo e recuo.
+
 ## Novo estilo de arte: aventura fofa chibi (rodada 0.5)
 
 Referência: o visual "cutesy" de RPG de aventura online em cel-shading macio (bonequinhos chibi de
