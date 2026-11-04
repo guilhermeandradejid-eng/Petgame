@@ -1145,7 +1145,7 @@ def build_body(cfg, M, pose_name, out, head_info):
     """Corpo, roupa e acessorios de mao. Devolve dados de posicao da mao para a raquete."""
     g = cfg["gender"]
     B = BODY[g]
-    pose = POSES.get(pose_name, {})
+    pose = pose_name if isinstance(pose_name, dict) else POSES.get(pose_name, {})
     sk = skin_mat(col(cfg["skin"], SKIN_TONES))
     w = cfg.get("weight", 1.0)
     sh = cfg.get("shoulders", 1.0)
@@ -1226,8 +1226,11 @@ def build_body(cfg, M, pose_name, out, head_info):
     hand_info = {}
     for s, nm, key in ((-1, "R", "arm_r"), (1, "L", "arm_l")):
         sho = Vector((s * B["shoulder_x"] * sh, 0.0, B["shoulder_z"])) + root
-        if key in pose and pose[key] in ARM_POSES:
-            de, dw = ARM_POSES[pose[key]]
+        spec = pose.get(key)
+        if isinstance(spec, str):
+            spec = ARM_POSES.get(spec)
+        if spec:
+            de, dw = spec     # (cotovelo, pulso) relativos ao ombro: (fora, frente(-y), altura)
             elbow = sho + Vector((s * de[0], de[1], de[2]))
             wrist = sho + Vector((s * dw[0], dw[1], dw[2]))
         else:
@@ -1686,7 +1689,7 @@ def build_character(cfg, pose="stand", origin=(0, 0, 0), yaw=0.0, with_racket=Fa
     cfg = copy.deepcopy(cfg)
     if expression:
         cfg["face"]["mouth"] = expression
-    pose_d = POSES.get(pose, {})
+    pose_d = pose if isinstance(pose, dict) else POSES.get(pose, {})
     sc = cfg.get("height", 1.0)
     yaw_t = Matrix.Rotation(math.radians(yaw + pose_d.get("yaw", 0.0)), 4, "Z")
     M = Matrix.Translation(Vector(origin)) @ yaw_t @ Matrix.Scale(sc, 4)
@@ -1722,6 +1725,6 @@ def build_character(cfg, pose="stand", origin=(0, 0, 0), yaw=0.0, with_racket=Fa
     build_accessories(cfg, head, Mh_head, out)
     if with_racket and hinfo:
         hi = hinfo["R"]
-        ax, fd = RACKET.get(pose, RACKET["stand"])
+        ax, fd = pose_d.get("racket") or RACKET.get(pose, RACKET["stand"])
         build_racket(M, hi["hand"], ax, fd, out, colors=racket_colors, ball=ball, ball_pos=ball_pos)
     return out
