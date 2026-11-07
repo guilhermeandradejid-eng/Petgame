@@ -9,6 +9,11 @@ signal landed(car: Car, air_time: float, impact: float)
 signal died(car: Car, killer: Car)
 
 const SUSP := 0.38
+# mola mais longa que o curso: em repouso o carro fica na altura do modelo (roda dentro da caixa de roda,
+# sem a carroceria "sentar" em cima do pneu); o batente segura as compressões fortes
+const PRELOAD := 0.11
+const BUMP := 0.12
+const WHEEL_UP := 0.09   # quanto a roda pode subir visualmente antes de encostar no para-lama
 const GRAV := 9.8 * 2.2
 
 const SPECS := {
@@ -92,6 +97,7 @@ var road_half := 9.0
 var track_ref: Track = null
 var guided_spd := 0.0
 var _susp_forces := true
+var jump_cd := 0.0
 var ghost_t := 0.0   # nos trechos guiados os carros se atravessam (sem engavetar nem "estourar" na saída)
 
 # IA / pista
@@ -323,6 +329,9 @@ func _physics_process(dt: float) -> void:
 	_susp_forces = true
 	var was_ground := on_ground
 	on_ground = grounded >= 2
+	jump_cd = maxf(0.0, jump_cd - dt)
+	if was_ground and not on_ground and feat_type == "jump" and track_ref != null and jump_cd <= 0.0:
+		_jump_assist()
 	# "ímã" de pista nos loopings, espirais e saca-rolhas (arcade, estilo pista de brinquedo)
 	var magnet := on_feature and h_surf < 2.6 and h_surf > -1.2 and linear_velocity.length() > 6.0
 	if magnet and h_surf < 1.5:
@@ -361,7 +370,7 @@ func _physics_process(dt: float) -> void:
 		# segue a pista exatamente: mira o ponto onde o carro deve estar no próximo quadro
 		# (s + v·dt, faixa e altura suavizadas), então não sobra erro para acumular entre quadros
 		var lat_next := clampf(lat + clampf(lat_target, -8.0, 8.0) * dt, -road_half + 1.2, road_half - 1.2)
-		var h_next := lerpf(h_surf, 0.12, 0.3)
+		var h_next := lerpf(h_surf, 0.0, 0.3)
 		var nx := track_ref.at(s_track + spd * dt, lat_next)
 		var target: Vector3 = nx.pos + (nx.up as Vector3) * h_next
 		var lv := (target - global_position) / dt
@@ -552,7 +561,7 @@ func _suspension(wreck_mode: bool) -> int:
 			var dist: float = mount.distance_to(res.position)
 			var comp: float = SUSP + w.r - dist
 			w.dist = dist
-			if comp > -0.03:
+			if comp > -0.03 - PRELOAD:
 				w.contact = true
 				grounded += 1
 				nsum += res.normal
@@ -562,8 +571,10 @@ func _suspension(wreck_mode: bool) -> int:
 				if (not wreck_mode or up.y > 0.5) and _susp_forces:
 					var rel: Vector3 = mount - global_position
 					var pv := linear_velocity + angular_velocity.cross(rel)
-					var f := maxf(0.0, _k * maxf(comp, 0.0) - _c * pv.dot(up))
-					f = minf(f, mass * 80.0)
+					var f := maxf(0.0, _k * maxf(comp + PRELOAD, 0.0) - _c * pv.dot(up))
+					if comp > BUMP:
+						f += _k * 6.0 * (comp - BUMP) - _c * 1.5 * minf(0.0, pv.dot(up))
+					f = minf(f, mass * 130.0)
 					apply_force(up * f, rel)
 					_applied += up * f
 	if grounded > 0:
@@ -811,6 +822,41 @@ func place(xform: Transform3D, speed: float) -> void:
 	v_f = speed
 
 
+## salto assistido (arcade): na decolagem o carro sai alinhado com a pista e com a rapidez mínima
+## para cair na rampa de pouso (sem pousar torto na mureta nem cair no vão por falta de embalo)
+func _jump_assist() -> void:
+	var tr := track_ref
+	var j := ti
+	var k := 0
+	# só na ponta da rampa (o vão começa logo à frente): um pulinho no começo da rampa não conta
+	while k < 4 and tr.gap[tr.idx(j)] == 0:
+		j += 1
+		k += 1
+	if tr.gap[tr.idx(j)] == 0 or linear_velocity.y < 0.5:
+		return
+	while k < 60 and tr.gap[tr.idx(j)] == 1:
+		j += 1
+		k += 1
+	jump_cd = 1.2
+	var li := tr.idx(j + 3)
+	var land: Vector3 = tr.P[li] + tr.L[li] * clampf(lat, -road_half * 0.4, road_half * 0.4)
+	var to := land - global_position
+	var D := Vector2(to.x, to.z).length()
+	var G := GRAV * grav_factor
+	var v := linear_velocity
+	var vy := maxf(v.y, 0.0)
+	# tempo de voo até a altura do pouso: vy·t − ½·G·t² = Δy (se o pouso estiver acima do ápice, usa o ápice)
+	var disc := vy * vy - 2.0 * G * to.y
+	var tf := (vy + sqrt(maxf(disc, 0.0))) / G
+	var need := D / maxf(tf, 0.2)
+	var vh := Vector2(v.x, v.z).length()
+	var hd := Vector3(to.x, 0, to.z).normalized()
+	var newh := clampf(maxf(vh, need), 0.0, maxf(vh, 8.0) * 1.35 + 5.0)
+	if OS.get_cmdline_user_args().has("--debugjump"):
+		print("JUMP %s s=%d k=%d D=%.1f dy=%.1f vy=%.1f tf=%.2f vh=%.1f need=%.1f new=%.1f ang=%.0f" % [display_name, int(s_track), k, D, to.y, v.y, tf, vh, need, newh, rad_to_deg(Vector2(v.x, v.z).angle_to(Vector2(to.x, to.z)))])
+	linear_velocity = hd * newh + Vector3.UP * v.y
+
+
 # ------------------------------------------------------------------ IA
 func ai(track: Track, game: Node, dt: float) -> void:
 	var pr := track.project(global_position, ti)
@@ -822,6 +868,8 @@ func ai(track: Track, game: Node, dt: float) -> void:
 	var ahead := track.idx(pr.i + int(look / track.ds))
 	if track.ftype[ahead] == "cork" or track.ftype[pr.i] == "cork" or track.ftype[ahead] == "loop":
 		lt = clampf(lane_t, -3.5, 3.5)   # nos loopings e torções cada um mantém sua faixa (sem engavetar no meio)
+	elif track.ftype[ahead] == "jump" or track.ftype[pr.i] == "jump":
+		lt = clampf(lane_t, -2.5, 2.5)   # salto pelo meio da rampa
 	lane_cur += clampf(lt - lane_cur, -dt * 6.0, dt * 6.0)
 	var tp := track.at(pr.s + look * dir, lane_cur)
 	var to: Vector3 = tp.pos - global_position
@@ -884,7 +932,7 @@ func _process(dt: float) -> void:
 			continue
 		var mi: MeshInstance3D = w.mesh
 		var y: float = w.base.y + SUSP - w.dist + w.r
-		mi.position.y = lerpf(mi.position.y, clampf(y, w.base.y - 0.25, w.base.y + SUSP * 0.9), minf(1.0, dt * 25.0))
+		mi.position.y = lerpf(mi.position.y, clampf(y, w.base.y - 0.25, w.base.y + WHEEL_UP), minf(1.0, dt * 25.0))
 		w.spin += v_f / maxf(0.2, w.r) * dt
 		var st := 0.0
 		if w.front:

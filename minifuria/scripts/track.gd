@@ -38,6 +38,7 @@ func setup(data_: Dictionary, theme_: Dictionary) -> void:
 	lanes_onc = [W * 0.125, W * 0.375]
 	var cps := _expand()
 	_sample(cps)
+	_fair()
 	_frames()
 	_auto_spots()
 
@@ -88,12 +89,16 @@ func _expand() -> Array:
 				var R: float = f[2]
 				var dh: float = f[3]
 				var sg := signf(turns)
-				var c := p + lft * R * sg
-				var steps := int(absf(turns) * 14.0)
+				# entrada e saída retas e tangentes ao círculo; as quinas até os pontos vizinhos são arredondadas em _fair
+				var st0 := p + dh_dir * 12.0
+				cps.append({"p": st0, "feat": true, "kind": "helix", "lead": true})
+				var c := st0 + lft * R * sg
+				var steps := int(absf(turns) * 24.0)
 				for k in range(1, steps + 1):
 					var a := sg * float(k) / steps * absf(turns) * TAU
-					var off := Vector3(p.x - c.x, 0, p.z - c.z).rotated(Vector3.UP, a)
-					cps.append({"p": Vector3(c.x + off.x, p.y + dh * k / steps, c.z + off.z), "feat": true, "kind": "helix"})
+					var off := Vector3(st0.x - c.x, 0, st0.z - c.z).rotated(Vector3.UP, a)
+					cps.append({"p": Vector3(c.x + off.x, st0.y + dh * k / steps, c.z + off.z), "feat": true, "kind": "helix"})
+				cps.append({"p": Vector3(st0.x, st0.y + dh, st0.z) + dh_dir * 12.0, "feat": true, "kind": "helix", "lead": true})
 			"loop":
 				var R: float = f[1]
 				# o looping sai deslocado para o lado da próxima curva; o resto da pista já foi
@@ -106,8 +111,8 @@ func _expand() -> Array:
 				var shift := sv.length()
 				cps.append({"p": mid - d * 16.0, "feat": true, "kind": "loop"})
 				cps.append({"p": mid - d * 7.0, "feat": true, "kind": "loop"})
-				for k in range(0, 15):
-					var th := float(k) / 14.0 * TAU
+				for k in range(0, 29):
+					var th := float(k) / 28.0 * TAU
 					# deslocamento lateral em "smoothstep": sem quina na entrada nem na saída do looping
 					var u := th / TAU
 					var q := mid + d * R * sin(th) + Vector3.UP * R * (1.0 - cos(th)) + right * shift * (u * u * (3.0 - 2.0 * u))
@@ -129,10 +134,10 @@ func _expand() -> Array:
 				cps.append({"p": c0 + d * 8.0, "feat": true, "kind": "jump"})
 			"cork":
 				# torção: a pista deita 75° para um lado e depois para o outro (parede para os dois lados)
+				# o ângulo sai de uma função suave do avanço u (0..1), não de degraus entre pontos de controle
 				var sg := signf(f[1])
-				var banks := [0.0, 40.0, 75.0, 40.0, 0.0, -40.0, -75.0, -40.0, 0.0]
-				for k in 9:
-					cps.append({"p": p.lerp(nxt, 0.12 + k * 0.088), "bank": sg * banks[k], "feat": true, "kind": "cork"})
+				for k in 13:
+					cps.append({"p": p.lerp(nxt, 0.08 + k * 0.07), "cu": float(k) / 12.0, "csg": sg, "feat": true, "kind": "cork"})
 	return cps
 
 
@@ -151,6 +156,7 @@ static func _cr(p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, t: float) ->
 
 
 var _bank := PackedFloat32Array()
+var fcore := PackedByteArray()
 var _lc := PackedVector3Array()
 var _la := PackedVector3Array()
 var _lr := PackedFloat32Array()
@@ -199,10 +205,58 @@ func _sample(cps: Array) -> void:
 		_lr.append(float(a.get("lr", b.get("lr", 0.0))))
 		feat.append(1 if (a.get("feat", false) or b.get("feat", false)) else 0)
 		ftype.append(String(a.get("kind", b.get("kind", ""))))
-		var ba: float = a.get("bank", 0.0)
-		var bb: float = b.get("bank", 0.0)
-		var t: float = dt[k2] + f / SUB
-		_bank.append(ba + wrapf(bb - ba, -180.0, 180.0) * clampf(t, 0.0, 1.0))
+		# miolo do elemento: os dois pontos de controle do trecho são do mesmo elemento
+		fcore.append(1 if (a.has("kind") and String(a.get("kind")) == String(b.get("kind", "")) and not b.get("lead", false) and not a.get("lead", false)) else 0)
+		var t: float = clampf(dt[k2] + f / SUB, 0.0, 1.0)
+		if a.has("cu") and b.has("cu"):
+			_bank.append(float(a.csg) * _cork_bank(lerpf(float(a.cu), float(b.cu), t)))
+		else:
+			_bank.append(0.0)
+
+
+## arredonda quinas: fora de loopings, espirais e saltos, nenhuma curva fica mais fechada que RMIN
+## (as emendas entre elementos — fim da espiral e começo da torção, por exemplo — viravam cotovelos)
+const RMIN := 26.0
+
+
+func _fair() -> void:
+	var lock := PackedByteArray()
+	lock.resize(n)
+	for i in n:
+		var lk := ftype[i] == "helix" and fcore[i] == 1
+		for k in range(-6, 7):
+			var j := idx(i + k)
+			if loopf[j] == 1 or (gap[j] == 1 and absi(k) <= 4):
+				lk = true
+		lock[i] = 1 if lk else 0
+	var amax := ds / RMIN
+	for it in 400:
+		var moved := false
+		for i in n:
+			if lock[i] == 1:
+				continue
+			var a := P[idx(i - 1)]
+			var b := P[i]
+			var c := P[idx(i + 1)]
+			var d1 := Vector2(b.x - a.x, b.z - a.z)
+			var d2 := Vector2(c.x - b.x, c.z - b.z)
+			if d1.length() < 0.01 or d2.length() < 0.01:
+				continue
+			if absf(d1.angle_to(d2)) > amax:
+				var mid := (a + c) * 0.5
+				P[i] = Vector3(lerpf(b.x, mid.x, 0.5), b.y, lerpf(b.z, mid.z, 0.5))
+				moved = true
+		if not moved:
+			break
+
+
+## torção: deita para um lado e depois para o outro, com começo e fim sem tranco (derivada zero)
+const CORK_BANK := 62.0
+
+
+static func _cork_bank(u: float) -> float:
+	# sen(2πu)·sen(πu): pico ±1 em u≈0,3 e 0,7, giro máximo menor que o de um degrau linear e derivada zero nas pontas
+	return CORK_BANK * sin(u * TAU) * sin(u * PI) / 0.7698
 
 
 func _frames() -> void:
@@ -220,7 +274,7 @@ func _frames() -> void:
 		var b := Vector2(T[(i + 1) % n].x, T[(i + 1) % n].z).normalized()
 		var c := (a.x * b.y - a.y * b.x) / ds
 		curv[i] = c if loopf[i] == 0 else 0.0
-		kl[i] = -curv[i]
+		kl[i] = -curv[i] if ftype[i] != "cork" else 0.0
 	var base := PackedVector3Array()
 	base.resize(n)
 	for i in n:
@@ -363,19 +417,57 @@ func _auto_spots() -> void:
 
 
 # ------------------------------------------------------------------ malhas e colisores
-func _q(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, nrm: Vector3, col: Color, uv := Rect2(0, 0, 0, 0)) -> void:
+func _off(i: int, lat: float, h: float) -> Vector3:
+	var k := idx(i)
+	return P[k] + L[k] * lat + U[k] * h
+
+
+## quad com normal por vértice (a, b no começo; c, d no fim): sombreado liso, sem facetas
+func _qn(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, na: Vector3, nb: Vector3, col: Color, uv := Rect2(0, 0, 0, 0)) -> void:
 	var uvs := [uv.position, Vector2(uv.end.x, uv.position.y), uv.end, Vector2(uv.position.x, uv.end.y)]
 	var vs := [a, b, c, d]
+	var ns := [na, na, nb, nb]
 	for k in [0, 1, 2, 0, 2, 3]:
 		st.set_color(col)
-		st.set_normal(nrm)
+		st.set_normal(ns[k])
 		st.set_uv(uvs[k])
 		st.add_vertex(vs[k])
 
 
-func _off(i: int, lat: float, h: float) -> Vector3:
-	var k := idx(i)
-	return P[k] + L[k] * lat + U[k] * h
+# referenciais finos para a malha: onde a pista curva ou gira rápido (looping, torção, espiral) cada
+# trecho de 2 m é dividido, com posição em Hermite (segue a curva, não a corda) e "para cima" interpolado
+var fP := PackedVector3Array()
+var fL := PackedVector3Array()
+var fU := PackedVector3Array()
+var fT := PackedVector3Array()
+var fi := PackedInt32Array()
+var ft := PackedFloat32Array()
+
+
+func _fine() -> void:
+	fP.clear(); fL.clear(); fU.clear(); fT.clear(); fi.clear(); ft.clear()
+	for i in n:
+		var j := (i + 1) % n
+		var ang := maxf(rad_to_deg(T[i].angle_to(T[j])) / 2.5, rad_to_deg(L[i].angle_to(L[j])) / 2.0)
+		var m := clampi(int(ceil(ang)), 1, 6)
+		for q in m:
+			var t := float(q) / m
+			var t2 := t * t
+			var t3 := t2 * t
+			var p := P[i] * (2.0 * t3 - 3.0 * t2 + 1.0) + T[i] * ds * (t3 - 2.0 * t2 + t) + P[j] * (-2.0 * t3 + 3.0 * t2) + T[j] * ds * (t3 - t2)
+			var tg := (P[i] * (6.0 * t2 - 6.0 * t) + T[i] * ds * (3.0 * t2 - 4.0 * t + 1.0) + P[j] * (-6.0 * t2 + 6.0 * t) + T[j] * ds * (3.0 * t2 - 2.0 * t)).normalized()
+			var up := U[i].slerp(U[j], t)
+			up = (up - tg * tg.dot(up)).normalized()
+			fP.append(p)
+			fT.append(tg)
+			fU.append(up)
+			fL.append(up.cross(tg).normalized())
+			fi.append(i)
+			ft.append(t)
+
+
+func _fo(k: int, lat: float, h: float) -> Vector3:
+	return fP[k] + fL[k] * lat + fU[k] * h
 
 
 func build(ground_shader: Shader, road_shader: Shader) -> void:
@@ -391,78 +483,105 @@ func build(ground_shader: Shader, road_shader: Shader) -> void:
 	var under := Color(0.24, 0.24, 0.27) if theme.road != 1 else Color("#d95f00")
 	var road_col := PackedVector3Array()
 	var rail_col := PackedVector3Array()
-	var RH := 1.15
+	# altura/espessura da mureta por amostra, suavizadas: sem degrau ("remendo") na entrada do looping
+	var rh0 := PackedFloat32Array()
+	var rw0 := PackedFloat32Array()
+	var dp0 := PackedFloat32Array()
 	for i in n:
+		var lp := loopf[i] == 1
+		rh0.append(1.4 if lp else (2.2 if feat[i] == 1 else 1.15))
+		rw0.append(0.2 if lp else 0.5)
+		dp0.append(-0.35 if lp else -0.8)
+	var rhs := PackedFloat32Array()
+	var rws := PackedFloat32Array()
+	var dps := PackedFloat32Array()
+	for i in n:
+		var a1 := 0.0
+		var a2 := 0.0
+		var a3 := 0.0
+		for k in range(-4, 5):
+			var j := (i + k + n) % n
+			a1 += rh0[j]
+			a2 += rw0[j]
+			a3 += dp0[j]
+		rhs.append(a1 / 9.0)
+		rws.append(a2 / 9.0)
+		dps.append(a3 / 9.0)
+	_fine()
+	var N := fP.size()
+	for k in N:
+		var i := fi[k]
 		if gap[i] == 1:
 			continue
-		var j := i + 1
-		var ui := U[i]
-		var v0 := float(i) * ds
-		var v1 := float(i + 1) * ds
-		var a := _off(i, HALF, 0.02)
-		var b := _off(i, -HALF, 0.02)
-		var c := _off(j, -HALF, 0.02)
-		var d := _off(j, HALF, 0.02)
-		_q(road, a, b, c, d, ui, Color.WHITE, Rect2(0, v0, 1, v1 - v0))
-		road_col.append_array([a, b, c, a, c, d])
-		RH = 2.2 if feat[i] == 1 else 1.15
-		# no looping a mureta é fina e a pista é uma lâmina (sem a "saia" para fora)
-		var lp := loopf[i] == 1
-		if lp:
-			RH = 1.4
-		var rw := 0.2 if lp else 0.5
-		var depth := -0.35 if lp else -0.8
+		var k2 := (k + 1) % N
+		var j := (i + 1) % n
+		var t0 := ft[k]
+		var t1 := 1.0 if fi[k2] != i else ft[k2]
+		var na := fU[k]
+		var nb := fU[k2]
+		var v0 := (float(i) + t0) * ds
+		var v1 := (float(i) + t1) * ds
+		# asfalto em faixas: nos trechos que giram cada pedaço fica quase plano (sem dobra na diagonal)
+		var strips := 4
+		for sidx in strips:
+			var la := HALF - 2.0 * HALF * float(sidx) / strips
+			var lb := HALF - 2.0 * HALF * float(sidx + 1) / strips
+			var a := _fo(k, la, 0.02)
+			var b := _fo(k, lb, 0.02)
+			var c := _fo(k2, lb, 0.02)
+			var d := _fo(k2, la, 0.02)
+			_qn(road, a, b, c, d, na, nb, Color.WHITE, Rect2(float(sidx) / strips, v0, 1.0 / strips, v1 - v0))
+			road_col.append_array([a, b, c, a, c, d])
+		var RH := lerpf(rhs[i], rhs[j], t0)
+		var RH2 := lerpf(rhs[i], rhs[j], t1)
+		var rw := lerpf(rws[i], rws[j], t0)
+		var rw2 := lerpf(rws[i], rws[j], t1)
+		var depth := lerpf(dps[i], dps[j], t0)
+		var depth2 := lerpf(dps[i], dps[j], t1)
 		var cc := curb_a if i % 2 == 1 else curb_b
 		var rc := rail_a if (i / 2) % 2 == 0 else rail_b
 		for sgn: float in [1.0, -1.0]:
 			# zebra levemente elevada
-			var z0 := _off(i, sgn * HALF, 0.07)
-			var z1 := _off(i, sgn * (HALF + 1.0), 0.07)
-			var z2 := _off(j, sgn * (HALF + 1.0), 0.07)
-			var z3 := _off(j, sgn * HALF, 0.07)
-			_q(side, z0, z1, z2, z3, ui, cc)
+			_qn(side, _fo(k, sgn * HALF, 0.07), _fo(k, sgn * (HALF + 1.0), 0.07), _fo(k2, sgn * (HALF + 1.0), 0.07), _fo(k2, sgn * HALF, 0.07), na, nb, cc)
 			# acostamento
-			var s0 := _off(i, sgn * (HALF + 1.0), 0.04)
-			var s1 := _off(i, sgn * WALL, 0.04)
-			var s2 := _off(j, sgn * WALL, 0.04)
-			var s3 := _off(j, sgn * (HALF + 1.0), 0.04)
-			_q(side, s0, s1, s2, s3, ui, shoulder)
+			_qn(side, _fo(k, sgn * (HALF + 1.0), 0.04), _fo(k, sgn * WALL, 0.04), _fo(k2, sgn * WALL, 0.04), _fo(k2, sgn * (HALF + 1.0), 0.04), na, nb, shoulder)
 			# colisão lisa: zebra e acostamento no mesmo plano do asfalto (sem degrau para o carro engatar)
-			var f0 := _off(i, sgn * HALF, 0.02)
-			var f1 := _off(i, sgn * WALL, 0.02)
-			var f2 := _off(j, sgn * WALL, 0.02)
-			var f3 := _off(j, sgn * HALF, 0.02)
+			var f0 := _fo(k, sgn * HALF, 0.02)
+			var f1 := _fo(k, sgn * WALL, 0.02)
+			var f2 := _fo(k2, sgn * WALL, 0.02)
+			var f3 := _fo(k2, sgn * HALF, 0.02)
 			road_col.append_array([f0, f1, f2, f0, f2, f3])
 			# guard-rail: face interna, topo e face externa
-			var w0 := _off(i, sgn * WALL, 0.0)
-			var w1 := _off(i, sgn * WALL, RH)
-			var w2 := _off(j, sgn * WALL, RH)
-			var w3 := _off(j, sgn * WALL, 0.0)
-			_q(side, w0, w1, w2, w3, -L[i] * sgn, rc)
-			var t0 := _off(i, sgn * (WALL + rw), RH)
-			var t1 := _off(j, sgn * (WALL + rw), RH)
-			_q(side, w1, t0, t1, w2, ui, rc.lightened(0.15))
-			var o0 := _off(i, sgn * (WALL + rw), depth)
-			var o1 := _off(j, sgn * (WALL + rw), depth)
-			_q(side, t0, o0, o1, t1, L[i] * sgn, rc.darkened(0.25))
-			rail_col.append_array([w0, w1, w2, w0, w2, w3, w1, t0, t1, w1, t1, w2])
+			var w0 := _fo(k, sgn * WALL, 0.0)
+			var w1 := _fo(k, sgn * WALL, RH)
+			var w2 := _fo(k2, sgn * WALL, RH2)
+			var w3 := _fo(k2, sgn * WALL, 0.0)
+			_qn(side, w0, w1, w2, w3, -fL[k] * sgn, -fL[k2] * sgn, rc)
+			var o0 := _fo(k, sgn * (WALL + rw), RH)
+			var o1 := _fo(k2, sgn * (WALL + rw2), RH2)
+			_qn(side, w1, o0, o1, w2, na, nb, rc.lightened(0.15))
+			var e0 := _fo(k, sgn * (WALL + rw), depth)
+			var e1 := _fo(k2, sgn * (WALL + rw2), depth2)
+			_qn(side, o0, e0, e1, o1, fL[k] * sgn, fL[k2] * sgn, rc.darkened(0.25))
+			rail_col.append_array([w0, w1, w2, w0, w2, w3, w1, o0, o1, w1, o1, w2])
 		# parte de baixo da pista
-		var u0 := _off(i, -(WALL + rw), depth)
-		var u1 := _off(i, WALL + rw, depth)
-		var u2 := _off(j, WALL + rw, depth)
-		var u3 := _off(j, -(WALL + rw), depth)
-		_q(side, u0, u1, u2, u3, -ui, under)
+		_qn(side, _fo(k, -(WALL + rw), depth), _fo(k, WALL + rw, depth), _fo(k2, WALL + rw2, depth2), _fo(k2, -(WALL + rw2), depth2), -na, -nb, under)
 		# pontas da pista junto dos vãos de salto: tampa com faixas de perigo
-		for cap in [[i, gap[idx(i + 1)] == 1, 1.0], [i, gap[idx(i - 1)] == 1, -1.0]]:
-			if not cap[1]:
-				continue
-			var k: int = i if cap[2] > 0.0 else i
-			var at_i: int = j if cap[2] > 0.0 else i
+		var caps := []
+		if fi[k2] != i and gap[j] == 1:
+			caps.append([k2, 1.0, rw2, depth2])
+		if ft[k] == 0.0 and gap[idx(i - 1)] == 1:
+			caps.append([k, -1.0, rw, depth])
+		for cap in caps:
+			var kk: int = cap[0]
+			var cw: float = cap[2]
+			var cd: float = cap[3]
 			for sg in range(-6, 6):
-				var la := float(sg) / 6.0 * (WALL + rw)
-				var lb := float(sg + 1) / 6.0 * (WALL + rw)
+				var lq := float(sg) / 6.0 * (WALL + cw)
+				var lr := float(sg + 1) / 6.0 * (WALL + cw)
 				var hc := Color("#ffcc1f") if (sg % 2 == 0) else Color("#26272d")
-				_q(side, _off(at_i, la, 0.07), _off(at_i, lb, 0.07), _off(at_i, lb, depth), _off(at_i, la, depth), T[k] * cap[2], hc)
+				var tn: Vector3 = fT[kk] * float(cap[1])
+				_qn(side, _fo(kk, lq, 0.07), _fo(kk, lr, 0.07), _fo(kk, lr, cd), _fo(kk, lq, cd), tn, tn, hc)
 
 	var rm := MeshInstance3D.new()
 	rm.mesh = road.commit()

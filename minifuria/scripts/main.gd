@@ -89,6 +89,7 @@ var post_aberr := 0.0
 var post_lines := 0.0
 var wrong_t := 0.0
 var steer_testing := false
+var test_zoom := 0.0
 var cam_yaw := CAM_YAW
 var cam_pitch := CAM_PITCH
 var cam_mode := ""
@@ -109,6 +110,8 @@ func _ready() -> void:
 			test_lane = float(a.substr(7))
 		if a.begins_with("--track="):
 			track_idx = int(a.substr(8))
+		if a.begins_with("--zoom="):
+			test_zoom = float(a.substr(7))
 
 	env = Environment.new()
 	var sky := Sky.new()
@@ -1010,7 +1013,7 @@ func _feature_stats(_dt: float) -> void:
 	for c in cars:
 		if c.role == "traffic" or c.wrecked or c.freeze:
 			continue
-		var on_f: bool = track.feat[c.ti] == 1 and track.ftype[c.ti] != "jump"
+		var on_f: bool = track.feat[c.ti] == 1
 		var slow: bool = c.linear_velocity.length() < 8.0
 		var was: bool = c.get_meta("stall", false)
 		if on_f and slow and not was:
@@ -1673,6 +1676,8 @@ func _camera(rdt: float) -> void:
 		want = maxf(size_fix, base) / clampf(aspect, 0.6, 1.0)
 	if mode == "menu":
 		want = 40.0
+	if test_zoom > 0.0 and mode != "menu":
+		want = test_zoom
 	if mode == "shots":
 		want = view_h
 		zoom_kick = 0.0
