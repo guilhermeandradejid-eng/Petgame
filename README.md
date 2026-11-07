@@ -58,3 +58,37 @@ Teclado: `J` liga o pulo, espaço freia ou usa a habilidade, `Esc` pausa.
 
 - `estelar/holes.js`: os buracos, descritos como mapas de texto (tipo de piso + altura por casa)
 - `estelar/game.js`: física isométrica com alturas e rampas, renderização em baixa resolução ampliada sem suavização, sprites gerados por código (personagens e inimigos são esferas iluminadas rasterizadas pixel a pixel, por isso rolam de verdade), música chiptune e efeitos sintetizados com Web Audio
+
+---
+
+# Mini Fúria
+
+Corrida isométrica 3D de mini carros no estilo "arcade de batidas": turbo, drift, takedowns nos rivais, quase-batidas no trânsito e capotagens em câmera lenta. Fica na pasta [`turbo/`](turbo/) (abra `turbo/index.html` por um servidor estático).
+
+![carros e props modelados no Blender](turbo/assets/preview.png)
+
+## Como jogar
+
+- **Celular**: arraste no lado esquerdo da tela para apontar a direção (relativa à tela). O carro acelera sozinho. À direita ficam **TURBO**, **DRIFT** e **FREIO** (segurar o freio parado dá ré).
+- **Teclado**: setas/WASD, `Espaço` drift, `Shift` turbo, `R` volta para a pista, `P` pausa, `M` som.
+- **Turbo**: enche com drift, quase-batidas no trânsito, andar na contramão, pulos nas rampas, boost pads e destruir cones/barris/caixotes.
+- **Takedown**: bata forte nos rivais ou jogue eles no muro. Enche o turbo inteiro, com câmera lenta.
+- **Batida**: bater de frente no muro ou no trânsito capota o carro. Depois de um instante você volta para a pista, piscando e invulnerável.
+- 3 voltas contra 3 rivais (com rubber band), 16 carros de trânsito nos dois sentidos.
+
+## Game juice
+
+Hitstop nas batidas, câmera lenta com dessaturação nos takedowns e capotagens, tremor de câmera por trauma, zoom que abre com a velocidade e dá um "soco" no turbo, blur radial e aberração cromática no turbo, bloom nos faróis e lanternas, chamas no escapamento, rastro das lanternas, linhas de velocidade, fumaça de pneu, marcas de pneu persistentes, faíscas raspando no muro, poeira nos pousos, destroços e rodas que se soltam, confete nas voltas, suspensão com molas (rolagem, arfagem, squash no pouso), rodas que giram e contra-esterçam no drift, motor sintetizado com troca de marchas e popups animados.
+
+## Estrutura
+
+- `turbo/blender/build_assets.py`: modela todos os carros (Faísca, Trovão, Vespa, sedã, táxi, polícia, picape, van) e props (cones, barris, caixotes, pneus, barreiras, árvores, pinheiros, pedras, postes, prédios, rampa, portal de largada, arquibancada, destroços) via `bpy` e exporta `turbo/assets/minicars.glb`. Roda com `blender -b -P build_assets.py` ou `pip install bpy && python build_assets.py --render preview.png`.
+- `turbo/js/track.js`: pista como spline fechada, malhas (asfalto, zebras, muros), rampas, boost pads, colisão com muros num grid espacial e texturas procedurais.
+- `turbo/js/car.js`: física arcade (aderência lateral, drift que conserva embalo, turbo, guinada, rampas/pulos), impulsos com rotação, capotagem 3D com quaternion, visual com suspensão e IA (rivais com faixas, frenagem antes das curvas, turbo nas retas e agressividade; trânsito nos dois sentidos).
+- `turbo/js/fx.js`: partículas com shader próprio, fitas (marcas de pneu, rastros, linhas de velocidade), destroços, tremor de câmera e pós-processamento (bloom + shader final).
+- `turbo/js/audio.js`: sons sintetizados com Web Audio.
+- `turbo/js/input.js`: teclado e controles touch.
+- `turbo/js/main.js`: mundo, colisões, regras (takedown, quase-batida, contramão, voltas, posições), câmera isométrica, HUD e minimapa.
+- `vendor/jsm/`: addons do Three.js r160 (GLTFLoader e pós-processamento), MIT.
+
+Para testes automatizados existe `window.__game.advance(segundos)`, que simula sem renderizar.
