@@ -95,6 +95,7 @@ var cam_pitch := CAM_PITCH
 var cam_mode := ""
 var cam_mode_t := 0.0
 var cam_loop := {}
+var cam_kick := Vector3.ZERO
 
 
 func _ready() -> void:
@@ -675,6 +676,10 @@ func _make_car(kind: String, role: String, col: Color) -> Car:
 		e.flame = fx.make_nitro_flame()
 		c.add_child(e.flame)
 		e.flame.position = c.exhaust_local
+		# segundo cano: mesma chama, sem luz própria (uma luz por carro basta)
+		e.flame2 = fx.make_nitro_flame(false)
+		c.add_child(e.flame2)
+		e.flame2.position = c.exhaust2_local
 		e.trails = [fx.make_trail(Color(1.5, 0.25, 0.4)), fx.make_trail(Color(1.5, 0.25, 0.4))]
 	e.dark = fx.make_damage_smoke(true)
 	e.fire = fx.make_damage_smoke(false)
@@ -910,6 +915,8 @@ func _on_part_off(c: Car, mesh: MeshInstance3D, xform: Transform3D, vel: Vector3
 
 
 func _on_landed(c: Car, air: float, impact: float) -> void:
+	c.juice_squash(clampf(impact * 0.12, 0.4, 2.2))
+	c.juice_pitch(-clampf(impact * 0.03, 0.1, 0.5))
 	if not _on_screen(c.global_position):
 		return
 	fx.burst("dust", c.global_position + c.global_transform.basis.y * 0.2)
@@ -990,12 +997,22 @@ func _physics_process(dt: float) -> void:
 			var want: float = float(pad.spd) if float(pad.spd) > 0.0 else c.sp.nitro * 0.95
 			var v: float = maxf(c.linear_velocity.length(), want)
 			c.linear_velocity = f.slide(c.ground_n).normalized() * v
+			pad.hit = 1.0
+			c.juice_squash(-1.2)
+			c.juice_pitch(0.6)
+			if _on_screen(c.global_position):
+				var acc: Color = pad.accent
+				fx.hit_light(c.global_position + c.ground_n * 0.8, acc, 3.5, 8.0, 0.25)
+				for sgn: float in [-1.0, 1.0]:
+					fx.sparks(c.global_transform * Vector3(sgn * c.sp.wid * 0.45, 0.15, -c.sp.len * 0.45), -f + c.ground_n * 0.35, 0.9)
+				fx.nitro_burst(c.global_transform * c.exhaust_local, f)
 			if c == player:
 				sfx.play("nitro", -2.0)
 				hud.popup("TURBO!", Color("#ff9a1a"))
-				zoom_kick += 4.0
-				_shake(0.2)
-				_flash(Color(0.5, 0.9, 1.0), 0.15)
+				zoom_kick += 5.0
+				cam_kick -= f * 2.2
+				_shake(0.22)
+				_flash((pad.accent as Color).lerp(Color.WHITE, 0.4), 0.16)
 				_add_meter(0.15)
 	_pickups(dt)
 	_feature_stats(dt)
@@ -1087,6 +1104,9 @@ func _player_input() -> void:
 			var a := track.at(player.s_track + 12.0, test_lane)
 			c.dir = ((a.pos as Vector3) - player.global_position).normalized()
 		c.nitro = player.nitro_ch > 0 and absf(track.curv[track.idx(player.ti + 10)]) < 0.008 and randf() < 0.02
+		if OS.get_cmdline_user_args().has("--nitrotest"):
+			player.nitro_ch = 3
+			c.nitro = int(real * 2.0) % 2 == 0
 		c.fire = weapons._target(player, 50.0, 0.97) != null
 		c.drop = randf() < 0.01
 
@@ -1439,10 +1459,16 @@ func _process(_delta: float) -> void:
 	_car_fx(rdt * eff)
 	if player.nitroing and not was_nitro:
 		sfx.play("nitro")
-		zoom_kick += 4.0
-		_shake(0.15)
-		fx.nitro_burst(player.global_transform * player.exhaust_local, player.global_transform.basis.z)
+		zoom_kick += 4.5
+		cam_kick -= player.global_transform.basis.z * 2.6   # a câmera "fica para trás" e alcança o carro
+		_shake(0.18)
+		var ex: Vector3 = player.global_transform * player.exhaust_local
+		fx.nitro_burst(ex, player.global_transform.basis.z)
+		fx.hit_light(ex - player.global_transform.basis.z * 0.8, Color(1.0, 0.55, 0.2), 7.0, 8.0, 0.18)
+		fx.burst("backfire", ex - player.global_transform.basis.z * 0.3, -player.global_transform.basis.z)
 		_flash(Color(0.6, 0.9, 1.0), 0.12)
+	if player.nitroing and not player.wrecked:
+		trauma = maxf(trauma, 0.16)   # ronco: leve tremor contínuo durante o nitro
 	was_nitro = player.nitroing
 	var sp01: float = player.linear_velocity.length() / player.sp.vmax
 	var slip: float = 1.0 if player.drifting else clampf((absf(player.v_s) - 3.0) / 8.0, 0.0, 1.0)
@@ -1452,6 +1478,11 @@ func _process(_delta: float) -> void:
 	_camera(rdt)
 	_post(rdt)
 	_hud()
+	# onda de luz das placas de turbo depois que alguém passa
+	for pd in track.pads:
+		if float(pd.get("hit", 0.0)) > 0.0 and pd.has("mat"):
+			pd.hit = maxf(0.0, float(pd.hit) - rdt * 2.2)
+			(pd.mat as ShaderMaterial).set_shader_parameter("hit", pd.hit)
 	if auto_test and OS.get_cmdline_user_args().has("--camshots") and cam_mode != "":
 		var key := "cam_" + cam_mode
 		var fr := int(stats.get(key, 0)) + 1
@@ -1538,12 +1569,15 @@ func _car_fx(dt: float) -> void:
 			if c.nitroing and not e.get("was_n", false) and c != player and vis:
 				fx.nitro_burst(c.global_transform * c.exhaust_local, c.global_transform.basis.z)
 			e.was_n = c.nitroing
-			(flame.get_node("P") as CPUParticles3D).emitting = c.nitroing
-			var core := flame.get_node("Core") as Node3D
-			core.visible = c.nitroing
-			if c.nitroing:
-				var w := randf_range(0.9, 1.15)
-				core.scale = Vector3(w, w, randf_range(0.8, 1.25))
+			e.heat_t = 0.5 if c.nitroing else maxf(0.0, float(e.get("heat_t", 0.0)) - dt)
+			for fl: Node3D in [flame, e.flame2]:
+				(fl.get_node("P") as CPUParticles3D).emitting = c.nitroing
+				(fl.get_node("Haze") as CPUParticles3D).emitting = vis and (c.nitroing or float(e.heat_t) > 0.0)
+				var core := fl.get_node("Core") as Node3D
+				core.visible = c.nitroing
+				if c.nitroing:
+					var w := randf_range(0.9, 1.15)
+					core.scale = Vector3(w, w, randf_range(0.8, 1.25))
 			for i in 2:
 				var tp: Vector3 = c.global_transform * c.tail_local[i]
 				fx.trail_push(e.trails[i], tp, real, c.nitroing and vis)
@@ -1665,8 +1699,9 @@ func _camera(rdt: float) -> void:
 		cam_yaw = CAM_YAW
 		cam_pitch = CAM_PITCH
 	var k := 1.0 - exp(-rdt * follow)
+	cam_kick *= exp(-rdt * 5.0)
 	if mode != "shots":
-		cam_pos = cam_pos.lerp(target, k)
+		cam_pos = cam_pos.lerp(target + cam_kick, k)
 	var vs := get_viewport().get_visible_rect().size
 	var aspect := vs.x / maxf(1.0, vs.y)
 	var base := maxf(28.0, 26.0 / aspect) if aspect < 1.0 else 28.0

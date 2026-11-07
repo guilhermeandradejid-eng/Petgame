@@ -76,6 +76,7 @@ func _ready() -> void:
 	_pool("smoke", 10, func(): return _puff(Color(0.93, 0.92, 0.95, 0.85), 16, 1.6, 1.4, 4.0, false))
 	_pool("dust", 10, func(): return _puff(Color(0.82, 0.73, 0.56, 0.85), 14, 1.3, 1.2, 3.4, false))
 	_pool("fire", 5, _fireball)
+	_pool("backfire", 4, _backfire)
 	_pool("embers", 5, _embers)
 	_pool("darksmoke", 5, func(): return _puff(Color(0.17, 0.16, 0.18, 0.9), 22, 3.2, 2.2, 7.0, true))
 	_pool("glass", 5, _glass)
@@ -396,6 +397,29 @@ func _fireball() -> CPUParticles3D:
 	return p
 
 
+## estouro curto no escape (início do nitro / placa de turbo): bolinha de fogo para trás
+func _backfire() -> CPUParticles3D:
+	var p := _base(12, 0.28)
+	var q := QuadMesh.new()
+	q.size = Vector2(1, 1)
+	q.material = _bb_mat(fire_tex, true)
+	p.mesh = q
+	p.direction = Vector3(0, 0, -1)
+	p.spread = 22
+	p.initial_velocity_min = 6
+	p.initial_velocity_max = 12
+	p.gravity = Vector3(0, 2, 0)
+	p.damping_min = 10
+	p.damping_max = 14
+	p.angle_min = 0
+	p.angle_max = 360
+	p.scale_amount_min = 0.5
+	p.scale_amount_max = 1.0
+	p.scale_amount_curve = _curve([Vector2(0, 0.7), Vector2(0.2, 1.2), Vector2(1, 0.2)])
+	p.color_ramp = _ramp([Color(4, 3.8, 3.0, 1), Color(3.4, 1.6, 0.4, 1), Color(1.2, 0.3, 0.1, 0.6), Color(0.1, 0.05, 0.05, 0)], [0.0, 0.25, 0.6, 1.0])
+	return p
+
+
 func _embers() -> CPUParticles3D:
 	var p := _base(40, 2.2)
 	p.explosiveness = 0.9
@@ -649,7 +673,7 @@ func make_dust() -> CPUParticles3D:
 	return p
 
 
-func make_nitro_flame() -> Node3D:
+func make_nitro_flame(with_light := true) -> Node3D:
 	var root := Node3D.new()
 	# partículas: faíscas azuis e fumaça quente
 	var p := CPUParticles3D.new()
@@ -681,7 +705,7 @@ func make_nitro_flame() -> Node3D:
 	core.visible = false
 	root.add_child(core)
 	var sh := load("res://shaders/nitro.gdshader") as Shader
-	for spec in [[0.26, 2.0, 1.0], [0.14, 1.3, 1.6]]:
+	for spec in [[0.2, 1.8, 1.0], [0.11, 1.2, 1.6]]:
 		var mi := MeshInstance3D.new()
 		var cm := CylinderMesh.new()
 		cm.top_radius = 0.0
@@ -698,12 +722,39 @@ func make_nitro_flame() -> Node3D:
 		mi.material_override = m
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		core.add_child(mi)
-	var l := OmniLight3D.new()
-	l.light_color = Color(0.35, 0.7, 1.0)
-	l.light_energy = 3.0
-	l.omni_range = 6.0
-	l.position.z = -1.0
-	core.add_child(l)
+	if with_light:
+		var l := OmniLight3D.new()
+		l.light_color = Color(0.35, 0.7, 1.0)
+		l.light_energy = 3.0
+		l.omni_range = 6.0
+		l.position.z = -1.0
+		core.add_child(l)
+	# ar quente: bolhas que distorcem a imagem atrás do escape, sobem e se desfazem
+	var hz := CPUParticles3D.new()
+	hz.name = "Haze"
+	hz.amount = 16
+	hz.lifetime = 0.55
+	hz.emitting = false
+	hz.local_coords = false
+	hz.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var hq := QuadMesh.new()
+	hq.size = Vector2(1, 1)
+	var hm := ShaderMaterial.new()
+	hm.shader = load("res://shaders/heat_haze.gdshader")
+	hm.render_priority = -20   # desenha antes das chamas/rastros: distorce o fundo sem apagar o fogo
+	hq.material = hm
+	hz.mesh = hq
+	hz.position.z = -1.2
+	hz.direction = Vector3(0, 0.15, -1)
+	hz.spread = 14
+	hz.initial_velocity_min = 2.0
+	hz.initial_velocity_max = 4.5
+	hz.gravity = Vector3(0, 3.0, 0)
+	hz.scale_amount_min = 1.3
+	hz.scale_amount_max = 2.1
+	hz.scale_amount_curve = _curve([Vector2(0, 0.45), Vector2(0.5, 1.0), Vector2(1, 1.35)])
+	hz.color_ramp = _ramp([Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 0.7), Color(1, 1, 1, 0)], [0.0, 0.18, 0.6, 1.0])
+	root.add_child(hz)
 	return root
 
 

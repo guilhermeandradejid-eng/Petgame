@@ -13,7 +13,7 @@ const SUSP := 0.38
 # sem a carroceria "sentar" em cima do pneu); o batente segura as compressões fortes
 const PRELOAD := 0.11
 const BUMP := 0.12
-const WHEEL_UP := 0.09   # quanto a roda pode subir visualmente antes de encostar no para-lama
+const WHEEL_UP := 0.05   # quanto a roda pode subir visualmente antes de encostar no para-lama
 const GRAV := 9.8 * 2.2
 
 const SPECS := {
@@ -98,6 +98,12 @@ var track_ref: Track = null
 var guided_spd := 0.0
 var _susp_forces := true
 var jump_cd := 0.0
+# "game juice" visual: amassa ao pousar, estica e empina no nitro (mola amortecida, só no modelo)
+var squash := 0.0
+var squash_v := 0.0
+var pitch_kick := 0.0
+var pitch_v := 0.0
+var _nitro_vis := false
 var ghost_t := 0.0   # nos trechos guiados os carros se atravessam (sem engavetar nem "estourar" na saída)
 
 # IA / pista
@@ -132,6 +138,8 @@ var paint: StandardMaterial3D
 var tail_mat: StandardMaterial3D
 var sirens: Array = []
 var exhaust_local := Vector3.ZERO
+var exhaust2_local := Vector3.ZERO
+var mount_local := Vector3.ZERO
 var tail_local := [Vector3.ZERO, Vector3.ZERO]
 var muzzle_local := Vector3.ZERO
 var weapon_node: Node3D
@@ -210,7 +218,19 @@ func setup(lib: Node3D, kind_: String, role_: String, col: Color) -> void:
 				"center": mi.transform * mi.mesh.get_aabb().get_center()}
 	var Lc: float = sp.len
 	var Wc: float = sp.wid
-	exhaust_local = Vector3(Wc * 0.28, sp.clr + 0.12, -(Lc * 0.5 + 0.3))
+	exhaust_local = Vector3(Wc * 0.26, sp.clr - 0.03, -(Lc * 0.5 + 0.38))
+	exhaust2_local = Vector3(-Wc * 0.26, sp.clr - 0.03, -(Lc * 0.5 + 0.38))
+	mount_local = Vector3(0, sp.clr + sp.h + 0.6, -0.2)
+	# pontos marcados no modelo (Blender): ponteiras do escapamento e base da arma no teto
+	var exr := model.get_node_or_null(kind + "_exR") as Node3D
+	var exl := model.get_node_or_null(kind + "_exL") as Node3D
+	var mnt := model.get_node_or_null(kind + "_mount") as Node3D
+	if exr:
+		exhaust_local = exr.position
+	if exl:
+		exhaust2_local = exl.position
+	if mnt:
+		mount_local = mnt.position
 	var tz: float = sp.clr + sp.h * 0.65
 	tail_local = [Vector3(-Wc * 0.32, tz, -Lc * 0.5), Vector3(Wc * 0.32, tz, -Lc * 0.5)]
 	muzzle_local = Vector3(0, sp.clr + sp.h + 0.55, Lc * 0.5 + 0.4)
@@ -246,13 +266,14 @@ func configure(lib: Node3D, front: String, rear: String, nitro: String, up: Dict
 	if weapon_node:
 		weapon_node.queue_free()
 	weapon_node = lib.get_node("wpn_gun" if front == "mg" else "wpn_pod").duplicate()
-	weapon_base = Vector3(0, sp.clr + sp.h + 0.28, sp.len * 0.05)
+	# arma parafusada no teto (ponto "_mount" do modelo), sem atravessar cabine nem para-brisa
+	weapon_base = mount_local
 	weapon_node.transform = Transform3D(Basis.IDENTITY, weapon_base)
 	for c in weapon_node.get_children():
 		if c is GeometryInstance3D:
 			c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	model.add_child(weapon_node)
-	muzzle_local = Vector3(0, sp.clr + sp.h + 0.6, sp.len * 0.05 + 1.1)
+	muzzle_local = weapon_base + (Vector3(0, 0.32, 1.1) if front == "mg" else Vector3(0, 0.3, 0.55))
 
 
 func refill() -> void:
@@ -926,7 +947,26 @@ func ai(track: Track, game: Node, dt: float) -> void:
 
 
 # ------------------------------------------------------------------ visual
+func juice_squash(amount: float) -> void:
+	squash_v += amount
+
+
+func juice_pitch(amount: float) -> void:
+	pitch_v += amount
+
+
 func _process(dt: float) -> void:
+	if model and not wrecked:
+		if nitroing and not _nitro_vis:
+			juice_squash(-1.6)   # estica para a frente
+			juice_pitch(0.9)     # empina o nariz
+		_nitro_vis = nitroing
+		squash_v += (-squash * 160.0 - squash_v * 11.0) * dt
+		squash = clampf(squash + squash_v * dt, -0.16, 0.2)
+		pitch_v += (-pitch_kick * 120.0 - pitch_v * 10.0) * dt
+		pitch_kick = clampf(pitch_kick + pitch_v * dt, -0.12, 0.12)
+		model.scale = Vector3(1.0 + squash * 0.45, 1.0 - squash, 1.0 - squash * 0.35)
+		model.rotation.x = -pitch_kick
 	for w in wheels:
 		if w.lost:
 			continue
@@ -936,7 +976,7 @@ func _process(dt: float) -> void:
 		w.spin += v_f / maxf(0.2, w.r) * dt
 		var st := 0.0
 		if w.front:
-			st = (-drift_dir * 0.35 + steer_s * 0.2) if drifting else steer_s * 0.42
+			st = (-drift_dir * 0.28 + steer_s * 0.14) if drifting else steer_s * 0.32
 		mi.rotation = Vector3(w.spin, st, 0)
 	if tail_mat:
 		tail_mat.emission_energy_multiplier = 6.0 if ctrl.brake > 0.0 else (3.0 if nitroing else 1.5)

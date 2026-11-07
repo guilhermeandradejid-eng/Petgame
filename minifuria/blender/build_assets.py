@@ -93,6 +93,7 @@ M = {
     "ramp": mat("RampYellow", "#ffc629", 0.5),
     "stripe": mat("RampStripe", "#26272d", 0.6),
     "seat": mat("Seat", "#3d3f47", 0.8),
+    "well": mat("Well", "#121216", 0.95),
 }
 
 
@@ -217,6 +218,52 @@ def wheel(name, r, w, loc, side):
 
 
 # ---------------------------------------------------------------- carros
+def arch(name, r_in, r_out, width, loc, material, a0=20.0, a1=160.0, segs=12):
+    """Para-lama em arco (casca de cilindro) por cima da roda. Ângulo medido a partir de +Y (traseira)."""
+    bm = bmesh.new()
+    rings = []
+    for i in range(segs + 1):
+        th = math.radians(a0 + (a1 - a0) * i / segs)
+        cy, sz = math.cos(th), math.sin(th)
+        ring = [bm.verts.new((x, r * cy, r * sz)) for (r, x) in
+                ((r_out, -width / 2), (r_out, width / 2), (r_in, width / 2), (r_in, -width / 2))]
+        rings.append(ring)
+    for i in range(segs):
+        a, b = rings[i], rings[i + 1]
+        for k in range(4):
+            k2 = (k + 1) % 4
+            bm.faces.new((a[k], a[k2], b[k2], b[k]))
+    bm.faces.new(rings[0][::-1])
+    bm.faces.new(rings[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    ob = new_obj(name, bm, [material])
+    ob.location = loc
+    md = ob.modifiers.new("bevel", "BEVEL")
+    md.width = 0.025
+    md.segments = 2
+    md.limit_method = "ANGLE"
+    return ob
+
+
+def cut_wells(body, wells):
+    """Recorta as caixas de roda no chassi (o pneu nunca atravessa a lataria)."""
+    cutters = []
+    for i, (x0, x1, y, z, r) in enumerate(wells):
+        c = cyl(f"{body.name}_cut{i}", r, abs(x1 - x0), ((x0 + x1) / 2, y, z), M["well"], verts=28, axis="X")
+        md = body.modifiers.new(f"well{i}", "BOOLEAN")
+        md.operation = "DIFFERENCE"
+        md.object = c
+        md.solver = "EXACT"
+        try:
+            md.material_mode = "TRANSFER"
+        except Exception:
+            pass
+        cutters.append(c)
+    apply_mods(body)
+    for c in cutters:
+        bpy.data.objects.remove(c, do_unlink=True)
+
+
 def subdiv_box(name, size, loc, material, cuts=(4, 6, 2), bevel=0.0):
     """Caixa com malha subdividida (para amassar no jogo) e chanfro."""
     bm = bmesh.new()
@@ -256,15 +303,37 @@ def build_car(key, spec):
     P = {n: [] for n in ("body", "hood", "bumperF", "bumperR", "doorL", "doorR", "cabin", "spoiler", "cargo")}
     z0 = clr + H / 2
     shift = spec.get("cab_shift", 0.0)
-    P["body"].append(subdiv_box(key + "_b", (W * 0.96, L, H), (0, 0, z0), M["paint"], bevel=spec.get("bev", 0.18)))
-    # caixas de roda, grade, escapamento ficam no chassi
-    for s in (-1, 1):
-        for y in (-wb / 2, wb / 2):
-            P["body"].append(box(key + f"_arch{s}{y}", (0.12, wr * 2.25, wr * 1.1), (s * (W / 2 + 0.01), y, clr + wr * 0.35), M["trim"], bevel=0.04))
-    P["body"].append(cyl(key + "_ex", 0.09, 0.3, (W * 0.28, L / 2 + 0.12, clr + 0.12), M["exhaust"], verts=8, axis="Y"))
-    # capô: painel fino em cima da frente
+    ww = spec.get("ww", 0.42)
+    tw = W / 2 - spec.get("inset", 0.12)
+    # rodas: (lado, posição no eixo Y, raio, é dianteira)
+    WH = {}
+    for n, (sd, y) in {"FL": (-1, -wb / 2), "FR": (1, -wb / 2), "RL": (-1, wb / 2), "RR": (1, wb / 2)}.items():
+        rs = spec.get("rear_scale", 1.0) if n[0] == "R" else 1.0
+        WH[n] = (sd, y, wr * rs, n[0] == "F")
+    body = subdiv_box(key + "_b", (W * 0.96, L, H), (0, 0, z0), M["paint"], bevel=spec.get("bev", 0.18))
+    # caixas de roda: furo cilíndrico um pouco maior que o pneu; na dianteira mais fundo (roda esterça)
+    wells = []
+    for n, (sd, y, r, fr) in WH.items():
+        inner = tw - ww / 2 - (0.24 if fr else 0.07)
+        x0, x1 = sd * inner, sd * (W / 2 + 0.5)
+        wells.append((x0, x1, y, r, r + 0.08))
+    cut_wells(body, wells)
+    P["body"].append(body)
+    # para-lamas em arco por cima de cada roda (cobrem o topo do pneu, que é mais alto que o capô)
+    fender_mat = M["trim"] if spec.get("fender_trim") else M["paint"]
+    for n, (sd, y, r, fr) in WH.items():
+        P["body"].append(arch(key + f"_fd{n}", r + 0.055, r + 0.13, ww + 0.1, (sd * (tw + 0.02), y, r), fender_mat))
+    # escapamento duplo saindo por baixo do para-choque traseiro, com ponteira cromada
+    for sd in (-1, 1):
+        P["bumperR"].append(cyl(key + f"_ex{sd}", 0.075, 0.5, (sd * W * 0.26, L / 2 + 0.07, clr - 0.03), M["exhaust"], verts=12, axis="Y"))
+        P["bumperR"].append(cyl(key + f"_ext{sd}", 0.095, 0.12, (sd * W * 0.26, L / 2 + 0.3, clr - 0.03), M["chrome"], verts=12, axis="Y"))
+        P["bumperR"].append(cyl(key + f"_exi{sd}", 0.06, 0.02, (sd * W * 0.26, L / 2 + 0.365, clr - 0.03), M["well"], verts=12, axis="Y"))
+        ex = empty(key + ("_exR" if sd > 0 else "_exL"), (sd * W * 0.26, L / 2 + 0.38, clr - 0.03))
+        parent(ex, root)
+    # capô: painel fino entre os para-lamas
     hood_l = L * 0.32
-    P["hood"].append(box(key + "_hd", (W * 0.82, hood_l, 0.08), (0, -L / 2 + hood_l / 2 + 0.12, clr + H + 0.02), M["paint"], bevel=0.03))
+    hood_w = min(W * 0.82, 2.0 * (tw - (ww + 0.16) / 2 + 0.02) - 0.08)
+    P["hood"].append(box(key + "_hd", (hood_w, hood_l, 0.08), (0, -L / 2 + hood_l / 2 + 0.12, clr + H + 0.02), M["paint"], bevel=0.03))
     # para-choques com faróis / lanternas
     P["bumperF"].append(box(key + "_bf", (W * 0.98, 0.3, H * 0.45), (0, -L / 2 - 0.04, clr + H * 0.25), M["trim"], bevel=0.08))
     P["bumperR"].append(box(key + "_br", (W * 0.98, 0.3, H * 0.45), (0, L / 2 + 0.04, clr + H * 0.25), M["trim"], bevel=0.08))
@@ -272,13 +341,25 @@ def build_car(key, spec):
     for s in (-1, 1):
         P["bumperF"].append(box(key + f"_hl{s}", (0.42, 0.12, 0.2), (s * W * 0.32, -L / 2 - 0.0, z0 + H * 0.12), M["head"], bevel=0.04))
         P["bumperR"].append(box(key + f"_tl{s}", (0.46, 0.12, 0.18), (s * W * 0.32, L / 2 + 0.0, z0 + H * 0.15), M["tail"], bevel=0.03))
-    # portas: painéis laterais entre as rodas
-    dl = wb - wr * 2.4
-    for s, n in ((-1, "doorL"), (1, "doorR")):
-        P[n].append(box(key + f"_d{s}", (0.1, dl, H * 0.8), (s * (W * 0.48 + 0.04), 0, z0 + 0.02), M["paint"], bevel=0.03))
-        P[n].append(box(key + f"_dh{s}", (0.06, 0.24, 0.06), (s * (W * 0.48 + 0.1), dl * 0.15, z0 + H * 0.2), M["chrome"]))
-    # cabine
+    # portas: painéis laterais entre os para-lamas, saia lateral e retrovisor
+    r_f = WH["FL"][2]
+    r_r = WH["RL"][2]
+    gap_f = r_f + 0.2
+    gap_r = r_r + 0.2
+    dl = max(0.4, wb - gap_f - gap_r)
+    dy = (gap_f - gap_r) * 0.5
     cl, coff, ch, tx, ty = spec["cab"]
+    for s, n in ((-1, "doorL"), (1, "doorR")):
+        P[n].append(box(key + f"_d{s}", (0.1, dl, H * 0.8), (s * (W * 0.48 + 0.04), dy, z0 + 0.02), M["paint"], bevel=0.03))
+        P[n].append(box(key + f"_dh{s}", (0.06, 0.24, 0.06), (s * (W * 0.48 + 0.1), dy + dl * 0.15, z0 + H * 0.2), M["chrome"]))
+        P[n].append(box(key + f"_sk{s}", (0.14, dl + 0.1, 0.12), (s * (W * 0.48 + 0.05), dy, clr + 0.05), M["trim"], bevel=0.03))
+        if not spec.get("no_mirror"):
+            mx = s * (W * 0.43 + 0.12)
+            my = coff - cl / 2 + 0.22
+            P[n].append(box(key + f"_ms{s}", (0.16, 0.06, 0.05), (s * (W * 0.43 + 0.03), my, clr + H + 0.16), M["trim"]))
+            P[n].append(box(key + f"_mh{s}", (0.1, 0.16, 0.13), (mx, my, clr + H + 0.18), M["paint"], bevel=0.03))
+            P[n].append(box(key + f"_mg{s}", (0.02, 0.12, 0.09), (mx + s * 0.0, my - 0.07, clr + H + 0.18), M["chrome"]))
+    # cabine
     cab_z = clr + H + ch / 2 - 0.02
     P["cabin"].append(box(key + "_c", (W * 0.86, cl, ch), (0, coff, cab_z), M["paint"], bevel=0.1, taper=(tx, ty, shift)))
     P["cabin"].append(box(key + "_g", (W * 0.88, cl * 0.92, ch * 0.7), (0, coff, cab_z + 0.02), M["glass"], bevel=0.05, taper=(tx * 0.98, ty * 0.98, shift)))
@@ -317,9 +398,9 @@ def build_car(key, spec):
         elif kind == "seats":
             P["cabin"].append(box(key + "_seat", (W * 0.7, 0.5, 0.4), (0, coff + 0.3, clr + H + 0.2), M["seat"], bevel=0.08))
         elif kind == "rollbar":
-            P["cabin"].append(box(key + "_rb", (W * 0.8, 0.12, 0.12), (0, coff + 0.5, clr + H + 0.75), M["chrome"]))
+            P["cabin"].append(box(key + "_rb", (W * 0.66, 0.12, 0.12), (0, coff + 0.5, clr + H + 0.75), M["chrome"]))
             for s in (-1, 1):
-                P["cabin"].append(box(key + f"_rbl{s}", (0.12, 0.12, 0.75), (s * W * 0.37, coff + 0.5, clr + H + 0.37), M["chrome"]))
+                P["cabin"].append(box(key + f"_rbl{s}", (0.12, 0.12, 0.75), (s * W * 0.3, coff + 0.5, clr + H + 0.37), M["chrome"]))
         elif kind == "bullbar":
             P["bumperF"].append(box(key + "_bb", (W * 0.9, 0.12, 0.55), (0, -L / 2 - 0.2, clr + H * 0.5), M["chrome"], bevel=0.04))
 
@@ -330,12 +411,12 @@ def build_car(key, spec):
         flat(ob)
         parent(ob, root)
 
-    tw = W / 2 - spec.get("inset", 0.12)
-    names = {"FL": (-1, -wb / 2), "FR": (1, -wb / 2), "RL": (-1, wb / 2), "RR": (1, wb / 2)}
-    for n, (s, y) in names.items():
-        rs = spec.get("rear_scale", 1.0) if n[0] == "R" else 1.0
-        w = wheel(f"{key}_w{n}", wr * rs, spec.get("ww", 0.42), (s * tw, y, wr * rs), s)
+    for n, (sd, y, r, fr) in WH.items():
+        w = wheel(f"{key}_w{n}", r, ww, (sd * tw, y, r), sd)
         parent(w, root)
+    # ponto de montagem da arma: em cima do teto, no centro (o jogo lê este "empty")
+    mnt = empty(key + "_mount", (0, coff + shift, clr + H + ch - 0.01))
+    parent(mnt, root)
     return root
 
 
@@ -349,7 +430,7 @@ CARS = {
                    cab=(1.7, 0.45, 0.58, 0.84, 0.58), cab_shift=0.15, bev=0.16,
                    rear_scale=1.1, extras=[("hood_scoop",), ("spoiler", 0.22)]),
     # rival: buggy esportivo aberto
-    "vespa": dict(L=3.4, W=2.0, H=0.55, clr=0.45, wr=0.55, wb=2.2, ww=0.55, inset=0.0,
+    "vespa": dict(L=3.4, W=2.0, H=0.55, clr=0.45, wr=0.55, wb=2.2, ww=0.55, inset=0.0, fender_trim=True,
                   cab=(1.3, 0.2, 0.5, 0.8, 0.55), bev=0.2, extras=[("rollbar",), ("bullbar",)]),
     # tráfego
     "sedan": dict(L=3.9, W=1.95, H=0.66, clr=0.3, wr=0.44, wb=2.4,
@@ -358,7 +439,7 @@ CARS = {
                  cab=(2.0, 0.1, 0.66, 0.9, 0.7), bev=0.2, extras=[("taxi",)]),
     "policia": dict(L=3.9, W=1.95, H=0.66, clr=0.3, wr=0.44, wb=2.4,
                     cab=(2.0, 0.1, 0.66, 0.9, 0.7), bev=0.2, extras=[("siren",), ("stripe",)]),
-    "picape": dict(L=4.3, W=2.1, H=0.8, clr=0.45, wr=0.52, wb=2.7, ww=0.5,
+    "picape": dict(L=4.3, W=2.1, H=0.8, clr=0.45, wr=0.52, wb=2.7, ww=0.5, fender_trim=True,
                    cab=(1.3, -0.55, 0.7, 0.92, 0.82), bev=0.16, extras=[("bed", 1.7), ("bullbar",)]),
     "van": dict(L=4.4, W=2.1, H=0.85, clr=0.35, wr=0.46, wb=2.8,
                 cab=(1.0, -1.2, 0.7, 0.9, 0.7), cab_shift=-0.1, bev=0.18, extras=[("cargo", 3.1, 1.3)]),

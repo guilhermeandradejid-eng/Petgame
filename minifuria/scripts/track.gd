@@ -298,7 +298,13 @@ func _frames() -> void:
 				acc += kl[j]
 				cnt += 1
 		var auto := clampf((acc / maxi(cnt, 1)) * 420.0, -16.0, 16.0) if loopf[i] == 0 else 0.0
-		var b := deg_to_rad(auto + _bank[i])
+		var bdeg := auto + _bank[i]
+		if loopf[i] == 0:
+			# perto do chão a inclinação é limitada: a borda baixa do asfalto nunca desce abaixo do terreno
+			var elev := P[i].y - float(theme.gy)
+			var maxb := rad_to_deg(asin(clampf((elev - 0.15) / (WALL + 0.5), 0.0, 1.0)))
+			bdeg = clampf(bdeg, -maxb, maxb)
+		var b := deg_to_rad(bdeg)
 		var up := base[i].rotated(T[i], -b)
 		var lf := up.cross(T[i]).normalized()
 		L[i] = lf
@@ -427,7 +433,10 @@ func _qn(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, na: Ve
 	var uvs := [uv.position, Vector2(uv.end.x, uv.position.y), uv.end, Vector2(uv.position.x, uv.end.y)]
 	var vs := [a, b, c, d]
 	var ns := [na, na, nb, nb]
-	for k in [0, 1, 2, 0, 2, 3]:
+	# o Godot considera frente o lado em sentido horário: a ordem dos vértices segue a normal pedida
+	# (antes o asfalto ficava "de costas", com a normal virada para baixo e quase sem luz)
+	var order := [0, 2, 1, 0, 3, 2] if (b - a).cross(c - a).dot(na + nb) > 0.0 else [0, 1, 2, 0, 2, 3]
+	for k in order:
 		st.set_color(col)
 		st.set_normal(ns[k])
 		st.set_uv(uvs[k])
@@ -584,6 +593,7 @@ func build(ground_shader: Shader, road_shader: Shader) -> void:
 				_qn(side, _fo(kk, lq, 0.07), _fo(kk, lr, 0.07), _fo(kk, lr, cd), _fo(kk, lq, cd), tn, tn, hc)
 
 	var rm := MeshInstance3D.new()
+	road.generate_tangents()   # o asfalto usa normal map (relevo do agregado)
 	rm.mesh = road.commit()
 	var mat := ShaderMaterial.new()
 	mat.shader = road_shader
@@ -727,18 +737,48 @@ func _build_start() -> void:
 
 func _build_pads() -> void:
 	var sh := load("res://shaders/pad.gdshader") as Shader
+	# cor da placa: laranja-turbo; ciano onde o chão/pista já são laranja (brinquedo, vulcão, deserto)
+	var accent := Color("#ff8a1a")
+	if int(theme.road) == 1 or int(theme.ground) == 4 or int(theme.ground) == 1:
+		accent = Color("#22d8ff")
 	for p in pads:
-		var a := at(p.s, p.lat)
+		# malha que acompanha a pista (curvas, rampas e inclinação): a placa nunca atravessa o asfalto
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var L0 := 6.0
+		var segs := 6
+		var hw := float(p.wid) * 0.5
+		var rows := []
+		for k in segs + 1:
+			var ss: float = float(p.s) - L0 * 0.5 + L0 * float(k) / segs
+			var row := []
+			for e in [-1.0, 1.0]:
+				var a := at(ss, float(p.lat) - hw * e)
+				row.append([(a.pos as Vector3) + (a.up as Vector3) * 0.06, a.up, Vector2((e + 1.0) * 0.5, float(k) / segs)])
+			rows.append(row)
+		for k in segs:
+			var r0: Array = rows[k]
+			var r1: Array = rows[k + 1]
+			var tri := [r0[0], r0[1], r1[1], r0[0], r1[1], r1[0]]
+			var ga: Vector3 = (r0[1][0] as Vector3) - (r0[0][0] as Vector3)
+			var gb: Vector3 = (r1[1][0] as Vector3) - (r0[0][0] as Vector3)
+			if ga.cross(gb).dot(r0[0][1] as Vector3) > 0.0:
+				tri = [r0[0], r1[1], r0[1], r0[0], r1[0], r1[1]]
+			for v in tri:
+				st.set_normal(v[1])
+				st.set_uv(v[2])
+				st.add_vertex(v[0])
 		var mi := MeshInstance3D.new()
-		var pm := PlaneMesh.new()
-		pm.size = Vector2(float(p.wid), 6.0)
-		mi.mesh = pm
+		mi.mesh = st.commit()
 		var sm := ShaderMaterial.new()
 		sm.shader = sh
+		sm.set_shader_parameter("accent", accent)
 		mi.material_override = sm
-		mi.transform = Transform3D(a.basis, a.pos + a.up * 0.09)
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(mi)
+		p["mat"] = sm
+		p["hit"] = 0.0
+		p["accent"] = accent
 
 
 ## pontos para decoração: placas de curva, postes, pneus, bandeiras e outdoors.
@@ -845,7 +885,16 @@ func validate() -> Dictionary:
 				if over_at.size() < 6:
 					over_at.append([int(i * ds), int(j * ds), Vector3i(P[i])])
 	var min_y := 1e9
+	var under := 0
+	var under_at := []
 	for i in n:
 		if gap[i] == 0:
 			min_y = minf(min_y, P[i].y)
-	return {"len": int(length), "min_r": snappedf(min_r, 0.1), "at": Vector3i(min_at), "wat": Vector3i(wa), "conflicts": conflicts, "worst": snappedf(worst, 0.1), "min_y": snappedf(min_y, 0.1), "overlap3d": over, "over_at": over_at}
+			# o asfalto/acostamento não pode ficar abaixo do terreno (senão o chão "vaza" na pista)
+			for e: float in [-WALL, WALL]:
+				var q := _off(i, e, 0.04)
+				if q.y < float(theme.gy) + 0.04:
+					under += 1
+					if under_at.size() < 4:
+						under_at.append([int(i * ds), snappedf(q.y - float(theme.gy), 0.01)])
+	return {"len": int(length), "min_r": snappedf(min_r, 0.1), "at": Vector3i(min_at), "wat": Vector3i(wa), "conflicts": conflicts, "worst": snappedf(worst, 0.1), "min_y": snappedf(min_y, 0.1), "overlap3d": over, "over_at": over_at, "sub_ground": under, "sub_at": under_at}

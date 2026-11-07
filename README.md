@@ -112,6 +112,23 @@ Menu → **escolha da pista** (10) → **garagem** → corrida de 3 voltas contr
 - **Sem emendas mal encaixadas**: o deslocamento lateral do looping segue uma curva suave (smoothstep), então a entrada e a saída são retas e paralelas à pista original, sem a dobra horizontal que espremia os triângulos do colisor. As espirais têm 10–11 m de desnível por volta, para a volta de baixo não raspar na de cima.
 - **Sem travar**: no looping e na torção o carro é guiado pelo referencial da pista, interpolado entre as amostras (sem "degraus" de 2 m), e a carroceria não colide com o asfalto nesse trecho (as rodas continuam lendo a pista). A IA mantém sua faixa nesses elementos em vez de todos irem para o meio e engavetarem.
 
+## Acabamento visual e "game juice"
+
+- **Asfalto**: textura procedural com agregado em várias escalas e relevo fino (normal map), trilhas de pneu mais escuras e lisas, trincas discretas, marcas de freada e pintura gasta. Gelo, chapas de aço com ferrugem e plástico de brinquedo nos temas especiais. A face de cima da pista agora fica de frente para a luz (antes, pela ordem dos vértices, ela só recebia luz ambiente e parecia quase preta).
+- **Terreno**: perto do chão a inclinação automática das curvas é limitada pela altura da pista, então a borda do asfalto nunca desce abaixo do terreno (acabaram as "piscinas" de chão no meio da pista). A validação conta esses pontos (`sub_ground`).
+- **Placas de turbo**: malha que acompanha a pista (curvas, rampas e inclinação), chapa escura com moldura zebrada, setas de luz correndo para a frente e LEDs laterais. Ao passar, uma onda de luz varre a placa, com faíscas, luz e um "tranco" de câmera. São laranja, ou ciano onde o chão ou a pista já são laranja.
+- **Nitro**: ar quente saindo dos dois escapamentos (distorção da imagem que sobe e se desfaz, e fica meio segundo depois do nitro), estouro de fogo e luz ao acionar, câmera que "fica para trás" e alcança o carro, e um tremor leve durante o nitro.
+- **Carros "vivos"**: amassam ao pousar (proporcional ao impacto), esticam e empinam o nariz no nitro e nas placas de turbo (mola só no modelo, sem afetar a física).
+
+## Carros: montagem e acabamento
+
+- **Caixas de roda recortadas** no chassi (boolean no Blender) e **para-lamas em arco** sobre cada roda: o pneu não atravessa mais a lataria. Na dianteira a caixa é mais funda, para a roda esterçar.
+- **Suspensão com pré-carga e batente**: em repouso o carro fica na altura do modelo, e a roda sobe no máximo alguns centímetros na caixa.
+- **Arma parafusada no teto**: o modelo exporta um ponto de montagem (`<carro>_mount`) no centro do teto. Antes a arma ficava enterrada na cabine, com os canos saindo pelo para-brisa.
+- **Escapamento duplo** saindo por baixo do para-choque traseiro, com ponteira cromada (`_exL`/`_exR`, de onde saem as chamas do nitro). Antes era um cano atravessando o para-choque.
+- Retrovisores, saias laterais e portas encaixadas entre os para-lamas; o capô fica entre os para-lamas.
+- `tools/car_preview.gd` tira uma foto de estúdio dos carros com as armas para conferir a montagem.
+
 ## Controles
 
 - **Direção "TELA" (padrão)**: você aponta para onde quer ir **na tela** e o carro vira sozinho para lá. Não inverte quando o carro desce a tela. No celular/mouse é o analógico da esquerda; no teclado, as setas/WASD (↑ sobe a tela, ← vai para a esquerda da tela) e o carro acelera sozinho.
