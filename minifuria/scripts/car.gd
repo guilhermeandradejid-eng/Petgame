@@ -79,6 +79,11 @@ var tail_local := [Vector3.ZERO, Vector3.ZERO]
 var _prev_v := Vector3.ZERO
 var _applied := Vector3.ZERO
 var _contacts: Array = []
+# raspando (muro, outro carro ou destroço no asfalto): ponto, normal e velocidade de atrito
+var scraping := false
+var scrape_pt := Vector3.ZERO
+var scrape_n := Vector3.UP
+var scrape_v := Vector3.ZERO
 var _teleport = null
 var _dent_cd := 0.0
 var _k := 0.0
@@ -335,6 +340,7 @@ func _suspension(dt: float, wreck_mode: bool) -> int:
 
 
 func _detect_impacts(dt: float) -> void:
+	_detect_scrape()
 	var v := linear_velocity
 	var expected := _applied / mass * dt
 	var jump := v - _prev_v - expected
@@ -356,10 +362,33 @@ func _detect_impacts(dt: float) -> void:
 	hit.emit(self, best[0], best[1], dv)
 
 
+func _detect_scrape() -> void:
+	scraping = false
+	if linear_velocity.length() < 5.0:
+		return
+	var best := 0.0
+	for c in _contacts:
+		var nrm: Vector3 = c[2]
+		if not wrecked and absf(nrm.y) > 0.7:
+			continue
+		var rel := linear_velocity
+		if c[0] is RigidBody3D:
+			rel -= (c[0] as RigidBody3D).linear_velocity
+		var tang := rel - nrm * rel.dot(nrm)
+		var sp := tang.length()
+		if sp > 4.0 and sp > best:
+			best = sp
+			scraping = true
+			scrape_pt = c[1]
+			scrape_n = nrm
+			scrape_v = tang
+
+
 # ------------------------------------------------------------------ dano
 func take_damage(point: Vector3, dv: float) -> void:
 	var lp := to_local(point)
-	health -= dv * 2.0
+	var tough := 0.5 if role == "player" else 1.0
+	health -= dv * 2.0 * tough
 	# amassa as peças perto do ponto
 	if _dent_cd <= 0.0 and dv > 4.0:
 		_dent_cd = 0.08
@@ -378,7 +407,7 @@ func take_damage(point: Vector3, dv: float) -> void:
 			continue
 		var d: float = (p.center as Vector3).distance_to(lp)
 		if d < 1.8:
-			p.hp -= dv * 7.0 * (1.0 - d / 1.8)
+			p.hp -= dv * 6.0 * tough * (1.0 - d / 1.8)
 			if p.hp <= 0.0 and (pn != "cabin" or wrecked):
 				detach(pn, (lp - (p.center as Vector3)).normalized() * -1.0)
 	if paint:

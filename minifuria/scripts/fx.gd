@@ -599,6 +599,88 @@ func make_wind() -> CPUParticles3D:
 	return p
 
 
+func make_scrape() -> Node3D:
+	# jato contínuo de faíscas (estilo Burnout) para quando o carro raspa no muro ou em outro carro
+	var root := Node3D.new()
+	var p := CPUParticles3D.new()
+	p.name = "P"
+	p.amount = 200
+	p.lifetime = 0.6
+	p.emitting = false
+	p.local_coords = false
+	p.randomness = 0.6
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var m := _streak_mesh(0.11, 1.3)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.vertex_color_use_as_albedo = true
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_texture = dot_tex
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.surface_set_material(0, mat)
+	p.mesh = m
+	p.particle_flag_align_y = true
+	p.direction = Vector3(0, 0.3, -1)
+	p.spread = 24
+	p.initial_velocity_min = 9
+	p.initial_velocity_max = 20
+	p.gravity = Vector3(0, -24, 0)
+	p.damping_min = 0.5
+	p.damping_max = 2
+	p.scale_amount_min = 0.5
+	p.scale_amount_max = 1.4
+	p.scale_amount_curve = _curve([Vector2(0, 1.0), Vector2(0.6, 0.85), Vector2(1, 0.0)])
+	p.color_ramp = _ramp([Color(5, 5, 4, 1), Color(5, 3.2, 1.0, 1), Color(3.5, 1.1, 0.2, 0.9), Color(1, 0.2, 0.05, 0)], [0.0, 0.2, 0.6, 1.0])
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 0.15
+	root.add_child(p)
+	# pontinhos que quicam no chão
+	var b := CPUParticles3D.new()
+	b.name = "B"
+	b.amount = 50
+	b.lifetime = 0.9
+	b.emitting = false
+	b.local_coords = false
+	b.randomness = 0.7
+	var q := QuadMesh.new()
+	q.size = Vector2(0.14, 0.14)
+	q.material = _bb_mat(dot_tex, true)
+	b.mesh = q
+	b.direction = Vector3(0, 0.6, -1)
+	b.spread = 40
+	b.initial_velocity_min = 4
+	b.initial_velocity_max = 10
+	b.gravity = Vector3(0, -22, 0)
+	b.color_ramp = _ramp([Color(5, 4, 2, 1), Color(4, 1.5, 0.3, 1), Color(1, 0.2, 0.05, 0)])
+	root.add_child(b)
+	var l := OmniLight3D.new()
+	l.name = "L"
+	l.light_color = Color(1.0, 0.65, 0.25)
+	l.light_energy = 0.0
+	l.omni_range = 8.0
+	l.position.y = 0.8
+	root.add_child(l)
+	return root
+
+
+func set_scrape(n: Node3D, on: bool, pos: Vector3, dir: Vector3, strength: float) -> void:
+	var p := n.get_node("P") as CPUParticles3D
+	var b := n.get_node("B") as CPUParticles3D
+	var l := n.get_node("L") as OmniLight3D
+	p.emitting = on
+	b.emitting = on
+	if on:
+		n.global_position = pos
+		p.direction = dir
+		b.direction = (dir + Vector3.UP * 0.4).normalized()
+		p.initial_velocity_min = 6.0 + strength * 6.0
+		p.initial_velocity_max = 12.0 + strength * 14.0
+		l.light_energy = randf_range(2.0, 6.0) * clampf(strength, 0.4, 1.2)
+	else:
+		l.light_energy = maxf(0.0, l.light_energy - 0.6)
+
+
 # ------------------------------------------------------------------ marcas de pneu
 func skid(a: Vector3, b: Vector3, width: float, alpha: float) -> void:
 	var d := b - a

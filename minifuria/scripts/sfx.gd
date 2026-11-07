@@ -21,6 +21,10 @@ var t_cut := 0.2
 var t_tire := 0.0
 var t_nitro := 0.0
 var t_wind := 0.0
+var t_scrape := 0.0
+var scr := 0.0
+var lp_s := 0.0
+var ring_ph := 0.0
 var freq := 60.0
 var vol := 0.0
 var cut := 0.2
@@ -56,6 +60,10 @@ func set_muted(m: bool) -> void:
 
 
 ## speed01 0..1+, throttle 0..1, slip 0..1
+func set_scrape(level: float) -> void:
+	t_scrape = clampf(level, 0.0, 1.0)
+
+
 func drive(speed01: float, throttle: float, slip: float, nitro: bool, slowmo: bool, active: bool) -> void:
 	var gears := 5.0
 	var g := minf(gears - 1.0, floorf(speed01 * gears * 0.999))
@@ -85,6 +93,8 @@ func _process(_dt: float) -> void:
 		tire += (t_tire - tire) * k * 2.0
 		nit += (t_nitro - nit) * k
 		wind += (t_wind - wind) * k
+		scr += (t_scrape - scr) * k * 3.0
+		ring_ph = fmod(ring_ph + (1870.0 + randf() * 300.0) / RATE, 1.0)
 		ph1 = fmod(ph1 + freq / RATE, 1.0)
 		ph2 = fmod(ph2 + freq * 0.5 / RATE, 1.0)
 		var saw := ph1 * 2.0 - 1.0
@@ -98,7 +108,10 @@ func _process(_dt: float) -> void:
 		var tire_s := (bp1 - bp2) * tire * 1.6
 		lp_n += (nz - lp_n) * (0.05 + nit * 0.15)
 		lp_b += (nz - lp_b) * 0.6
-		var s := lp * vol + tire_s + lp_n * nit * 1.4 + (nz - lp_b) * wind * 0.5
+		# raspar metal no muro: ruído agudo + um 'ring' metálico
+		lp_s += (nz - lp_s) * 0.35
+		var grind := ((nz - lp_s) * 1.4 + sin(ring_ph * TAU) * 0.35 * randf()) * scr
+		var s := lp * vol + tire_s + lp_n * nit * 1.4 + (nz - lp_b) * wind * 0.5 + grind
 		s = clampf(s, -1.0, 1.0)
 		buf[i] = Vector2(s, s)
 	gen.push_buffer(buf)

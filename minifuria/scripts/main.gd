@@ -34,6 +34,7 @@ var traffic: Array = []
 var props: Array = []
 var player: Car
 var em := {}   # efeitos contínuos por carro
+var scrape_pool: Array = []
 
 var mode := "loading"
 var time_g := 0.0
@@ -67,6 +68,7 @@ var nitro_was_full := false
 var _last_us := 0
 var auto_test := false
 var test_shots: Array = []
+var test_lane := -2.75
 
 var post_blur := 0.0
 var post_aberr := 0.0
@@ -78,6 +80,8 @@ func _ready() -> void:
 	_setup_input()
 	auto_test = "--autotest" in OS.get_cmdline_user_args()
 	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--lane="):
+			test_lane = float(a.substr(7))
 		if a.begins_with("--shots="):
 			test_shots = Array(a.substr(8).split(","))
 
@@ -150,6 +154,10 @@ func _ready() -> void:
 	track.build(_prop_scene("prop_ramp"))
 	fx = Fx.new()
 	add_child(fx)
+	for i in 6:
+		var sc := fx.make_scrape()
+		fx.add_child(sc)
+		scrape_pool.append(sc)
 	sfx = Sfx.new()
 	add_child(sfx)
 	hud = Hud.new()
@@ -452,7 +460,7 @@ func _new_race() -> void:
 		var c := _make_car(r.kind, "rival", Color(r.color))
 		c.display_name = r.name
 		c.seed_f = i * 2.1 + 0.5
-		c.cruise = 39.0 + i * 0.7
+		c.cruise = 36.5 + i * 0.6
 		c.next_bash = 6.0 + i * 3.0
 		_place(c, L + grid[i][0], grid[i][1], 0)
 		rivals.append(c)
@@ -549,7 +557,11 @@ func _on_hit(c: Car, other: Object, point: Vector3, dv: float) -> void:
 	var oc: Car = other as Car
 	var vis := _on_screen(point)
 	if vis and dv > 4.0:
-		fx.sparks(point + Vector3.UP * 0.3, out, clampf(dv / 18.0, 0.2, 1.5))
+		var back := -c.linear_velocity.normalized() * 0.6
+		fx.sparks(point + Vector3.UP * 0.3, out + back, clampf(dv / 14.0, 0.3, 2.0))
+		if dv > 9.0:
+			fx.sparks(point + Vector3.UP * 0.4, -out + back, clampf(dv / 20.0, 0.3, 1.5))
+			fx.hit_light(point + Vector3.UP * 1.0, Color(1.0, 0.7, 0.3), clampf(dv * 0.4, 3.0, 10.0), 9.0, 0.25)
 	if oc:
 		if c.role != "player" and oc == player:
 			c.last_hit_by = player
@@ -558,10 +570,10 @@ func _on_hit(c: Car, other: Object, point: Vector3, dv: float) -> void:
 		return
 	if c == player:
 		if oc == null:
-			if dv > 20.0 and front > 0.55 and c.invuln <= 0.0:
+			if dv > 30.0 and front > 0.72 and c.invuln <= 0.0:
 				_crash_player(dv, -out)
 				return
-		elif oc.role == "traffic" and front > 0.5 and c.invuln <= 0.0 and (dv > 23.0 or (dv > 16.0 and oc.oncoming)):
+		elif oc.role == "traffic" and front > 0.65 and c.invuln <= 0.0 and (dv > 33.0 or (dv > 25.0 and oc.oncoming)):
 			_crash_player(dv, -out)
 			_wreck(oc, dv, out, false)
 			return
@@ -570,8 +582,8 @@ func _on_hit(c: Car, other: Object, point: Vector3, dv: float) -> void:
 			sfx.play("bump", linear_to_db(clampf(dv / 20.0, 0.2, 1.0)))
 			if dv > 9.0:
 				sfx.play("metal", -6.0)
-			if dv > 11.0:
-				c.stun = 0.25
+			if dv > 16.0:
+				c.stun = 0.2
 				hitstop = maxf(hitstop, 0.05)
 				_flash(Color(1, 1, 1), 0.12)
 			if oc and oc.role == "rival" and dv > 4.0:
@@ -798,7 +810,7 @@ func _player_input() -> void:
 func _autopilot() -> void:
 	var p := player
 	var pr := track.project(p.global_position, p.ti)
-	var tp := track.at(pr.s + 6.0 + maxf(0.0, p.v_f) * 0.45, -2.75)
+	var tp := track.at(pr.s + 6.0 + maxf(0.0, p.v_f) * 0.45, test_lane)
 	var to: Vector3 = tp.pos - p.global_position
 	p.ctrl.dir = Vector3(to.x, 0, to.z).normalized()
 	p.ctrl.dir_mag = 1.0
@@ -846,7 +858,7 @@ func _rules(dt: float) -> void:
 	order.sort_custom(func(a, b): return a.dist > b.dist)
 	place = order.find(player) + 1
 	for r in rivals:
-		r.rubber = clampf(1.0 + (player.dist - r.dist) * 0.0035, 0.86, 1.2)
+		r.rubber = clampf(1.0 + (player.dist - r.dist) * 0.003, 0.84, 1.12)
 	if player.wrecked:
 		return
 	var p := player
@@ -1062,7 +1074,33 @@ func _process(_delta: float) -> void:
 		get_tree().quit()
 
 
+func _scrapes() -> void:
+	# distribui os jatos de faíscas entre os carros raspando mais perto do jogador
+	var list: Array = []
+	for c in cars:
+		if c.scraping and _on_screen(c.scrape_pt):
+			list.append(c)
+	list.sort_custom(func(a, b): return a.global_position.distance_squared_to(player.global_position) < b.global_position.distance_squared_to(player.global_position))
+	var player_scr := 0.0
+	for i in scrape_pool.size():
+		var n: Node3D = scrape_pool[i]
+		if i < list.size():
+			var c: Car = list[i]
+			var v: Vector3 = c.scrape_v
+			var sp := v.length()
+			var dir := (-v.normalized() * 0.85 + c.scrape_n * 0.35 + Vector3.UP * 0.3).normalized()
+			fx.set_scrape(n, true, c.scrape_pt + Vector3.UP * 0.25, dir, clampf(sp / 30.0, 0.2, 1.3))
+			if c == player:
+				player_scr = clampf(sp / 25.0, 0.3, 1.0)
+		else:
+			fx.set_scrape(n, false, Vector3.ZERO, Vector3.UP, 0.0)
+	sfx.set_scrape(player_scr if mode in ["race", "finish"] else 0.0)
+	if player_scr > 0.0:
+		_shake(0.012 * player_scr)
+
+
 func _car_fx(dt: float) -> void:
+	_scrapes()
 	for c in cars:
 		var e: Dictionary = em[c]
 		var vis: bool = _on_screen(c.global_position)
