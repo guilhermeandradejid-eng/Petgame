@@ -390,7 +390,7 @@ func sparks(pos: Vector3, dir: Vector3, power: float) -> void:
 
 func ring(pos: Vector3, col: Color, size: float) -> void:
 	var r := _next("ring") as MeshInstance3D
-	r.global_position = Vector3(pos.x, 0.12, pos.z)
+	r.global_position = pos + Vector3.UP * 0.15
 	r.visible = true
 	r.scale = Vector3(size * 2.0, 1, size * 2.0)
 	var m := r.material_override as ShaderMaterial
@@ -403,8 +403,13 @@ func ring(pos: Vector3, col: Color, size: float) -> void:
 
 func scorch(pos: Vector3, size: float) -> void:
 	var s := _next("scorch") as MeshInstance3D
-	s.global_position = Vector3(pos.x, 0.06, pos.z)
-	s.rotation.y = randf() * TAU
+	var hit := get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(pos + Vector3.UP * 2.0, pos - Vector3.UP * 4.0, 1))
+	if hit.is_empty():
+		return
+	s.global_transform = Transform3D(Basis(Vector3.UP, randf() * TAU), hit.position + hit.normal * 0.07)
+	var n: Vector3 = hit.normal
+	if n.y < 0.98:
+		s.global_transform.basis = Basis(n.cross(Vector3.FORWARD).normalized(), n, n.cross(Vector3.FORWARD).normalized().cross(n)).orthonormalized()
 	s.scale = Vector3(size, 1, size)
 	s.visible = true
 	var m := s.material_override as ShaderMaterial
@@ -427,17 +432,56 @@ func hit_light(pos: Vector3, col: Color, energy: float, rng: float, dur: float) 
 	tw.tween_callback(l.queue_free)
 
 
-func explosion(pos: Vector3, big: bool) -> void:
-	burst("fire", pos + Vector3(0, 0.8, 0))
-	burst("darksmoke", pos + Vector3(0, 1.2, 0))
-	burst("embers", pos + Vector3(0, 1.0, 0))
-	sparks(pos + Vector3(0, 0.6, 0), Vector3.UP, 1.8)
-	sparks(pos + Vector3(0, 0.6, 0), Vector3(randf_range(-1, 1), 0.2, randf_range(-1, 1)), 1.3)
-	scorch(pos, 6.0 if big else 4.0)
-	ring(pos, Color(1.0, 0.55, 0.2, 1.0), 10.0 if big else 6.0)
-	if big:
-		burst("glass", pos + Vector3(0, 1.2, 0))
-	hit_light(pos + Vector3(0, 2.5, 0), Color(1.0, 0.55, 0.2), 14.0 if big else 7.0, 18.0, 0.7)
+## explosões variadas e mais contidas: cada destruição sorteia um estilo e um tamanho
+func explosion(pos: Vector3, big: bool, style := "") -> void:
+	var s := randf_range(0.7, 1.0) * (1.0 if big else 0.75)
+	if style == "":
+		style = ["fireball", "smoke", "sparks"][randi() % 3]
+	var up := Vector3(0, 0.6, 0)
+	match style:
+		"rocket":
+			_burst_n("fire", pos + up, 18)
+			_burst_n("darksmoke", pos + up, 8)
+			sparks(pos + up, Vector3.UP, 0.9)
+			scorch(pos, 2.6)
+			hit_light(pos + Vector3(0, 2, 0), Color(1.0, 0.6, 0.25), 6.0, 11.0, 0.35)
+		"mine":
+			_burst_n("fire", pos + up, 24)
+			_burst_n("dust", pos + up, 12)
+			sparks(pos + up, Vector3.UP, 1.4)
+			ring(pos, Color(1.0, 0.7, 0.3, 1.0), 4.0)
+			scorch(pos, 3.2)
+			hit_light(pos + Vector3(0, 2, 0), Color(1.0, 0.6, 0.3), 7.0, 12.0, 0.4)
+		"smoke":
+			_burst_n("darksmoke", pos + up * 2.0, int(22 * s))
+			_burst_n("fire", pos + up, int(12 * s))
+			sparks(pos + up, Vector3.UP, 1.0 * s)
+			scorch(pos, 3.5 * s)
+			hit_light(pos + Vector3(0, 2, 0), Color(1.0, 0.5, 0.2), 5.0 * s, 12.0, 0.5)
+		"sparks":
+			sparks(pos + up, Vector3.UP, 1.6 * s)
+			sparks(pos + up, Vector3(randf_range(-1, 1), 0.2, randf_range(-1, 1)), 1.2 * s)
+			_burst_n("embers", pos + up, int(30 * s))
+			_burst_n("smoke", pos + up, int(10 * s))
+			hit_light(pos + Vector3(0, 2, 0), Color(1.0, 0.8, 0.5), 6.0 * s, 12.0, 0.4)
+		_:
+			_burst_n("fire", pos + up, int(36 * s))
+			_burst_n("darksmoke", pos + up * 2.0, int(14 * s))
+			_burst_n("embers", pos + up, int(20 * s))
+			sparks(pos + up, Vector3.UP, 1.4 * s)
+			scorch(pos, 5.0 * s)
+			if big:
+				ring(pos, Color(1.0, 0.55, 0.2, 1.0), 7.0 * s)
+				burst("glass", pos + Vector3(0, 1.2, 0))
+			hit_light(pos + Vector3(0, 2.5, 0), Color(1.0, 0.55, 0.2), 9.0 * s, 15.0, 0.55)
+
+
+func _burst_n(kind: String, pos: Vector3, amount: int) -> void:
+	var p := _next(kind) as CPUParticles3D
+	p.amount = maxi(4, amount)
+	p.global_position = pos
+	p.restart()
+	p.emitting = true
 
 
 # ------------------------------------------------------------------ emissores contínuos por carro
@@ -682,16 +726,15 @@ func set_scrape(n: Node3D, on: bool, pos: Vector3, dir: Vector3, strength: float
 
 
 # ------------------------------------------------------------------ marcas de pneu
-func skid(a: Vector3, b: Vector3, width: float, alpha: float) -> void:
-	var d := b - a
+func skid(a: Vector3, b: Vector3, width: float, alpha: float, n := Vector3.UP) -> void:
+	var d := (b - a).slide(n)
 	var l := d.length()
-	if l < 0.05:
+	if l < 0.05 or l > 4.0:
 		return
-	var mid := (a + b) * 0.5
-	mid.y = 0.045
+	var mid := (a + b) * 0.5 + n * 0.05
 	var z := d / l
-	var x := Vector3.UP.cross(z).normalized()
-	var basis := Basis(x * width, Vector3.UP, z * (l + 0.06))
+	var x := n.cross(z).normalized()
+	var basis := Basis(x * width, n, z * (l + 0.06))
 	skid_mm.set_instance_transform(skid_head, Transform3D(basis, mid))
 	skid_mm.set_instance_color(skid_head, Color(1, 1, 1, alpha))
 	skid_head = (skid_head + 1) % SKID_MAX
@@ -712,7 +755,7 @@ func make_trail(col: Color) -> Dictionary:
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
-	var t := {"mesh": im, "pts": [], "col": col}
+	var t := {"mesh": im, "pts": [], "col": col, "mi": mi}
 	trails.append(t)
 	return t
 
@@ -777,8 +820,8 @@ func spawn_debris(mesh: MeshInstance3D, xform: Transform3D, vel: Vector3, is_whe
 	var sm := make_damage_smoke(true)
 	sm.amount = 12
 	sm.lifetime = 1.0
-	sm.emitting = true
 	rb.add_child(sm)
+	sm.emitting = true
 	get_tree().create_timer(1.2, false).timeout.connect(func(): if is_instance_valid(sm): sm.emitting = false)
 	debris.append({"rb": rb, "t": 0.0, "life": randf_range(8, 12)})
 	while debris.size() > DEBRIS_MAX:

@@ -63,48 +63,58 @@ Teclado: `J` liga o pulo, espaço freia ou usa a habilidade, `Esc` pausa.
 
 # Mini Fúria (Godot 4)
 
-Corrida isométrica 3D de mini carros no estilo "arcade de batidas", feita em **Godot 4.7** (renderizador Compatibility, roda no navegador e no celular). Projeto na pasta [`minifuria/`](minifuria/): abra o `project.godot` no Godot.
+Corrida isométrica de **combate** com mini carros, feita em **Godot 4.7** (renderizador Compatibility, roda no navegador e no celular). Projeto em [`minifuria/`](minifuria/): abra o `project.godot` no Godot.
+
+Referências de game design: **Rock n' Roll Racing** (armas e nitro limitados que recarregam a cada volta, dinheiro por colocação e por rival destruído, upgrades na garagem), **Hot Wheels Unleashed / Trackmania** (loopings, espirais, rampas, boosters antes dos elementos) e **Burnout** (tráfego, takedowns, quase-batidas).
 
 ![carros e props modelados no Blender](minifuria/assets/preview.png)
 
-## Como jogar
+## Fluxo do jogo
 
-- **Celular ou mouse**: os controles ficam sempre na tela. Arraste no lado esquerdo para apontar a direção (relativa à tela). Acelera sozinho. À direita: **NITRO**, **DRIFT** e **FREIO** (segurar o freio parado dá ré).
-- **Teclado**: setas/WASD, `Espaço` drift, `Shift` nitro, `R` volta para a pista, `P` pausa, `M` som, `C` troca a câmera.
-- **Câmeras**: isométrica ou terceira pessoa (botão CAM ou tecla `C`). A terceira pessoa segue atrás do carro com mola, abre o campo de visão com velocidade e nitro, acompanha o drift e gira em volta do carro na batida.
-- **Nitro**: enche com drift, quase-batidas, contramão, pulos, boost pads e destruindo cones/barris/caixotes.
-- **Takedown**: bata forte num rival ou jogue ele no muro. Enche o nitro, câmera lenta e o carro dele vira destroço.
-- **Batida**: bater de frente no muro ou no trânsito capota o carro. Depois você volta consertado, piscando.
-- 3 voltas contra 3 rivais, 16 carros de trânsito nos dois sentidos.
+Menu → **escolha da pista** (10) → **garagem** → corrida de 3 voltas contra 4 rivais armados → **resultado** com prêmio em dinheiro → próxima pista. O progresso (dinheiro, upgrades, equipamento, melhores colocações) fica salvo.
 
-## Destruição
+- **Carros**: Faísca (equilibrado), Trovão (pesado e blindado), Vespa (rápida e ágil, mas frágil).
+- **Arma frontal**: Metralhadora (60 tiros por volta, mira automática no cone da frente) ou Lança-foguetes (4 por volta, teleguiado leve, explosão em área).
+- **Arma traseira**: Minas (jogam o carro para o alto) ou Óleo (faz o carro rodar).
+- **Nitro**: Curto (4 arrancadas de 1 s) ou Longo (2 de 2,6 s). Drift, pulos, quase-batidas e takedowns enchem um medidor que dá cargas extras.
+- **Upgrades** (3 níveis cada): Motor, Blindagem, Munição e Nitro +1.
+- Na pista: caixas de **munição**, **reparo** e **nitro**; boost pads; barris e pneus destrutíveis.
+- Cair da pista (vãos, água, lava, nuvens) ou ser destruído faz você voltar um pouco atrás, piscando.
 
-- Cada carro vem do Blender em **peças**: chassi, capô, para-choques (com faróis/lanternas), portas, cabine, aerofólio, caçamba e 4 rodas.
-- Cada batida **amassa a malha** de verdade perto do ponto de impacto (vértices empurrados + normais recalculadas) e escurece a pintura.
-- Peças perdem "vida" e **soltam** como corpos rígidos que quicam pela pista; vidro estilhaça; rodas saem rolando. Sem uma roda, o carro arrasta soltando faíscas.
-- Com muito dano sai fumaça preta e depois fogo. Batida grande = explosão, clarão de luz, onda de choque e capotagem com física.
+## As 10 pistas
 
-## Acabamento visual
+| # | Pista | Tema | Destaques |
+|---|---|---|---|
+| 1 | Circuito do Parque | parque, dia | morros, chicane, tráfego nos dois sentidos |
+| 2 | Cidade Neon | cidade à noite | oito com viaduto sobre o cruzamento, tráfego |
+| 3 | Cânion do Deserto | pôr do sol, cactos | dois saltos sobre o vale |
+| 4 | Pico Nevado | neve, gelo escorregadio | espiral de descida com 2 voltas |
+| 5 | Docas do Porto | mar e contêineres | píeres e saltos sobre a água |
+| 6 | Boca do Vulcão | lava e cristais | looping sobre a lava e salto |
+| 7 | Loop Mania | pista de brinquedo laranja | 2 loopings, espiral, torção, salto |
+| 8 | Espiral do Céu | nas nuvens | espirais de subida e descida, torção, salto |
+| 9 | Pântano Sombrio | brejo e palmeiras | oito com ponte alta, saltos |
+| 10 | Estação Lunar | lua, gravidade baixa | saltos enormes e looping |
 
-- Oclusão ambiente "assada" no Blender (Cycles) nos vértices de todos os modelos: cantos e frestas escurecidos como no render, mesmo no renderizador leve da web.
-- Luz de céu procedural (ambiente e reflexos), sombras suaves filtradas, sombra de contato embaixo de cada carro, tonemapping AgX, MSAA 4x e materiais ajustados por tipo (pintura brilhante com rim light, vidro, cromado, pneu).
+## Controles
 
-## Nitro, velocidade e game juice
+- **Celular ou mouse**: arraste à esquerda para apontar a direção. Acelera sozinho. Botões: **TIRO**, **NITRO**, **DRIFT**, **MINA/ÓLEO**, **FREIO**.
+- **Teclado**: setas/WASD, `Z`/`J` tiro, `X`/`K` mina, `Shift` nitro, `Espaço` drift, `R` volta à pista, `P` pausa, `M` som.
 
-Chama de nitro feita com shader (ruído correndo, núcleo branco, diamantes de choque) e luz azul, fumaça e fogo com texturas de ruído geradas em código, faíscas esticadas na direção da velocidade, brasas, marcas de queimado no chão, anéis de choque, linhas de vento em volta do carro, rastro das lanternas, onda de choque ao ativar, blur radial + aberração cromática + linhas de velocidade estilo anime (shader de tela), zoom que abre com a velocidade, glow nos faróis, hitstop nas batidas, câmera lenta com dessaturação nos takedowns, tremor de câmera por trauma, fumaça e marcas de pneu, faíscas, poeira nos pousos, confete, popups animados e motor sintetizado com troca de marchas.
+## Como a pista 3D é feita
+
+Cada pista é um polígono de pontos `[x, z, altura]` mais elementos especiais (`loop`, `jump`, `helix`, `cork`) em `scripts/track_data.gd`. O `track.gd` expande os elementos em pontos de controle, passa uma Catmull-Rom centrípeta fechada e calcula um referencial por amostra: "para cima" do mundo projetado nos trechos normais, inclinação automática nas curvas e, dentro do looping, o "para cima" aponta para o eixo do looping. Daí saem asfalto, zebras, guard-rails (mais altos nos elementos), parte de baixo, pilares (sem cair em cima de outro trecho), colisores e a decoração (placas de curva, postes, pneus, bandeiras, outdoors). O carro usa a normal da pista como gravidade e tem assistência nos loopings e na torção, no estilo dos jogos de pista de brinquedo.
+
+Ferramentas: `godot --headless -s res://tools/validate_tracks.gd` confere raio mínimo, cruzamentos sem altura suficiente e altura mínima das 10 pistas; `godot --headless --fixed-fps 60 res://scenes/main.tscn -- --autotest --track=N` corre a pista N no piloto automático e imprime o resultado (com `--debugfall` mostra cada queda).
 
 ## Estrutura
 
-- `minifuria/blender/build_assets.py`: modela no Blender (via `bpy`) os carros em peças e os props e exporta `minifuria/assets/minicars.glb`. Roda com `blender -b -P build_assets.py` ou `pip install bpy && python build_assets.py --render preview.png`.
-- `minifuria/scripts/car.gd`: `RigidBody3D` com suspensão por raycast, aderência lateral, drift, nitro, estabilizador, detecção de impacto, amassados, peças que soltam e IA.
-- `minifuria/scripts/track.gd`: pista em spline, malhas, colisores, rampas e boost pads.
-- `minifuria/scripts/main.gd`: regras (takedown, batida, quase-batida, contramão, voltas), câmera isométrica, tempo (hitstop/slow-mo) e efeitos.
-- `minifuria/scripts/fx.gd`: partículas, marcas de pneu (MultiMesh), rastros, destroços físicos.
-- `minifuria/scripts/hud.gd`, `touch.gd`, `sfx.gd`: HUD/menus, controles touch e áudio sintetizado.
-- `minifuria/shaders/`: asfalto, grama, boost pad, xadrez, chama do nitro, efeitos no chão (sombra de contato, queimado, anel) e pós-processamento de tela.
-- `minifuria/tools/pack_web.py`: divide o export web em arquivos de 4 MB para hospedagens com limite por arquivo.
+- `minifuria/blender/build_assets.py`: carros em peças destrutíveis, props de todos os temas, armas e itens, com oclusão ambiente assada nos vértices (Cycles) → `minifuria/assets/minicars.glb`.
+- `minifuria/scripts/track_data.gd` (pistas e temas), `track.gd` (geração 3D), `car.gd` (física, dano, IA), `weapons.gd` (armas), `main.gd` (fluxo, regras, câmera, efeitos), `fx.gd` (partículas e efeitos), `hud.gd` / `touch.gd` (interface), `sfx.gd` (áudio sintetizado).
+- `minifuria/shaders/`: asfalto por tema, chão (grama, areia, neve, água, lava, lua, cidade, tapete, nuvens), chama do nitro, efeitos no chão, barra de vida e pós-processamento.
+- `minifuria/tools/pack_web.py`: divide o export web em arquivos de 4 MB.
 - Fonte Bungee (SIL OFL), ver `minifuria/fonts/FONT-LICENSE.txt`.
 
 ## Exportar para a web
 
-Instale os templates de exportação do Godot 4.7 e rode `godot --headless --export-release "Web" build/web/index.html` dentro de `minifuria/` (preset "Web", sem threads, já configurado). Teste automatizado: `godot --headless --fixed-fps 60 res://scenes/main.tscn -- --autotest` corre uma corrida inteira no piloto automático e imprime o resultado.
+Com os templates do Godot 4.7 instalados, dentro de `minifuria/`: `godot --headless --export-release "Web" build/web/index.html` e, se o host limitar o tamanho por arquivo, `python3 tools/pack_web.py build/web build/web_split`.

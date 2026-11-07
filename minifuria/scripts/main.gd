@@ -1,15 +1,21 @@
 extends Node3D
-## Mini Fúria: corrida isométrica de mini carros com destruição, takedowns e nitro.
+## Mini Fúria: corrida isométrica de combate com mini carros.
+## Fluxo: menu -> escolha da pista -> garagem (carro, armas, nitro, upgrades) -> corrida -> resultado ($).
 
 const LAPS := 3
+const PRIZE := [1000, 650, 400, 250, 120]
+const KILL_BONUS := 150
+const UP_PRICE := [400, 900, 1600]
 const CAM_YAW := PI / 4.0
 const CAM_PITCH := 0.62
 const CAM_DIST := 120.0
+const SAVE_PATH := "user://minifuria.json"
 
 const RIVALS := [
 	{"kind": "trovao", "color": "#2f6fd6", "name": "TROVÃO"},
 	{"kind": "vespa", "color": "#ffb31a", "name": "VESPA"},
 	{"kind": "trovao", "color": "#8a5cd6", "name": "CORISCO"},
+	{"kind": "vespa", "color": "#2fbf71", "name": "JARARACA"},
 ]
 const TRAFFIC := [
 	["sedan", ["#5cc26b", "#f08a7a", "#7fc8d9", "#e6e1d6", "#9a7cf0"]],
@@ -20,28 +26,34 @@ const TRAFFIC := [
 ]
 
 var lib: Node3D
-var track: Track
-var fx: Fx
+var env: Environment
+var sky_mat: ProceduralSkyMaterial
+var sun: DirectionalLight3D
+var cam: Camera3D
 var hud: Hud
 var sfx: Sfx
-var cam: Camera3D
-var sun: DirectionalLight3D
-var env: Environment
+var fx: Fx
+var weapons: Weapons
+var world: Node3D
+var track: Track
+var track_idx := 0
+var theme: Dictionary
+var ground_shader: Shader
+var road_shader: Shader
 
 var cars: Array = []
 var rivals: Array = []
 var traffic: Array = []
 var props: Array = []
+var pickups: Array = []
 var player: Car
-var em := {}   # efeitos contínuos por carro
+var em := {}
 var scrape_pool: Array = []
-var cam_mode := "iso"          # iso | chase (terceira pessoa)
-var chase_pos := Vector3.ZERO
-var chase_dir := Vector3.FORWARD
-var chase_fov := 65.0
-var orbit_a := 0.0
 
-var mode := "loading"
+var mode := "menu"
+var prev_mode := "race"
+var save := {}
+var stats := {}
 var time_g := 0.0
 var real := 0.0
 var ts := 1.0
@@ -51,7 +63,7 @@ var hitstop := 0.0
 var trauma := 0.0
 var shake_t := 0.0
 var zoom_kick := 0.0
-var view_h := 32.0
+var view_h := 28.0
 var cam_pos := Vector3.ZERO
 var cam_focus: Car = null
 var focus_t := 0.0
@@ -61,20 +73,17 @@ var countdown := 0.0
 var last_beep := 4
 var lap_start := 0.0
 var best_lap := INF
-var stats := {}
 var crash_t := -1.0
-var place := 4
+var place := 5
 var onc_dist := 0.0
 var nm_combo := 0
 var last_nm := -10.0
 var was_drift := false
 var was_nitro := false
-var nitro_was_full := false
 var _last_us := 0
 var auto_test := false
 var test_shots: Array = []
-var test_lane := -2.75
-
+var test_lane := 0.0
 var post_blur := 0.0
 var post_aberr := 0.0
 var post_lines := 0.0
@@ -83,114 +92,106 @@ var post_lines := 0.0
 func _ready() -> void:
 	randomize()
 	_setup_input()
-	auto_test = "--autotest" in OS.get_cmdline_user_args()
-	for a in OS.get_cmdline_user_args():
-		if a.begins_with("--lane="):
-			test_lane = float(a.substr(7))
+	_load_save()
+	var args := OS.get_cmdline_user_args()
+	auto_test = "--autotest" in args
+	for a in args:
 		if a.begins_with("--shots="):
 			test_shots = Array(a.substr(8).split(","))
+		if a.begins_with("--lane="):
+			test_lane = float(a.substr(7))
+		if a.begins_with("--track="):
+			track_idx = int(a.substr(8))
 
 	env = Environment.new()
-	# céu procedural: luz ambiente e reflexos vindos do céu (acabamento parecido com o render do Blender)
 	var sky := Sky.new()
-	var psm := ProceduralSkyMaterial.new()
-	psm.sky_top_color = Color("#6fa6f2")
-	psm.sky_horizon_color = Color("#dde8f7")
-	psm.ground_horizon_color = Color("#d9dde3")
-	psm.ground_bottom_color = Color("#6b7f5a")
-	psm.sun_angle_max = 20.0
-	sky.sky_material = psm
+	sky_mat = ProceduralSkyMaterial.new()
+	sky_mat.sun_angle_max = 20.0
+	sky.sky_material = sky_mat
 	env.sky = sky
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color("#bcd6f2")
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_sky_contribution = 1.0
-	env.ambient_light_energy = 1.0
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	env.tonemap_mode = Environment.TONE_MAPPER_AGX
 	env.tonemap_exposure = 1.15
 	env.glow_enabled = true
 	env.glow_intensity = 0.6
-	env.glow_strength = 1.0
-	env.glow_bloom = 0.0
 	env.glow_hdr_threshold = 1.2
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
 	env.set_glow_level(1, 1.0)
 	env.set_glow_level(3, 1.0)
 	env.set_glow_level(5, 0.6)
 	env.adjustment_enabled = true
-	env.adjustment_saturation = 1.28
+	env.adjustment_saturation = 1.22
 	env.adjustment_contrast = 1.04
+	env.fog_density = 0.0025
+	env.fog_sky_affect = 0.0
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
-
 	sun = DirectionalLight3D.new()
-	sun.light_color = Color("#fff0d4")
-	sun.light_energy = 1.7
-	sun.rotation = Vector3(deg_to_rad(-52), deg_to_rad(-35), 0)
 	sun.shadow_enabled = true
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-	sun.directional_shadow_max_distance = 75.0
+	sun.directional_shadow_max_distance = 80.0
 	sun.shadow_bias = 0.04
 	sun.shadow_normal_bias = 1.2
 	sun.shadow_blur = 1.6
 	sun.shadow_opacity = 0.85
 	add_child(sun)
-
 	cam = Camera3D.new()
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
 	cam.size = view_h
 	cam.near = 1.0
-	cam.far = 400.0
+	cam.far = 500.0
 	add_child(cam)
 	cam.make_current()
 
 	lib = (load("res://assets/minicars.glb") as PackedScene).instantiate()
 	_prep_materials(lib, {})
-	track = Track.new()
-	track.add_ramp(96, -5.5)
-	track.add_ramp(476, 5.5)
-	track.add_pad(30, -2.75)
-	track.add_pad(200, -5.5)
-	track.add_pad(330, 5.5)
-	track.add_pad(540, -5.5)
-	add_child(track)
-	track.build(_prop_scene("prop_ramp"))
+	ground_shader = load("res://shaders/ground.gdshader")
+	road_shader = load("res://shaders/road.gdshader")
 	fx = Fx.new()
 	add_child(fx)
+	sfx = Sfx.new()
+	add_child(sfx)
 	for i in 6:
 		var sc := fx.make_scrape()
 		fx.add_child(sc)
 		scrape_pool.append(sc)
-	sfx = Sfx.new()
-	add_child(sfx)
+	weapons = Weapons.new()
+	add_child(weapons)
+	weapons.setup(self, fx, sfx, lib)
 	hud = Hud.new()
+	hud.game = self
 	add_child(hud)
-	hud.track = track
-	hud.play_pressed.connect(_start)
-	hud.restart_pressed.connect(_start)
-	hud.resume_pressed.connect(func(): _pause(false))
-	hud.pause_pressed.connect(func(): _pause(mode != "paused"))
-	hud.menu_pressed.connect(_to_menu)
-	hud.mute_pressed.connect(func(): sfx.set_muted(not sfx.muted))
-	hud.cam_pressed.connect(_toggle_cam)
-
-	_build_scenery()
-	_new_race()
-	mode = "menu"
+	load_track(track_idx)
 	_last_us = Time.get_ticks_usec()
-	if auto_test:
-		_start()
-		if "--chase" in OS.get_cmdline_user_args():
-			_toggle_cam()
+	if "--uishot" in args:
+		_ui_shots()
+	elif auto_test:
+		start_race()
+
+
+func _ui_shots() -> void:
+	for scr in ["menu", "tracks", "garage"]:
+		hud.show_screen(scr)
+		for k in 20:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("user://ui_%s.png" % scr)
+	get_tree().quit()
+
+
+func _exit_tree() -> void:
+	if is_instance_valid(lib):
+		lib.free()
 
 
 func _setup_input() -> void:
 	var keys := {
 		"left": [KEY_LEFT, KEY_A], "right": [KEY_RIGHT, KEY_D], "up": [KEY_UP, KEY_W], "down": [KEY_DOWN, KEY_S],
-		"drift": [KEY_SPACE], "nitro": [KEY_SHIFT, KEY_N, KEY_J], "reset": [KEY_R], "pause": [KEY_P, KEY_ESCAPE],
-		"mute": [KEY_M], "start": [KEY_ENTER], "camera": [KEY_C],
+		"drift": [KEY_SPACE], "nitro": [KEY_SHIFT, KEY_N], "fire": [KEY_Z, KEY_J, KEY_CTRL], "drop": [KEY_X, KEY_K],
+		"reset": [KEY_R], "pause": [KEY_P, KEY_ESCAPE], "mute": [KEY_M],
 	}
 	for a in keys:
 		if not InputMap.has_action(a):
@@ -201,7 +202,52 @@ func _setup_input() -> void:
 			InputMap.action_add_event(a, e)
 
 
-## acabamento dos materiais vindos do Blender: AO assada nos vértices + ajustes de brilho por tipo
+# ------------------------------------------------------------------ save
+func _load_save() -> void:
+	save = {"cash": 800, "car": "faisca", "front": "mg", "rear": "mine", "nitro": "short",
+		"up": {"engine": 0, "armor": 0, "ammo": 0, "nitro": 0}, "best": {}}
+	if FileAccess.file_exists(SAVE_PATH):
+		var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
+		var d = JSON.parse_string(f.get_as_text())
+		if d is Dictionary:
+			for k in d:
+				save[k] = d[k]
+	for k in ["engine", "armor", "ammo", "nitro"]:
+		save.up[k] = int(save.up.get(k, 0))
+
+
+func _write_save() -> void:
+	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(save))
+
+
+func upgrade_price(k: String) -> int:
+	return UP_PRICE[mini(int(save.up[k]), 2)]
+
+
+func buy_upgrade(k: String) -> void:
+	var lvl: int = save.up[k]
+	if lvl >= 3:
+		return
+	var price := upgrade_price(k)
+	if int(save.cash) < price:
+		return
+	save.cash = int(save.cash) - price
+	save.up[k] = lvl + 1
+	_write_save()
+	sfx.play("pickup")
+	hud.refresh_garage()
+
+
+func equip(slot: String, key: String) -> void:
+	save[slot] = key
+	_write_save()
+	sfx.play("drop", -6.0)
+	hud.refresh_garage()
+
+
+# ------------------------------------------------------------------ materiais e cenário
 func _prep_materials(n: Node, done: Dictionary) -> void:
 	if n is MeshInstance3D:
 		var mi := n as MeshInstance3D
@@ -229,33 +275,12 @@ func _prep_materials(n: Node, done: Dictionary) -> void:
 					m.metallic = 1.0
 				"Tire":
 					m.roughness = 0.95
-				"Headlight", "Taillight", "LampGlow", "Window":
+				"SignYellow", "SignBlack", "Metal":
+					m.cull_mode = BaseMaterial3D.CULL_DISABLED
+				"Headlight", "Taillight", "LampGlow", "Window", "Billboard", "Billboard2", "CrystalC", "CrystalM", "RedLight", "NitroBlue":
 					m.vertex_color_use_as_albedo = false
 	for c in n.get_children():
 		_prep_materials(c, done)
-
-
-func _prop_scene(name_: String) -> PackedScene:
-	var n := lib.get_node(name_).duplicate() as Node3D
-	n.transform = Transform3D.IDENTITY
-	_shadows(n)
-	var ps := PackedScene.new()
-	_own(n, n)
-	ps.pack(n)
-	return ps
-
-
-func _own(n: Node, owner_: Node) -> void:
-	for c in n.get_children():
-		c.owner = owner_
-		_own(c, owner_)
-
-
-func _shadows(n: Node) -> void:
-	if n is GeometryInstance3D:
-		n.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-	for c in n.get_children():
-		_shadows(c)
 
 
 func _inst(name_: String) -> Node3D:
@@ -265,109 +290,230 @@ func _inst(name_: String) -> Node3D:
 	return n
 
 
-# ------------------------------------------------------------------ cenário
+func _shadows(n: Node) -> void:
+	if n is GeometryInstance3D:
+		n.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	for c in n.get_children():
+		_shadows(c)
+
+
+func load_track(i: int) -> void:
+	Engine.time_scale = 1.0
+	track_idx = i
+	if world:
+		remove_child(world)
+		world.queue_free()
+	weapons.clear()
+	for d in fx.debris:
+		(d.rb as Node).queue_free()
+	fx.debris.clear()
+	for tr in fx.trails:
+		(tr.mi as Node).queue_free()
+	fx.trails.clear()
+	fx.skid_mm.visible_instance_count = 0
+	fx.skid_head = 0
+	em.clear()
+	cars.clear()
+	rivals.clear()
+	traffic.clear()
+	props.clear()
+	pickups.clear()
+	var data: Dictionary = TrackData.TRACKS[i]
+	theme = TrackData.THEMES[data.theme]
+	world = Node3D.new()
+	world.name = "World"
+	add_child(world)
+	track = Track.new()
+	track.setup(data, theme)
+	world.add_child(track)
+	track.build(ground_shader, road_shader)
+	_apply_theme()
+	_build_scenery()
+	_spawn_cars()
+	hud.set_track(track)
+	hud.cars = cars
+	hud.player = player
+	cam_pos = player.global_position
+	mode = "menu"
+
+
+func _apply_theme() -> void:
+	sky_mat.sky_top_color = Color(theme.sky_top)
+	sky_mat.sky_horizon_color = Color(theme.sky_hor)
+	sky_mat.ground_horizon_color = Color(theme.sky_hor)
+	sky_mat.ground_bottom_color = Color(theme.ga).darkened(0.3)
+	env.background_color = Color(theme.bg)
+	env.ambient_light_energy = float(theme.amb)
+	env.fog_enabled = String(theme.fog) != ""
+	if env.fog_enabled:
+		env.fog_light_color = Color(theme.fog)
+	sun.light_color = Color(theme.sun)
+	sun.light_energy = float(theme.sun_e)
+	sun.rotation = Vector3(deg_to_rad(theme.sun_rot[0]), deg_to_rad(theme.sun_rot[1]), 0)
+	env.glow_intensity = 0.7 if theme.night else 0.6
+
+
 func _build_scenery() -> void:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 1337
-	var a0 := track.at(0)
+	rng.seed = 1337 + track_idx * 101
+	var a0 := track.at(0.0)
 	var gate := _inst("prop_gate")
-	gate.position = a0.pos
-	gate.rotation.y = a0.heading
-	add_child(gate)
-	for e in [[18.0, -(Track.WALL + 4)], [44.0, -(Track.WALL + 4)], [-20.0, Track.WALL + 4]]:
-		var p := track.at(e[0], e[1])
-		var st := _inst("prop_stand")
-		st.position = p.pos
-		var to_track: float = 1.0 if e[1] < 0 else -1.0
-		var n := Vector3(p.tan.z, 0, -p.tan.x) * to_track
-		st.rotation.y = atan2(n.x, n.z)
-		add_child(st)
-	var s := 0.0
-	var k := 0
-	while s < track.length:
-		var side := 1.0 if k % 2 == 0 else -1.0
-		var p := track.at(s, side * (Track.WALL + 1.3))
-		var l := _inst("prop_lamp")
-		l.position = p.pos
-		var n := Vector3(p.tan.z, 0, -p.tan.x) * -side
-		l.rotation.y = atan2(n.x, n.z)
-		add_child(l)
-		s += 34.0
-		k += 1
-	var deco := ["prop_tree", "prop_tree", "prop_pine", "prop_pine", "prop_rock"]
-	var placed := 0
-	for i in 900:
-		if placed >= 220:
-			break
-		var x := (rng.randf() - 0.5) * 330.0
-		var z := (rng.randf() - 0.5) * 260.0
-		if absf(track.project(Vector3(x, 0, z)).lat) < Track.WALL + 3.5:
+	var gs: float = (track.WALL + 1.0) / 13.0
+	gate.transform = Transform3D((a0.basis as Basis).scaled_local(Vector3(gs, 1, 1)), a0.pos)
+	world.add_child(gate)
+	for e in [[24.0, -1.0], [50.0, -1.0], [-30.0, 1.0]]:
+		var p := track.at(e[0], e[1] * (track.WALL + 4.0))
+		if track.U[p.i].y < 0.9 or track.P[p.i].y > 3.0:
 			continue
-		var m := _inst(deco[rng.randi() % deco.size()])
-		m.position = Vector3(x, 0, z)
-		m.rotation.y = rng.randf() * TAU
-		m.scale = Vector3.ONE * (0.8 + rng.randf() * 0.7)
-		add_child(m)
+		var st := _inst("prop_stand")
+		var n: Vector3 = (p.left as Vector3) * -float(e[1])
+		st.position = Vector3(p.pos.x, theme.gy if theme.gy > -0.5 else p.pos.y, p.pos.z)
+		st.rotation.y = atan2(n.x, n.z)
+		world.add_child(st)
+	for spot in track.decor_spots():
+		var nd := _inst(spot.kind)
+		nd.transform = spot.xf
+		if spot.get("flip", false):
+			nd.scale = Vector3(-1, 1, 1)
+		world.add_child(nd)
+	var mn := Vector2(1e9, 1e9)
+	var mx := Vector2(-1e9, -1e9)
+	for i in range(0, track.n, 5):
+		mn = mn.min(Vector2(track.P[i].x, track.P[i].z))
+		mx = mx.max(Vector2(track.P[i].x, track.P[i].z))
+	mn -= Vector2(70, 70)
+	mx += Vector2(70, 70)
+	var list: Array = theme.props
+	var total := 0
+	for it in list:
+		total += int(it[1])
+	var gy: float = theme.gy
+	var placed := 0
+	var dens: int = theme.density
+	var pscale: float = theme.get("prop_scale", 1.0)
+	for k in dens * 4:
+		if placed >= dens or total == 0:
+			break
+		var x := rng.randf_range(mn.x, mx.x)
+		var z := rng.randf_range(mn.y, mx.y)
+		if track.clearance_xz(Vector3(x, 0, z)) < track.WALL + 5.0 * pscale:
+			continue
+		var r := rng.randi() % total
+		var kind := ""
+		for it in list:
+			r -= int(it[1])
+			if r < 0:
+				kind = it[0]
+				break
+		if kind == "container":
+			_container_pad(Vector3(x, gy, z), rng)
+		else:
+			var m := _inst(kind)
+			m.position = Vector3(x, gy, z)
+			m.rotation.y = rng.randf() * TAU
+			m.scale = Vector3.ONE * (0.8 + rng.randf() * 0.7) * pscale
+			world.add_child(m)
 		placed += 1
 	placed = 0
-	for i in 400:
-		if placed >= 24:
+	var bn: int = theme.bldg
+	for k in bn * 6:
+		if placed >= bn:
 			break
-		var x := (rng.randf() - 0.5) * 360.0
-		var z := (rng.randf() - 0.5) * 300.0
-		if absf(track.project(Vector3(x, 0, z)).lat) < Track.WALL + 12 or (absf(x) < 70 and absf(z) < 30):
+		var x := rng.randf_range(mn.x - 40, mx.x + 40)
+		var z := rng.randf_range(mn.y - 40, mx.y + 40)
+		if track.clearance_xz(Vector3(x, 0, z)) < track.WALL + 12.0:
 			continue
 		var b := _inst(["prop_bldgA", "prop_bldgB", "prop_bldgC"][rng.randi() % 3])
-		b.position = Vector3(x, 0, z)
+		b.position = Vector3(x, gy, z)
 		b.rotation.y = round(rng.randf() * 4.0) * PI / 2.0
-		add_child(b)
+		if theme.night:
+			b.scale = Vector3(1.0, 1.0 + rng.randf() * 1.5, 1.0)
+		world.add_child(b)
 		placed += 1
+	if theme.ground == 8:
+		_clouds(rng, mn, mx)
+	for ps in track.pickup_spots:
+		var a := track.at(ps.s, ps.lat)
+		var nd := _inst("pickup_" + String(ps.kind))
+		nd.position = a.pos + a.up * 1.0
+		world.add_child(nd)
+		pickups.append({"node": nd, "kind": ps.kind, "t": 0.0, "base": a.pos + a.up * 1.0, "up": a.up})
+	var made := 0
+	for i in track.n:
+		if made >= 6:
+			break
+		if track.feat[i] == 0 and absf(track.curv[i]) > 1.0 / 32.0 and track.U[i].y > 0.95 and i % 4 == 0:
+			var outside := signf(track.curv[i])
+			for j in 3:
+				var a := track.at(i * track.ds + j * 2.5, outside * (track.HALF + 0.6))
+				_add_prop("prop_crate" if theme.road == 1 else ["prop_barrel", "prop_tires"][j % 2], a, 30.0, Vector2(0.5, 1.0))
+			made += 1
 
-	# props destrutíveis (física de verdade)
-	for i in 7:
-		_add_prop("prop_cone", 60 + i * 5, -2.75 + (3.0 if i % 2 else -3.0), 6.0, "cyl", Vector2(0.3, 0.9))
-	for i in 10:
-		_add_prop("prop_cone", 300 + i * 4, -9 + i * 2, 6.0, "cyl", Vector2(0.3, 0.9))
-	for e in [[287, 10], [290, 9], [293, 10.5], [347, -10], [350, -9.5], [408, 10], [411, 9.5], [414, 10.3]]:
-		_add_prop("prop_barrel", e[0], e[1], 40.0, "cyl", Vector2(0.45, 1.1))
-	for i in 6:
-		_add_prop("prop_crate", 130 + (i % 3) * 1.3, -5.5 + (i / 3) * 1.3 - 0.6, 35.0, "box", Vector2(1.1, 1.1))
-		_add_prop("prop_crate", 508 - (i % 3) * 1.3, 5.5 + (i / 3) * 1.3 - 0.6, 35.0, "box", Vector2(1.1, 1.1))
-	for e in [[150, 10.6], [152, 10.6], [250, -10.6], [252, -10.6], [440, 10.6], [560, -10.6]]:
-		_add_prop("prop_tires", e[0], e[1], 50.0, "cyl", Vector2(0.5, 0.95))
+
+func _container_pad(p: Vector3, rng: RandomNumberGenerator) -> void:
+	var pad := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(9, 4, 15)
+	pad.mesh = bm
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color("#8a8d94")
+	m.roughness = 0.9
+	pad.material_override = m
+	pad.position = p + Vector3(0, 1.6, 0)
+	pad.rotation.y = rng.randf() * TAU
+	world.add_child(pad)
+	var cnt := rng.randi_range(1, 3)
+	for k in cnt:
+		var c := _inst(["prop_containerR", "prop_containerB", "prop_containerY"][rng.randi() % 3])
+		c.position = Vector3([-2.5, 2.5, 0.0][k], 2.0 + (2.6 if k == 2 else 0.0), 0)
+		pad.add_child(c)
 
 
-func _add_prop(name_: String, s: float, lat: float, m: float, shape: String, dims: Vector2) -> void:
-	var p := track.at(s, lat)
+func _clouds(rng: RandomNumberGenerator, mn: Vector2, mx: Vector2) -> void:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(1, 1, 1)
+	m.roughness = 1.0
+	m.emission_enabled = true
+	m.emission = Color(0.85, 0.88, 1.0)
+	m.emission_energy_multiplier = 0.35
+	for k in 40:
+		var mi := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = 1.0
+		sm.height = 2.0
+		sm.radial_segments = 10
+		sm.rings = 6
+		mi.mesh = sm
+		mi.material_override = m
+		var s := rng.randf_range(8, 22)
+		mi.scale = Vector3(s * 1.6, s * 0.5, s)
+		mi.position = Vector3(rng.randf_range(mn.x, mx.x), float(theme.gy) + rng.randf_range(-4, 6), rng.randf_range(mn.y, mx.y))
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		world.add_child(mi)
+
+
+func _add_prop(name_: String, a: Dictionary, m: float, dims: Vector2) -> void:
 	var rb := RigidBody3D.new()
 	rb.mass = m
 	rb.collision_layer = 4
 	rb.collision_mask = 1 | 2 | 4
 	rb.contact_monitor = true
 	rb.max_contacts_reported = 2
-	rb.can_sleep = true
 	var pm := PhysicsMaterial.new()
 	pm.bounce = 0.3
 	pm.friction = 0.6
 	rb.physics_material_override = pm
 	var cs := CollisionShape3D.new()
-	if shape == "cyl":
-		var c := CylinderShape3D.new()
-		c.radius = dims.x
-		c.height = dims.y
-		cs.shape = c
-	else:
-		var b := BoxShape3D.new()
-		b.size = Vector3(dims.x, dims.y, dims.x)
-		cs.shape = b
+	var c := CylinderShape3D.new()
+	c.radius = dims.x
+	c.height = dims.y
+	cs.shape = c
 	cs.position.y = dims.y * 0.5
 	rb.add_child(cs)
-	var vis := _inst(name_)
-	rb.add_child(vis)
-	add_child(rb)
-	var xf := Transform3D(Basis(Vector3.UP, p.heading), p.pos + Vector3(0, 0.02, 0))
-	rb.global_transform = xf
-	var pr := {"rb": rb, "home": xf, "hit": false, "t": 0.0, "name": name_}
+	rb.add_child(_inst(name_))
+	world.add_child(rb)
+	rb.global_transform = Transform3D(a.basis, (a.pos as Vector3) + (a.up as Vector3) * 0.05)
+	var pr := {"rb": rb, "hit": false, "name": name_}
 	props.append(pr)
 	rb.body_entered.connect(func(b): _prop_hit(pr, b))
 
@@ -375,71 +521,63 @@ func _add_prop(name_: String, s: float, lat: float, m: float, shape: String, dim
 func _prop_hit(pr: Dictionary, b: Node) -> void:
 	if pr.hit or not (b is Car):
 		return
-	var c: Car = b
 	pr.hit = true
-	pr.t = 0.0
+	var c: Car = b
 	var rb: RigidBody3D = pr.rb
 	var v := c.linear_velocity
 	rb.apply_central_impulse((v * 0.5 + Vector3.UP * (4.0 + v.length() * 0.25)) * rb.mass)
 	rb.apply_torque_impulse(Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * rb.mass * 3.0)
 	fx.sparks(rb.global_position + Vector3.UP * 0.5, v, 0.3)
-	fx.burst("dust" if pr.name == "prop_crate" else "smoke", rb.global_position + Vector3.UP * 0.4)
+	fx.burst("smoke", rb.global_position + Vector3.UP * 0.4)
 	if c == player and mode == "race":
 		sfx.play("smash", -4.0)
-		_shake(0.12 if pr.name == "prop_cone" else 0.3)
-		stats.smash += 1
+		_shake(0.2)
 		stats.score += 25
-		_add_nitro(0.02)
-		if pr.name != "prop_cone":
-			hitstop = maxf(hitstop, 0.035)
-		if stats.smash % 5 == 0:
-			hud.popup("DESTRUIÇÃO!", Color("#ffcf33"), "x%d" % stats.smash)
 
 
-# ------------------------------------------------------------------ corrida
+# ------------------------------------------------------------------ carros
 func _make_car(kind: String, role: String, col: Color) -> Car:
 	var c := Car.new()
 	c.setup(lib, kind, role, col)
-	add_child(c)
+	c.grav_factor = float(theme.grav)
+	c.grip_factor = float(theme.grip)
+	world.add_child(c)
 	c.hit.connect(_on_hit)
 	c.part_off.connect(_on_part_off)
 	c.landed.connect(_on_landed)
+	c.died.connect(_on_died)
 	cars.append(c)
+	var e := {"skid": [null, null, null, null]}
 	if role != "traffic":
-		var e := {}
 		e.smoke = [fx.make_tire_smoke(), fx.make_tire_smoke()]
-		for s in e.smoke:
-			add_child(s)
+		e.dust = [fx.make_dust(), fx.make_dust()]
+		for s in e.smoke + e.dust:
+			world.add_child(s)
 		e.flame = fx.make_nitro_flame()
 		c.add_child(e.flame)
 		e.flame.position = c.exhaust_local
 		e.trails = [fx.make_trail(Color(1.5, 0.25, 0.4)), fx.make_trail(Color(1.5, 0.25, 0.4))]
-		em[c] = e
-	var dm := {"dark": fx.make_damage_smoke(true), "fire": fx.make_damage_smoke(false), "skid": [null, null, null, null]}
-	c.add_child(dm.dark)
-	c.add_child(dm.fire)
-	dm.dark.position = Vector3(0, 1.0, c.sp.len * 0.3)
-	dm.fire.position = Vector3(0, 0.9, c.sp.len * 0.3)
-	dm.shadow = fx.contact_shadow(c.sp.len, c.sp.wid)
-	add_child(dm.shadow)
-	if role != "traffic":
-		dm.dust = [fx.make_dust(), fx.make_dust()]
-		for d in dm.dust:
-			add_child(d)
+	e.dark = fx.make_damage_smoke(true)
+	e.fire = fx.make_damage_smoke(false)
+	c.add_child(e.dark)
+	c.add_child(e.fire)
+	e.dark.position = Vector3(0, 1.0, c.sp.len * 0.3)
+	e.fire.position = Vector3(0, 0.9, c.sp.len * 0.3)
+	e.shadow = fx.contact_shadow(c.sp.len, c.sp.wid)
+	world.add_child(e.shadow)
 	if role == "player":
-		dm.wind = fx.make_wind()
-		add_child(dm.wind)
-	if em.has(c):
-		em[c].merge(dm)
-	else:
-		em[c] = dm
+		e.wind = fx.make_wind()
+		world.add_child(e.wind)
+	em[c] = e
 	return c
 
 
 func _place(c: Car, s: float, lat: float, speed: float) -> void:
 	var a := track.at(s, lat)
-	var h: float = a.heading + (PI if c.oncoming else 0.0)
-	c.place(Transform3D(Basis(Vector3.UP, h), a.pos + Vector3(0, 0.1, 0)), speed)
+	var b: Basis = a.basis
+	if c.oncoming:
+		b = b.rotated(a.up, PI)
+	c.place(Transform3D(b, (a.pos as Vector3) + (a.up as Vector3) * 0.25), speed)
 	var pr := track.project(a.pos)
 	c.ti = pr.i
 	c.s_track = pr.s
@@ -449,41 +587,37 @@ func _place(c: Car, s: float, lat: float, speed: float) -> void:
 	c.lane_cur = lat
 
 
-func _new_race() -> void:
-	for c in cars:
-		c.queue_free()
-	for c in em:
-		for k in ["smoke"]:
-			if em[c].has(k):
-				for s in em[c][k]:
-					s.queue_free()
-	em.clear()
-	cars.clear()
-	rivals.clear()
-	traffic.clear()
+func _spawn_cars() -> void:
 	var L := track.length
-	var grid := [[-9.0, -2.75], [-9.0, -8.25], [-18.0, -2.75], [-18.0, -8.25]]
+	var lw := track.W * 0.22
+	var grid := [[-9.0, -lw], [-9.0, lw], [-18.0, -lw], [-18.0, lw], [-27.0, 0.0]]
+	var fronts := ["mg", "rocket"]
+	var rears := ["mine", "oil"]
+	var nitros := ["short", "long"]
 	for i in RIVALS.size():
 		var r: Dictionary = RIVALS[i]
 		var c := _make_car(r.kind, "rival", Color(r.color))
 		c.display_name = r.name
 		c.seed_f = i * 2.1 + 0.5
-		c.cruise = 36.5 + i * 0.6
+		c.cruise = 36.0 + i * 0.5 + track_idx * 0.25
+		c.ai_skill = randf_range(0.95, 1.03)
 		c.next_bash = 6.0 + i * 3.0
+		c.configure(lib, fronts[(i + track_idx) % 2], rears[(i / 2 + track_idx) % 2], nitros[i % 2], {})
 		_place(c, L + grid[i][0], grid[i][1], 0)
 		rivals.append(c)
-	player = _make_car("faisca", "player", Color("#e8352b"))
+	player = _make_car(save.car, "player", Color("#e8352b"))
 	player.display_name = "VOCÊ"
-	player.nitro_amt = 0.35
-	_place(player, L + grid[3][0], grid[3][1], 0)
-	for i in 16:
+	player.configure(lib, save.front, save.rear, save.nitro, save.up)
+	_place(player, L + grid[4][0], grid[4][1], 0)
+	var tc: int = track.data.traffic
+	for i in tc:
 		var t: Array = TRAFFIC[i % TRAFFIC.size()]
 		var cols: Array = t[1]
 		var c := _make_car(t[0], "traffic", Color(cols[randi() % cols.size()]))
 		c.oncoming = i % 5 == 1 or i % 5 == 3
 		c.cruise = randf_range(15, 20) if c.oncoming else randf_range(13, 19)
-		var s := 50.0 + (float(i) / 16.0) * (L - 90.0) + randf_range(-8, 8)
-		var lanes: Array = Track.LANES_ONC if c.oncoming else Track.LANES_FWD
+		var s := 60.0 + (float(i) / tc) * (L - 100.0) + randf_range(-8, 8)
+		var lanes: Array = track.lanes_onc if c.oncoming else track.lanes_fwd
 		_place(c, s, lanes[randi() % 2], c.cruise)
 		traffic.append(c)
 	for c in cars:
@@ -493,192 +627,149 @@ func _new_race() -> void:
 		c.lap = 0
 	for c in [player] + rivals:
 		c.freeze = true
-	for pr in props:
-		_reset_prop(pr)
-	stats = {"takedowns": 0, "near": 0, "best_drift": 0.0, "oncoming": 0.0, "air": 0.0, "crashes": 0, "smash": 0, "score": 0, "parts": 0}
+
+
+# ------------------------------------------------------------------ fluxo
+func choose_track(i: int) -> void:
+	load_track(i)
+	hud.show_screen("garage")
+
+
+func next_track() -> void:
+	load_track((track_idx + 1) % TrackData.TRACKS.size())
+	hud.show_screen("garage")
+
+
+func start_race() -> void:
+	load_track(track_idx)
+	stats = {"kills": 0, "takedowns": 0, "near": 0, "best_drift": 0.0, "air": 0.0, "falls": 0, "deaths": 0, "score": 0, "oncoming": 0.0, "prize": 0}
 	race_t = 0.0
 	lap_start = 0.0
 	best_lap = INF
+	ts = 1.0
 	ts_target = 1.0
 	slow_t = 0.0
 	hitstop = 0.0
-	cam_focus = null
 	crash_t = -1.0
-	place = 4
-	cam_pos = player.global_position
-	hud.cars = cars
-	hud.player = player
-
-
-func _reset_prop(pr: Dictionary) -> void:
-	var rb: RigidBody3D = pr.rb
-	rb.global_transform = pr.home
-	rb.linear_velocity = Vector3.ZERO
-	rb.angular_velocity = Vector3.ZERO
-	rb.sleeping = true
-	pr.hit = false
-	pr.t = 0.0
-	for ch in rb.get_children():
-		if ch is Node3D:
-			ch.scale = Vector3.ONE
-
-
-func _start() -> void:
-	_new_race()
-	hud.menu.visible = false
-	hud.results.visible = false
-	hud.pause_m.visible = false
-	hud.set_race_hud(true)
+	cam_focus = null
+	place = 5
+	hud.show_screen("race")
+	hud.touch.release_all()
+	hud.touch.labels["drop"] = "MINA" if player.rear_type == "mine" else "ÓLEO"
+	hud.touch.labels["fire"] = "TIRO" if player.front_type == "mg" else "FOGUETE"
 	mode = "countdown"
 	countdown = 3.0
 	last_beep = 4
-	get_tree().paused = false
+	hud.big(String(track.data.name).to_upper(), Color("#ffcf33"), Color("#c74200"))
 
 
-func _to_menu() -> void:
-	_new_race()
-	hud.results.visible = false
-	hud.set_race_hud(false)
-	hud.menu.visible = true
-	mode = "menu"
+func to_menu() -> void:
+	load_track(track_idx)
+	hud.show_screen("menu")
 
 
-func _pause(on: bool) -> void:
+func pause(on: bool) -> void:
 	if on and mode in ["race", "countdown"]:
-		hud.set_meta("prev", mode)
+		prev_mode = mode
 		mode = "paused"
-		hud.pause_m.visible = true
+		hud.show_screen("pause")
 		Engine.time_scale = 0.0
 	elif not on and mode == "paused":
-		mode = hud.get_meta("prev")
-		hud.pause_m.visible = false
+		mode = prev_mode
+		hud.show_screen("race")
 
 
-# ------------------------------------------------------------------ eventos de batida
+func toggle_mute() -> void:
+	sfx.set_muted(not sfx.muted)
+
+
+# ------------------------------------------------------------------ eventos
 func _on_hit(c: Car, other: Object, point: Vector3, dv: float) -> void:
-	c.take_damage(point, dv)
-	var lp := c.to_local(point)
-	var front: float = lp.z / (c.sp.len * 0.5)
-	var out := (point - c.global_position)
-	out.y = 0
-	out = out.normalized()
 	var oc: Car = other as Car
+	if oc:
+		c.last_hit_by = oc
+		c.last_hit_t = time_g
+	if mode != "race":
+		return
+	c.take_impact(point, dv)
 	var vis := _on_screen(point)
+	var out := (point - c.global_position).normalized()
 	if vis and dv > 4.0:
 		var back := -c.linear_velocity.normalized() * 0.6
 		fx.sparks(point + Vector3.UP * 0.3, out + back, clampf(dv / 14.0, 0.3, 2.0))
-		if dv > 9.0:
-			fx.sparks(point + Vector3.UP * 0.4, -out + back, clampf(dv / 20.0, 0.3, 1.5))
-			fx.hit_light(point + Vector3.UP * 1.0, Color(1.0, 0.7, 0.3), clampf(dv * 0.4, 3.0, 10.0), 9.0, 0.25)
-	if oc:
-		if c.role != "player" and oc == player:
-			c.last_hit_by = player
-			c.last_hit_t = time_g
-	if mode != "race":
-		return
-	if c == player:
-		if oc == null:
-			if dv > 30.0 and front > 0.72 and c.invuln <= 0.0:
-				_crash_player(dv, -out)
-				return
-		elif oc.role == "traffic" and front > 0.65 and c.invuln <= 0.0 and (dv > 33.0 or (dv > 25.0 and oc.oncoming)):
-			_crash_player(dv, -out)
-			_wreck(oc, dv, out, false)
-			return
-		if dv > 5.0:
-			_shake(minf(0.55, dv * 0.025))
-			sfx.play("bump", linear_to_db(clampf(dv / 20.0, 0.2, 1.0)))
-			if dv > 9.0:
-				sfx.play("metal", -6.0)
-			if dv > 16.0:
-				c.stun = 0.2
-				hitstop = maxf(hitstop, 0.05)
-				_flash(Color(1, 1, 1), 0.12)
-			if oc and oc.role == "rival" and dv > 4.0:
-				_add_nitro(0.04)
-				hud.popup("ENCOSTOU!", Color("#8a8aff"))
-		elif dv > 3.0:
-			sfx.play("scrape", -8.0)
-		return
-	if c.wrecked:
-		return
-	var by_player := c.last_hit_by == player and time_g - c.last_hit_t < 1.6
-	if c.role == "rival":
-		if by_player and dv > 11.0 and c.invuln <= 0.0:
-			_takedown(c, dv, out)
-		elif dv > 26.0 and front > 0.6:
-			_wreck(c, dv, -out, false)
-	else:
-		if by_player and dv > 12.0:
-			_wreck(c, dv, -out, false)
-			stats.score += 150
-			hud.popup("TRÂNSITO!", Color("#ff7a1a"), "+150")
-			_add_nitro(0.08)
-			hitstop = maxf(hitstop, 0.05)
-		elif dv > 19.0:
-			_wreck(c, dv, -out, false)
+		if dv > 10.0:
+			fx.hit_light(point + Vector3.UP, Color(1.0, 0.7, 0.3), clampf(dv * 0.35, 3.0, 9.0), 9.0, 0.25)
+	if c == player and dv > 5.0:
+		_shake(minf(0.5, dv * 0.022))
+		sfx.play("bump", linear_to_db(clampf(dv / 20.0, 0.2, 1.0)))
+		if dv > 10.0:
+			sfx.play("metal", -6.0)
+			hitstop = maxf(hitstop, 0.04)
+			_flash(Color(1, 1, 1), 0.1)
+		if dv > 16.0:
+			c.stun = 0.2
+	# trânsito atropelado com força pelo jogador vira sucata
+	if c.role == "traffic" and oc == player and dv > 14.0 and not c.wrecked:
+		c.apply_damage(500.0, point, player, false)
 
 
-func _wreck(c: Car, power: float, dir: Vector3, big: bool) -> void:
-	if c.wrecked:
-		return
-	c.wreck(power, dir)
+func _on_died(c: Car, killer: Car) -> void:
+	var big := c.role != "traffic"
+	var from: Vector3 = killer.global_position if killer else c.global_position - c.global_transform.basis.z
+	c.wreck(28.0, (c.global_position - from).normalized())
 	if _on_screen(c.global_position):
 		fx.explosion(c.global_position, big)
-		_shake(0.9 if big else 0.35)
 		sfx.play("crash", 0.0 if big else -5.0)
-		sfx.play("glass", -4.0)
-
-
-func _takedown(c: Car, power: float, dir: Vector3) -> void:
-	_wreck(c, maxf(power, 22.0), -dir, true)
-	stats.takedowns += 1
-	stats.score += 1000
-	player.nitro_amt = 1.0
-	hud.big("TAKEDOWN!", Color.WHITE, Color("#ff2d55"))
-	hud.popup(c.display_name, Color("#ff2d55"), "+1000")
-	sfx.play("fanfare", -6.0)
-	_flash(Color(1, 0.9, 0.6), 0.45)
-	hitstop = 0.09
-	_slowmo(0.28, 1.0)
-	cam_focus = c
-	focus_t = 1.0
-	zoom_kick -= 7.0
-	fx.ring(c.global_position, Color(2.0, 0.6, 0.9, 1.0), 12.0)
-	Input.vibrate_handheld(80)
-
-
-func _crash_player(power: float, dir: Vector3) -> void:
-	if player.wrecked:
+		_shake(0.6 if big else 0.25)
+	if c == player:
+		stats.deaths += 1
+		hud.big("DESTRUÍDO!", Color("#ffe14d"), Color("#ff5a1a"))
+		hud.killfeed("%s destruiu VOCÊ" % (killer.display_name if killer else "A PISTA"), Color("#ff7a7a"))
+		_flash(Color(1, 1, 1), 0.6)
+		hitstop = 0.1
+		_slowmo(0.3, 1.4)
+		crash_t = 0.0
+		zoom_kick -= 8.0
+		Input.vibrate_handheld(150)
 		return
-	player.nitro_amt = maxf(0.0, player.nitro_amt - 0.25)
-	_wreck(player, maxf(power, 26.0), dir, true)
-	stats.crashes += 1
-	hud.big("BATIDA!", Color("#ffe14d"), Color("#ff5a1a"))
-	_flash(Color(1, 1, 1), 0.7)
-	hitstop = 0.12
-	_slowmo(0.25, 1.7)
-	crash_t = 0.0
-	zoom_kick -= 10.0
-	Input.vibrate_handheld(150)
+	if killer == player and mode == "race":
+		var ram := player.linear_velocity.length() > 15.0 and c.global_position.distance_to(player.global_position) < 6.0
+		stats.kills += 1
+		if c.role == "traffic":
+			stats.score += 150
+			hud.popup("TRÂNSITO!", Color("#ff7a1a"), "+150")
+			_add_meter(0.2)
+		else:
+			if ram:
+				stats.takedowns += 1
+			hud.big("TAKEDOWN!" if ram else "DESTRUIU!", Color.WHITE, Color("#ff2d55"))
+			hud.popup(c.display_name, Color("#ff2d55"), "+$%d" % KILL_BONUS)
+			hud.killfeed("VOCÊ destruiu %s" % c.display_name, Color("#7dff6a"))
+			stats.score += 1000
+			sfx.play("fanfare", -6.0)
+			_flash(Color(1, 0.9, 0.6), 0.3)
+			hitstop = 0.07
+			if randf() < 0.6:
+				_slowmo(0.35, 0.7)
+				cam_focus = c
+				focus_t = 0.8
+			_add_meter(0.5)
+			Input.vibrate_handheld(80)
+	elif c.role != "traffic" and mode == "race":
+		hud.killfeed("%s destruiu %s" % [killer.display_name if killer else "A PISTA", c.display_name], Color(1, 1, 1, 0.85))
 
 
-func _respawn_player() -> void:
-	var pr := track.project(player.global_position, player.ti)
-	var old_dist := player.dist
-	player.repair()
-	_place(player, pr.s - 4.0, -2.75, 16.0)
-	player.invuln = 2.2
-	player.dist = old_dist
-	player.prev_s = track.project(player.global_position).s
-	crash_t = -1.0
-	zoom_kick += 5.0
-	fx.burst("smoke", player.global_position + Vector3.UP * 0.5)
-	fx.ring(player.global_position, Color(1.5, 1.5, 1.5, 1.0), 6.0)
+func on_player_hit_enemy(_c: Car, _killed: bool) -> void:
+	pass
+
+
+func on_player_got_hit(amount: float) -> void:
+	_shake(minf(0.3, amount * 0.02))
+	_flash(Color(1, 0.2, 0.15), minf(0.25, amount * 0.012))
 
 
 func _on_part_off(c: Car, mesh: MeshInstance3D, xform: Transform3D, vel: Vector3, is_wheel: bool) -> void:
-	fx.spawn_debris(mesh, xform, vel, is_wheel)
+	var rb := fx.spawn_debris(mesh, xform, vel, is_wheel)
 	if not _on_screen(xform.origin):
 		return
 	fx.sparks(xform.origin, vel, 0.6)
@@ -687,40 +778,38 @@ func _on_part_off(c: Car, mesh: MeshInstance3D, xform: Transform3D, vel: Vector3
 		sfx.play("glass", -3.0)
 	else:
 		sfx.play("metal", -8.0, randf_range(0.8, 1.3))
-	if c == player and mode == "race" and not c.wrecked:
-		stats.parts += 1
-		var names := {"hood": "CAPÔ", "bumperF": "PARA-CHOQUE", "bumperR": "PARA-CHOQUE", "doorL": "PORTA", "doorR": "PORTA", "spoiler": "AEROFÓLIO", "cargo": "CAÇAMBA"}
-		var key := String(mesh.name).substr(c.kind.length() + 1)
-		hud.popup("PERDEU O %s!" % names.get(key, "PEDAÇO"), Color("#ff7a1a"))
+	if c == player and rb:
+		pass
 
 
 func _on_landed(c: Car, air: float, impact: float) -> void:
 	if not _on_screen(c.global_position):
 		return
-	fx.burst("dust", c.global_position + Vector3.UP * 0.2)
+	fx.burst("dust", c.global_position + c.global_transform.basis.y * 0.2)
 	if c != player:
 		return
 	_shake(minf(0.45, impact * 0.03))
 	sfx.play("land", linear_to_db(clampf(impact / 15.0, 0.3, 1.0)))
-	hitstop = maxf(hitstop, 0.04)
-	if air > 0.5 and mode == "race":
+	hitstop = maxf(hitstop, 0.035)
+	if air > 0.6 and mode == "race":
 		var pts := int(air * 150)
 		hud.popup("PULÃO %.1fs" % air, Color("#7dff6a"), "+%d" % pts)
 		stats.score += pts
 		stats.air = maxf(stats.air, air)
-		_add_nitro(0.12)
+		_add_meter(0.25)
 
 
-func _add_nitro(a: float) -> void:
-	var was := player.nitro_amt
-	player.nitro_amt = minf(1.0, player.nitro_amt + a)
-	if was < 1.0 and player.nitro_amt >= 1.0:
-		hud.popup("NITRO CHEIO!", Color("#2ee6ff"))
-		sfx.play("coin", -6.0)
-	hud.bump_bar()
+## manobras enchem o medidor; cheio = uma carga extra de nitro
+func _add_meter(a: float) -> void:
+	player.nitro_meter += a
+	if player.nitro_meter >= 1.0:
+		player.nitro_meter -= 1.0
+		if player.nitro_ch < player.nitro_cap + 1:
+			player.nitro_ch += 1
+			hud.popup("+1 NITRO", Color("#2ee6ff"))
+			sfx.play("coin", -6.0)
 
 
-# ------------------------------------------------------------------ juice helpers
 func _shake(a: float) -> void:
 	trauma = minf(1.0, trauma + a)
 
@@ -736,79 +825,12 @@ func _slowmo(target: float, dur: float) -> void:
 
 
 func _on_screen(p: Vector3) -> bool:
-	if cam_mode == "chase":
-		return p.distance_to(player.global_position) < 90.0
-	return Vector2(p.x - cam_pos.x, p.z - cam_pos.z).length() < view_h * 1.3
+	return Vector2(p.x - cam_pos.x, p.z - cam_pos.z).length() < view_h * 1.4
 
 
-func _toggle_cam() -> void:
-	cam_mode = "chase" if cam_mode == "iso" else "iso"
-	var chase := cam_mode == "chase"
-	cam.projection = Camera3D.PROJECTION_PERSPECTIVE if chase else Camera3D.PROJECTION_ORTHOGONAL
-	cam.near = 0.1 if chase else 1.0
-	cam.far = 500.0 if chase else 400.0
-	# na terceira pessoa aparece o horizonte: céu de verdade e neblina de distância
-	env.background_mode = Environment.BG_SKY if chase else Environment.BG_COLOR
-	env.fog_enabled = chase
-	env.fog_light_color = Color("#cfe0f5")
-	env.fog_density = 0.0035
-	env.fog_sky_affect = 0.0
-	var f := player.global_transform.basis.z
-	chase_dir = Vector3(f.x, 0, f.z).normalized()
-	chase_pos = player.global_position - chase_dir * 8.0 + Vector3.UP * 3.2
-	hud.popup("CÂMERA 3ª PESSOA" if chase else "CÂMERA ISOMÉTRICA", Color("#2e7dff"))
-
-
-func _chase_camera(rdt: float) -> void:
-	var p := player
-	var v := p.linear_velocity
-	var sp := v.length()
-	var target := p.global_position
-	if p.wrecked:
-		# carro destruído: a câmera gira devagar em volta do destroço
-		orbit_a += rdt * 0.9
-		var o := Vector3(sin(orbit_a), 0, cos(orbit_a)) * 9.0 + Vector3.UP * 4.5
-		chase_pos = chase_pos.lerp(target + o, 1.0 - exp(-rdt * 3.0))
-		cam.global_position = chase_pos
-		cam.look_at(target + Vector3.UP * 0.8, Vector3.UP)
-	else:
-		var f := p.global_transform.basis.z
-		var fwd := Vector3(f.x, 0, f.z).normalized()
-		# no drift a câmera segue mais o movimento do que o bico do carro
-		var vel_dir := Vector3(v.x, 0, v.z).normalized() if sp > 6.0 else fwd
-		var want_dir := fwd.lerp(vel_dir, 0.55 if p.drifting else 0.25).normalized()
-		chase_dir = chase_dir.slerp(want_dir, 1.0 - exp(-rdt * (3.0 if p.on_ground else 1.2))).normalized()
-		orbit_a = atan2(-chase_dir.x, -chase_dir.z)
-		var dist := 7.0 + clampf(sp / 55.0, 0.0, 1.0) * 2.5 - (1.0 if p.nitroing else 0.0)
-		var height := 2.8 + clampf(sp / 55.0, 0.0, 1.0) * 0.6
-		if cam_focus and focus_t > 0.0:
-			# takedown: câmera recua e olha para a vítima
-			target = cam_focus.global_position
-			dist += 6.0
-			height += 3.0
-		var desired := p.global_position - chase_dir * dist + Vector3.UP * height
-		chase_pos = chase_pos.lerp(desired, 1.0 - exp(-rdt * 9.0))
-		cam.global_position = chase_pos
-		cam.look_at(target + Vector3.UP * 1.1 + chase_dir * 5.0, Vector3.UP)
-	var want_fov := 62.0 + clampf(sp / 55.0, 0.0, 1.0) * 14.0 + (10.0 if p.nitroing else 0.0) + zoom_kick * 0.9
-	zoom_kick *= exp(-rdt * 4.0)
-	chase_fov = lerpf(chase_fov, clampf(want_fov, 40.0, 100.0), 1.0 - exp(-rdt * 5.0))
-	cam.fov = chase_fov
-	shake_t += rdt
-	trauma = maxf(0.0, trauma - rdt * 1.6)
-	var s := trauma * trauma
-	cam.h_offset = (sin(shake_t * 37.0) * 0.6 + sin(shake_t * 85.0 + 1.0) * 0.4) * s * 0.5
-	cam.v_offset = (sin(shake_t * 41.0 + 4.0) * 0.6 + sin(shake_t * 94.0 + 2.0) * 0.4) * s * 0.4
-	cam.rotate_object_local(Vector3.FORWARD, sin(shake_t * 29.0 + 9.0) * s * 0.05)
-	# tremidinha de velocidade
-	if sp > 35.0:
-		cam.v_offset += sin(shake_t * 60.0) * 0.015 * (sp - 35.0) / 20.0
-	cam_pos = p.global_position
-
-
-# ------------------------------------------------------------------ loop
+# ------------------------------------------------------------------ física e regras
 func _physics_process(dt: float) -> void:
-	if mode in ["loading", "paused"]:
+	if mode == "paused":
 		return
 	time_g += dt
 	for c in cars:
@@ -818,39 +840,40 @@ func _physics_process(dt: float) -> void:
 	if mode == "race" and not player.wrecked:
 		_player_input()
 	elif not player.wrecked:
-		player.ctrl.throttle = 0.6 if mode == "finish" else 0.0
-		player.ctrl.steer = 0.0
-		player.ctrl.dir = null
+		player.ctrl.fire = false
+		player.ctrl.drop = false
 		player.ctrl.nitro = false
 		player.ctrl.drift = false
 		player.ctrl.brake = 0.0
+		player.ctrl.dir = null
+		player.ctrl.steer = 0.0
+		player.ctrl.throttle = 0.0
 		if mode == "finish":
 			player.ai(track, self, dt)
 			player.ctrl.nitro = false
-	# boost pads
+	if mode in ["race", "finish"]:
+		weapons.update(dt)
 	for c in cars:
 		if c.wrecked or not c.on_ground or time_g < c.pad_t:
 			continue
-		if track.pad_at(c.global_position) != null:
+		var pad = track.pad_at(c.s_track, c.lat)
+		if pad != null and absf(c.h_track) < 2.0:
 			c.pad_t = time_g + 0.8
 			var f: Vector3 = c.global_transform.basis.z
-			var v: float = maxf(c.linear_velocity.length(), c.sp.nitro * 0.95)
-			c.linear_velocity = Vector3(f.x, 0, f.z).normalized() * v + Vector3.UP * c.linear_velocity.y
+			var want: float = float(pad.spd) if float(pad.spd) > 0.0 else c.sp.nitro * 0.95
+			var v: float = maxf(c.linear_velocity.length(), want)
+			c.linear_velocity = f.slide(c.ground_n).normalized() * v
 			if c == player:
-				_add_nitro(0.2)
 				sfx.play("nitro", -2.0)
 				hud.popup("TURBO!", Color("#ff9a1a"))
-				zoom_kick += 5.0
+				zoom_kick += 4.0
 				_shake(0.2)
-				_flash(Color(0.5, 0.9, 1.0), 0.18)
-				fx.ring(c.global_position, Color(0.4, 1.4, 2.0, 1.0), 7.0)
+				_flash(Color(0.5, 0.9, 1.0), 0.15)
+				_add_meter(0.15)
+	_pickups(dt)
 	_rules(dt)
+	_respawns(dt)
 	_recycle()
-	for pr in props:
-		if pr.hit:
-			pr.t += dt
-			if pr.t > 10.0 and player.global_position.distance_to(pr.home.origin) > 70.0:
-				_reset_prop(pr)
 
 
 func _player_input() -> void:
@@ -860,17 +883,20 @@ func _player_input() -> void:
 	c.brake = Input.get_action_strength("down")
 	c.drift = Input.is_action_pressed("drift")
 	c.nitro = Input.is_action_pressed("nitro")
+	c.fire = Input.is_action_pressed("fire")
+	c.drop = Input.is_action_pressed("drop")
 	c.dir = null
 	var tp := hud.touch
-	if tp.active and tp.visible:
-		# quem usa os controles de tela acelera sozinho; freio solta o acelerador
-		if tp.used and not tp.btn.brake and c.brake <= 0.0:
+	if tp.used:
+		if not tp.btn.brake and c.brake <= 0.0:
 			c.throttle = 1.0
 		if tp.btn.brake:
 			c.brake = 1.0
 			c.throttle = 0.0
 		c.drift = c.drift or tp.btn.drift
 		c.nitro = c.nitro or tp.btn.nitro
+		c.fire = c.fire or tp.btn.fire
+		c.drop = c.drop or tp.btn.drop
 		if tp.stick_vec.length() > 0.22:
 			var r := cam.global_basis.x
 			var f := -cam.global_basis.z
@@ -879,22 +905,47 @@ func _player_input() -> void:
 			c.dir = (rr * tp.stick_vec.x - ff * tp.stick_vec.y).normalized()
 			c.dir_mag = minf(1.0, (tp.stick_vec.length() - 0.22) / 0.5)
 	if auto_test:
-		_autopilot()
+		player.cruise = 38.0
+		player.role = "rival"
+		player.ai(track, self, 1.0 / 60.0)
+		player.role = "player"
+		if test_lane != 0.0:
+			var a := track.at(player.s_track + 12.0, test_lane)
+			c.dir = ((a.pos as Vector3) - player.global_position).normalized()
+		c.nitro = player.nitro_ch > 0 and absf(track.curv[track.idx(player.ti + 10)]) < 0.008 and randf() < 0.02
+		c.fire = weapons._target(player, 50.0, 0.97) != null
+		c.drop = randf() < 0.01
 
 
-func _autopilot() -> void:
-	var p := player
-	var pr := track.project(p.global_position, p.ti)
-	var tp := track.at(pr.s + 6.0 + maxf(0.0, p.v_f) * 0.45, test_lane)
-	var to: Vector3 = tp.pos - p.global_position
-	p.ctrl.dir = Vector3(to.x, 0, to.z).normalized()
-	p.ctrl.dir_mag = 1.0
-	p.ctrl.throttle = 1.0
-	var max_c := 0.0
-	for k in range(2, 20, 2):
-		max_c = maxf(max_c, absf(track.curv[track.idx(pr.i + k)]))
-	p.ctrl.drift = max_c > 0.03 and p.v_f > 24.0
-	p.ctrl.nitro = max_c < 0.01 and p.nitro_amt > 0.3
+func _pickups(dt: float) -> void:
+	for pk in pickups:
+		var nd: Node3D = pk.node
+		if pk.t > 0.0:
+			pk.t -= dt
+			nd.visible = pk.t <= 0.0
+			continue
+		nd.rotate(pk.up, dt * 2.0)
+		nd.position = (pk.base as Vector3) + (pk.up as Vector3) * sin(time_g * 3.0) * 0.25
+		for c in cars:
+			if c.role == "traffic" or c.wrecked:
+				continue
+			if c.global_position.distance_to(nd.global_position) < 2.8:
+				pk.t = 10.0
+				nd.visible = false
+				match String(pk.kind):
+					"ammo":
+						c.ammo_f = mini(c.front_cap, c.ammo_f + maxi(1, c.front_cap / 2))
+						c.ammo_r = mini(c.rear_cap, c.ammo_r + 1)
+					"repair":
+						c.health = minf(c.max_health, c.health + c.max_health * 0.4)
+					"nitro":
+						c.nitro_ch = mini(c.nitro_cap + 1, c.nitro_ch + 1)
+				if c == player:
+					sfx.play("pickup")
+					var names := {"ammo": "MUNIÇÃO!", "repair": "REPARO!", "nitro": "NITRO!"}
+					hud.popup(names[pk.kind], Color("#7dff6a"))
+					fx.ring(nd.global_position, Color(0.5, 1.5, 0.6, 1.0), 4.0)
+				break
 
 
 func _rules(dt: float) -> void:
@@ -904,6 +955,14 @@ func _rules(dt: float) -> void:
 		c.ti = pr.i
 		c.lat = pr.lat
 		c.s_track = pr.s
+		c.h_track = pr.h
+		c.track_up = track.U[pr.i]
+		c.track_left = track.L[pr.i]
+		c.track_tan = track.T[pr.i]
+		c.in_loop = track.loopf[pr.i] == 1
+		c.feat_type = track.ftype[pr.i]
+		c.on_feature = track.feat[pr.i] == 1 and track.gap[pr.i] == 0 and track.ftype[pr.i] != "jump"
+		c.h_surf = pr.h
 		if c.role == "traffic":
 			continue
 		var d: float = pr.s - c.prev_s
@@ -916,6 +975,7 @@ func _rules(dt: float) -> void:
 		var lap := int(floor(c.dist / L))
 		if lap > c.lap:
 			c.lap = lap
+			c.refill()
 			if c == player and mode == "race":
 				var lt := race_t - lap_start
 				lap_start = race_t
@@ -924,6 +984,7 @@ func _rules(dt: float) -> void:
 					_finish()
 				else:
 					hud.big("ÚLTIMA VOLTA!" if lap == LAPS - 1 else "VOLTA %d" % (lap + 1), Color("#ffcf33"), Color("#c74200"))
+					hud.popup("MUNIÇÃO E NITRO RECARREGADOS", Color("#2ee6ff"))
 					sfx.play("fanfare", -6.0)
 					fx.burst("confetti", player.global_position + Vector3.UP)
 	if mode != "race":
@@ -933,54 +994,51 @@ func _rules(dt: float) -> void:
 	order.sort_custom(func(a, b): return a.dist > b.dist)
 	place = order.find(player) + 1
 	for r in rivals:
-		r.rubber = clampf(1.0 + (player.dist - r.dist) * 0.003, 0.84, 1.12)
+		r.rubber = clampf(1.0 + (player.dist - r.dist) * 0.0028, 0.86, 1.1)
 	if player.wrecked:
 		return
 	var p := player
 	var v := p.linear_velocity
-	var sp := v.length()
-	# drift: nitro contínuo + popup no fim
 	if p.drifting and p.v_f > 12.0:
-		p.nitro_amt = minf(1.0, p.nitro_amt + dt * 0.1 * minf(1.0, p.drift_slip * 2.0))
+		p.nitro_meter += dt * 0.08 * minf(1.0, p.drift_slip * 2.0)
 	if was_drift and not p.drifting and p.drift_t > 0.8:
 		var pts := int(p.drift_t * 120)
 		hud.popup("DRIFT %.1fs" % p.drift_t, Color("#c77dff"), "+%d" % pts)
 		stats.score += pts
 		stats.best_drift = maxf(stats.best_drift, p.drift_t)
-		_add_nitro(minf(0.15, p.drift_t * 0.04))
+		_add_meter(minf(0.3, p.drift_t * 0.08))
 	was_drift = p.drifting
-	if not p.on_ground:
-		p.nitro_amt = minf(1.0, p.nitro_amt + dt * 0.06)
-	# contramão
-	var tg := track.tans[p.ti]
-	var along := v.x * tg.x + v.z * tg.y
-	if p.lat > 0.8 and along > 14.0 and p.on_ground:
-		p.nitro_amt = minf(1.0, p.nitro_amt + dt * 0.11 * sp / p.sp.vmax)
-		onc_dist += along * dt
-		stats.oncoming += along * dt
-		hud.onc_l.modulate.a = 1.0 if int(real * 6.0) % 2 == 0 else 0.6
-	else:
-		if onc_dist > 40.0:
-			hud.popup("CONTRAMÃO %dm" % int(onc_dist), Color("#ff2d55"), "+%d" % int(onc_dist))
-			stats.score += int(onc_dist)
-		onc_dist = 0.0
-		hud.onc_l.modulate.a = 0.0
-	# quase-batidas
-	for c in traffic:
-		if c.wrecked:
-			c.nm_state = null
-			continue
-		var dd: float = c.global_position.distance_to(p.global_position)
-		var rel: float = (c.linear_velocity - v).length()
-		if dd < 4.6 and rel > 12.0 and c.nm_state == null:
-			c.nm_state = {"touched": false}
-		if c.nm_state != null:
-			if c.last_hit_by == p and time_g - c.last_hit_t < 0.5:
-				c.nm_state.touched = true
-			if dd > 7.5:
-				if not c.nm_state.touched:
-					_near_miss(c)
+	if p.nitro_meter >= 1.0:
+		_add_meter(0.0)
+	if track.data.traffic > 0:
+		var tg := track.T[p.ti]
+		var along := v.dot(tg)
+		if p.lat > 0.8 and along > 14.0 and p.on_ground:
+			p.nitro_meter += dt * 0.08
+			onc_dist += along * dt
+			stats.oncoming += along * dt
+			hud.onc_l.modulate.a = 1.0 if int(real * 6.0) % 2 == 0 else 0.6
+		else:
+			if onc_dist > 40.0:
+				hud.popup("CONTRAMÃO %dm" % int(onc_dist), Color("#ff2d55"), "+%d" % int(onc_dist))
+				stats.score += int(onc_dist)
+			onc_dist = 0.0
+			hud.onc_l.modulate.a = 0.0
+		for c in traffic:
+			if c.wrecked:
 				c.nm_state = null
+				continue
+			var dd: float = c.global_position.distance_to(p.global_position)
+			var rel: float = (c.linear_velocity - v).length()
+			if dd < 4.6 and rel > 12.0 and c.nm_state == null:
+				c.nm_state = {"touched": false}
+			if c.nm_state != null:
+				if c.last_hit_by == p and time_g - c.last_hit_t < 0.5:
+					c.nm_state.touched = true
+				if dd > 7.5:
+					if not c.nm_state.touched:
+						_near_miss(c)
+					c.nm_state = null
 
 
 func _near_miss(c: Car) -> void:
@@ -989,42 +1047,66 @@ func _near_miss(c: Car) -> void:
 	last_nm = real
 	var pts := 50 * nm_combo
 	stats.score += pts
-	_add_nitro(0.07 + (0.05 if c.oncoming else 0.0))
+	_add_meter(0.18)
 	hud.popup("POR UM TRIZ!" if c.oncoming else "QUASE!", Color("#2ee6ff"), ("x%d +%d" % [nm_combo, pts]) if nm_combo > 1 else "+%d" % pts)
 	sfx.play("whoosh", -3.0)
 	zoom_kick += 1.5
-	_shake(0.05)
 
 
-func _finish() -> void:
-	mode = "finish"
-	hud.big("VITÓRIA!" if place == 1 else "%dº LUGAR" % place, Color("#ffcf33"), Color("#c74200"))
-	sfx.play("fanfare")
-	fx.burst("confetti", player.global_position + Vector3.UP)
-	_slowmo(0.35, 1.2)
-	get_tree().create_timer(2.0, true, false, true).timeout.connect(_show_results)
-	if auto_test:
-		print("RESULT ", JSON.stringify({"place": place, "time": race_t, "stats": stats}))
+## caiu da pista, ficou de cabeça para baixo ou foi destruído: volta para a pista
+func _respawns(dt: float) -> void:
+	for c in cars:
+		if c.role == "traffic":
+			continue
+		if c.wrecked:
+			if c != player and c.wreck_t > 3.0:
+				_respawn(c, false)
+			continue
+		if c.freeze:
+			continue
+		var below: bool = c.h_track < -4.0
+		var away: bool = absf(c.lat) > track.WALL + 3.0
+		var upside: bool = c.global_transform.basis.y.dot(track.U[c.ti]) < -0.2 and c.linear_velocity.length() < 5.0
+		var in_water: bool = c.global_position.y < float(theme.gy) + 0.6 and track.P[c.ti].y > float(theme.gy) + 2.5
+		if below or away or upside or in_water:
+			c.off_t += dt
+		else:
+			c.off_t = 0.0
+		if c.off_t > (0.15 if in_water else (0.6 if (below or away) else 1.5)):
+			if auto_test and OS.get_cmdline_user_args().has("--debugfall"):
+				print("FALL %s s=%d lat=%.1f h=%.1f v=%.1f below=%s away=%s up=%s water=%s feat=%d gap=%d loop=%d" % [c.display_name, int(c.s_track), c.lat, c.h_track, c.linear_velocity.length(), below, away, upside, in_water, track.feat[c.ti], track.gap[c.ti], track.loopf[c.ti]])
+			if in_water and _on_screen(c.global_position):
+				if theme.ground == 4:
+					fx.explosion(c.global_position, false, "smoke")
+				else:
+					fx.burst("smoke", c.global_position)
+					sfx.play("splash", -3.0)
+			_respawn(c, true)
+	if crash_t >= 0.0:
+		crash_t += dt / maxf(Engine.time_scale, 0.05)
+		if crash_t > 2.2:
+			crash_t = -1.0
+			_respawn(player, false)
 
 
-func _show_results() -> void:
-	hud.res_title.text = "VITÓRIA!" if place == 1 else "%dº LUGAR" % place
-	var lines := [
-		"Tempo total   %s" % _fmt(race_t), "Melhor volta   %s" % _fmt(best_lap), "Takedowns   %d" % stats.takedowns,
-		"Quase-batidas   %d" % stats.near, "Maior drift   %.1fs" % stats.best_drift, "Contramão   %dm" % int(stats.oncoming),
-		"Batidas   %d" % stats.crashes, "Pontos   %d" % stats.score]
-	hud.res_list.text = "\n".join(lines)
-	hud.results.visible = true
-	hud.set_race_hud(false)
-	if auto_test:
-		get_tree().quit()
-
-
-func _fmt(t: float) -> String:
-	if t == INF:
-		return "--:--.--"
-	var m := int(t / 60.0)
-	return "%d:%05.2f" % [m, t - m * 60.0]
+func _respawn(c: Car, fell: bool) -> void:
+	var s := track.safe_s(c.s_track - 6.0)
+	var old_dist := c.dist
+	if c.wrecked:
+		c.repair()
+	var lat: float = [0.0, -track.W * 0.25, track.W * 0.25][randi() % 3] if track.data.traffic == 0 else track.lanes_fwd[0]
+	_place(c, s, lat, 18.0)
+	c.dist = old_dist
+	c.prev_s = track.project(c.global_position).s
+	c.invuln = 2.0
+	if c == player:
+		zoom_kick += 4.0
+		fx.ring(c.global_position, Color(1.5, 1.5, 1.5, 1.0), 6.0)
+		if fell:
+			stats.falls += 1
+			hud.popup("CAIU! VOLTANDO", Color("#ffcf33"))
+	elif fell:
+		stats.ai_falls = int(stats.get("ai_falls", 0)) + 1
 
 
 func _recycle() -> void:
@@ -1034,10 +1116,10 @@ func _recycle() -> void:
 		var rel: float = wrapf(c.s_track - p.s_track, -L * 0.5, L * 0.5)
 		var far := rel < -70.0 or rel > 260.0
 		var vis := _on_screen(c.global_position)
-		if ((c.wrecked and c.wreck_t > 4.0) or far) and not vis:
+		if ((c.wrecked and c.wreck_t > 4.0) or far or c.h_track < -4.0) and not vis:
 			for tries in 6:
-				var s := p.s_track + randf_range(110, 250)
-				var lanes: Array = Track.LANES_ONC if c.oncoming else Track.LANES_FWD
+				var s: float = track.safe_s(p.s_track + randf_range(110, 250))
+				var lanes: Array = track.lanes_onc if c.oncoming else track.lanes_fwd
 				var lat: float = lanes[randi() % 2]
 				var pos: Vector3 = track.at(s, lat).pos
 				var ok := true
@@ -1050,41 +1132,66 @@ func _recycle() -> void:
 					_place(c, s, lat, c.cruise)
 					break
 			c.nm_state = null
-	for r in rivals:
-		if r.wrecked and r.wreck_t > 3.2:
-			var old_s: float = r.s_track
-			r.repair()
-			var lanes: Array = Track.LANES_FWD
-			_place(r, p.s_track - randf_range(26, 40), lanes[randi() % 2], 24.0)
-			r.dist += wrapf(r.s_track - old_s, -L * 0.5, L * 0.5)
-			r.prev_s = r.s_track
-			r.invuln = 1.5
 
 
+func _finish() -> void:
+	mode = "finish"
+	var prize: int = PRIZE[place - 1] + int(stats.kills) * KILL_BONUS
+	stats.prize = prize
+	save.cash = int(save.cash) + prize
+	var key := str(track_idx)
+	var best: Dictionary = save.best.get(key, {})
+	if not best.has("place") or place < int(best.place) or (place == int(best.place) and race_t < float(best.time)):
+		save.best[key] = {"place": place, "time": race_t}
+	_write_save()
+	hud.big("VITÓRIA!" if place == 1 else "%dº LUGAR" % place, Color("#ffcf33"), Color("#c74200"))
+	sfx.play("fanfare")
+	fx.burst("confetti", player.global_position + Vector3.UP)
+	_slowmo(0.35, 1.2)
+	get_tree().create_timer(2.0, true, false, true).timeout.connect(_show_results)
+	if auto_test:
+		print("RESULT ", JSON.stringify({"track": track_idx, "place": place, "time": snappedf(race_t, 0.1), "stats": stats}))
+
+
+func _show_results() -> void:
+	if mode != "finish":
+		return
+	hud.res_title.text = "VITÓRIA!" if place == 1 else "%dº LUGAR" % place
+	var lines := [
+		"Tempo total   %s" % _fmt(race_t), "Melhor volta   %s" % _fmt(best_lap),
+		"Destruídos   %d  (takedowns %d)" % [stats.kills, stats.takedowns], "Quedas   %d   ·   Destruições sofridas   %d" % [stats.falls, stats.deaths],
+		"Maior drift   %.1fs   ·   Maior pulo   %.1fs" % [stats.best_drift, stats.air], "Pontos   %d" % stats.score]
+	hud.res_list.text = "\n".join(lines)
+	hud.res_cash.text = "+$%d   (total $%d)" % [int(stats.prize), int(save.cash)]
+	hud.show_screen("results")
+	if auto_test:
+		get_tree().quit()
+
+
+func _fmt(t: float) -> String:
+	if t == INF:
+		return "--:--.--"
+	var m := int(t / 60.0)
+	return "%d:%05.2f" % [m, t - m * 60.0]
+
+
+# ------------------------------------------------------------------ quadro
 func _process(_delta: float) -> void:
 	var now := Time.get_ticks_usec()
 	var rdt := minf(0.05, (now - _last_us) / 1e6)
 	_last_us = now
 	if auto_test:
 		rdt = 1.0 / 60.0
-	if mode == "loading":
-		return
 	real += rdt
 	if Input.is_action_just_pressed("pause"):
-		_pause(mode != "paused")
-	if Input.is_action_just_pressed("camera"):
-		_toggle_cam()
+		pause(mode != "paused")
 	if Input.is_action_just_pressed("mute"):
-		sfx.set_muted(not sfx.muted)
-	if Input.is_action_just_pressed("start") and mode == "menu":
-		_start()
+		toggle_mute()
 	if Input.is_action_just_pressed("reset") and mode == "race" and not player.wrecked:
-		_respawn_player()
+		_respawn(player, false)
 	if mode == "paused":
 		Engine.time_scale = 0.0
 		return
-
-	# tempo: hitstop congela, slow-mo desacelera (tudo em tempo real)
 	if slow_t > 0.0:
 		slow_t -= rdt
 		if slow_t <= 0.0:
@@ -1099,7 +1206,6 @@ func _process(_delta: float) -> void:
 		focus_t -= rdt
 		if focus_t <= 0.0:
 			cam_focus = null
-
 	if mode == "countdown":
 		countdown -= rdt
 		var n := int(ceil(countdown))
@@ -1118,13 +1224,7 @@ func _process(_delta: float) -> void:
 				c.freeze = false
 			if Input.is_action_pressed("up") or hud.touch.used or auto_test:
 				player.linear_velocity = player.global_transform.basis.z * 14.0
-				_add_nitro(0.15)
 				hud.popup("LARGADA PERFEITA!", Color("#ff9a1a"))
-	if crash_t >= 0.0:
-		crash_t += rdt
-		if crash_t > 2.2:
-			_respawn_player()
-
 	_car_fx(rdt * eff)
 	if player.nitroing and not was_nitro:
 		sfx.play("nitro")
@@ -1134,7 +1234,7 @@ func _process(_delta: float) -> void:
 		_flash(Color(0.6, 0.9, 1.0), 0.12)
 	was_nitro = player.nitroing
 	var sp01: float = player.linear_velocity.length() / player.sp.vmax
-	var slip := 1.0 if player.drifting else clampf((absf(player.v_s) - 3.0) / 8.0, 0.0, 1.0)
+	var slip: float = 1.0 if player.drifting else clampf((absf(player.v_s) - 3.0) / 8.0, 0.0, 1.0)
 	if player.ctrl.brake > 0.0 and player.v_f > 10.0:
 		slip += 0.5
 	sfx.drive(clampf(sp01, 0.0, 1.3), player.ctrl.throttle, slip, player.nitroing, ts < 0.6, mode in ["race", "countdown", "finish"] and not player.wrecked)
@@ -1143,16 +1243,18 @@ func _process(_delta: float) -> void:
 	_hud()
 	if auto_test and test_shots.size() > 0 and real > float(test_shots[0]):
 		var img := get_viewport().get_texture().get_image()
-		img.save_png("user://shot_%s.png" % test_shots[0])
-		print("SHOT ", ProjectSettings.globalize_path("user://shot_%s.png" % test_shots[0]))
+		img.save_png("user://shot_t%d_%s.png" % [track_idx, test_shots[0]])
+		print("SHOT ", track_idx)
 		test_shots.pop_front()
-	if auto_test and real > 140.0:
-		print("TIMEOUT ", JSON.stringify(stats))
+	if auto_test and OS.get_cmdline_user_args().has("--debugfall") and int(real * 60.0) % (30 if race_t < 30.0 else 600) == 0:
+		var p := player
+		print("P t=%d s=%d lat=%.1f h=%.1f v=%.1f vf=%.1f gnd=%s road=%s up=%s n=%s feat=%d loop=%d thr=%.1f br=%.1f" % [int(real), int(p.s_track), p.lat, p.h_track, p.linear_velocity.length(), p.v_f, p.on_ground, p.on_road, str(p.global_transform.basis.y.snapped(Vector3.ONE * 0.01)), str(p.ground_n.snapped(Vector3.ONE * 0.01)), track.feat[p.ti], track.loopf[p.ti], p.ctrl.throttle, p.ctrl.brake])
+	if auto_test and real > 240.0:
+		print("TIMEOUT ", JSON.stringify({"track": track_idx, "lap": player.lap, "dist": player.dist, "stats": stats}))
 		get_tree().quit()
 
 
 func _scrapes() -> void:
-	# distribui os jatos de faíscas entre os carros raspando mais perto do jogador
 	var list: Array = []
 	for c in cars:
 		if c.scraping and _on_screen(c.scrape_pt):
@@ -1164,11 +1266,11 @@ func _scrapes() -> void:
 		if i < list.size():
 			var c: Car = list[i]
 			var v: Vector3 = c.scrape_v
-			var sp := v.length()
+			var spd := v.length()
 			var dir := (-v.normalized() * 0.85 + c.scrape_n * 0.35 + Vector3.UP * 0.3).normalized()
-			fx.set_scrape(n, true, c.scrape_pt + Vector3.UP * 0.25, dir, clampf(sp / 30.0, 0.2, 1.3))
+			fx.set_scrape(n, true, c.scrape_pt + Vector3.UP * 0.25, dir, clampf(spd / 30.0, 0.2, 1.3))
 			if c == player:
-				player_scr = clampf(sp / 25.0, 0.3, 1.0)
+				player_scr = clampf(spd / 25.0, 0.3, 1.0)
 		else:
 			fx.set_scrape(n, false, Vector3.ZERO, Vector3.UP, 0.0)
 	sfx.set_scrape(player_scr if mode in ["race", "finish"] else 0.0)
@@ -1184,7 +1286,6 @@ func _car_fx(dt: float) -> void:
 		var slip: float = absf(c.v_s)
 		var braking: bool = c.ctrl.brake > 0.0 and c.v_f > 10.0
 		var skidding: bool = vis and not c.wrecked and c.on_ground and (c.drifting or slip > 3.5 or braking)
-		# marcas e fumaça
 		var wi := 0
 		for w in c.wheels:
 			if w.lost:
@@ -1194,21 +1295,22 @@ func _car_fx(dt: float) -> void:
 			if skidding and w.contact and (not w.front or braking):
 				var last = e.skid[wi]
 				if last != null:
-					fx.skid(last, wp, 0.38, 0.4 if c.drifting else 0.28)
+					fx.skid(last, wp, 0.38, 0.4 if c.drifting else 0.28, c.ground_n)
 				e.skid[wi] = wp
 			else:
 				e.skid[wi] = null
 			wi += 1
 		if e.has("smoke"):
-			var rear := []
-			for w in c.wheels:
-				if not w.front:
-					rear.append(w)
+			var rear: Array = c.wheels.filter(func(w): return not w.front)
 			for i in 2:
 				var s: CPUParticles3D = e.smoke[i]
+				var du: CPUParticles3D = e.dust[i]
 				if i < rear.size() and not rear[i].lost:
-					s.global_position = c.global_transform * Vector3(rear[i].base.x, 0.2, rear[i].base.z)
+					var wpos: Vector3 = c.global_transform * Vector3(rear[i].base.x, 0.2, rear[i].base.z)
+					s.global_position = wpos
+					du.global_position = wpos
 				s.emitting = skidding and (c.drifting or slip > 5.0 or braking)
+				du.emitting = vis and not c.wrecked and c.on_ground and absf(c.lat) > track.HALF + 0.4 and c.linear_velocity.length() > 8.0
 			var flame: Node3D = e.flame
 			(flame.get_node("P") as CPUParticles3D).emitting = c.nitroing
 			var core := flame.get_node("Core") as Node3D
@@ -1219,38 +1321,30 @@ func _car_fx(dt: float) -> void:
 			for i in 2:
 				var tp: Vector3 = c.global_transform * c.tail_local[i]
 				fx.trail_push(e.trails[i], tp, real, c.nitroing and vis)
-		# dano: fumaça preta e fogo
-		(e.dark as CPUParticles3D).emitting = vis and (c.health < 55.0 or c.wrecked)
-		(e.fire as CPUParticles3D).emitting = vis and (c.health < 20.0 or (c.wrecked and c.wreck_t < 3.0))
-		# sombra de contato acompanha o chão e some quando o carro sobe
+		(e.dark as CPUParticles3D).emitting = vis and (c.health < c.max_health * 0.45 or c.wrecked)
+		(e.fire as CPUParticles3D).emitting = vis and (c.health < c.max_health * 0.2 or (c.wrecked and c.wreck_t < 3.0))
 		var sh: MeshInstance3D = e.shadow
-		var gp: Vector3 = c.global_position
-		var hgt := 0.0 if c.on_ground else clampf(c.air_t * 3.0, 0.0, 3.0)
-		if c.wrecked:
-			hgt = clampf(gp.y - 0.4, 0.0, 3.0)
-		sh.global_position = Vector3(gp.x, 0.055 + (gp.y if c.on_ground and not c.wrecked else 0.0), gp.z)
-		sh.rotation = Vector3(0, atan2(c.global_transform.basis.z.x, c.global_transform.basis.z.z), 0)
-		(sh.material_override as ShaderMaterial).set_shader_parameter("strength", clampf(1.0 - hgt * 0.3, 0.15, 1.0))
 		sh.visible = vis
-		# poeira saindo do asfalto
-		if e.has("dust"):
-			var off: bool = absf(c.lat) > Track.HALF + 0.4 and c.on_ground and c.linear_velocity.length() > 8.0 and vis
-			var rear: Array = c.wheels.filter(func(w): return not w.front)
-			for i in 2:
-				if i < rear.size():
-					e.dust[i].global_position = c.global_transform * Vector3(rear[i].base.x, 0.2, rear[i].base.z)
-				e.dust[i].emitting = off
+		if vis:
+			var a := track.at(c.s_track, c.lat)
+			var gp: Vector3 = c.ground_pt if c.on_ground and not c.wrecked else a.pos
+			var gn: Vector3 = c.ground_n if c.on_ground and not c.wrecked else a.up
+			var hgt: float = maxf(0.0, (c.global_position - gp).dot(gn))
+			var f: Vector3 = c.global_transform.basis.z.slide(gn).normalized()
+			if f.length() < 0.5:
+				f = a.tan
+			sh.global_transform = Transform3D(Basis(gn.cross(f).normalized(), gn, f).scaled_local(Vector3(c.sp.wid * 1.45, 1, c.sp.len * 1.25)), gp + gn * 0.08)
+			(sh.material_override as ShaderMaterial).set_shader_parameter("strength", clampf(1.0 - hgt * 0.25, 0.15, 1.0))
 		if e.has("wind"):
 			var w: CPUParticles3D = e.wind
 			var sp: float = c.linear_velocity.length()
 			w.emitting = (sp > 36.0 or c.nitroing) and not c.wrecked
 			if w.emitting:
 				var dir: Vector3 = c.linear_velocity.normalized()
-				w.global_position = gp + Vector3(dir.x, 0, dir.z) * 10.0 + Vector3.UP * 1.5
+				w.global_position = c.global_position + dir * 10.0 + Vector3.UP * 1.5
 				w.direction = -dir
 				w.initial_velocity_min = sp * 0.05
 				w.initial_velocity_max = sp * 0.1
-		# roda perdida raspando no chão: faíscas
 		if vis and not c.wrecked and c.linear_velocity.length() > 6.0:
 			for w in c.wheels:
 				if w.lost and randf() < dt * 30.0:
@@ -1258,41 +1352,38 @@ func _car_fx(dt: float) -> void:
 
 
 func _camera(rdt: float) -> void:
-	if cam_mode == "chase":
-		_chase_camera(rdt)
-		return
 	var p := player
 	var v := p.linear_velocity
-	var target := p.global_position + Vector3(v.x, 0, v.z) * 0.38
+	var target := p.global_position + Vector3(v.x, 0, v.z) * 0.36
 	var focus_h := 0.0
 	if cam_focus and focus_t > 0.0:
 		target = (cam_focus.global_position + p.global_position) * 0.5
-		focus_h = -6.0
+		focus_h = -5.0
 	if p.wrecked:
 		target = p.global_position
-	target.y = 0.0
-	cam_pos = cam_pos.lerp(target, 1.0 - exp(-rdt * (3.0 if p.wrecked else 4.5)))
+	if mode == "menu":
+		target = track.at(fmod(real * 18.0, track.length)).pos
+	var k := 1.0 - exp(-rdt * (3.0 if p.wrecked else 4.5))
+	cam_pos = cam_pos.lerp(target, k)
 	var vs := get_viewport().get_visible_rect().size
 	var aspect := vs.x / maxf(1.0, vs.y)
-	var base := maxf(26.0, 24.0 / aspect) if aspect < 1.0 else 26.0
+	var base := maxf(28.0, 26.0 / aspect) if aspect < 1.0 else 28.0
 	var sp := v.length()
-	var want := base + clampf(sp / 55.0, 0.0, 1.0) * 8.0 + (4.0 if p.nitroing else 0.0) + focus_h + (-10.0 if p.wrecked else 0.0)
+	var want := base + clampf(sp / 55.0, 0.0, 1.0) * 8.0 + (4.0 if p.nitroing else 0.0) + focus_h + (-8.0 if p.wrecked else 0.0)
+	if mode == "menu":
+		want = 40.0
 	zoom_kick *= exp(-rdt * 4.0)
 	view_h = lerpf(view_h, want + zoom_kick, 1.0 - exp(-rdt * 3.0))
 	cam.size = maxf(8.0, view_h)
 	var off := Vector3(sin(CAM_YAW) * cos(CAM_PITCH), sin(CAM_PITCH), cos(CAM_YAW) * cos(CAM_PITCH)) * CAM_DIST
 	cam.global_position = cam_pos + off
 	cam.look_at(cam_pos, Vector3.UP)
-	# tremor por trauma²
 	shake_t += rdt
 	trauma = maxf(0.0, trauma - rdt * 1.6)
 	var s := trauma * trauma
-	var nx := sin(shake_t * 37.0) * 0.6 + sin(shake_t * 85.0 + 1.0) * 0.4
-	var ny := sin(shake_t * 41.0 + 4.0) * 0.6 + sin(shake_t * 94.0 + 2.0) * 0.4
-	var nr := sin(shake_t * 29.0 + 9.0)
-	cam.h_offset = nx * s * 1.6
-	cam.v_offset = ny * s * 1.2
-	cam.rotate_object_local(Vector3.FORWARD, nr * s * 0.04)
+	cam.h_offset = (sin(shake_t * 37.0) * 0.6 + sin(shake_t * 85.0 + 1.0) * 0.4) * s * 1.5
+	cam.v_offset = (sin(shake_t * 41.0 + 4.0) * 0.6 + sin(shake_t * 94.0 + 2.0) * 0.4) * s * 1.1
+	cam.rotate_object_local(Vector3.FORWARD, sin(shake_t * 29.0 + 9.0) * s * 0.04)
 
 
 func _post(rdt: float) -> void:
@@ -1309,27 +1400,22 @@ func _post(rdt: float) -> void:
 	m.set_shader_parameter("aberr", post_aberr)
 	m.set_shader_parameter("lines", post_lines)
 	m.set_shader_parameter("flash", Vector4(flash.r, flash.g, flash.b, flash.a))
-	m.set_shader_parameter("sat", 0.7 if slow else 1.08)
+	m.set_shader_parameter("sat", 0.7 if slow else 1.0)
 	m.set_shader_parameter("vig", 0.3 + (0.25 if p.nitroing else 0.0) + (0.3 if slow else 0.0))
 	var vs := get_viewport().get_visible_rect().size
 	m.set_shader_parameter("aspect", vs.x / maxf(1.0, vs.y))
-	var sc := cam.unproject_position(p.global_position + Vector3.UP * 0.6) / vs
-	m.set_shader_parameter("center", sc)
+	m.set_shader_parameter("center", cam.unproject_position(p.global_position + Vector3.UP * 0.6) / vs)
 
 
 func _hud() -> void:
 	var p := player
-	hud.nitro = p.nitro_amt
-	hud.nitro_on = p.nitroing
-	hud.touch.nitro_fill = p.nitro_amt
 	hud.pos_l.text = "%dº" % place
 	hud.lap_l.text = "VOLTA %d/%d" % [clampi(p.lap + 1, 1, LAPS), LAPS]
 	hud.time_l.text = _fmt(race_t)
-	hud.score_l.text = "%d PTS" % stats.score
-	hud.td_l.text = "   TAKEDOWNS %d" % stats.takedowns
+	hud.score_l.text = "$%d  ·  %d DESTRUÍDOS" % [int(save.cash), int(stats.get("kills", 0))]
 	hud.speed_l.text = "%d km/h" % int(p.linear_velocity.length() * 3.6 * 1.25)
-
-
-func _exit_tree() -> void:
-	if is_instance_valid(lib):
-		lib.free()
+	var tc := hud.touch
+	tc.counts["fire"] = str(p.ammo_f)
+	tc.counts["drop"] = str(p.ammo_r)
+	tc.counts["nitro"] = str(p.nitro_ch)
+	tc.nitro_on = p.nitroing

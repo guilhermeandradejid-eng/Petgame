@@ -502,6 +502,141 @@ prop("debris_panel", [box("dp", (0.8, 0.6, 0.08), (0, 0, 0), M["paint"], bevel=0
 prop("debris_glass", [box("dg", (0.35, 0.3, 0.04), (0, 0, 0), M["glass"])])
 prop("debris_bolt", [box("db", (0.25, 0.25, 0.25), (0, 0, 0), M["trim"], bevel=0.04)])
 
+# ---------------------------------------------------------------- ambientação (temas das pistas)
+M.update({
+    "cactus": mat("Cactus", "#4f9a4a", 0.8),
+    "palm_leaf": mat("PalmLeaf", "#3fae54", 0.8),
+    "palm_trunk": mat("PalmTrunk", "#a97b4f", 0.9),
+    "cont_r": mat("ContainerR", "#c9473a", 0.7, 0.2),
+    "cont_b": mat("ContainerB", "#2f6db5", 0.7, 0.2),
+    "cont_y": mat("ContainerY", "#e6a92e", 0.7, 0.2),
+    "crystal_c": mat("CrystalC", "#5ff2ff", 0.2, 0.0, "#4ee8ff", 2.5),
+    "crystal_m": mat("CrystalM", "#ff5fd2", 0.2, 0.0, "#ff4fc8", 2.5),
+    "snow": mat("Snow", "#f4f8ff", 0.6),
+    "sign_y": mat("SignYellow", "#ffcc1f", 0.5),
+    "sign_k": mat("SignBlack", "#1b1b22", 0.6),
+    "board": mat("Billboard", "#ff3d7f", 0.4, 0.0, "#ff3d7f", 1.6),
+    "board2": mat("Billboard2", "#2ee6ff", 0.4, 0.0, "#2ee6ff", 1.6),
+    "flag": mat("FlagRed", "#ff3048", 0.7),
+    "gunmetal": mat("Gunmetal", "#3a3f4a", 0.35, 0.8),
+    "rocket": mat("RocketRed", "#e8372f", 0.4, 0.2),
+    "rocket_w": mat("RocketWhite", "#f2f2f2", 0.4),
+    "mine": mat("MineDark", "#2a2c33", 0.5, 0.5),
+    "mine_y": mat("MineYellow", "#ffc61f", 0.5),
+    "red_light": mat("RedLight", "#ff2030", 0.3, 0.0, "#ff2030", 4.0),
+    "ammo": mat("AmmoGreen", "#4c8a3a", 0.6),
+    "nitro_b": mat("NitroBlue", "#2b8cff", 0.3, 0.4, "#2b8cff", 0.8),
+})
+
+prop("prop_cactus", [
+    cyl("cac_t", 0.35, 3.2, (0, 0, 1.6), M["cactus"], verts=8, axis="Z", r2=0.3),
+    cyl("cac_a1", 0.22, 1.0, (0.65, 0, 1.6), M["cactus"], verts=8, axis="X"),
+    cyl("cac_a1u", 0.22, 1.1, (1.05, 0, 2.15), M["cactus"], verts=8, axis="Z", r2=0.18),
+    cyl("cac_a2", 0.2, 0.8, (-0.55, 0, 2.2), M["cactus"], verts=8, axis="X"),
+    cyl("cac_a2u", 0.2, 0.8, (-0.85, 0, 2.6), M["cactus"], verts=8, axis="Z", r2=0.16),
+])
+palm = []
+for i in range(6):
+    t = i / 5
+    palm.append(cyl(f"palm_t{i}", 0.26 - t * 0.08, 1.05, (t * t * 0.9, 0, 0.5 + i * 0.95), M["palm_trunk"], verts=7, axis="Z", r2=0.22 - t * 0.08))
+for k in range(7):
+    a = k / 7 * math.tau
+    lf = box(f"palm_l{k}", (0.6, 2.6, 0.08), (0.9 + math.cos(a) * 1.2, math.sin(a) * 1.2, 5.9), M["palm_leaf"], taper=(0.2, 1.0))
+    lf.rotation_euler = (0.35, 0, a + math.pi / 2)
+    palm.append(lf)
+prop("prop_palm", palm)
+for key, mk in (("prop_containerR", "cont_r"), ("prop_containerB", "cont_b"), ("prop_containerY", "cont_y")):
+    parts = [box(key + "_b", (2.4, 6.0, 2.6), (0, 0, 1.3), M[mk], bevel=0.04)]
+    for i in range(9):
+        y = -2.7 + i * 0.675
+        for sx in (-1, 1):
+            parts.append(box(f"{key}_r{i}{sx}", (0.06, 0.18, 2.4), (sx * 1.22, y, 1.3), M[mk]))
+    parts.append(box(key + "_d", (2.3, 0.06, 2.4), (0, 3.02, 1.3), M["trim"]))
+    prop(key, parts)
+for key, mk in (("prop_crystal", "crystal_c"), ("prop_crystalM", "crystal_m")):
+    parts = []
+    for i, (x, y, h, r) in enumerate([(0, 0, 3.2, 0.5), (0.7, 0.3, 2.0, 0.35), (-0.6, 0.4, 1.6, 0.3), (0.2, -0.7, 2.4, 0.38)]):
+        c = cyl(f"{key}_{i}", r, h, (x, y, h / 2), M[mk], verts=6, axis="Z", r2=0.02)
+        c.rotation_euler = (x * 0.25, y * 0.25, 0)
+        parts.append(c)
+    parts.append(ico(key + "_base", 0.9, (0, 0, 0.2), M["rock"], sub=1, scale=(1.3, 1.3, 0.5)))
+    prop(key, parts)
+prop("prop_snowpine", [
+    cyl("sp_trunk", 0.2, 1.0, (0, 0, 0.5), M["trunk"], verts=6, axis="Z"),
+    cyl("sp_1", 1.5, 1.7, (0, 0, 1.6), M["leaf2"], verts=8, axis="Z", r2=0.3),
+    cyl("sp_1s", 1.1, 0.5, (0, 0, 2.2), M["snow"], verts=8, axis="Z", r2=0.3),
+    cyl("sp_2", 1.1, 1.4, (0, 0, 2.7), M["leaf2"], verts=8, axis="Z", r2=0.15),
+    cyl("sp_2s", 0.8, 0.5, (0, 0, 3.2), M["snow"], verts=8, axis="Z", r2=0.15),
+    cyl("sp_3", 0.75, 1.3, (0, 0, 3.7), M["snow"], verts=8, axis="Z", r2=0.0),
+])
+# placa de curva: chevrons apontando para +X; a face olha para -Y (vira +Z no jogo)
+sign = [cyl("sg_p1", 0.08, 1.6, (-0.9, 0.05, 0.8), M["metal"], verts=6, axis="Z"),
+        cyl("sg_p2", 0.08, 1.6, (0.9, 0.05, 0.8), M["metal"], verts=6, axis="Z"),
+        box("sg_b", (2.6, 0.1, 1.0), (0, 0, 1.9), M["sign_y"], bevel=0.03)]
+for i in range(3):
+    x = -0.75 + i * 0.75
+    a1 = box(f"sg_c{i}a", (0.14, 0.12, 0.5), (x, -0.04, 2.05), M["sign_k"])
+    a1.rotation_euler = (0, -0.75, 0)
+    a2 = box(f"sg_c{i}b", (0.14, 0.12, 0.5), (x, -0.04, 1.75), M["sign_k"])
+    a2.rotation_euler = (0, 0.75, 0)
+    sign += [a1, a2]
+prop("prop_sign", sign)
+prop("prop_billboard", [
+    box("bb_p1", (0.25, 0.25, 4.0), (-2.6, 0.2, 2.0), M["metal"]),
+    box("bb_p2", (0.25, 0.25, 4.0), (2.6, 0.2, 2.0), M["metal"]),
+    box("bb_frame", (7.0, 0.3, 2.8), (0, 0, 4.6), M["trim"], bevel=0.05),
+    box("bb_panel", (6.6, 0.1, 2.4), (0, -0.16, 4.6), M["board"]),
+    box("bb_stripe", (6.6, 0.12, 0.5), (0, -0.2, 4.1), M["board2"]),
+])
+prop("prop_flag", [
+    cyl("fl_pole", 0.06, 5.0, (0, 0, 2.5), M["metal"], verts=6, axis="Z"),
+    box("fl_cloth", (0.04, 1.6, 1.0), (0, -0.82, 4.4), M["flag"]),
+])
+tirewall = []
+for i in range(5):
+    for j in range(2):
+        tirewall.append(cyl(f"tw_{i}_{j}", 0.42, 0.3, (0, -2.0 + i * 0.9, 0.16 + j * 0.3), M["tire"], verts=10, axis="Z"))
+prop("prop_tirewall", tirewall)
+
+# ---------------------------------------------------------------- armas e itens (frente = -Y)
+prop("wpn_gun", [
+    box("wg_base", (0.5, 0.6, 0.18), (0, 0, 0.09), M["gunmetal"], bevel=0.03),
+    box("wg_body", (0.36, 0.5, 0.26), (0, -0.05, 0.3), M["gunmetal"], bevel=0.04),
+    cyl("wg_b1", 0.05, 0.9, (-0.08, -0.6, 0.32), M["chrome"], verts=8, axis="Y"),
+    cyl("wg_b2", 0.05, 0.9, (0.08, -0.6, 0.32), M["chrome"], verts=8, axis="Y"),
+    box("wg_ammo", (0.18, 0.3, 0.2), (0.28, 0.05, 0.25), M["ammo"], bevel=0.02),
+])
+pod = [box("wp_box", (0.62, 0.9, 0.42), (0, 0, 0.3), M["gunmetal"], bevel=0.05),
+       box("wp_stripe", (0.64, 0.2, 0.44), (0, 0.2, 0.3), M["mine_y"])]
+for i, (x, z) in enumerate([(-0.15, 0.2), (0.15, 0.2), (-0.15, 0.4), (0.15, 0.4)]):
+    pod.append(cyl(f"wp_t{i}", 0.09, 0.08, (x, -0.46, z), M["rocket"], verts=8, axis="Y"))
+prop("wpn_pod", pod)
+rk = [cyl("rk_b", 0.11, 0.8, (0, 0, 0), M["rocket_w"], verts=10, axis="Y"),
+      cyl("rk_n", 0.11, 0.3, (0, -0.55, 0), M["rocket"], verts=10, axis="Y", r2=0.0)]
+for k in range(4):
+    f = box(f"rk_f{k}", (0.03, 0.22, 0.2), (0, 0.32, 0), M["rocket"])
+    f.rotation_euler = (0, k * math.pi / 2, 0)
+    rk.append(f)
+prop("proj_rocket", rk)
+prop("proj_mine", [
+    cyl("mn_b", 0.45, 0.16, (0, 0, 0.08), M["mine"], verts=12, axis="Z"),
+    cyl("mn_s", 0.47, 0.06, (0, 0, 0.12), M["mine_y"], verts=12, axis="Z"),
+    ico("mn_l", 0.12, (0, 0, 0.2), M["red_light"], sub=1),
+])
+prop("pickup_ammo", [
+    box("pa_b", (1.0, 1.0, 0.8), (0, 0, 0.4), M["ammo"], bevel=0.06),
+    box("pa_s", (1.04, 0.3, 0.84), (0, 0, 0.4), M["mine_y"], bevel=0.02),
+])
+prop("pickup_repair", [
+    box("pr_b", (1.0, 1.0, 0.8), (0, 0, 0.4), M["white"], bevel=0.06),
+    box("pr_c1", (0.6, 1.04, 0.18), (0, 0, 0.4), M["red"]),
+    box("pr_c2", (0.18, 1.04, 0.6), (0, 0, 0.4), M["red"]),
+])
+prop("pickup_nitro", [
+    cyl("pn_b", 0.35, 1.0, (0, 0, 0.5), M["nitro_b"], verts=12, axis="Z"),
+    cyl("pn_t", 0.2, 0.2, (0, 0, 1.1), M["chrome"], verts=10, axis="Z"),
+])
+
 # ---------------------------------------------------------------- layout para preview / organização
 x = 0
 for k, r in car_roots.items():

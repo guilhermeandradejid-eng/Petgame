@@ -182,6 +182,32 @@ func _build_shots() -> void:
 		var nz := randf() * 2.0 - 1.0
 		st.lp += (nz - st.lp) * 0.35
 		return (st.lp + sin(t * TAU * lerpf(300.0, 150.0, u)) * 0.3) * exp(-t * 18.0))
+	shots["gun"] = _synth(0.09, func(t, u, st):
+		var nz := randf() * 2.0 - 1.0
+		st.lp += (nz - st.lp) * 0.5
+		return (st.lp * 1.2 + sin(t * TAU * 140.0) * 0.6) * exp(-t * 45.0))
+	shots["rocket"] = _synth(0.7, func(t, u, st):
+		var nz := randf() * 2.0 - 1.0
+		st.lp += (nz - st.lp) * lerpf(0.4, 0.05, u)
+		st.ph += lerpf(300.0, 900.0, u) / RATE
+		return (st.lp * 1.3 + sin(st.ph * TAU) * 0.15) * (1.0 - u) * minf(1.0, t * 30.0))
+	shots["boom"] = _synth(0.9, func(t, u, st):
+		var nz := randf() * 2.0 - 1.0
+		st.lp += (nz - st.lp) * lerpf(0.5, 0.02, u)
+		st.ph += lerpf(70.0, 30.0, u) / RATE
+		return (st.lp * 1.4 * exp(-t * 3.5) + sin(st.ph * TAU) * exp(-t * 5.0) * 1.0))
+	shots["drop"] = _synth(0.25, func(t, u, st): return sin(t * TAU * lerpf(500.0, 200.0, u)) * 0.4 * (1.0 - u))
+	shots["splat"] = _synth(0.35, func(t, u, st):
+		var nz := randf() * 2.0 - 1.0
+		st.lp += (nz - st.lp) * 0.08
+		return st.lp * 2.0 * exp(-t * 8.0))
+	shots["pickup"] = _synth(0.3, func(t, u, st):
+		var f := 660.0 if t < 0.07 else (880.0 if t < 0.14 else 1320.0)
+		return (2.0 * absf(2.0 * fmod(t * f, 1.0) - 1.0) - 1.0) * 0.3 * (1.0 - u))
+	shots["splash"] = _synth(0.8, func(t, u, st):
+		var nz := randf() * 2.0 - 1.0
+		st.lp += (nz - st.lp) * lerpf(0.4, 0.05, u)
+		return st.lp * 1.5 * exp(-t * 3.0))
 	shots["beep"] = _synth(0.2, func(t, u, st): return (1.0 if fmod(t * 440.0, 1.0) < 0.5 else -1.0) * 0.3 * (1.0 - u))
 	shots["go"] = _synth(0.5, func(t, u, st): return (1.0 if fmod(t * 880.0, 1.0) < 0.5 else -1.0) * 0.3 * (1.0 - u))
 	shots["coin"] = _synth(0.35, func(t, u, st):

@@ -1,6 +1,6 @@
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled;
-// Efeitos chapados no chão: sombra de contato (mode 0), marca de queimado (1), anel de choque (2).
+// Efeitos chapados no chão: sombra de contato (0), queimado (1), anel de choque (2), mancha de óleo (3).
 uniform int mode = 0;
 uniform float strength = 1.0;
 uniform float ring_t = 0.0;
@@ -27,6 +27,14 @@ void fragment() {
 		float a = smoothstep(1.0, 0.2, r + n * 0.35);
 		ALBEDO = vec3(0.02, 0.02, 0.025);
 		ALPHA = a * 0.8 * strength;
+	} else if (mode == 3) {
+		float r = length(d) * 2.0;
+		float n = noise(UV * 6.0) * 0.6 + noise(UV * 15.0) * 0.4;
+		float a = smoothstep(1.0, 0.75, r + n * 0.3);
+		float sheen = sin((r + n) * 18.0) * 0.5 + 0.5;
+		vec3 rainbow = 0.5 + 0.5 * cos(6.2831 * (sheen + vec3(0.0, 0.33, 0.67)));
+		ALBEDO = mix(vec3(0.02, 0.02, 0.03), rainbow * 0.5, 0.35 * smoothstep(0.3, 0.9, sheen));
+		ALPHA = a * 0.92 * strength;
 	} else {
 		float r = length(d) * 2.0;
 		float w = 0.08 + 0.1 * (1.0 - ring_t);
