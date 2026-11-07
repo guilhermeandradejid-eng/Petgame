@@ -10,8 +10,8 @@ void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
 	vec2 q = wpos.xz;
 	float n = noise(q * 0.06) * 0.5 + noise(q * 0.4) * 0.3 + hash(floor(q * 3.0)) * 0.2;
-	vec3 a = vec3(0.27, 0.55, 0.19);
-	vec3 b = vec3(0.40, 0.68, 0.25);
+	vec3 a = vec3(0.20, 0.50, 0.12);
+	vec3 b = vec3(0.34, 0.64, 0.16);
 	ALBEDO = mix(a, b, n);
 	ROUGHNESS = 1.0;
 }

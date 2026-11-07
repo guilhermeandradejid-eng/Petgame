@@ -14,7 +14,7 @@ void fragment() {
 	float y = UV.y;
 	vec2 q = vec2(x, y);
 	float n = noise(q * 0.35) * 0.45 + noise(q * 2.5) * 0.3 + hash(floor(q * 14.0)) * 0.25;
-	vec3 c = vec3(0.27, 0.28, 0.31) * (0.82 + n * 0.3);
+	vec3 c = vec3(0.36, 0.37, 0.41) * (0.84 + n * 0.28);
 	// manchas de óleo
 	c *= 1.0 - 0.18 * smoothstep(0.62, 0.8, noise(q * 0.12 + 7.0));
 	float edge = step(0.5, x) * step(x, 0.85) + step(W - 0.85, x) * step(x, W - 0.5);
@@ -25,5 +25,6 @@ void fragment() {
 	c = mix(c, vec3(0.94, 0.93, 0.89), clamp(edge + lane, 0.0, 1.0));
 	c = mix(c, vec3(1.0, 0.75, 0.16), yel);
 	ALBEDO = c;
-	ROUGHNESS = 0.88;
+	ROUGHNESS = 0.82;
+	SPECULAR = 0.35;
 }

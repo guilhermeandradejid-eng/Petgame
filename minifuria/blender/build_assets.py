@@ -514,6 +514,45 @@ for k, p in props.items():
     p.location = (x, 8, 0)
     x += 3.0
 
+# ---------------------------------------------------------------- oclusão ambiente "assada" nos vértices
+# Dá o acabamento de render (cantos e frestas escurecidos) mesmo no renderizador leve do jogo/web.
+def bake_ao():
+    roots = list(car_roots.values()) + list(props.values())
+    saved = {r: r.location.copy() for r in roots}
+    for i, r in enumerate(roots):  # afasta tudo para um objeto não sombrear o outro
+        r.location = ((i % 10) * 40.0, (i // 10) * 40.0, 0)
+    bpy.context.view_layer.update()
+    meshes = [o for o in scene.objects if o.type == "MESH"]
+    for o in meshes:
+        me = o.data
+        ca = me.color_attributes.new("AO", "BYTE_COLOR", "CORNER")
+        me.color_attributes.active_color = ca
+        me.attributes.render_color_index = me.color_attributes.active_color_index
+    scene.render.engine = "CYCLES"
+    scene.cycles.device = "CPU"
+    scene.cycles.samples = 64
+    w = bpy.data.worlds.new("bake")
+    scene.world = w
+    w.light_settings.distance = 0.7
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in meshes:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = meshes[0]
+    bpy.ops.object.bake(type="AO", target="VERTEX_COLORS")
+    # suaviza: AO estilizado, sem preto chapado
+    for o in meshes:
+        data = o.data.color_attributes["AO"].data
+        for c in data:
+            v = c.color[0]
+            v = 0.42 + 0.58 * (v ** 0.85)
+            c.color = (v, v, v, 1.0)
+    for r, loc in saved.items():
+        r.location = loc
+
+
+bake_ao()
+print("AO assado")
+
 # ---------------------------------------------------------------- export
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 bpy.ops.export_scene.gltf(
@@ -522,6 +561,7 @@ bpy.ops.export_scene.gltf(
     export_apply=True,
     export_yup=True,
     export_materials="EXPORT",
+    export_vertex_color="ACTIVE",
     export_cameras=False,
     export_lights=False,
 )

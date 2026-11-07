@@ -69,7 +69,7 @@ Corrida isométrica 3D de mini carros no estilo "arcade de batidas", feita em **
 
 ## Como jogar
 
-- **Celular**: arraste no lado esquerdo para apontar a direção (relativa à tela). Acelera sozinho. À direita: **NITRO**, **DRIFT** e **FREIO** (segurar o freio parado dá ré).
+- **Celular ou mouse**: os controles ficam sempre na tela. Arraste no lado esquerdo para apontar a direção (relativa à tela). Acelera sozinho. À direita: **NITRO**, **DRIFT** e **FREIO** (segurar o freio parado dá ré).
 - **Teclado**: setas/WASD, `Espaço` drift, `Shift` nitro, `R` volta para a pista, `P` pausa, `M` som.
 - **Nitro**: enche com drift, quase-batidas, contramão, pulos, boost pads e destruindo cones/barris/caixotes.
 - **Takedown**: bata forte num rival ou jogue ele no muro. Enche o nitro, câmera lenta e o carro dele vira destroço.
@@ -83,9 +83,14 @@ Corrida isométrica 3D de mini carros no estilo "arcade de batidas", feita em **
 - Peças perdem "vida" e **soltam** como corpos rígidos que quicam pela pista; vidro estilhaça; rodas saem rolando. Sem uma roda, o carro arrasta soltando faíscas.
 - Com muito dano sai fumaça preta e depois fogo. Batida grande = explosão, clarão de luz, onda de choque e capotagem com física.
 
+## Acabamento visual
+
+- Oclusão ambiente "assada" no Blender (Cycles) nos vértices de todos os modelos: cantos e frestas escurecidos como no render, mesmo no renderizador leve da web.
+- Luz de céu procedural (ambiente e reflexos), sombras suaves filtradas, sombra de contato embaixo de cada carro, tonemapping AgX, MSAA 4x e materiais ajustados por tipo (pintura brilhante com rim light, vidro, cromado, pneu).
+
 ## Nitro, velocidade e game juice
 
-Chama azul de nitro com núcleo brilhante, rastro das lanternas, onda de choque ao ativar, blur radial + aberração cromática + linhas de velocidade estilo anime (shader de tela), zoom que abre com a velocidade, glow nos faróis, hitstop nas batidas, câmera lenta com dessaturação nos takedowns, tremor de câmera por trauma, fumaça e marcas de pneu, faíscas, poeira nos pousos, confete, popups animados e motor sintetizado com troca de marchas.
+Chama de nitro feita com shader (ruído correndo, núcleo branco, diamantes de choque) e luz azul, fumaça e fogo com texturas de ruído geradas em código, faíscas esticadas na direção da velocidade, brasas, marcas de queimado no chão, anéis de choque, linhas de vento em volta do carro, rastro das lanternas, onda de choque ao ativar, blur radial + aberração cromática + linhas de velocidade estilo anime (shader de tela), zoom que abre com a velocidade, glow nos faróis, hitstop nas batidas, câmera lenta com dessaturação nos takedowns, tremor de câmera por trauma, fumaça e marcas de pneu, faíscas, poeira nos pousos, confete, popups animados e motor sintetizado com troca de marchas.
 
 ## Estrutura
 
@@ -95,7 +100,8 @@ Chama azul de nitro com núcleo brilhante, rastro das lanternas, onda de choque 
 - `minifuria/scripts/main.gd`: regras (takedown, batida, quase-batida, contramão, voltas), câmera isométrica, tempo (hitstop/slow-mo) e efeitos.
 - `minifuria/scripts/fx.gd`: partículas, marcas de pneu (MultiMesh), rastros, destroços físicos.
 - `minifuria/scripts/hud.gd`, `touch.gd`, `sfx.gd`: HUD/menus, controles touch e áudio sintetizado.
-- `minifuria/shaders/`: asfalto, grama, boost pad, xadrez e pós-processamento de tela.
+- `minifuria/shaders/`: asfalto, grama, boost pad, xadrez, chama do nitro, efeitos no chão (sombra de contato, queimado, anel) e pós-processamento de tela.
+- `minifuria/tools/pack_web.py`: divide o export web em arquivos de 4 MB para hospedagens com limite por arquivo.
 - Fonte Bungee (SIL OFL), ver `minifuria/fonts/FONT-LICENSE.txt`.
 
 ## Exportar para a web

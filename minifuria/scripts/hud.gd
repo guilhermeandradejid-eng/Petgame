@@ -62,7 +62,7 @@ func _ready() -> void:
 	pl.add_child(post)
 
 	root = Control.new()
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.theme = th
 	add_child(root)

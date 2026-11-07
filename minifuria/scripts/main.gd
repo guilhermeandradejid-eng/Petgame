@@ -82,32 +82,51 @@ func _ready() -> void:
 			test_shots = Array(a.substr(8).split(","))
 
 	env = Environment.new()
+	# céu procedural: luz ambiente e reflexos vindos do céu (acabamento parecido com o render do Blender)
+	var sky := Sky.new()
+	var psm := ProceduralSkyMaterial.new()
+	psm.sky_top_color = Color("#6fa6f2")
+	psm.sky_horizon_color = Color("#dde8f7")
+	psm.ground_horizon_color = Color("#d9dde3")
+	psm.ground_bottom_color = Color("#6b7f5a")
+	psm.sun_angle_max = 20.0
+	sky.sky_material = psm
+	env.sky = sky
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color("#a9d8ff")
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("#d4e6ff")
-	env.ambient_light_energy = 0.5
-	env.tonemap_mode = Environment.TONE_MAPPER_ACES
-	env.tonemap_exposure = 1.05
+	env.background_color = Color("#bcd6f2")
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	env.ambient_light_sky_contribution = 1.0
+	env.ambient_light_energy = 1.0
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+	env.tonemap_mode = Environment.TONE_MAPPER_AGX
+	env.tonemap_exposure = 1.15
 	env.glow_enabled = true
-	env.glow_intensity = 0.55
+	env.glow_intensity = 0.6
+	env.glow_strength = 1.0
 	env.glow_bloom = 0.0
-	env.glow_hdr_threshold = 1.35
+	env.glow_hdr_threshold = 1.2
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
+	env.set_glow_level(1, 1.0)
+	env.set_glow_level(3, 1.0)
+	env.set_glow_level(5, 0.6)
 	env.adjustment_enabled = true
-	env.adjustment_saturation = 1.12
+	env.adjustment_saturation = 1.28
+	env.adjustment_contrast = 1.04
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
 
 	sun = DirectionalLight3D.new()
 	sun.light_color = Color("#fff0d4")
-	sun.light_energy = 1.25
+	sun.light_energy = 1.7
 	sun.rotation = Vector3(deg_to_rad(-52), deg_to_rad(-35), 0)
 	sun.shadow_enabled = true
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-	sun.directional_shadow_max_distance = 110.0
-	sun.shadow_bias = 0.06
+	sun.directional_shadow_max_distance = 75.0
+	sun.shadow_bias = 0.04
+	sun.shadow_normal_bias = 1.2
+	sun.shadow_blur = 1.6
+	sun.shadow_opacity = 0.85
 	add_child(sun)
 
 	cam = Camera3D.new()
@@ -119,6 +138,7 @@ func _ready() -> void:
 	cam.make_current()
 
 	lib = (load("res://assets/minicars.glb") as PackedScene).instantiate()
+	_prep_materials(lib, {})
 	track = Track.new()
 	track.add_ramp(96, -5.5)
 	track.add_ramp(476, 5.5)
@@ -163,6 +183,40 @@ func _setup_input() -> void:
 			var e := InputEventKey.new()
 			e.physical_keycode = k
 			InputMap.action_add_event(a, e)
+
+
+## acabamento dos materiais vindos do Blender: AO assada nos vértices + ajustes de brilho por tipo
+func _prep_materials(n: Node, done: Dictionary) -> void:
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		for s in mi.mesh.get_surface_count():
+			var m := mi.mesh.surface_get_material(s) as StandardMaterial3D
+			if m == null or done.has(m):
+				continue
+			done[m] = true
+			m.vertex_color_use_as_albedo = true
+			m.vertex_color_is_srgb = false
+			match m.resource_name:
+				"Paint", "Paint2":
+					m.roughness = 0.24
+					m.metallic = 0.18
+					m.metallic_specular = 0.7
+					m.rim_enabled = true
+					m.rim = 0.25
+					m.rim_tint = 0.6
+				"Glass":
+					m.roughness = 0.03
+					m.metallic = 0.7
+					m.metallic_specular = 1.0
+				"Chrome", "Rim":
+					m.roughness = 0.12
+					m.metallic = 1.0
+				"Tire":
+					m.roughness = 0.95
+				"Headlight", "Taillight", "LampGlow", "Window":
+					m.vertex_color_use_as_albedo = false
+	for c in n.get_children():
+		_prep_materials(c, done)
 
 
 func _prop_scene(name_: String) -> PackedScene:
@@ -350,6 +404,15 @@ func _make_car(kind: String, role: String, col: Color) -> Car:
 	c.add_child(dm.fire)
 	dm.dark.position = Vector3(0, 1.0, c.sp.len * 0.3)
 	dm.fire.position = Vector3(0, 0.9, c.sp.len * 0.3)
+	dm.shadow = fx.contact_shadow(c.sp.len, c.sp.wid)
+	add_child(dm.shadow)
+	if role != "traffic":
+		dm.dust = [fx.make_dust(), fx.make_dust()]
+		for d in dm.dust:
+			add_child(d)
+	if role == "player":
+		dm.wind = fx.make_wind()
+		add_child(dm.wind)
 	if em.has(c):
 		em[c].merge(dm)
 	else:
@@ -713,10 +776,12 @@ func _player_input() -> void:
 	c.dir = null
 	var tp := hud.touch
 	if tp.active and tp.visible:
-		if not tp.btn.brake:
+		# quem usa os controles de tela acelera sozinho; freio solta o acelerador
+		if tp.used and not tp.btn.brake and c.brake <= 0.0:
 			c.throttle = 1.0
-		else:
+		if tp.btn.brake:
 			c.brake = 1.0
+			c.throttle = 0.0
 		c.drift = c.drift or tp.btn.drift
 		c.nitro = c.nitro or tp.btn.nitro
 		if tp.stick_vec.length() > 0.22:
@@ -962,7 +1027,7 @@ func _process(_delta: float) -> void:
 			zoom_kick += 4.0
 			for c in [player] + rivals:
 				c.freeze = false
-			if Input.is_action_pressed("up") or hud.touch.active or auto_test:
+			if Input.is_action_pressed("up") or hud.touch.used or auto_test:
 				player.linear_velocity = player.global_transform.basis.z * 14.0
 				_add_nitro(0.15)
 				hud.popup("LARGADA PERFEITA!", Color("#ff9a1a"))
@@ -1031,16 +1096,45 @@ func _car_fx(dt: float) -> void:
 				s.emitting = skidding and (c.drifting or slip > 5.0 or braking)
 			var flame: Node3D = e.flame
 			(flame.get_node("P") as CPUParticles3D).emitting = c.nitroing
-			var core := flame.get_node("Core") as MeshInstance3D
+			var core := flame.get_node("Core") as Node3D
 			core.visible = c.nitroing
 			if c.nitroing:
-				core.scale = Vector3(1.0, randf_range(0.7, 1.3), 1.0) * randf_range(0.9, 1.2)
+				var w := randf_range(0.9, 1.15)
+				core.scale = Vector3(w, w, randf_range(0.8, 1.25))
 			for i in 2:
 				var tp: Vector3 = c.global_transform * c.tail_local[i]
 				fx.trail_push(e.trails[i], tp, real, c.nitroing and vis)
 		# dano: fumaça preta e fogo
 		(e.dark as CPUParticles3D).emitting = vis and (c.health < 55.0 or c.wrecked)
 		(e.fire as CPUParticles3D).emitting = vis and (c.health < 20.0 or (c.wrecked and c.wreck_t < 3.0))
+		# sombra de contato acompanha o chão e some quando o carro sobe
+		var sh: MeshInstance3D = e.shadow
+		var gp: Vector3 = c.global_position
+		var hgt := 0.0 if c.on_ground else clampf(c.air_t * 3.0, 0.0, 3.0)
+		if c.wrecked:
+			hgt = clampf(gp.y - 0.4, 0.0, 3.0)
+		sh.global_position = Vector3(gp.x, 0.055 + (gp.y if c.on_ground and not c.wrecked else 0.0), gp.z)
+		sh.rotation = Vector3(0, atan2(c.global_transform.basis.z.x, c.global_transform.basis.z.z), 0)
+		(sh.material_override as ShaderMaterial).set_shader_parameter("strength", clampf(1.0 - hgt * 0.3, 0.15, 1.0))
+		sh.visible = vis
+		# poeira saindo do asfalto
+		if e.has("dust"):
+			var off: bool = absf(c.lat) > Track.HALF + 0.4 and c.on_ground and c.linear_velocity.length() > 8.0 and vis
+			var rear: Array = c.wheels.filter(func(w): return not w.front)
+			for i in 2:
+				if i < rear.size():
+					e.dust[i].global_position = c.global_transform * Vector3(rear[i].base.x, 0.2, rear[i].base.z)
+				e.dust[i].emitting = off
+		if e.has("wind"):
+			var w: CPUParticles3D = e.wind
+			var sp: float = c.linear_velocity.length()
+			w.emitting = (sp > 36.0 or c.nitroing) and not c.wrecked
+			if w.emitting:
+				var dir: Vector3 = c.linear_velocity.normalized()
+				w.global_position = gp + Vector3(dir.x, 0, dir.z) * 10.0 + Vector3.UP * 1.5
+				w.direction = -dir
+				w.initial_velocity_min = sp * 0.05
+				w.initial_velocity_max = sp * 0.1
 		# roda perdida raspando no chão: faíscas
 		if vis and not c.wrecked and c.linear_velocity.length() > 6.0:
 			for w in c.wheels:
@@ -1062,7 +1156,7 @@ func _camera(rdt: float) -> void:
 	cam_pos = cam_pos.lerp(target, 1.0 - exp(-rdt * (3.0 if p.wrecked else 4.5)))
 	var vs := get_viewport().get_visible_rect().size
 	var aspect := vs.x / maxf(1.0, vs.y)
-	var base := maxf(30.0, 28.0 / aspect) if aspect < 1.0 else 30.0
+	var base := maxf(26.0, 24.0 / aspect) if aspect < 1.0 else 26.0
 	var sp := v.length()
 	var want := base + clampf(sp / 55.0, 0.0, 1.0) * 8.0 + (4.0 if p.nitroing else 0.0) + focus_h + (-10.0 if p.wrecked else 0.0)
 	zoom_kick *= exp(-rdt * 4.0)

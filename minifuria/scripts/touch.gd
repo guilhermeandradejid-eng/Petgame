@@ -7,15 +7,16 @@ var stick_origin := Vector2.ZERO
 var stick_vec := Vector2.ZERO     # -1..1, y para baixo
 var btn := {"nitro": false, "drift": false, "brake": false}
 var btn_ids := {}                 # índice do toque -> botão
-var active := false               # já recebeu toque?
+var active := false
+var used := false                 # o jogador já usou os controles de tela?
 var nitro_fill := 0.0
 const R := 70.0
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	active = DisplayServer.is_touchscreen_available()
+	active = true  # controles sempre na tela (toque e mouse)
 
 
 func _btn_rects() -> Dictionary:
@@ -30,44 +31,56 @@ func _btn_rects() -> Dictionary:
 
 
 func _input(e: InputEvent) -> void:
+	if not visible:
+		return
 	if e is InputEventScreenTouch:
-		active = true
-		var t := e as InputEventScreenTouch
-		if t.pressed:
-			var hitb := _hit_button(t.position)
-			if hitb != "":
-				btn_ids[t.index] = hitb
-				btn[hitb] = true
-				Input.vibrate_handheld(10)
-			elif t.position.x < size.x * 0.5 and stick_id == -1 and t.position.y > size.y * 0.25:
-				stick_id = t.index
-				stick_origin = t.position
-				stick_vec = Vector2.ZERO
-		else:
-			if btn_ids.has(t.index):
-				btn[btn_ids[t.index]] = false
-				btn_ids.erase(t.index)
-			if t.index == stick_id:
-				stick_id = -1
-				stick_vec = Vector2.ZERO
-		queue_redraw()
+		_touch(e.index, e.position, e.pressed)
 	elif e is InputEventScreenDrag:
-		var d := e as InputEventScreenDrag
-		if d.index == stick_id:
-			var v := (d.position - stick_origin) / R
-			if v.length() > 1.0:
-				stick_origin += v.normalized() * (v.length() - 1.0) * R
-				v = v.normalized()
-			stick_vec = v
+		_drag(e.index, e.position)
+	elif e is InputEventMouseButton and e.device != InputEvent.DEVICE_ID_EMULATION and e.button_index == MOUSE_BUTTON_LEFT:
+		# mouse também dirige (para testar no computador)
+		_touch(100, e.position, e.pressed)
+	elif e is InputEventMouseMotion and e.device != InputEvent.DEVICE_ID_EMULATION and (e.button_mask & MOUSE_BUTTON_MASK_LEFT):
+		_drag(100, e.position)
+
+
+func _touch(index: int, pos: Vector2, pressed: bool) -> void:
+	if pressed:
+		used = true
+		var hitb := _hit_button(pos)
+		if hitb != "":
+			btn_ids[index] = hitb
+			btn[hitb] = true
+			Input.vibrate_handheld(10)
+		elif pos.x < size.x * 0.55 and stick_id == -1 and pos.y > size.y * 0.2:
+			stick_id = index
+			stick_origin = pos
+			stick_vec = Vector2.ZERO
+	else:
+		if btn_ids.has(index):
+			btn[btn_ids[index]] = false
+			btn_ids.erase(index)
+		if index == stick_id:
+			stick_id = -1
+			stick_vec = Vector2.ZERO
+	queue_redraw()
+
+
+func _drag(index: int, pos: Vector2) -> void:
+	if index == stick_id:
+		var v := (pos - stick_origin) / R
+		if v.length() > 1.0:
+			stick_origin += v.normalized() * (v.length() - 1.0) * R
+			v = v.normalized()
+		stick_vec = v
+		queue_redraw()
+	elif btn_ids.has(index):
+		var hb := _hit_button(pos)
+		if hb != "" and hb != btn_ids[index]:
+			btn[btn_ids[index]] = false
+			btn_ids[index] = hb
+			btn[hb] = true
 			queue_redraw()
-		elif btn_ids.has(d.index):
-			# deslizar o dedo entre botões
-			var hb := _hit_button(d.position)
-			if hb != "" and hb != btn_ids[d.index]:
-				btn[btn_ids[d.index]] = false
-				btn_ids[d.index] = hb
-				btn[hb] = true
-				queue_redraw()
 
 
 func _hit_button(p: Vector2) -> String:
@@ -79,6 +92,11 @@ func _hit_button(p: Vector2) -> String:
 
 
 func _process(_dt: float) -> void:
+	# ocupa sempre a tela inteira (o tamanho do pai pode não estar pronto no _ready)
+	var vs := get_viewport_rect().size
+	if size != vs or position != Vector2.ZERO:
+		position = Vector2.ZERO
+		size = vs
 	if active:
 		queue_redraw()
 
@@ -124,5 +142,7 @@ func _draw() -> void:
 	else:
 		var hint := Vector2(size.x * 0.16, size.y * 0.72)
 		draw_arc(hint, R, 0, TAU, 48, Color(1, 1, 1, 0.18), 2.0)
-		var t := "arraste p/ dirigir"
-		draw_string(font, hint + Vector2(-60, 5), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(1, 1, 1, 0.4))
+		draw_circle(hint, 26, Color(1, 1, 1, 0.12))
+		var t := "ARRASTE PARA DIRIGIR"
+		var tw := font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+		draw_string(font, hint + Vector2(-tw / 2.0, R + 22), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1, 0.5))
