@@ -70,7 +70,8 @@ Corrida isométrica 3D de mini carros no estilo "arcade de batidas", feita em **
 ## Como jogar
 
 - **Celular ou mouse**: os controles ficam sempre na tela. Arraste no lado esquerdo para apontar a direção (relativa à tela). Acelera sozinho. À direita: **NITRO**, **DRIFT** e **FREIO** (segurar o freio parado dá ré).
-- **Teclado**: setas/WASD, `Espaço` drift, `Shift` nitro, `R` volta para a pista, `P` pausa, `M` som.
+- **Teclado**: setas/WASD, `Espaço` drift, `Shift` nitro, `R` volta para a pista, `P` pausa, `M` som, `C` troca a câmera.
+- **Câmeras**: isométrica ou terceira pessoa (botão CAM ou tecla `C`). A terceira pessoa segue atrás do carro com mola, abre o campo de visão com velocidade e nitro, acompanha o drift e gira em volta do carro na batida.
 - **Nitro**: enche com drift, quase-batidas, contramão, pulos, boost pads e destruindo cones/barris/caixotes.
 - **Takedown**: bata forte num rival ou jogue ele no muro. Enche o nitro, câmera lenta e o carro dele vira destroço.
 - **Batida**: bater de frente no muro ou no trânsito capota o carro. Depois você volta consertado, piscando.

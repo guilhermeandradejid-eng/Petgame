@@ -8,6 +8,7 @@ signal resume_pressed
 signal restart_pressed
 signal menu_pressed
 signal mute_pressed
+signal cam_pressed
 
 var font: Font
 var post: ColorRect
@@ -135,6 +136,8 @@ func _ready() -> void:
 	root.add_child(btns)
 	mute_b = _small_btn("SOM", btns)
 	mute_b.pressed.connect(func(): mute_pressed.emit())
+	var cb := _small_btn("CAM", btns)
+	cb.pressed.connect(func(): cam_pressed.emit())
 	var pb := _small_btn("II", btns)
 	pb.pressed.connect(func(): pause_pressed.emit())
 
@@ -154,7 +157,7 @@ func _ready() -> void:
 	var play := _big_btn("CORRER", menu.get_child(0))
 	play.pressed.connect(func(): play_pressed.emit())
 	var info := Label.new()
-	info.text = "Bata nos rivais para TAKEDOWN · Nitro enche com drift, quase-batidas, contramão e pulos\nBater de frente destrói o carro!\nTeclado: setas/WASD · ESPAÇO drift · SHIFT nitro · R volta à pista · P pausa"
+	info.text = "Bata nos rivais para TAKEDOWN · Nitro enche com drift, quase-batidas, contramão e pulos\nBater de frente destrói o carro!\nTeclado: setas/WASD · ESPAÇO drift · SHIFT nitro · R volta à pista · P pausa · C câmera"
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info.add_theme_font_override("font", SystemFont.new())
 	info.add_theme_font_size_override("font_size", 16)

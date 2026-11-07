@@ -499,8 +499,8 @@ func make_nitro_flame() -> Node3D:
 	p.gravity = Vector3.ZERO
 	p.angle_min = 0
 	p.angle_max = 360
-	p.scale_amount_min = 0.6
-	p.scale_amount_max = 1.0
+	p.scale_amount_min = 0.4
+	p.scale_amount_max = 0.7
 	p.scale_amount_curve = _curve([Vector2(0, 1.0), Vector2(0.4, 0.8), Vector2(1, 0.15)])
 	p.color_ramp = _ramp([Color(3, 3.2, 3.5, 1), Color(0.5, 1.6, 3.5, 1), Color(0.8, 0.4, 3.0, 0.7), Color(0.3, 0.1, 1.0, 0)])
 	p.name = "P"

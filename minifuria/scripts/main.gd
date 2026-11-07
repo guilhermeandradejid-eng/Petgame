@@ -35,6 +35,11 @@ var props: Array = []
 var player: Car
 var em := {}   # efeitos contínuos por carro
 var scrape_pool: Array = []
+var cam_mode := "iso"          # iso | chase (terceira pessoa)
+var chase_pos := Vector3.ZERO
+var chase_dir := Vector3.FORWARD
+var chase_fov := 65.0
+var orbit_a := 0.0
 
 var mode := "loading"
 var time_g := 0.0
@@ -169,6 +174,7 @@ func _ready() -> void:
 	hud.pause_pressed.connect(func(): _pause(mode != "paused"))
 	hud.menu_pressed.connect(_to_menu)
 	hud.mute_pressed.connect(func(): sfx.set_muted(not sfx.muted))
+	hud.cam_pressed.connect(_toggle_cam)
 
 	_build_scenery()
 	_new_race()
@@ -176,13 +182,15 @@ func _ready() -> void:
 	_last_us = Time.get_ticks_usec()
 	if auto_test:
 		_start()
+		if "--chase" in OS.get_cmdline_user_args():
+			_toggle_cam()
 
 
 func _setup_input() -> void:
 	var keys := {
 		"left": [KEY_LEFT, KEY_A], "right": [KEY_RIGHT, KEY_D], "up": [KEY_UP, KEY_W], "down": [KEY_DOWN, KEY_S],
 		"drift": [KEY_SPACE], "nitro": [KEY_SHIFT, KEY_N, KEY_J], "reset": [KEY_R], "pause": [KEY_P, KEY_ESCAPE],
-		"mute": [KEY_M], "start": [KEY_ENTER],
+		"mute": [KEY_M], "start": [KEY_ENTER], "camera": [KEY_C],
 	}
 	for a in keys:
 		if not InputMap.has_action(a):
@@ -728,7 +736,74 @@ func _slowmo(target: float, dur: float) -> void:
 
 
 func _on_screen(p: Vector3) -> bool:
+	if cam_mode == "chase":
+		return p.distance_to(player.global_position) < 90.0
 	return Vector2(p.x - cam_pos.x, p.z - cam_pos.z).length() < view_h * 1.3
+
+
+func _toggle_cam() -> void:
+	cam_mode = "chase" if cam_mode == "iso" else "iso"
+	var chase := cam_mode == "chase"
+	cam.projection = Camera3D.PROJECTION_PERSPECTIVE if chase else Camera3D.PROJECTION_ORTHOGONAL
+	cam.near = 0.1 if chase else 1.0
+	cam.far = 500.0 if chase else 400.0
+	# na terceira pessoa aparece o horizonte: céu de verdade e neblina de distância
+	env.background_mode = Environment.BG_SKY if chase else Environment.BG_COLOR
+	env.fog_enabled = chase
+	env.fog_light_color = Color("#cfe0f5")
+	env.fog_density = 0.0035
+	env.fog_sky_affect = 0.0
+	var f := player.global_transform.basis.z
+	chase_dir = Vector3(f.x, 0, f.z).normalized()
+	chase_pos = player.global_position - chase_dir * 8.0 + Vector3.UP * 3.2
+	hud.popup("CÂMERA 3ª PESSOA" if chase else "CÂMERA ISOMÉTRICA", Color("#2e7dff"))
+
+
+func _chase_camera(rdt: float) -> void:
+	var p := player
+	var v := p.linear_velocity
+	var sp := v.length()
+	var target := p.global_position
+	if p.wrecked:
+		# carro destruído: a câmera gira devagar em volta do destroço
+		orbit_a += rdt * 0.9
+		var o := Vector3(sin(orbit_a), 0, cos(orbit_a)) * 9.0 + Vector3.UP * 4.5
+		chase_pos = chase_pos.lerp(target + o, 1.0 - exp(-rdt * 3.0))
+		cam.global_position = chase_pos
+		cam.look_at(target + Vector3.UP * 0.8, Vector3.UP)
+	else:
+		var f := p.global_transform.basis.z
+		var fwd := Vector3(f.x, 0, f.z).normalized()
+		# no drift a câmera segue mais o movimento do que o bico do carro
+		var vel_dir := Vector3(v.x, 0, v.z).normalized() if sp > 6.0 else fwd
+		var want_dir := fwd.lerp(vel_dir, 0.55 if p.drifting else 0.25).normalized()
+		chase_dir = chase_dir.slerp(want_dir, 1.0 - exp(-rdt * (3.0 if p.on_ground else 1.2))).normalized()
+		orbit_a = atan2(-chase_dir.x, -chase_dir.z)
+		var dist := 7.0 + clampf(sp / 55.0, 0.0, 1.0) * 2.5 - (1.0 if p.nitroing else 0.0)
+		var height := 2.8 + clampf(sp / 55.0, 0.0, 1.0) * 0.6
+		if cam_focus and focus_t > 0.0:
+			# takedown: câmera recua e olha para a vítima
+			target = cam_focus.global_position
+			dist += 6.0
+			height += 3.0
+		var desired := p.global_position - chase_dir * dist + Vector3.UP * height
+		chase_pos = chase_pos.lerp(desired, 1.0 - exp(-rdt * 9.0))
+		cam.global_position = chase_pos
+		cam.look_at(target + Vector3.UP * 1.1 + chase_dir * 5.0, Vector3.UP)
+	var want_fov := 62.0 + clampf(sp / 55.0, 0.0, 1.0) * 14.0 + (10.0 if p.nitroing else 0.0) + zoom_kick * 0.9
+	zoom_kick *= exp(-rdt * 4.0)
+	chase_fov = lerpf(chase_fov, clampf(want_fov, 40.0, 100.0), 1.0 - exp(-rdt * 5.0))
+	cam.fov = chase_fov
+	shake_t += rdt
+	trauma = maxf(0.0, trauma - rdt * 1.6)
+	var s := trauma * trauma
+	cam.h_offset = (sin(shake_t * 37.0) * 0.6 + sin(shake_t * 85.0 + 1.0) * 0.4) * s * 0.5
+	cam.v_offset = (sin(shake_t * 41.0 + 4.0) * 0.6 + sin(shake_t * 94.0 + 2.0) * 0.4) * s * 0.4
+	cam.rotate_object_local(Vector3.FORWARD, sin(shake_t * 29.0 + 9.0) * s * 0.05)
+	# tremidinha de velocidade
+	if sp > 35.0:
+		cam.v_offset += sin(shake_t * 60.0) * 0.015 * (sp - 35.0) / 20.0
+	cam_pos = p.global_position
 
 
 # ------------------------------------------------------------------ loop
@@ -997,6 +1072,8 @@ func _process(_delta: float) -> void:
 	real += rdt
 	if Input.is_action_just_pressed("pause"):
 		_pause(mode != "paused")
+	if Input.is_action_just_pressed("camera"):
+		_toggle_cam()
 	if Input.is_action_just_pressed("mute"):
 		sfx.set_muted(not sfx.muted)
 	if Input.is_action_just_pressed("start") and mode == "menu":
@@ -1181,6 +1258,9 @@ func _car_fx(dt: float) -> void:
 
 
 func _camera(rdt: float) -> void:
+	if cam_mode == "chase":
+		_chase_camera(rdt)
+		return
 	var p := player
 	var v := p.linear_velocity
 	var target := p.global_position + Vector3(v.x, 0, v.z) * 0.38
