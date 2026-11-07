@@ -89,6 +89,11 @@ var post_aberr := 0.0
 var post_lines := 0.0
 var wrong_t := 0.0
 var steer_testing := false
+var cam_yaw := CAM_YAW
+var cam_pitch := CAM_PITCH
+var cam_mode := ""
+var cam_mode_t := 0.0
+var cam_loop := {}
 
 
 func _ready() -> void:
@@ -185,9 +190,8 @@ func _steer_test() -> void:
 	start_race()
 	while mode != "race":
 		await get_tree().physics_frame
-	var r := cam.global_basis.x
-	var rr := Vector3(r.x, 0, r.z).normalized()
-	var ff := Vector3(-cam.global_basis.z.x, 0, -cam.global_basis.z.z).normalized()
+	var rr := Vector3(cos(CAM_YAW), 0, -sin(CAM_YAW))
+	var ff := Vector3(-sin(CAM_YAW), 0, -cos(CAM_YAW))
 	for test in [["tela", "left", -rr], ["tela", "right", rr], ["tela", "down", -ff], ["tela", "up", ff], ["carro", "left", rr]]:
 		save.steer = test[0]
 		# carro andando para BAIXO da tela, a 20 m/s, numa reta
@@ -991,6 +995,7 @@ func _physics_process(dt: float) -> void:
 				_flash(Color(0.5, 0.9, 1.0), 0.15)
 				_add_meter(0.15)
 	_pickups(dt)
+	_feature_stats(dt)
 	_rules(dt)
 	_respawns(dt)
 	_recycle()
@@ -998,13 +1003,41 @@ func _physics_process(dt: float) -> void:
 
 ## Direção "tela": o jogador aponta para onde quer ir na tela (não inverte quando o carro desce a tela).
 ## Direção "carro": esquerda/direita giram o carro (estilo clássico).
+## medição de fluidez: quantas vezes um carro "engasga" (cai abaixo de 8 m/s) dentro de loop/torção/espiral
+func _feature_stats(_dt: float) -> void:
+	if mode != "race":
+		return
+	for c in cars:
+		if c.role == "traffic" or c.wrecked or c.freeze:
+			continue
+		var on_f: bool = track.feat[c.ti] == 1 and track.ftype[c.ti] != "jump"
+		var slow: bool = c.linear_velocity.length() < 8.0
+		var was: bool = c.get_meta("stall", false)
+		if on_f and slow and not was:
+			var key := "stalls" if c == player else "ai_stalls"
+			stats[key] = int(stats.get(key, 0)) + 1
+			var k2 := "st_" + track.ftype[c.ti] + ("_l" if track.loopf[c.ti] == 1 else "")
+			stats[k2] = int(stats.get(k2, 0)) + 1
+			if c == player and OS.get_cmdline_user_args().has("--debugstall"):
+				print("STALL %s s=%d lat=%.1f h=%.1f v=%.1f onf=%s inloop=%s ft=%s gnd=%s wheels=%d up·U=%.2f inv=%.1f" % [k2, int(c.s_track), c.lat, c.h_surf, c.linear_velocity.length(), c.on_feature, c.in_loop, c.feat_type, c.on_ground, c.wheels.filter(func(w): return w.contact).size(), c.global_transform.basis.y.dot(track.U[c.ti]), c.invuln])
+				for ct in c._contacts:
+					var ob: Object = ct[0]
+					var nm := "?"
+					if ob is Node:
+						nm = (ob as Node).name + ":" + (ob as Node).get_class()
+					print("   contact ", nm, " lp=", ct[1], " n=", ct[2])
+				for o in cars:
+					if o != c and o.global_position.distance_to(c.global_position) < 6.0:
+						print("   near car ", o.role, " d=%.1f" % o.global_position.distance_to(c.global_position))
+		c.set_meta("stall", on_f and slow)
+
+
 func _player_input() -> void:
 	var c := player.ctrl
 	var screen_mode := String(save.get("steer", "tela")) == "tela"
-	var r := cam.global_basis.x
-	var f := -cam.global_basis.z
-	var rr := Vector3(r.x, 0, r.z).normalized()
-	var ff := Vector3(f.x, 0, f.z).normalized()
+	# controles presos ao ângulo base da câmera: a câmera dinâmica (loops/torções) não inverte a direção
+	var rr := Vector3(cos(CAM_YAW), 0, -sin(CAM_YAW))
+	var ff := Vector3(-sin(CAM_YAW), 0, -cos(CAM_YAW))
 	c.dir = null
 	c.steer = 0.0
 	c.throttle = 0.0
@@ -1094,13 +1127,23 @@ func _rules(dt: float) -> void:
 		c.lat = pr.lat
 		c.s_track = pr.s
 		c.h_track = pr.h
-		c.track_up = track.U[pr.i]
-		c.track_left = track.L[pr.i]
-		c.track_tan = track.T[pr.i]
 		c.in_loop = track.loopf[pr.i] == 1
 		c.feat_type = track.ftype[pr.i]
 		c.on_feature = track.feat[pr.i] == 1 and track.gap[pr.i] == 0 and track.ftype[pr.i] != "jump"
-		c.h_surf = pr.h
+		if c.on_feature:
+			var fr := track.frame(c.global_position, pr.i)
+			c.track_up = fr.u
+			c.track_left = fr.l
+			c.track_tan = fr.t
+			c.h_surf = fr.h
+			c.lat = fr.lat
+		else:
+			c.track_up = track.U[pr.i]
+			c.track_left = track.L[pr.i]
+			c.track_tan = track.T[pr.i]
+			c.h_surf = pr.h
+		c.road_half = track.HALF
+		c.track_ref = track
 		if c.role == "traffic":
 			continue
 		var d: float = pr.s - c.prev_s
@@ -1406,6 +1449,15 @@ func _process(_delta: float) -> void:
 	_camera(rdt)
 	_post(rdt)
 	_hud()
+	if auto_test and OS.get_cmdline_user_args().has("--camshots") and cam_mode != "":
+		var key := "cam_" + cam_mode
+		var fr := int(stats.get(key, 0)) + 1
+		stats[key] = fr
+		if fr % 40 == 0 and fr <= 160:
+			get_viewport().get_texture().get_image().save_png("user://cam_t%d_%s_%d.png" % [track_idx, cam_mode, fr / 40])
+			print("CAMSHOT ", cam_mode, " ", fr / 40)
+	elif auto_test:
+		stats.erase("cam_loop"); stats.erase("cam_twist"); stats.erase("cam_helix"); stats.erase("cam_air")
 	if auto_test and test_shots.size() > 0 and real > float(test_shots[0]):
 		var img := get_viewport().get_texture().get_image()
 		img.save_png("user://shot_t%d_%s.png" % [track_idx, test_shots[0]])
@@ -1522,6 +1574,38 @@ func _car_fx(dt: float) -> void:
 					fx.sparks(c.global_transform * Vector3(w.base.x, 0.1, w.base.z), -c.linear_velocity, 0.25)
 
 
+func _cam_mode(rdt: float) -> String:
+	if mode != "race" and mode != "finish" and mode != "countdown":
+		return ""
+	var p := player
+	if p.wrecked:
+		return ""
+	var want := ""
+	var steps := int(26.0 / track.ds)
+	for k in range(-2, steps):
+		var j := track.idx(p.ti + k)
+		if track.loopf[j] == 1:
+			want = "loop"
+			cam_loop = track.loop_info(j)
+			break
+		if track.feat[j] == 1 and track.ftype[j] == "cork":
+			want = "twist"
+			break
+		if track.feat[j] == 1 and track.ftype[j] == "helix" and k < 6:
+			want = "helix"
+			break
+	if want == "" and not p.on_ground and p.air_t > 0.3:
+		want = "air"
+	if want != "":
+		cam_mode = want
+		cam_mode_t = 0.45
+	else:
+		cam_mode_t -= rdt
+		if cam_mode_t <= 0.0:
+			cam_mode = ""
+	return cam_mode
+
+
 func _camera(rdt: float) -> void:
 	var p := player
 	var v := p.linear_velocity
@@ -1534,14 +1618,59 @@ func _camera(rdt: float) -> void:
 		target = p.global_position
 	if mode == "menu":
 		target = track.at(fmod(real * 18.0, track.length)).pos
-	var k := 1.0 - exp(-rdt * (3.0 if p.wrecked else 4.5))
+	var cm := _cam_mode(rdt) if mode != "shots" else ""
+	var want_yaw := CAM_YAW
+	var want_pitch := CAM_PITCH
+	var follow := 3.0 if p.wrecked else 4.5
+	var extra := 0.0
+	var size_fix := -1.0
+	match cm:
+		"loop":
+			# vista lateral: olhando ao longo do eixo do loop, o círculo inteiro aparece na tela
+			var lc: Vector3 = cam_loop.center
+			var ax: Vector3 = cam_loop.axis
+			var axh := Vector3(ax.x, 0, ax.z).normalized()
+			var y1 := atan2(axh.x, axh.z)
+			var y2 := atan2(-axh.x, -axh.z)
+			want_yaw = y1 if absf(angle_difference(CAM_YAW, y1)) <= absf(angle_difference(CAM_YAW, y2)) else y2
+			want_pitch = 0.2
+			var along := (p.global_position - lc).dot(ax)
+			var mid := lc + ax * along
+			target = mid.lerp(p.global_position, 0.25)
+			size_fix = float(cam_loop.r) * 2.0 + 18.0
+			follow = 3.5
+		"twist":
+			# atrás do carro, um pouco alto: dá para ver a pista girando
+			var t3: Vector3 = track.T[p.ti]
+			var th := Vector3(t3.x, 0, t3.z).normalized()
+			var yb := atan2(-th.x, -th.z)
+			want_yaw = lerp_angle(CAM_YAW, yb, 0.75)
+			want_pitch = 0.45
+			target = p.global_position + th * 7.0 + Vector3.UP * 1.5
+			size_fix = 26.0
+			follow = 5.0
+		"helix":
+			want_pitch = 1.05
+			extra = 14.0
+		"air":
+			want_pitch = 0.5
+			extra = 6.0
+	var bk := 1.0 - exp(-rdt * 3.2)
+	cam_yaw = lerp_angle(cam_yaw, want_yaw, bk)
+	cam_pitch = lerpf(cam_pitch, want_pitch, bk)
+	if mode == "menu" or mode == "shots":
+		cam_yaw = CAM_YAW
+		cam_pitch = CAM_PITCH
+	var k := 1.0 - exp(-rdt * follow)
 	if mode != "shots":
 		cam_pos = cam_pos.lerp(target, k)
 	var vs := get_viewport().get_visible_rect().size
 	var aspect := vs.x / maxf(1.0, vs.y)
 	var base := maxf(28.0, 26.0 / aspect) if aspect < 1.0 else 28.0
 	var sp := v.length()
-	var want := base + clampf(sp / 55.0, 0.0, 1.0) * 8.0 + (4.0 if p.nitroing else 0.0) + focus_h + (-8.0 if p.wrecked else 0.0)
+	var want := base + clampf(sp / 55.0, 0.0, 1.0) * 8.0 + (4.0 if p.nitroing else 0.0) + focus_h + (-8.0 if p.wrecked else 0.0) + extra
+	if size_fix > 0.0:
+		want = maxf(size_fix, base) / clampf(aspect, 0.6, 1.0)
 	if mode == "menu":
 		want = 40.0
 	if mode == "shots":
@@ -1550,7 +1679,7 @@ func _camera(rdt: float) -> void:
 	zoom_kick *= exp(-rdt * 4.0)
 	view_h = lerpf(view_h, want + zoom_kick, 1.0 - exp(-rdt * 3.0))
 	cam.size = maxf(8.0, view_h)
-	var off := Vector3(sin(CAM_YAW) * cos(CAM_PITCH), sin(CAM_PITCH), cos(CAM_YAW) * cos(CAM_PITCH)) * CAM_DIST
+	var off := Vector3(sin(cam_yaw) * cos(cam_pitch), sin(cam_pitch), cos(cam_yaw) * cos(cam_pitch)) * CAM_DIST
 	cam.global_position = cam_pos + off
 	cam.look_at(cam_pos, Vector3.UP)
 	shake_t += rdt

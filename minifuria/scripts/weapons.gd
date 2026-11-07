@@ -223,7 +223,7 @@ func _fire_mg(c: Car) -> void:
 		aim = (tgt.global_position + tgt.global_transform.basis.y * 0.7 - mz).normalized()
 	aim = (aim + Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * 0.014).normalized()
 	var space := get_world_3d().direct_space_state
-	var q := PhysicsRayQueryParameters3D.create(mz, mz + aim * 55.0, 1 | 2 | 4, [c.get_rid()])
+	var q := PhysicsRayQueryParameters3D.create(mz, mz + aim * 55.0, 1 | 2 | 4 | 16, [c.get_rid()])
 	var res := space.intersect_ray(q)
 	var endp := mz + aim * 55.0
 	var hit := {}
@@ -462,7 +462,7 @@ func _step_rockets(dt: float) -> void:
 		var p0 := node.global_position
 		var p1 := p0 + vel * dt
 		var excl := [] if r.t > 0.25 else [(r.owner as Car).get_rid()]
-		var q := PhysicsRayQueryParameters3D.create(p0, p1, 1 | 2 | 4, excl)
+		var q := PhysicsRayQueryParameters3D.create(p0, p1, 1 | 2 | 4 | 16, excl)
 		var res := space.intersect_ray(q)
 		if res or r.t > 2.4:
 			var at: Vector3 = res.position if res else p1

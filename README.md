@@ -103,6 +103,15 @@ Menu → **escolha da pista** (10) → **garagem** → corrida de 3 voltas contr
 - **Cenário**: perto do chão os objetos ficam no chão; em trecho elevado, postes e placas vão presos em cima da mureta (nada flutuando). Tampas listradas nas pontas dos saltos, mureta fina no looping, ilhotas sob objetos na água/lava, nuvens em cachos e itens com brilho no asfalto.
 - Carro parado ou travado por 3 s volta para a pista sozinho.
 
+## Câmeras dinâmicas e fluidez nos elementos
+
+- **Looping**: a câmera gira para a vista lateral, olhando ao longo do eixo do looping, e abre o zoom para o círculo inteiro caber na tela.
+- **Torção (saca-rolhas)**: a câmera vai para trás e um pouco acima do carro, para dar para ver a pista girando.
+- **Espiral**: a câmera sobe quase para a vista de cima e abre o zoom. **No ar** (saltos): sobe um pouco e abre.
+- As transições são suaves (yaw/pitch interpolados) e a câmera segura o modo por 0,45 s depois do elemento, sem trancos. Os controles continuam presos ao ângulo base da câmera, então girar a câmera nunca inverte a direção.
+- **Sem emendas mal encaixadas**: o deslocamento lateral do looping segue uma curva suave (smoothstep), então a entrada e a saída são retas e paralelas à pista original, sem a dobra horizontal que espremia os triângulos do colisor. As espirais têm 10–11 m de desnível por volta, para a volta de baixo não raspar na de cima.
+- **Sem travar**: no looping e na torção o carro é guiado pelo referencial da pista, interpolado entre as amostras (sem "degraus" de 2 m), e a carroceria não colide com o asfalto nesse trecho (as rodas continuam lendo a pista). A IA mantém sua faixa nesses elementos em vez de todos irem para o meio e engavetarem.
+
 ## Controles
 
 - **Direção "TELA" (padrão)**: você aponta para onde quer ir **na tela** e o carro vira sozinho para lá. Não inverte quando o carro desce a tela. No celular/mouse é o analógico da esquerda; no teclado, as setas/WASD (↑ sobe a tela, ← vai para a esquerda da tela) e o carro acelera sozinho.
@@ -114,7 +123,7 @@ Menu → **escolha da pista** (10) → **garagem** → corrida de 3 voltas contr
 
 Cada pista é um polígono de pontos `[x, z, altura]` mais elementos especiais (`loop`, `jump`, `helix`, `cork`) em `scripts/track_data.gd`. O `track.gd` expande os elementos em pontos de controle, passa uma Catmull-Rom centrípeta fechada e calcula um referencial por amostra: "para cima" do mundo projetado nos trechos normais, inclinação automática nas curvas e, dentro do looping, o "para cima" aponta para o eixo do looping. Daí saem asfalto, zebras, guard-rails (mais altos nos elementos), parte de baixo, pilares (sem cair em cima de outro trecho), colisores e a decoração (placas de curva, postes, pneus, bandeiras, outdoors). O carro usa a normal da pista como gravidade e tem assistência nos loopings e na torção, no estilo dos jogos de pista de brinquedo.
 
-Ferramentas: `godot --headless -s res://tools/validate_tracks.gd` confere raio mínimo, cruzamentos sem altura suficiente e altura mínima das 10 pistas; `godot --headless --fixed-fps 60 res://scenes/main.tscn -- --autotest --track=N` corre a pista N no piloto automático e imprime o resultado (com `--debugfall` mostra cada queda); `-- --overview --only=N` fotografa a pista N de cima e nos elementos especiais, para inspeção; `-- --autotest --steertest` confere que as setas viram o carro para o lado certo da tela.
+Ferramentas: `godot --headless -s res://tools/validate_tracks.gd` confere raio mínimo, cruzamentos sem altura suficiente e altura mínima das 10 pistas; `godot --headless --fixed-fps 60 res://scenes/main.tscn -- --autotest --track=N` corre a pista N no piloto automático e imprime o resultado (com `--debugfall` mostra cada queda); `-- --overview --only=N` fotografa a pista N de cima e nos elementos especiais, para inspeção; `-- --autotest --steertest` confere que as setas viram o carro para o lado certo da tela; `-- --autotest --track=N --debugstall` conta e descreve cada vez que um carro quase para num looping, torção ou espiral (com os contatos físicos naquele instante); `-- --autotest --track=N --camshots` salva quadros das câmeras dinâmicas. A validação também acusa trechos que ocupam o mesmo espaço em 3D (`overlap3d`).
 
 ## Estrutura
 

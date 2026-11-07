@@ -88,6 +88,11 @@ var track_left := Vector3.RIGHT
 var track_tan := Vector3.FORWARD
 var in_loop := false
 var h_surf := 0.0
+var road_half := 9.0
+var track_ref: Track = null
+var guided_spd := 0.0
+var _susp_forces := true
+var ghost_t := 0.0   # nos trechos guiados os carros se atravessam (sem engavetar nem "estourar" na saída)
 
 # IA / pista
 var oncoming := false
@@ -300,6 +305,9 @@ func _physics_process(dt: float) -> void:
 		_prev_v = Vector3.ZERO
 		return
 	if wrecked:
+		collision_layer = 2
+		collision_mask = 1 | 2 | 4
+		ghost_t = 0.0
 		wreck_t += dt
 		var f := Vector3.DOWN * GRAV * grav_factor * mass
 		apply_central_force(f)
@@ -309,7 +317,10 @@ func _physics_process(dt: float) -> void:
 	invuln = maxf(0.0, invuln - dt)
 	stun = maxf(0.0, stun - dt)
 	oil_t = maxf(0.0, oil_t - dt)
+	var guided := on_feature and (in_loop or feat_type == "cork") and h_surf < 3.0 and h_surf > -1.5 and track_ref != null
+	_susp_forces = not guided
 	var grounded := _suspension(false)
+	_susp_forces = true
 	var was_ground := on_ground
 	on_ground = grounded >= 2
 	# "ímã" de pista nos loopings, espirais e saca-rolhas (arcade, estilo pista de brinquedo)
@@ -318,12 +329,46 @@ func _physics_process(dt: float) -> void:
 		on_ground = true
 		on_road = true
 		ground_n = ground_n.lerp(track_up, 0.6).normalized()
-	if magnet and in_loop and h_surf < 3.0:
-		# assistência de looping: o carro é guiado pela pista com velocidade mínima
-		var spd := maxf(linear_velocity.dot(track_tan), 30.0)
-		var lv := track_tan * spd + track_left * linear_velocity.dot(track_left) * 0.8 - track_up * (h_surf - 0.05) * 6.0
+	# no trecho guiado a carroceria não colide com o asfalto (as rodas continuam lendo a pista):
+	# assim nenhuma emenda ou quina do colisor segura o carro. Os carros também viram "fantasmas"
+	# entre si (camada 16) ali e por meio segundo depois, para não se empurrarem para fora da pista.
+	ghost_t = 0.5 if guided else maxf(0.0, ghost_t - dt)
+	var want_layer := 16 if ghost_t > 0.0 else 2
+	var want_mask := 4 if guided else ((1 | 4) if ghost_t > 0.0 else (1 | 2 | 4))
+	if collision_layer != want_layer:
+		collision_layer = want_layer
+	if collision_mask != want_mask:
+		collision_mask = want_mask
+	if guided:
+		# looping e torção guiados: o carro segue a pista com velocidade mínima, sem engasgar nas emendas
+		# a rapidez é guardada à parte (entra com a do carro e não perde nada nas emendas)
+		var spd := maxf(guided_spd, 30.0 if in_loop else 28.0)
+		if nitro_t > 0.0:
+			spd = move_toward(spd, maxf(spd, sp.nitro * engine_mult * 0.9), 40.0 * dt)
+		spd = minf(spd, 58.0)
+		guided_spd = spd
+		# lateral só por posição (sem reaproveitar v·L medido: num looping com deslocamento lateral
+		# essa leitura carrega o giro do referencial e empurraria o carro para fora da pista)
+		var lim := road_half - 1.6
+		var lat_target := -lat * 0.25
+		if role == "player":
+			if ctrl.dir == null:
+				lat_target += ctrl.steer * 5.0   # direção clássica: dá para desviar para os lados
+		else:
+			lat_target = (clampf(lane_cur, -lim, lim) - lat) * 1.2
+		if absf(lat) > lim:
+			lat_target = minf(lat_target, -(absf(lat) - lim) * 3.0 - 1.0) if lat > 0.0 else maxf(lat_target, (absf(lat) - lim) * 3.0 + 1.0)
+		# segue a pista exatamente: mira o ponto onde o carro deve estar no próximo quadro
+		# (s + v·dt, faixa e altura suavizadas), então não sobra erro para acumular entre quadros
+		var lat_next := clampf(lat + clampf(lat_target, -8.0, 8.0) * dt, -road_half + 1.2, road_half - 1.2)
+		var h_next := lerpf(h_surf, 0.12, 0.3)
+		var nx := track_ref.at(s_track + spd * dt, lat_next)
+		var target: Vector3 = nx.pos + (nx.up as Vector3) * h_next
+		var lv := (target - global_position) / dt
+		if lv.length() > spd * 1.6 + 6.0:
+			lv = lv.normalized() * (spd * 1.6 + 6.0)
 		linear_velocity = lv
-		var want := Basis(track_left, track_up, track_tan).orthonormalized()
+		var want: Basis = (nx.basis as Basis).orthonormalized()
 		var dq := (want * global_transform.basis.orthonormalized().inverse()).get_rotation_quaternion()
 		var ax := dq.get_axis()
 		var ang := dq.get_angle()
@@ -337,6 +382,7 @@ func _physics_process(dt: float) -> void:
 		on_ground = true
 		air_t = 0.0
 		return
+	guided_spd = maxf(0.0, linear_velocity.dot(track_tan))
 	if magnet and feat_type == "cork":
 		# no saca-rolhas a pista gira em volta do eixo: puxa o carro para o centro
 		var cf := -track_left * lat * mass * 9.0 - track_left * linear_velocity.dot(track_left) * mass * 2.0
@@ -513,7 +559,7 @@ func _suspension(wreck_mode: bool) -> int:
 				psum += res.position
 				if res.collider and (res.collider as Node).has_meta("road"):
 					road_hits += 1
-				if not wreck_mode or up.y > 0.5:
+				if (not wreck_mode or up.y > 0.5) and _susp_forces:
 					var rel: Vector3 = mount - global_position
 					var pv := linear_velocity + angular_velocity.cross(rel)
 					var f := maxf(0.0, _k * maxf(comp, 0.0) - _c * pv.dot(up))
@@ -775,7 +821,7 @@ func ai(track: Track, game: Node, dt: float) -> void:
 	var lt := lane_t
 	var ahead := track.idx(pr.i + int(look / track.ds))
 	if track.ftype[ahead] == "cork" or track.ftype[pr.i] == "cork" or track.ftype[ahead] == "loop":
-		lt = 0.0
+		lt = clampf(lane_t, -3.5, 3.5)   # nos loopings e torções cada um mantém sua faixa (sem engavetar no meio)
 	lane_cur += clampf(lt - lane_cur, -dt * 6.0, dt * 6.0)
 	var tp := track.at(pr.s + look * dir, lane_cur)
 	var to: Vector3 = tp.pos - global_position
@@ -789,7 +835,7 @@ func ai(track: Track, game: Node, dt: float) -> void:
 		for k in range(2, 26, 2):
 			var j := track.idx(pr.i + k)
 			max_c = maxf(max_c, absf(track.curv[j]))
-			if track.feat[j] == 1:
+			if track.feat[j] == 1 and (track.ftype[j] == "loop" or track.ftype[j] == "jump"):
 				special = true
 		var lim := sqrt(30.0 / maxf(max_c, 1e-4))
 		want = minf(cruise * rubber * ai_skill, lim)

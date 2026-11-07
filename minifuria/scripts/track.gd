@@ -54,6 +54,7 @@ func _expand() -> Array:
 	# os loopings deslocam a pista para o lado; os pontos seguintes acompanham o deslocamento
 	var pts: Array = []
 	var acc := Vector3.ZERO
+	var shifts := {}
 	for i in m:
 		var q := _v(raw[i]) + acc
 		pts.append([q.x, q.z, q.y])
@@ -65,7 +66,9 @@ func _expand() -> Array:
 			var d2 := Vector3(c0.x - b0.x, 0, c0.z - b0.z).normalized()
 			var lf := Vector3(dd.z, 0, -dd.x)
 			var tl := (dd.x * d2.z - dd.z * d2.x) < 0.0
-			acc += (lf if tl else -lf) * (W + 4.0) * (1.0 if i + 1 < m else 0.0)
+			var sv := (lf if tl else -lf) * (W + 8.0) * (1.0 if i + 1 < m else 0.0)
+			shifts[i] = sv
+			acc += sv
 	var cps: Array = []
 	for i in m:
 		var p := _v(pts[i])
@@ -93,19 +96,24 @@ func _expand() -> Array:
 					cps.append({"p": Vector3(c.x + off.x, p.y + dh * k / steps, c.z + off.z), "feat": true, "kind": "helix"})
 			"loop":
 				var R: float = f[1]
-				var mid := p.lerp(nxt, 0.4)
-				# o looping sai deslocado para o lado da próxima curva (assim a reta de saída casa com ela)
-				var nn := _v(pts[(i + 2) % m])
-				var d2 := Vector3(nn.x - nxt.x, 0, nn.z - nxt.z).normalized()
-				var turn_left := (d.x * d2.z - d.z * d2.x) < 0.0
-				var right := left if turn_left else -left
-				var shift := W + 4.0
+				# o looping sai deslocado para o lado da próxima curva; o resto da pista já foi
+				# deslocado junto (acc), então a reta de entrada e a de saída ficam paralelas à original
+				var sv: Vector3 = shifts.get(i, Vector3.ZERO)
+				var nxt_u := nxt - sv
+				d = Vector3(nxt_u.x - p.x, 0, nxt_u.z - p.z).normalized()
+				var mid := p.lerp(nxt_u, 0.4)
+				var right := sv.normalized() if sv.length() > 0.1 else Vector3(d.z, 0, -d.x)
+				var shift := sv.length()
 				cps.append({"p": mid - d * 16.0, "feat": true, "kind": "loop"})
+				cps.append({"p": mid - d * 7.0, "feat": true, "kind": "loop"})
 				for k in range(0, 15):
 					var th := float(k) / 14.0 * TAU
-					var q := mid + d * R * sin(th) + Vector3.UP * R * (1.0 - cos(th)) + right * shift * (th / TAU)
-					cps.append({"p": q, "loop": true, "feat": true, "lc": mid + Vector3.UP * R, "la": right, "kind": "loop"})
-				cps.append({"p": mid + right * shift + d * 16.0, "feat": true, "kind": "loop"})
+					# deslocamento lateral em "smoothstep": sem quina na entrada nem na saída do looping
+					var u := th / TAU
+					var q := mid + d * R * sin(th) + Vector3.UP * R * (1.0 - cos(th)) + right * shift * (u * u * (3.0 - 2.0 * u))
+					cps.append({"p": q, "loop": true, "feat": true, "lc": mid + Vector3.UP * R, "la": right, "lr": R, "kind": "loop"})
+				cps.append({"p": mid + sv + d * 7.0, "feat": true, "kind": "loop"})
+				cps.append({"p": mid + sv + d * 16.0, "feat": true, "kind": "loop"})
 			"jump":
 				var g: float = f[1]
 				var kick: float = f[2]
@@ -145,6 +153,7 @@ static func _cr(p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, t: float) ->
 var _bank := PackedFloat32Array()
 var _lc := PackedVector3Array()
 var _la := PackedVector3Array()
+var _lr := PackedFloat32Array()
 
 
 func _sample(cps: Array) -> void:
@@ -187,6 +196,7 @@ func _sample(cps: Array) -> void:
 		loopf.append(1 if in_loop else 0)
 		_lc.append(a.get("lc", Vector3.ZERO))
 		_la.append(a.get("la", Vector3.RIGHT))
+		_lr.append(float(a.get("lr", b.get("lr", 0.0))))
 		feat.append(1 if (a.get("feat", false) or b.get("feat", false)) else 0)
 		ftype.append(String(a.get("kind", b.get("kind", ""))))
 		var ba: float = a.get("bank", 0.0)
@@ -241,6 +251,11 @@ func _frames() -> void:
 		U[i] = T[i].cross(lf).normalized()
 
 
+## centro, eixo e raio do looping na amostra i (para a câmera lateral)
+func loop_info(i: int) -> Dictionary:
+	return {"center": _lc[i], "axis": _la[i], "r": _lr[i]}
+
+
 func idx(i: int) -> int:
 	return posmod(i, n)
 
@@ -278,6 +293,20 @@ func project(p: Vector3, hint := -1) -> Dictionary:
 				bi = i
 	var dd := p - P[bi]
 	return {"i": bi, "s": fposmod(bi * ds + dd.dot(T[bi]), length), "lat": dd.dot(L[bi]), "h": dd.dot(U[bi])}
+
+
+## referencial interpolado entre as amostras (segue a mesma corda do colisor, sem "degraus" de 2 m)
+func frame(p: Vector3, i: int) -> Dictionary:
+	var fo := (p - P[i]).dot(T[i]) / ds
+	var j := idx(i + (1 if fo >= 0.0 else -1))
+	var w := clampf(absf(fo), 0.0, 1.0)
+	var tt := T[i].lerp(T[j], w).normalized()
+	var tu := U[i].lerp(U[j], w)
+	tu = (tu - tt * tt.dot(tu)).normalized()
+	var tl := tu.cross(tt).normalized()
+	var pp := P[i].lerp(P[j], w)
+	var dd := p - pp
+	return {"t": tt, "u": tu, "l": tl, "h": dd.dot(tu), "lat": dd.dot(tl)}
 
 
 func safe_s(s: float) -> float:
@@ -398,7 +427,12 @@ func build(ground_shader: Shader, road_shader: Shader) -> void:
 			var s2 := _off(j, sgn * WALL, 0.04)
 			var s3 := _off(j, sgn * (HALF + 1.0), 0.04)
 			_q(side, s0, s1, s2, s3, ui, shoulder)
-			road_col.append_array([z0, z1, z2, z0, z2, z3, s0, s1, s2, s0, s2, s3])
+			# colisão lisa: zebra e acostamento no mesmo plano do asfalto (sem degrau para o carro engatar)
+			var f0 := _off(i, sgn * HALF, 0.02)
+			var f1 := _off(i, sgn * WALL, 0.02)
+			var f2 := _off(j, sgn * WALL, 0.02)
+			var f3 := _off(j, sgn * HALF, 0.02)
+			road_col.append_array([f0, f1, f2, f0, f2, f3])
 			# guard-rail: face interna, topo e face externa
 			var w0 := _off(i, sgn * WALL, 0.0)
 			var w1 := _off(i, sgn * WALL, RH)
@@ -670,8 +704,29 @@ func validate() -> Dictionary:
 					if dxz < worst:
 						worst = dxz
 						wa = P[i]
+	# sobreposição real em 3D (no referencial da pista): dois trechos ocupando o mesmo espaço
+	var over := 0
+	var over_at := []
+	var far := int(60.0 / ds)
+	for i in range(0, n, 2):
+		for j in range(0, n, 2):
+			var dij := absi(i - j)
+			if mini(dij, n - dij) < far:
+				continue
+			# bordas e centro do trecho j dentro do "volume do carro" do trecho i (largura da pista x 3,5 m de altura)?
+			var hit := false
+			for e: float in [-WALL, 0.0, WALL]:
+				var d: Vector3 = P[j] + L[j] * e - P[i]
+				var dt := d.dot(T[i])
+				var du := d.dot(U[i])
+				if absf(dt) < 3.0 and absf(d.dot(L[i])) < WALL and du > -1.0 and du < 3.5:
+					hit = true
+			if hit:
+				over += 1
+				if over_at.size() < 6:
+					over_at.append([int(i * ds), int(j * ds), Vector3i(P[i])])
 	var min_y := 1e9
 	for i in n:
 		if gap[i] == 0:
 			min_y = minf(min_y, P[i].y)
-	return {"len": int(length), "min_r": snappedf(min_r, 0.1), "at": Vector3i(min_at), "wat": Vector3i(wa), "conflicts": conflicts, "worst": snappedf(worst, 0.1), "min_y": snappedf(min_y, 0.1)}
+	return {"len": int(length), "min_r": snappedf(min_r, 0.1), "at": Vector3i(min_at), "wat": Vector3i(wa), "conflicts": conflicts, "worst": snappedf(worst, 0.1), "min_y": snappedf(min_y, 0.1), "overlap3d": over, "over_at": over_at}
