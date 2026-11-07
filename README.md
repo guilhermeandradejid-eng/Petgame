@@ -61,34 +61,43 @@ Teclado: `J` liga o pulo, espaço freia ou usa a habilidade, `Esc` pausa.
 
 ---
 
-# Mini Fúria
+# Mini Fúria (Godot 4)
 
-Corrida isométrica 3D de mini carros no estilo "arcade de batidas": turbo, drift, takedowns nos rivais, quase-batidas no trânsito e capotagens em câmera lenta. Fica na pasta [`turbo/`](turbo/) (abra `turbo/index.html` por um servidor estático).
+Corrida isométrica 3D de mini carros no estilo "arcade de batidas", feita em **Godot 4.7** (renderizador Compatibility, roda no navegador e no celular). Projeto na pasta [`minifuria/`](minifuria/): abra o `project.godot` no Godot.
 
-![carros e props modelados no Blender](turbo/assets/preview.png)
+![carros e props modelados no Blender](minifuria/assets/preview.png)
 
 ## Como jogar
 
-- **Celular**: arraste no lado esquerdo da tela para apontar a direção (relativa à tela). O carro acelera sozinho. À direita ficam **TURBO**, **DRIFT** e **FREIO** (segurar o freio parado dá ré).
-- **Teclado**: setas/WASD, `Espaço` drift, `Shift` turbo, `R` volta para a pista, `P` pausa, `M` som.
-- **Turbo**: enche com drift, quase-batidas no trânsito, andar na contramão, pulos nas rampas, boost pads e destruir cones/barris/caixotes.
-- **Takedown**: bata forte nos rivais ou jogue eles no muro. Enche o turbo inteiro, com câmera lenta.
-- **Batida**: bater de frente no muro ou no trânsito capota o carro. Depois de um instante você volta para a pista, piscando e invulnerável.
-- 3 voltas contra 3 rivais (com rubber band), 16 carros de trânsito nos dois sentidos.
+- **Celular**: arraste no lado esquerdo para apontar a direção (relativa à tela). Acelera sozinho. À direita: **NITRO**, **DRIFT** e **FREIO** (segurar o freio parado dá ré).
+- **Teclado**: setas/WASD, `Espaço` drift, `Shift` nitro, `R` volta para a pista, `P` pausa, `M` som.
+- **Nitro**: enche com drift, quase-batidas, contramão, pulos, boost pads e destruindo cones/barris/caixotes.
+- **Takedown**: bata forte num rival ou jogue ele no muro. Enche o nitro, câmera lenta e o carro dele vira destroço.
+- **Batida**: bater de frente no muro ou no trânsito capota o carro. Depois você volta consertado, piscando.
+- 3 voltas contra 3 rivais, 16 carros de trânsito nos dois sentidos.
 
-## Game juice
+## Destruição
 
-Hitstop nas batidas, câmera lenta com dessaturação nos takedowns e capotagens, tremor de câmera por trauma, zoom que abre com a velocidade e dá um "soco" no turbo, blur radial e aberração cromática no turbo, bloom nos faróis e lanternas, chamas no escapamento, rastro das lanternas, linhas de velocidade, fumaça de pneu, marcas de pneu persistentes, faíscas raspando no muro, poeira nos pousos, destroços e rodas que se soltam, confete nas voltas, suspensão com molas (rolagem, arfagem, squash no pouso), rodas que giram e contra-esterçam no drift, motor sintetizado com troca de marchas e popups animados.
+- Cada carro vem do Blender em **peças**: chassi, capô, para-choques (com faróis/lanternas), portas, cabine, aerofólio, caçamba e 4 rodas.
+- Cada batida **amassa a malha** de verdade perto do ponto de impacto (vértices empurrados + normais recalculadas) e escurece a pintura.
+- Peças perdem "vida" e **soltam** como corpos rígidos que quicam pela pista; vidro estilhaça; rodas saem rolando. Sem uma roda, o carro arrasta soltando faíscas.
+- Com muito dano sai fumaça preta e depois fogo. Batida grande = explosão, clarão de luz, onda de choque e capotagem com física.
+
+## Nitro, velocidade e game juice
+
+Chama azul de nitro com núcleo brilhante, rastro das lanternas, onda de choque ao ativar, blur radial + aberração cromática + linhas de velocidade estilo anime (shader de tela), zoom que abre com a velocidade, glow nos faróis, hitstop nas batidas, câmera lenta com dessaturação nos takedowns, tremor de câmera por trauma, fumaça e marcas de pneu, faíscas, poeira nos pousos, confete, popups animados e motor sintetizado com troca de marchas.
 
 ## Estrutura
 
-- `turbo/blender/build_assets.py`: modela todos os carros (Faísca, Trovão, Vespa, sedã, táxi, polícia, picape, van) e props (cones, barris, caixotes, pneus, barreiras, árvores, pinheiros, pedras, postes, prédios, rampa, portal de largada, arquibancada, destroços) via `bpy` e exporta `turbo/assets/minicars.glb`. Roda com `blender -b -P build_assets.py` ou `pip install bpy && python build_assets.py --render preview.png`.
-- `turbo/js/track.js`: pista como spline fechada, malhas (asfalto, zebras, muros), rampas, boost pads, colisão com muros num grid espacial e texturas procedurais.
-- `turbo/js/car.js`: física arcade (aderência lateral, drift que conserva embalo, turbo, guinada, rampas/pulos), impulsos com rotação, capotagem 3D com quaternion, visual com suspensão e IA (rivais com faixas, frenagem antes das curvas, turbo nas retas e agressividade; trânsito nos dois sentidos).
-- `turbo/js/fx.js`: partículas com shader próprio, fitas (marcas de pneu, rastros, linhas de velocidade), destroços, tremor de câmera e pós-processamento (bloom + shader final).
-- `turbo/js/audio.js`: sons sintetizados com Web Audio.
-- `turbo/js/input.js`: teclado e controles touch.
-- `turbo/js/main.js`: mundo, colisões, regras (takedown, quase-batida, contramão, voltas, posições), câmera isométrica, HUD e minimapa.
-- `vendor/jsm/`: addons do Three.js r160 (GLTFLoader e pós-processamento), MIT.
+- `minifuria/blender/build_assets.py`: modela no Blender (via `bpy`) os carros em peças e os props e exporta `minifuria/assets/minicars.glb`. Roda com `blender -b -P build_assets.py` ou `pip install bpy && python build_assets.py --render preview.png`.
+- `minifuria/scripts/car.gd`: `RigidBody3D` com suspensão por raycast, aderência lateral, drift, nitro, estabilizador, detecção de impacto, amassados, peças que soltam e IA.
+- `minifuria/scripts/track.gd`: pista em spline, malhas, colisores, rampas e boost pads.
+- `minifuria/scripts/main.gd`: regras (takedown, batida, quase-batida, contramão, voltas), câmera isométrica, tempo (hitstop/slow-mo) e efeitos.
+- `minifuria/scripts/fx.gd`: partículas, marcas de pneu (MultiMesh), rastros, destroços físicos.
+- `minifuria/scripts/hud.gd`, `touch.gd`, `sfx.gd`: HUD/menus, controles touch e áudio sintetizado.
+- `minifuria/shaders/`: asfalto, grama, boost pad, xadrez e pós-processamento de tela.
+- Fonte Bungee (SIL OFL), ver `minifuria/fonts/FONT-LICENSE.txt`.
 
-Para testes automatizados existe `window.__game.advance(segundos)`, que simula sem renderizar.
+## Exportar para a web
+
+Instale os templates de exportação do Godot 4.7 e rode `godot --headless --export-release "Web" build/web/index.html` dentro de `minifuria/` (preset "Web", sem threads, já configurado). Teste automatizado: `godot --headless --fixed-fps 60 res://scenes/main.tscn -- --autotest` corre uma corrida inteira no piloto automático e imprime o resultado.
