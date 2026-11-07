@@ -96,6 +96,13 @@ Menu → **escolha da pista** (10) → **garagem** → corrida de 3 voltas contr
 | 9 | Pântano Sombrio | brejo e palmeiras | oito com ponte alta, saltos |
 | 10 | Estação Lunar | lua, gravidade baixa | saltos enormes e looping |
 
+## Metralhadora, nitro e acabamento
+
+- **Metralhadora**: balas traçantes que viajam do cano até o alvo (o dano acontece quando a bala chega), clarão em estrela com cone de fogo e luz, cápsulas de latão saltando, recuo da arma, impacto por superfície (faísca e "tink" metálico no carro, ricochete no muro, poeirinha no chão), números de dano sobre o alvo e mira travada que gira e pulsa a cada acerto.
+- **Nitro**: ao ativar, duas ondas de choque no ar atrás do carro e um jato de faíscas azuis (sem círculo no chão).
+- **Cenário**: perto do chão os objetos ficam no chão; em trecho elevado, postes e placas vão presos em cima da mureta (nada flutuando). Tampas listradas nas pontas dos saltos, mureta fina no looping, ilhotas sob objetos na água/lava, nuvens em cachos e itens com brilho no asfalto.
+- Carro parado ou travado por 3 s volta para a pista sozinho.
+
 ## Controles
 
 - **Direção "TELA" (padrão)**: você aponta para onde quer ir **na tela** e o carro vira sozinho para lá. Não inverte quando o carro desce a tela. No celular/mouse é o analógico da esquerda; no teclado, as setas/WASD (↑ sobe a tela, ← vai para a esquerda da tela) e o carro acelera sozinho.
@@ -107,7 +114,7 @@ Menu → **escolha da pista** (10) → **garagem** → corrida de 3 voltas contr
 
 Cada pista é um polígono de pontos `[x, z, altura]` mais elementos especiais (`loop`, `jump`, `helix`, `cork`) em `scripts/track_data.gd`. O `track.gd` expande os elementos em pontos de controle, passa uma Catmull-Rom centrípeta fechada e calcula um referencial por amostra: "para cima" do mundo projetado nos trechos normais, inclinação automática nas curvas e, dentro do looping, o "para cima" aponta para o eixo do looping. Daí saem asfalto, zebras, guard-rails (mais altos nos elementos), parte de baixo, pilares (sem cair em cima de outro trecho), colisores e a decoração (placas de curva, postes, pneus, bandeiras, outdoors). O carro usa a normal da pista como gravidade e tem assistência nos loopings e na torção, no estilo dos jogos de pista de brinquedo.
 
-Ferramentas: `godot --headless -s res://tools/validate_tracks.gd` confere raio mínimo, cruzamentos sem altura suficiente e altura mínima das 10 pistas; `godot --headless --fixed-fps 60 res://scenes/main.tscn -- --autotest --track=N` corre a pista N no piloto automático e imprime o resultado (com `--debugfall` mostra cada queda); `-- --autotest --steertest` confere que as setas viram o carro para o lado certo da tela.
+Ferramentas: `godot --headless -s res://tools/validate_tracks.gd` confere raio mínimo, cruzamentos sem altura suficiente e altura mínima das 10 pistas; `godot --headless --fixed-fps 60 res://scenes/main.tscn -- --autotest --track=N` corre a pista N no piloto automático e imprime o resultado (com `--debugfall` mostra cada queda); `-- --overview --only=N` fotografa a pista N de cima e nos elementos especiais, para inspeção; `-- --autotest --steertest` confere que as setas viram o carro para o lado certo da tela.
 
 ## Estrutura
 

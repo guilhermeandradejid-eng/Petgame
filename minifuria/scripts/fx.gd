@@ -17,6 +17,10 @@ const DEBRIS_MAX := 80
 var trails: Array = []
 var ground_marks: Array = []
 var ground_shader: Shader
+var star_tex: ImageTexture
+var tracer_tex: GradientTexture2D
+var nitro_rings: Array = []
+var ring_i := 0
 
 
 func _ready() -> void:
@@ -38,6 +42,35 @@ func _ready() -> void:
 	skid_tex.width = 32
 	skid_tex.height = 4
 	ground_shader = load("res://shaders/ground_fx.gdshader")
+	star_tex = _star_tex(64)
+	var tg := Gradient.new()
+	tg.offsets = PackedFloat32Array([0.0, 0.15, 1.0])
+	tg.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 0.9, 0.6, 0.9), Color(1, 0.5, 0.1, 0.0)])
+	tracer_tex = GradientTexture2D.new()
+	tracer_tex.gradient = tg
+	tracer_tex.fill_from = Vector2(0.5, 0.0)
+	tracer_tex.fill_to = Vector2(0.5, 1.0)
+	tracer_tex.width = 8
+	tracer_tex.height = 64
+	var rsh := load("res://shaders/nitro_ring.gdshader") as Shader
+	for i in 4:
+		var mi := MeshInstance3D.new()
+		var t := TorusMesh.new()
+		t.inner_radius = 0.9
+		t.outer_radius = 1.0
+		t.rings = 32
+		t.ring_segments = 8
+		mi.mesh = t
+		var m := ShaderMaterial.new()
+		m.shader = rsh
+		mi.material_override = m
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.visible = false
+		add_child(mi)
+		nitro_rings.append(mi)
+	_pool("nitroburst", 3, _nitro_burst_particles)
+	_pool("sparkle", 4, _sparkle_particles)
+	_pool("bulletdust", 8, func(): return _puff(Color(0.75, 0.68, 0.55, 0.8), 6, 0.6, 0.35, 1.2, false))
 
 	_pool("sparks", 12, _sparks)
 	_pool("smoke", 10, func(): return _puff(Color(0.93, 0.92, 0.95, 0.85), 16, 1.6, 1.4, 4.0, false))
@@ -75,6 +108,99 @@ func _ready() -> void:
 
 
 # ------------------------------------------------------------------ texturas procedurais
+func _star_tex(size: int) -> ImageTexture:
+	# clarão de tiro: brilho redondo + 4 pontas
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	var c := size * 0.5
+	for y in size:
+		for x in size:
+			var d := Vector2(x - c + 0.5, y - c + 0.5) / c
+			var r := d.length()
+			var glow := clampf(1.0 - r, 0.0, 1.0)
+			glow = glow * glow
+			var spike := maxf(clampf(1.0 - absf(d.x) * 9.0, 0.0, 1.0) * clampf(1.0 - absf(d.y), 0.0, 1.0),
+				clampf(1.0 - absf(d.y) * 9.0, 0.0, 1.0) * clampf(1.0 - absf(d.x), 0.0, 1.0))
+			var a := clampf(glow * 1.2 + spike * 0.9, 0.0, 1.0)
+			img.set_pixel(x, y, Color(1, 1, 1, a))
+	return ImageTexture.create_from_image(img)
+
+
+func _nitro_burst_particles() -> CPUParticles3D:
+	var p := _base(36, 0.4)
+	var m := _streak_mesh(0.08, 1.4)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.vertex_color_use_as_albedo = true
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_texture = dot_tex
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.surface_set_material(0, mat)
+	p.mesh = m
+	p.particle_flag_align_y = true
+	p.spread = 22
+	p.initial_velocity_min = 14
+	p.initial_velocity_max = 30
+	p.damping_min = 4
+	p.damping_max = 6
+	p.gravity = Vector3.ZERO
+	p.scale_amount_curve = _curve([Vector2(0, 1.0), Vector2(1, 0.0)])
+	p.color_ramp = _ramp([Color(2.5, 3.0, 3.5, 1), Color(0.4, 1.3, 3.0, 1), Color(0.5, 0.2, 2.5, 0)])
+	return p
+
+
+func _sparkle_particles() -> CPUParticles3D:
+	var p := _base(30, 0.9)
+	var q := QuadMesh.new()
+	q.size = Vector2(0.35, 0.35)
+	q.material = _bb_mat(star_tex, true)
+	p.mesh = q
+	p.direction = Vector3.UP
+	p.spread = 60
+	p.initial_velocity_min = 3
+	p.initial_velocity_max = 8
+	p.gravity = Vector3(0, -6, 0)
+	p.damping_min = 1
+	p.damping_max = 2
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 0.8
+	p.scale_amount_curve = _curve([Vector2(0, 1.2), Vector2(1, 0.0)])
+	p.color_ramp = _ramp([Color(3, 3, 3, 1), Color(1, 1, 1, 0.8), Color(1, 1, 1, 0)])
+	return p
+
+
+## efeito de ativação do nitro: duas ondas de choque no ar atrás do carro + jato de faíscas azuis
+func nitro_burst(pos: Vector3, fwd: Vector3) -> void:
+	var p := _next("nitroburst") as CPUParticles3D
+	p.global_position = pos
+	p.direction = -fwd
+	p.restart()
+	p.emitting = true
+	for k in 2:
+		var r: MeshInstance3D = nitro_rings[ring_i]
+		ring_i = (ring_i + 1) % nitro_rings.size()
+		var up := fwd if absf(fwd.y) < 0.95 else Vector3.RIGHT
+		var x := up.cross(Vector3.UP if absf(up.y) < 0.95 else Vector3.RIGHT).normalized()
+		var b := Basis(x, up, x.cross(up)).orthonormalized()
+		r.global_transform = Transform3D(b.scaled(Vector3(0.6, 0.6, 0.6)), pos - fwd * (0.8 + k * 1.6))
+		r.visible = true
+		var m := r.material_override as ShaderMaterial
+		m.set_shader_parameter("fade", 1.0)
+		var tw := create_tween().set_parallel()
+		var s := 3.6 + k * 1.2
+		tw.tween_property(r, "scale", Vector3(s, 0.35, s), 0.32).set_delay(k * 0.07).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+		tw.tween_method(func(v): m.set_shader_parameter("fade", v), 1.0, 0.0, 0.32).set_delay(k * 0.07)
+		tw.chain().tween_callback(func(): r.visible = false)
+	hit_light(pos, Color(0.4, 0.75, 1.0), 6.0, 9.0, 0.3)
+
+
+func sparkle(pos: Vector3, col: Color) -> void:
+	var p := _next("sparkle") as CPUParticles3D
+	p.global_position = pos
+	p.color = col
+	p.restart()
+	p.emitting = true
+
 func _cloud_tex(size: int, seed_: int, shaded: bool) -> ImageTexture:
 	# nuvem de ruído fbm com borda arredondada; a fumaça tem "luz" pintada (topo claro, base escura)
 	var nz := FastNoiseLite.new()

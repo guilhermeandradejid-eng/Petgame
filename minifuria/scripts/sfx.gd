@@ -182,10 +182,16 @@ func _build_shots() -> void:
 		var nz := randf() * 2.0 - 1.0
 		st.lp += (nz - st.lp) * 0.35
 		return (st.lp + sin(t * TAU * lerpf(300.0, 150.0, u)) * 0.3) * exp(-t * 18.0))
-	shots["gun"] = _synth(0.09, func(t, u, st):
+	shots["gun"] = _synth(0.12, func(t, u, st):
 		var nz := randf() * 2.0 - 1.0
-		st.lp += (nz - st.lp) * 0.5
-		return (st.lp * 1.2 + sin(t * TAU * 140.0) * 0.6) * exp(-t * 45.0))
+		st.lp += (nz - st.lp) * 0.55
+		st.ph += lerpf(180.0, 60.0, u) / RATE
+		var crack := nz * exp(-t * 120.0) * 0.8
+		return (st.lp * 1.1 * exp(-t * 38.0) + sin(st.ph * TAU) * 0.9 * exp(-t * 30.0) + crack))
+	shots["tink"] = _synth(0.18, func(t, u, st):
+		var ring := sin(t * TAU * 2350.0) * 0.5 + sin(t * TAU * 3720.0) * 0.3 + sin(t * TAU * 5130.0) * 0.15
+		var nz := randf() * 2.0 - 1.0
+		return (ring * exp(-t * 28.0) + nz * exp(-t * 200.0) * 0.6) * 0.7)
 	shots["rocket"] = _synth(0.7, func(t, u, st):
 		var nz := randf() * 2.0 - 1.0
 		st.lp += (nz - st.lp) * lerpf(0.4, 0.05, u)

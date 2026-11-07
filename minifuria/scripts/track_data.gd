@@ -76,7 +76,7 @@ const THEMES := {
 	},
 	"moon": {
 		"label": "Estação Lunar", "sky_top": "#04040e", "sky_hor": "#1d1c3a", "bg": "#07071a", "sun": "#e8ecff", "sun_e": 1.8, "sun_rot": [-30, 70],
-		"amb": 0.45, "fog": "", "ground": 5, "ga": "#6f6f78", "gb": "#9a9aa4", "gy": 0.0, "road": 3, "tint": "#c8c8d8",
+		"amb": 0.85, "fog": "", "ground": 5, "ga": "#6f6f78", "gb": "#9a9aa4", "gy": 0.0, "road": 3, "tint": "#c8c8d8",
 		"curb": ["#2ee6ff", "#3a3a48"], "rail": ["#4a4a58", "#2ee6ff"], "shoulder": "#55555f",
 		"props": [["prop_crystal", 2], ["prop_rock", 3]], "density": 120, "bldg": 0, "night": true,
 		"grav": 0.6, "grip": 0.95, "pillars": true,

@@ -169,7 +169,9 @@ func _ready() -> void:
 	add_child(hud)
 	load_track(track_idx)
 	_last_us = Time.get_ticks_usec()
-	if "--steertest" in args:
+	if "--overview" in args:
+		_overview_shots()
+	elif "--steertest" in args:
 		_steer_test()
 	elif "--uishot" in args:
 		_ui_shots()
@@ -204,6 +206,40 @@ func _steer_test() -> void:
 		fwd = Vector3(fwd.x, 0, fwd.z).normalized()
 		var exp_dir: Vector3 = test[2]
 		print("STEER %s tecla=%s  frente·esperado=%.2f  (1 = virou para o lado certo)" % [test[0], test[1], fwd.dot(exp_dir)])
+	get_tree().quit()
+
+
+## fotos de inspeção: pista inteira vista de cima + closes nos elementos especiais e na decoração
+func _overview_shots() -> void:
+	var only := -1
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--only="):
+			only = int(a.substr(7))
+	for ti in TrackData.TRACKS.size():
+		if only >= 0 and ti != only:
+			continue
+		load_track(ti)
+		hud.show_screen("none")
+		var spots: Array = []
+		var i := 0
+		while i < track.n and spots.size() < 4:
+			if track.feat[i] == 1 and track.feat[track.idx(i - 1)] == 0:
+				spots.append(track.P[track.idx(i + 20)])
+				i += 40
+			i += 1
+		# trecho elevado normal (decoração ao lado da pista)
+		for k in range(0, track.n, 7):
+			if track.feat[k] == 0 and track.P[k].y - float(theme.gy) > 4.0:
+				spots.append(track.P[k])
+				break
+		spots.append(track.P[0])
+		for si in spots.size():
+			mode = "shots"
+			cam_pos = spots[si]
+			view_h = 46.0
+			for f in 6:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("user://ov_t%d_%d.png" % [ti, si])
 	get_tree().quit()
 
 
@@ -382,6 +418,7 @@ func _apply_theme() -> void:
 	env.fog_enabled = String(theme.fog) != ""
 	if env.fog_enabled:
 		env.fog_light_color = Color(theme.fog)
+		env.fog_density = float(theme.get("fog_d", 0.0011))
 	sun.light_color = Color(theme.sun)
 	sun.light_energy = float(theme.sun_e)
 	sun.rotation = Vector3(deg_to_rad(theme.sun_rot[0]), deg_to_rad(theme.sun_rot[1]), 0)
@@ -393,16 +430,16 @@ func _build_scenery() -> void:
 	rng.seed = 1337 + track_idx * 101
 	var a0 := track.at(0.0)
 	var gate := _inst("prop_gate")
-	var gs: float = (track.WALL + 1.0) / 13.0
+	var gs: float = (track.WALL - 0.35) / 13.0
 	gate.transform = Transform3D((a0.basis as Basis).scaled_local(Vector3(gs, 1, 1)), a0.pos)
 	world.add_child(gate)
 	for e in [[24.0, -1.0], [50.0, -1.0], [-30.0, 1.0]]:
 		var p := track.at(e[0], e[1] * (track.WALL + 4.0))
-		if track.U[p.i].y < 0.9 or track.P[p.i].y > 3.0:
+		if track.U[p.i].y < 0.9 or track.P[p.i].y - float(theme.gy) > 1.5 or float(theme.gy) < -0.5:
 			continue
 		var st := _inst("prop_stand")
 		var n: Vector3 = (p.left as Vector3) * -float(e[1])
-		st.position = Vector3(p.pos.x, theme.gy if theme.gy > -0.5 else p.pos.y, p.pos.z)
+		st.position = Vector3(p.pos.x, float(theme.gy), p.pos.z)
 		st.rotation.y = atan2(n.x, n.z)
 		world.add_child(st)
 	for spot in track.decor_spots():
@@ -444,7 +481,11 @@ func _build_scenery() -> void:
 			_container_pad(Vector3(x, gy, z), rng)
 		else:
 			var m := _inst(kind)
-			m.position = Vector3(x, gy, z)
+			var base_y := gy
+			if gy < -0.5:
+				base_y = gy + 0.6
+				_mound(Vector3(x, gy, z), rng.randf_range(2.4, 3.6))
+			m.position = Vector3(x, base_y, z)
 			m.rotation.y = rng.randf() * TAU
 			m.scale = Vector3.ONE * (0.8 + rng.randf() * 0.7) * pscale
 			world.add_child(m)
@@ -472,6 +513,20 @@ func _build_scenery() -> void:
 		var nd := _inst("pickup_" + String(ps.kind))
 		nd.position = a.pos + a.up * 1.0
 		world.add_child(nd)
+		var glow := MeshInstance3D.new()
+		var gp := PlaneMesh.new()
+		gp.size = Vector2(3.2, 3.2)
+		glow.mesh = gp
+		var gm := StandardMaterial3D.new()
+		gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		gm.albedo_texture = fx.dot_tex
+		gm.albedo_color = {"ammo": Color(0.6, 1.4, 0.4), "repair": Color(1.5, 0.5, 0.45), "nitro": Color(0.4, 0.9, 1.6)}[ps.kind]
+		glow.material_override = gm
+		glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		glow.transform = Transform3D(a.basis, (a.pos as Vector3) + (a.up as Vector3) * 0.1)
+		world.add_child(glow)
 		pickups.append({"node": nd, "kind": ps.kind, "t": 0.0, "base": a.pos + a.up * 1.0, "up": a.up})
 	var made := 0
 	for i in track.n:
@@ -483,6 +538,25 @@ func _build_scenery() -> void:
 				var a := track.at(i * track.ds + j * 2.5, outside * (track.HALF + 0.6))
 				_add_prop("prop_crate" if theme.road == 1 else ["prop_barrel", "prop_tires"][j % 2], a, 30.0, Vector2(0.5, 1.0))
 			made += 1
+
+
+func _mound(p: Vector3, r: float) -> void:
+	# ilhota de terra/pedra embaixo dos objetos na água ou na lava
+	var mi := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = r * 0.75
+	cm.bottom_radius = r
+	cm.height = 1.4
+	cm.radial_segments = 9
+	cm.rings = 1
+	mi.mesh = cm
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(theme.shoulder).darkened(0.1) if theme.ground != 3 else Color("#5a6b3a")
+	m.roughness = 1.0
+	mi.material_override = m
+	mi.position = p + Vector3(0, -0.1, 0)
+	mi.rotation.y = randf() * TAU
+	world.add_child(mi)
 
 
 func _container_pad(p: Vector3, rng: RandomNumberGenerator) -> void:
@@ -511,20 +585,23 @@ func _clouds(rng: RandomNumberGenerator, mn: Vector2, mx: Vector2) -> void:
 	m.emission_enabled = true
 	m.emission = Color(0.85, 0.88, 1.0)
 	m.emission_energy_multiplier = 0.35
-	for k in 40:
-		var mi := MeshInstance3D.new()
-		var sm := SphereMesh.new()
-		sm.radius = 1.0
-		sm.height = 2.0
-		sm.radial_segments = 10
-		sm.rings = 6
-		mi.mesh = sm
-		mi.material_override = m
-		var s := rng.randf_range(8, 22)
-		mi.scale = Vector3(s * 1.6, s * 0.5, s)
-		mi.position = Vector3(rng.randf_range(mn.x, mx.x), float(theme.gy) + rng.randf_range(-4, 6), rng.randf_range(mn.y, mx.y))
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		world.add_child(mi)
+	var sm := SphereMesh.new()
+	sm.radius = 1.0
+	sm.height = 2.0
+	sm.radial_segments = 12
+	sm.rings = 7
+	for k in 34:
+		var c := Vector3(rng.randf_range(mn.x, mx.x), float(theme.gy) + rng.randf_range(-3, 3), rng.randf_range(mn.y, mx.y))
+		var s := rng.randf_range(6, 14)
+		for b in rng.randi_range(4, 7):
+			var mi := MeshInstance3D.new()
+			mi.mesh = sm
+			mi.material_override = m
+			var bs := s * rng.randf_range(0.5, 1.0)
+			mi.scale = Vector3(bs, bs * 0.75, bs)
+			mi.position = c + Vector3(rng.randf_range(-1.4, 1.4) * s, rng.randf_range(0.0, 0.5) * s, rng.randf_range(-1.0, 1.0) * s)
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			world.add_child(mi)
 
 
 func _add_prop(name_: String, a: Dictionary, m: float, dims: Vector2) -> void:
@@ -1005,7 +1082,7 @@ func _pickups(dt: float) -> void:
 					sfx.play("pickup")
 					var names := {"ammo": "MUNIÇÃO!", "repair": "REPARO!", "nitro": "NITRO!"}
 					hud.popup(names[pk.kind], Color("#7dff6a"))
-					fx.ring(nd.global_position, Color(0.5, 1.5, 0.6, 1.0), 4.0)
+					fx.sparkle(nd.global_position, {"ammo": Color(0.7, 1.4, 0.5), "repair": Color(1.4, 0.6, 0.5), "nitro": Color(0.5, 1.0, 1.6)}[pk.kind])
 				break
 
 
@@ -1149,6 +1226,17 @@ func _respawns(dt: float) -> void:
 			c.off_t += dt
 		else:
 			c.off_t = 0.0
+		# preso (encostado na mureta, de lado, travado): volta para a pista
+		if mode == "race" and c.linear_velocity.length() < 2.5:
+			c.stuck_t += dt
+		else:
+			c.stuck_t = 0.0
+		if c.stuck_t > 3.0:
+			c.stuck_t = 0.0
+			if c == player:
+				hud.popup("VOLTANDO À PISTA", Color("#2ee6ff"))
+			_respawn(c, false)
+			continue
 		if c.off_t > (0.15 if in_water else (0.6 if (below or away) else 1.5)):
 			if auto_test and OS.get_cmdline_user_args().has("--debugfall"):
 				print("FALL %s s=%d lat=%.1f h=%.1f v=%.1f below=%s away=%s up=%s water=%s feat=%d gap=%d loop=%d" % [c.display_name, int(c.s_track), c.lat, c.h_track, c.linear_velocity.length(), below, away, upside, in_water, track.feat[c.ti], track.gap[c.ti], track.loopf[c.ti]])
@@ -1178,7 +1266,7 @@ func _respawn(c: Car, fell: bool) -> void:
 	c.invuln = 2.0
 	if c == player:
 		zoom_kick += 4.0
-		fx.ring(c.global_position, Color(1.5, 1.5, 1.5, 1.0), 6.0)
+		fx.sparkle(c.global_position + Vector3.UP, Color(1.2, 1.2, 1.3))
 		if fell:
 			stats.falls += 1
 			hud.popup("CAIU! VOLTANDO", Color("#ffcf33"))
@@ -1307,7 +1395,7 @@ func _process(_delta: float) -> void:
 		sfx.play("nitro")
 		zoom_kick += 4.0
 		_shake(0.15)
-		fx.ring(player.global_position - player.global_transform.basis.z * 2.0, Color(0.4, 1.2, 2.2, 1.0), 6.0)
+		fx.nitro_burst(player.global_transform * player.exhaust_local, player.global_transform.basis.z)
 		_flash(Color(0.6, 0.9, 1.0), 0.12)
 	was_nitro = player.nitroing
 	var sp01: float = player.linear_velocity.length() / player.sp.vmax
@@ -1323,6 +1411,9 @@ func _process(_delta: float) -> void:
 		img.save_png("user://shot_t%d_%s.png" % [track_idx, test_shots[0]])
 		print("SHOT ", track_idx)
 		test_shots.pop_front()
+	if auto_test and OS.get_cmdline_user_args().has("--debugair") and player.air_t > 2.0 and int(real * 60.0) % 30 == 0:
+		var p2 := player
+		print("AIR t=%.1f air=%.1f s=%d lat=%.1f h=%.1f v=%.1f gnd=%s feat=%d ft=%s gap=%d y=%.1f grounded_wheels=%d" % [real, p2.air_t, int(p2.s_track), p2.lat, p2.h_track, p2.linear_velocity.length(), p2.on_ground, track.feat[p2.ti], track.ftype[p2.ti], track.gap[p2.ti], p2.global_position.y, p2.wheels.filter(func(w): return w.contact).size()])
 	if auto_test and OS.get_cmdline_user_args().has("--debugfall") and int(real * 60.0) % (20 if (player.s_track > 400 and player.s_track < 560) else 600) == 0:
 		var p := player
 		print("P t=%d s=%d lat=%.1f h=%.1f v=%.1f vf=%.1f gnd=%s road=%s up=%s n=%s feat=%d loop=%d thr=%.1f br=%.1f" % [int(real), int(p.s_track), p.lat, p.h_track, p.linear_velocity.length(), p.v_f, p.on_ground, p.on_road, str(p.global_transform.basis.y.snapped(Vector3.ONE * 0.01)), str(p.ground_n.snapped(Vector3.ONE * 0.01)), track.feat[p.ti], track.loopf[p.ti], p.ctrl.throttle, p.ctrl.brake])
@@ -1389,6 +1480,9 @@ func _car_fx(dt: float) -> void:
 				s.emitting = skidding and (c.drifting or slip > 5.0 or braking)
 				du.emitting = vis and not c.wrecked and c.on_ground and absf(c.lat) > track.HALF + 0.4 and c.linear_velocity.length() > 8.0
 			var flame: Node3D = e.flame
+			if c.nitroing and not e.get("was_n", false) and c != player and vis:
+				fx.nitro_burst(c.global_transform * c.exhaust_local, c.global_transform.basis.z)
+			e.was_n = c.nitroing
 			(flame.get_node("P") as CPUParticles3D).emitting = c.nitroing
 			var core := flame.get_node("Core") as Node3D
 			core.visible = c.nitroing
@@ -1441,7 +1535,8 @@ func _camera(rdt: float) -> void:
 	if mode == "menu":
 		target = track.at(fmod(real * 18.0, track.length)).pos
 	var k := 1.0 - exp(-rdt * (3.0 if p.wrecked else 4.5))
-	cam_pos = cam_pos.lerp(target, k)
+	if mode != "shots":
+		cam_pos = cam_pos.lerp(target, k)
 	var vs := get_viewport().get_visible_rect().size
 	var aspect := vs.x / maxf(1.0, vs.y)
 	var base := maxf(28.0, 26.0 / aspect) if aspect < 1.0 else 28.0
@@ -1449,6 +1544,9 @@ func _camera(rdt: float) -> void:
 	var want := base + clampf(sp / 55.0, 0.0, 1.0) * 8.0 + (4.0 if p.nitroing else 0.0) + focus_h + (-8.0 if p.wrecked else 0.0)
 	if mode == "menu":
 		want = 40.0
+	if mode == "shots":
+		want = view_h
+		zoom_kick = 0.0
 	zoom_kick *= exp(-rdt * 4.0)
 	view_h = lerpf(view_h, want + zoom_kick, 1.0 - exp(-rdt * 3.0))
 	cam.size = maxf(8.0, view_h)

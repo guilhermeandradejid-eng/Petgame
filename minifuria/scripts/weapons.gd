@@ -15,6 +15,12 @@ var tracer_i := 0
 var flashes: Array = []
 var flash_i := 0
 var oil_shader: Shader
+var numbers: Array = []
+var num_i := 0
+var acc := {}             # dano acumulado do jogador por alvo (para os números)
+var reticle: MeshInstance3D
+var ret_pulse := 0.0
+var ret_t := 0.0
 
 
 func setup(game_: Node, fx_: Fx, sfx_: Sfx, lib_: Node3D) -> void:
@@ -23,37 +29,81 @@ func setup(game_: Node, fx_: Fx, sfx_: Sfx, lib_: Node3D) -> void:
 	sfx = sfx_
 	lib = lib_
 	oil_shader = load("res://shaders/ground_fx.gdshader")
-	var tm := StandardMaterial3D.new()
-	tm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	tm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	tm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	tm.albedo_color = Color(4.0, 3.0, 1.2, 1.0)
-	tm.cull_mode = BaseMaterial3D.CULL_DISABLED
-	for i in 24:
+	# balas traçantes: fitas que viajam do cano até o impacto
+	var tmat := StandardMaterial3D.new()
+	tmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	tmat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	tmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	tmat.albedo_texture = fx.tracer_tex
+	tmat.albedo_color = Color(4.0, 3.0, 1.4, 1.0)
+	tmat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var tmesh := fx._streak_mesh(0.22, 1.0)
+	tmesh.surface_set_material(0, tmat)
+	for i in 40:
 		var mi := MeshInstance3D.new()
-		var bm := BoxMesh.new()
-		bm.size = Vector3(0.07, 0.07, 1.0)
-		mi.mesh = bm
-		mi.material_override = tm
+		mi.mesh = tmesh
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mi.visible = false
 		add_child(mi)
-		tracers.append({"mi": mi, "t": 0.0})
-	for i in 6:
+		tracers.append({"mi": mi, "t": -1.0})
+	# clarão de tiro: estrela virada para a câmera + cone de fogo na direção do cano + luz
+	var smat := StandardMaterial3D.new()
+	smat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	smat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	smat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	smat.albedo_texture = fx.star_tex
+	smat.albedo_color = Color(3.5, 2.6, 1.2, 1.0)
+	smat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	smat.no_depth_test = true
+	var cmat := tmat.duplicate() as StandardMaterial3D
+	cmat.albedo_color = Color(4.0, 2.2, 0.6, 1.0)
+	var cmesh := fx._streak_mesh(0.5, 1.0)
+	cmesh.surface_set_material(0, cmat)
+	for i in 8:
 		var l := OmniLight3D.new()
-		l.light_color = Color(1.0, 0.8, 0.4)
-		l.omni_range = 6.0
+		l.light_color = Color(1.0, 0.75, 0.35)
+		l.omni_range = 7.0
 		l.light_energy = 0.0
 		add_child(l)
 		var q := MeshInstance3D.new()
 		var qm := QuadMesh.new()
-		qm.size = Vector2(1.1, 1.1)
-		qm.material = fx._bb_mat(fx.fire_tex, true)
+		qm.size = Vector2(1.6, 1.6)
+		qm.material = smat
 		q.mesh = qm
 		q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		q.visible = false
 		add_child(q)
-		flashes.append({"l": l, "q": q, "t": 0.0})
+		var cone := MeshInstance3D.new()
+		cone.mesh = cmesh
+		cone.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		cone.visible = false
+		add_child(cone)
+		flashes.append({"l": l, "q": q, "cone": cone, "t": 0.0})
+	# números de dano
+	var font := load("res://fonts/Bungee.woff2") as Font
+	for i in 12:
+		var lb := Label3D.new()
+		lb.font = font
+		lb.font_size = 64
+		lb.pixel_size = 0.02
+		lb.outline_size = 14
+		lb.outline_modulate = Color(0.15, 0.02, 0.05, 0.9)
+		lb.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		lb.no_depth_test = true
+		lb.visible = false
+		add_child(lb)
+		numbers.append({"lb": lb, "t": 0.0})
+	# mira travada
+	reticle = MeshInstance3D.new()
+	var rq := QuadMesh.new()
+	rq.size = Vector2(3.4, 3.4)
+	reticle.mesh = rq
+	var rm := ShaderMaterial.new()
+	rm.shader = load("res://shaders/reticle.gdshader")
+	reticle.material_override = rm
+	reticle.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	reticle.visible = false
+	add_child(reticle)
 
 
 func clear() -> void:
@@ -66,6 +116,12 @@ func clear() -> void:
 	rockets.clear()
 	mines.clear()
 	oils.clear()
+	acc.clear()
+	for t in tracers:
+		t.t = -1.0
+		(t.mi as MeshInstance3D).visible = false
+	if reticle:
+		reticle.visible = false
 
 
 # ------------------------------------------------------------------ disparo
@@ -101,15 +157,15 @@ func update(dt: float) -> void:
 	_step_rockets(dt)
 	_step_mines(dt)
 	_step_oils(dt)
-	for t in tracers:
-		if t.t > 0.0:
-			t.t -= dt
-			(t.mi as MeshInstance3D).visible = t.t > 0.0
+	_step_tracers(dt)
 	for f in flashes:
 		if f.t > 0.0:
 			f.t -= dt
-			(f.l as OmniLight3D).light_energy = maxf(0.0, f.t) * 60.0
+			(f.l as OmniLight3D).light_energy = maxf(0.0, f.t) * 90.0
 			(f.q as MeshInstance3D).visible = f.t > 0.0
+			(f.cone as MeshInstance3D).visible = f.t > 0.0
+	_step_numbers(dt)
+	_step_reticle(dt)
 
 
 func _ai(c: Car) -> void:
@@ -133,67 +189,218 @@ func _ai(c: Car) -> void:
 			c.ctrl.drop = true
 
 
-func _muzzle_flash(pos: Vector3) -> void:
+func _muzzle_flash(pos: Vector3, aim: Vector3, big := false) -> void:
 	var f: Dictionary = flashes[flash_i]
 	flash_i = (flash_i + 1) % flashes.size()
 	f.t = 0.05
 	(f.l as OmniLight3D).global_position = pos
-	(f.q as MeshInstance3D).global_position = pos
-	(f.q as MeshInstance3D).scale = Vector3.ONE * randf_range(0.6, 1.1)
-
-
-func _tracer(a: Vector3, b: Vector3) -> void:
-	var t: Dictionary = tracers[tracer_i]
-	tracer_i = (tracer_i + 1) % tracers.size()
-	var mi: MeshInstance3D = t.mi
-	var d := b - a
-	var l := d.length()
-	if l < 0.5:
-		return
-	# só um pedaço da trajetória, como uma bala de luz
-	var seg := minf(l, 7.0)
-	var mid := a + d.normalized() * randf_range(seg * 0.5, l - seg * 0.5)
-	mi.global_transform = Transform3D(Basis.looking_at(d.normalized(), Vector3.UP if absf(d.normalized().y) < 0.95 else Vector3.RIGHT).scaled(Vector3(1, 1, seg)), mid)
-	mi.visible = true
-	t.t = 0.06
+	var cb: Basis = game.cam.global_basis
+	var s := randf_range(0.55, 0.95) * (1.6 if big else 1.0)
+	var star: MeshInstance3D = f.q
+	star.global_transform = Transform3D(cb.rotated(cb.z, randf() * TAU).scaled(Vector3(s, s, s)), pos)
+	star.visible = true
+	var cone: MeshInstance3D = f.cone
+	var x := aim.cross(Vector3.UP if absf(aim.y) < 0.95 else Vector3.RIGHT).normalized()
+	var ln := randf_range(0.9, 1.6) * (1.5 if big else 1.0)
+	cone.global_transform = Transform3D(Basis(x, aim, x.cross(aim)).scaled(Vector3(1, ln, 1)), pos + aim * ln * 0.5)
+	cone.visible = true
 
 
 func _fire_mg(c: Car) -> void:
 	c.fire_cd = 0.085
 	c.ammo_f -= 1
+	c.recoil = 1.0
+	c.firing_t = 0.12
+	if c.casings == null and c.weapon_node:
+		c.casings = _make_casings()
+		c.weapon_node.add_child(c.casings)
+		c.casings.position = Vector3(0.25, 0.3, 0.0)
 	var mz: Vector3 = c.global_transform * c.muzzle_local
 	var f := c.global_transform.basis.z
 	var tgt := _target(c, 50.0, 0.982)
 	var aim := f
 	if tgt:
 		aim = (tgt.global_position + tgt.global_transform.basis.y * 0.7 - mz).normalized()
-	aim = (aim + Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * 0.012).normalized()
+	aim = (aim + Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * 0.014).normalized()
 	var space := get_world_3d().direct_space_state
 	var q := PhysicsRayQueryParameters3D.create(mz, mz + aim * 55.0, 1 | 2 | 4, [c.get_rid()])
 	var res := space.intersect_ray(q)
 	var endp := mz + aim * 55.0
-	_muzzle_flash(mz)
+	var hit := {}
 	if res:
 		endp = res.position
-		var hc = res.collider
-		if hc is Car:
-			var dmg := 1.9 if c.role == "player" else 1.1
-			var killed: bool = (hc as Car).apply_damage(dmg, endp, c)
-			(hc as Car).apply_impulse(aim * 140.0, endp - (hc as Car).global_position)
-			fx.sparks(endp, -aim, 0.25)
-			if c == game.player:
-				game.on_player_hit_enemy(hc, killed)
-			elif hc == game.player:
-				game.on_player_got_hit(dmg)
-		else:
-			if hc is RigidBody3D:
-				(hc as RigidBody3D).apply_impulse(aim * 60.0)
-			fx.sparks(endp, res.normal, 0.12)
-	_tracer(mz, endp)
+		hit = {"collider": res.collider, "normal": res.normal}
+	_muzzle_flash(mz, aim)
+	# a bala viaja (~300 m/s); dano e impacto acontecem quando ela chega
+	var tr: Dictionary = tracers[tracer_i]
+	tracer_i = (tracer_i + 1) % tracers.size()
+	tr.a = mz
+	tr.b = endp
+	tr.aim = aim
+	tr.t = 0.0
+	tr.dur = maxf(0.02, mz.distance_to(endp) / 300.0)
+	tr.hit = hit
+	tr.owner = c
 	if game._on_screen(mz):
-		sfx.play("gun", -10.0 if c != game.player else -4.0, randf_range(0.9, 1.1))
+		sfx.play("gun", -11.0 if c != game.player else -5.0, randf_range(0.88, 1.12))
 	if c == game.player:
-		game._shake(0.025)
+		game._shake(0.03)
+
+
+func _step_tracers(dt: float) -> void:
+	for tr in tracers:
+		if tr.t < 0.0:
+			continue
+		tr.t += dt
+		var mi: MeshInstance3D = tr.mi
+		var a: Vector3 = tr.a
+		var b: Vector3 = tr.b
+		var k: float = clampf(tr.t / tr.dur, 0.0, 1.0)
+		var head := a.lerp(b, k)
+		var aim: Vector3 = tr.aim
+		var ln := minf(5.5, head.distance_to(a))
+		if ln > 0.2:
+			var x := aim.cross(Vector3.UP if absf(aim.y) < 0.95 else Vector3.RIGHT).normalized()
+			mi.global_transform = Transform3D(Basis(x, aim, x.cross(aim)).scaled(Vector3(1, ln, 1)), head - aim * ln * 0.5)
+			mi.visible = true
+		if k >= 1.0:
+			mi.visible = false
+			tr.t = -1.0
+			_bullet_impact(tr)
+
+
+func _bullet_impact(tr: Dictionary) -> void:
+	var hit: Dictionary = tr.hit
+	if hit.is_empty():
+		return
+	var c: Car = tr.owner
+	var p: Vector3 = tr.b
+	var aim: Vector3 = tr.aim
+	var hc = hit.collider
+	if not is_instance_valid(hc):
+		return
+	var vis: bool = game._on_screen(p)
+	if hc is Car:
+		var tc: Car = hc
+		var dmg := 1.9 if c.role == "player" else 1.1
+		var killed := tc.apply_damage(dmg, p, c if is_instance_valid(c) else null)
+		tc.apply_impulse(aim * 140.0, p - tc.global_position)
+		if vis:
+			fx.sparks(p, -aim + tc.global_transform.basis.y * 0.5, 0.18)
+			_muzzle_flash(p - aim * 0.3, -aim)
+		if c == game.player:
+			sfx.play("tink", -8.0, randf_range(0.85, 1.25))
+			ret_pulse = 1.0
+			var e: Dictionary = acc.get(tc, {"dmg": 0.0, "t": 0.0})
+			e.dmg += dmg
+			acc[tc] = e
+			if killed:
+				_number(tc.global_position + Vector3.UP * 2.6, "DESTRUÍDO!", Color("#ffcf33"), 1.3)
+				acc.erase(tc)
+			game.on_player_hit_enemy(tc, killed)
+		elif tc == game.player:
+			game.on_player_got_hit(dmg)
+			sfx.play("tink", -12.0, randf_range(0.7, 0.9))
+	else:
+		if hc is RigidBody3D:
+			(hc as RigidBody3D).apply_impulse(aim * 60.0)
+		if not vis:
+			return
+		var n: Vector3 = hit.normal
+		if n.y > 0.6:
+			# chão: poeirinha e lasca
+			fx.burst("bulletdust", p + n * 0.1)
+			fx.sparks(p, n + aim * 0.4, 0.05)
+		else:
+			# muro: ricochete com faísca
+			fx.sparks(p, aim.bounce(n) if aim.dot(n) < 0.0 else n, 0.15)
+			if randf() < 0.3:
+				sfx.play("tink", -16.0, randf_range(1.2, 1.6))
+
+
+func _make_casings() -> CPUParticles3D:
+	var p := CPUParticles3D.new()
+	p.amount = 14
+	p.lifetime = 0.7
+	p.local_coords = false
+	p.emitting = false
+	var m := BoxMesh.new()
+	m.size = Vector3(0.05, 0.05, 0.13)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.78, 0.3)
+	mat.metallic = 0.9
+	mat.roughness = 0.25
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.6, 0.2)
+	mat.emission_energy_multiplier = 0.4
+	m.material = mat
+	p.mesh = m
+	p.direction = Vector3(1, 1.2, -0.3)
+	p.spread = 18
+	p.initial_velocity_min = 3.5
+	p.initial_velocity_max = 5.5
+	p.gravity = Vector3(0, -22, 0)
+	p.angular_velocity_min = -900
+	p.angular_velocity_max = 900
+	p.particle_flag_rotate_y = true
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return p
+
+
+func _number(pos: Vector3, txt: String, col: Color, scl := 1.0) -> void:
+	var n: Dictionary = numbers[num_i]
+	num_i = (num_i + 1) % numbers.size()
+	var lb: Label3D = n.lb
+	lb.text = txt
+	lb.modulate = col
+	lb.global_position = pos + Vector3(randf_range(-0.6, 0.6), 0, randf_range(-0.6, 0.6))
+	lb.scale = Vector3.ONE * 0.4 * scl
+	lb.visible = true
+	n.t = 0.0
+	n.scl = scl
+
+
+func _step_numbers(dt: float) -> void:
+	for tc in acc.keys():
+		var e: Dictionary = acc[tc]
+		e.t += dt
+		if e.t > 0.22:
+			if is_instance_valid(tc) and not tc.wrecked:
+				_number(tc.global_position + Vector3.UP * 2.4, str(int(ceil(e.dmg))), Color("#ffe27a"))
+			acc.erase(tc)
+	for n in numbers:
+		var lb: Label3D = n.lb
+		if not lb.visible:
+			continue
+		n.t += dt
+		var t: float = n.t
+		lb.global_position += Vector3.UP * dt * 2.2
+		var pop := 1.0 + 0.6 * exp(-t * 14.0)
+		lb.scale = Vector3.ONE * float(n.scl) * pop
+		lb.modulate.a = clampf(1.0 - (t - 0.45) / 0.3, 0.0, 1.0)
+		if t > 0.75:
+			lb.visible = false
+
+
+func _step_reticle(dt: float) -> void:
+	var p: Car = game.player
+	if p == null or game.mode != "race" or p.wrecked:
+		reticle.visible = false
+		return
+	var tgt := _target(p, 50.0, 0.982) if p.front_type == "mg" else _target(p, 75.0, 0.93)
+	ret_pulse = maxf(0.0, ret_pulse - dt * 6.0)
+	ret_t += dt
+	if tgt == null:
+		reticle.visible = false
+		return
+	reticle.visible = true
+	reticle.global_position = tgt.global_position + tgt.global_transform.basis.y * 0.8
+	var s := 1.0 + ret_pulse * 0.35
+	reticle.scale = Vector3(s, s, s)
+	var m := reticle.material_override as ShaderMaterial
+	m.set_shader_parameter("spin", ret_t * (6.0 if p.ctrl.fire else 1.5))
+	m.set_shader_parameter("pulse", ret_pulse)
+	m.set_shader_parameter("col", Color(1.0, 0.25, 0.2) if p.ctrl.fire else Color(1.0, 0.85, 0.3))
 
 
 func _fire_rocket(c: Car) -> void:
@@ -228,7 +435,8 @@ func _fire_rocket(c: Car) -> void:
 	node.add_child(fl)
 	var tgt := _target(c, 75.0, 0.93)
 	rockets.append({"node": node, "vel": c.linear_velocity + f * 46.0, "owner": c, "t": 0.0, "target": tgt, "trail": trail})
-	_muzzle_flash(mz)
+	_muzzle_flash(mz, f, true)
+	c.recoil = 2.0
 	sfx.play("rocket", -4.0 if c == game.player else -9.0)
 	if c == game.player:
 		game._shake(0.12)

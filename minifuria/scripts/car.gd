@@ -110,6 +110,7 @@ var lap := 0
 var nm_state = null
 var pad_t := 0.0
 var off_t := 0.0
+var stuck_t := 0.0
 var finished := false
 var kills := 0
 
@@ -123,6 +124,10 @@ var exhaust_local := Vector3.ZERO
 var tail_local := [Vector3.ZERO, Vector3.ZERO]
 var muzzle_local := Vector3.ZERO
 var weapon_node: Node3D
+var weapon_base := Vector3.ZERO
+var recoil := 0.0
+var firing_t := 0.0
+var casings: CPUParticles3D
 var hbar: MeshInstance3D
 
 var _prev_v := Vector3.ZERO
@@ -230,7 +235,8 @@ func configure(lib: Node3D, front: String, rear: String, nitro: String, up: Dict
 	if weapon_node:
 		weapon_node.queue_free()
 	weapon_node = lib.get_node("wpn_gun" if front == "mg" else "wpn_pod").duplicate()
-	weapon_node.transform = Transform3D(Basis.IDENTITY, Vector3(0, sp.clr + sp.h + 0.28, sp.len * 0.05))
+	weapon_base = Vector3(0, sp.clr + sp.h + 0.28, sp.len * 0.05)
+	weapon_node.transform = Transform3D(Basis.IDENTITY, weapon_base)
 	for c in weapon_node.get_children():
 		if c is GeometryInstance3D:
 			c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
@@ -337,7 +343,8 @@ func _physics_process(dt: float) -> void:
 		apply_central_force(cf)
 		_applied += cf
 	if not on_ground:
-		air_t += dt
+		if h_surf > 0.7 or not on_feature:
+			air_t += dt
 	elif not was_ground:
 		if air_t > 0.15:
 			landed.emit(self, air_t, maxf(0.0, -_prev_v.dot(ground_n)))
@@ -579,7 +586,7 @@ func apply_damage(amount: float, point: Vector3, attacker: Car, deform := true) 
 	if wrecked or invuln > 0.0 or amount <= 0.0:
 		return false
 	health -= amount
-	flash_t = 0.12
+	flash_t = 0.06
 	if attacker:
 		last_hit_by = attacker
 		last_hit_t = game_time
@@ -840,11 +847,19 @@ func _process(dt: float) -> void:
 	if tail_mat:
 		tail_mat.emission_energy_multiplier = 6.0 if ctrl.brake > 0.0 else (3.0 if nitroing else 1.5)
 	if paint:
-		paint.emission_energy_multiplier = 3.0 if flash_t > 0.0 else 0.0
+		paint.emission_energy_multiplier = 0.9 if flash_t > 0.0 else 0.0
 	if sirens.size() >= 2:
 		var on := sin(game_time * 14.0) > 0.0
 		sirens[0].emission_energy_multiplier = 6.0 if on else 0.3
 		sirens[1].emission_energy_multiplier = 0.3 if on else 6.0
+	# recuo da arma a cada tiro
+	recoil = maxf(0.0, recoil - dt * 9.0)
+	firing_t = maxf(0.0, firing_t - dt)
+	if weapon_node:
+		weapon_node.position = weapon_base - Vector3(0, 0, recoil * 0.18) + Vector3(0, recoil * 0.03, 0)
+		weapon_node.rotation.x = -recoil * 0.12
+	if casings:
+		casings.emitting = firing_t > 0.0 and not wrecked
 	if hbar:
 		hbar.visible = not wrecked and health < max_health * 0.999
 		if hbar.visible:

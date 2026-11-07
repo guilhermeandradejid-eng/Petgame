@@ -377,6 +377,12 @@ func build(ground_shader: Shader, road_shader: Shader) -> void:
 		_q(road, a, b, c, d, ui, Color.WHITE, Rect2(0, v0, 1, v1 - v0))
 		road_col.append_array([a, b, c, a, c, d])
 		RH = 2.2 if feat[i] == 1 else 1.15
+		# no looping a mureta é fina e a pista é uma lâmina (sem a "saia" para fora)
+		var lp := loopf[i] == 1
+		if lp:
+			RH = 1.4
+		var rw := 0.2 if lp else 0.5
+		var depth := -0.35 if lp else -0.8
 		var cc := curb_a if i % 2 == 1 else curb_b
 		var rc := rail_a if (i / 2) % 2 == 0 else rail_b
 		for sgn: float in [1.0, -1.0]:
@@ -399,19 +405,30 @@ func build(ground_shader: Shader, road_shader: Shader) -> void:
 			var w2 := _off(j, sgn * WALL, RH)
 			var w3 := _off(j, sgn * WALL, 0.0)
 			_q(side, w0, w1, w2, w3, -L[i] * sgn, rc)
-			var t0 := _off(i, sgn * (WALL + 0.5), RH)
-			var t1 := _off(j, sgn * (WALL + 0.5), RH)
+			var t0 := _off(i, sgn * (WALL + rw), RH)
+			var t1 := _off(j, sgn * (WALL + rw), RH)
 			_q(side, w1, t0, t1, w2, ui, rc.lightened(0.15))
-			var o0 := _off(i, sgn * (WALL + 0.5), -0.8)
-			var o1 := _off(j, sgn * (WALL + 0.5), -0.8)
+			var o0 := _off(i, sgn * (WALL + rw), depth)
+			var o1 := _off(j, sgn * (WALL + rw), depth)
 			_q(side, t0, o0, o1, t1, L[i] * sgn, rc.darkened(0.25))
 			rail_col.append_array([w0, w1, w2, w0, w2, w3, w1, t0, t1, w1, t1, w2])
 		# parte de baixo da pista
-		var u0 := _off(i, -(WALL + 0.5), -0.8)
-		var u1 := _off(i, WALL + 0.5, -0.8)
-		var u2 := _off(j, WALL + 0.5, -0.8)
-		var u3 := _off(j, -(WALL + 0.5), -0.8)
+		var u0 := _off(i, -(WALL + rw), depth)
+		var u1 := _off(i, WALL + rw, depth)
+		var u2 := _off(j, WALL + rw, depth)
+		var u3 := _off(j, -(WALL + rw), depth)
 		_q(side, u0, u1, u2, u3, -ui, under)
+		# pontas da pista junto dos vãos de salto: tampa com faixas de perigo
+		for cap in [[i, gap[idx(i + 1)] == 1, 1.0], [i, gap[idx(i - 1)] == 1, -1.0]]:
+			if not cap[1]:
+				continue
+			var k: int = i if cap[2] > 0.0 else i
+			var at_i: int = j if cap[2] > 0.0 else i
+			for sg in range(-6, 6):
+				var la := float(sg) / 6.0 * (WALL + rw)
+				var lb := float(sg + 1) / 6.0 * (WALL + rw)
+				var hc := Color("#ffcc1f") if (sg % 2 == 0) else Color("#26272d")
+				_q(side, _off(at_i, la, 0.07), _off(at_i, lb, 0.07), _off(at_i, lb, depth), _off(at_i, la, depth), T[k] * cap[2], hc)
 
 	var rm := MeshInstance3D.new()
 	rm.mesh = road.commit()
@@ -571,34 +588,55 @@ func _build_pads() -> void:
 		add_child(mi)
 
 
-## pontos para decoração: placas de curva, postes, pneus, bandeiras e outdoors
+## pontos para decoração: placas de curva, postes, pneus, bandeiras e outdoors.
+## Pista perto do chão: objeto no chão. Pista elevada: preso em cima da mureta (nada flutuando).
+func _elev(k: int) -> float:
+	return P[k].y - float(theme.gy)
+
+
+func _ground(p: Vector3) -> Vector3:
+	return Vector3(p.x, float(theme.gy), p.z)
+
+
 func decor_spots() -> Array:
 	var out: Array = []
+	var RH := 1.15
 	var i := 0
 	while i < n:
 		if feat[i] == 0 and gap[i] == 0 and U[i].y > 0.9 and absf(curv[i]) > 1.0 / 45.0:
-			# placa do lado de fora da curva, virada para quem chega
-			var outside := -signf(-curv[i])  # curva para a esquerda -> lado de fora é a direita
+			var outside := signf(curv[i])  # curva para a esquerda -> lado de fora é a direita
 			var k := idx(i - 6)
-			var pos := P[k] + L[k] * outside * (WALL + 1.6)
-			out.append({"kind": "prop_sign", "xf": Transform3D(Basis(-L[k], Vector3.UP, -T[k]).orthonormalized(), pos), "flip": outside < 0})
-			var k2 := idx(i + 4)
-			out.append({"kind": "prop_tirewall", "xf": Transform3D(Basis(Vector3.UP, atan2(T[k2].x, T[k2].z)), P[k2] + L[k2] * outside * (WALL + 2.2))})
+			if feat[k] == 0:
+				var yaw := atan2(-T[k].x, -T[k].z)
+				if _elev(k) < 1.5:
+					var pos := _ground(P[k] + L[k] * outside * (WALL + 1.6))
+					out.append({"kind": "prop_sign", "xf": Transform3D(Basis(Vector3.UP, yaw), pos), "flip": outside < 0})
+					var k2 := idx(i + 4)
+					out.append({"kind": "prop_tirewall", "xf": Transform3D(Basis(Vector3.UP, atan2(T[k2].x, T[k2].z)), _ground(P[k2] + L[k2] * outside * (WALL + 2.2)))})
+				else:
+					var pos := P[k] + L[k] * outside * (WALL + 0.25) + U[k] * RH
+					out.append({"kind": "prop_sign", "xf": Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * 0.6), pos), "flip": outside < 0})
 			i += 18
 			continue
 		i += 1
 	for k in range(0, n, 22):
-		if gap[k] == 1 or loopf[k] == 1 or U[k].y < 0.9:
+		if gap[k] == 1 or feat[k] == 1 or U[k].y < 0.9:
 			continue
 		var sgn := 1.0 if (k / 22) % 2 == 0 else -1.0
-		var pos := P[k] + L[k] * sgn * (WALL + 1.0)
-		out.append({"kind": "prop_lamp", "xf": Transform3D(Basis(Vector3.UP, atan2(-L[k].x * sgn, -L[k].z * sgn)), pos)})
+		var yaw := atan2(-L[k].x * sgn, -L[k].z * sgn)
+		if _elev(k) < 1.5:
+			out.append({"kind": "prop_lamp", "xf": Transform3D(Basis(Vector3.UP, yaw), _ground(P[k] + L[k] * sgn * (WALL + 1.3)))})
+		else:
+			var pos := P[k] + L[k] * sgn * (WALL + 0.25) + U[k] * RH
+			out.append({"kind": "prop_lamp", "xf": Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * 0.75), pos)})
 	for k in [6, 12, 18]:
+		if _elev(k) > 1.5:
+			continue
 		for sgn: float in [1.0, -1.0]:
-			var pos: Vector3 = P[k] + L[k] * sgn * (WALL + 2.0)
-			out.append({"kind": "prop_flag", "xf": Transform3D(Basis(Vector3.UP, atan2(T[k].x, T[k].z)), pos)})
+			out.append({"kind": "prop_flag", "xf": Transform3D(Basis(Vector3.UP, atan2(T[k].x, T[k].z)), _ground(P[k] + L[k] * sgn * (WALL + 2.0)))})
 	var kb := idx(int(40.0 / ds))
-	out.append({"kind": "prop_billboard", "xf": Transform3D(Basis(Vector3.UP, atan2(-L[kb].x, -L[kb].z)), P[kb] + L[kb] * (WALL + 6.0))})
+	if _elev(kb) < 1.5:
+		out.append({"kind": "prop_billboard", "xf": Transform3D(Basis(Vector3.UP, atan2(-L[kb].x, -L[kb].z)), _ground(P[kb] + L[kb] * (WALL + 6.0)))})
 	return out
 
 
