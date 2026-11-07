@@ -87,6 +87,8 @@ var test_lane := 0.0
 var post_blur := 0.0
 var post_aberr := 0.0
 var post_lines := 0.0
+var wrong_t := 0.0
+var steer_testing := false
 
 
 func _ready() -> void:
@@ -167,10 +169,42 @@ func _ready() -> void:
 	add_child(hud)
 	load_track(track_idx)
 	_last_us = Time.get_ticks_usec()
-	if "--uishot" in args:
+	if "--steertest" in args:
+		_steer_test()
+	elif "--uishot" in args:
 		_ui_shots()
 	elif auto_test:
 		start_race()
+
+
+func _steer_test() -> void:
+	steer_testing = true
+	save.steer = "tela"
+	start_race()
+	while mode != "race":
+		await get_tree().physics_frame
+	var r := cam.global_basis.x
+	var rr := Vector3(r.x, 0, r.z).normalized()
+	var ff := Vector3(-cam.global_basis.z.x, 0, -cam.global_basis.z.z).normalized()
+	for test in [["tela", "left", -rr], ["tela", "right", rr], ["tela", "down", -ff], ["tela", "up", ff], ["carro", "left", rr]]:
+		save.steer = test[0]
+		# carro andando para BAIXO da tela, a 20 m/s, numa reta
+		var a := track.at(60.0)
+		var down := -ff
+		var bs := Basis.looking_at(-down, Vector3.UP)
+		player.place(Transform3D(bs, Vector3(400, float(theme.gy) + 0.3, 400)), 20.0)
+		wrong_t = -1000.0
+		for k in 20:
+			await get_tree().physics_frame
+		Input.action_press(test[1])
+		for k in (150 if test[1] == "up" else 70):
+			await get_tree().physics_frame
+		Input.action_release(test[1])
+		var fwd := player.global_transform.basis.z
+		fwd = Vector3(fwd.x, 0, fwd.z).normalized()
+		var exp_dir: Vector3 = test[2]
+		print("STEER %s tecla=%s  frente·esperado=%.2f  (1 = virou para o lado certo)" % [test[0], test[1], fwd.dot(exp_dir)])
+	get_tree().quit()
 
 
 func _ui_shots() -> void:
@@ -191,6 +225,7 @@ func _setup_input() -> void:
 	var keys := {
 		"left": [KEY_LEFT, KEY_A], "right": [KEY_RIGHT, KEY_D], "up": [KEY_UP, KEY_W], "down": [KEY_DOWN, KEY_S],
 		"drift": [KEY_SPACE], "nitro": [KEY_SHIFT, KEY_N], "fire": [KEY_Z, KEY_J, KEY_CTRL], "drop": [KEY_X, KEY_K],
+		"brake": [KEY_B, KEY_C],
 		"reset": [KEY_R], "pause": [KEY_P, KEY_ESCAPE], "mute": [KEY_M],
 	}
 	for a in keys:
@@ -204,7 +239,7 @@ func _setup_input() -> void:
 
 # ------------------------------------------------------------------ save
 func _load_save() -> void:
-	save = {"cash": 800, "car": "faisca", "front": "mg", "rear": "mine", "nitro": "short",
+	save = {"cash": 800, "car": "faisca", "front": "mg", "rear": "mine", "nitro": "short", "steer": "tela",
 		"up": {"engine": 0, "armor": 0, "ammo": 0, "nitro": 0}, "best": {}}
 	if FileAccess.file_exists(SAVE_PATH):
 		var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
@@ -608,6 +643,7 @@ func _spawn_cars() -> void:
 	player = _make_car(save.car, "player", Color("#e8352b"))
 	player.display_name = "VOCÊ"
 	player.configure(lib, save.front, save.rear, save.nitro, save.up)
+	player.turn_mult = 1.15
 	_place(player, L + grid[4][0], grid[4][1], 0)
 	var tc: int = track.data.traffic
 	for i in tc:
@@ -677,6 +713,13 @@ func pause(on: bool) -> void:
 	elif not on and mode == "paused":
 		mode = prev_mode
 		hud.show_screen("race")
+
+
+func toggle_steer() -> void:
+	save.steer = "carro" if String(save.get("steer", "tela")) == "tela" else "tela"
+	_write_save()
+	hud.refresh_steer()
+	hud.popup("DIREÇÃO: " + ("APONTA NA TELA" if save.steer == "tela" else "GIRA O CARRO"), Color("#2ee6ff"))
 
 
 func toggle_mute() -> void:
@@ -876,16 +919,36 @@ func _physics_process(dt: float) -> void:
 	_recycle()
 
 
+## Direção "tela": o jogador aponta para onde quer ir na tela (não inverte quando o carro desce a tela).
+## Direção "carro": esquerda/direita giram o carro (estilo clássico).
 func _player_input() -> void:
 	var c := player.ctrl
-	c.steer = Input.get_action_strength("left") - Input.get_action_strength("right")
-	c.throttle = Input.get_action_strength("up")
-	c.brake = Input.get_action_strength("down")
+	var screen_mode := String(save.get("steer", "tela")) == "tela"
+	var r := cam.global_basis.x
+	var f := -cam.global_basis.z
+	var rr := Vector3(r.x, 0, r.z).normalized()
+	var ff := Vector3(f.x, 0, f.z).normalized()
+	c.dir = null
+	c.steer = 0.0
+	c.throttle = 0.0
+	c.brake = Input.get_action_strength("brake")
+	if screen_mode:
+		var kx := Input.get_action_strength("right") - Input.get_action_strength("left")
+		var ky := Input.get_action_strength("up") - Input.get_action_strength("down")
+		if absf(kx) + absf(ky) > 0.1:
+			c.dir = (rr * kx + ff * ky).normalized()
+			c.dir_mag = 1.0
+			c.throttle = 1.0
+	else:
+		c.steer = Input.get_action_strength("left") - Input.get_action_strength("right")
+		c.throttle = Input.get_action_strength("up")
+		c.brake = maxf(c.brake, Input.get_action_strength("down"))
+	if c.brake > 0.0:
+		c.throttle = 0.0
 	c.drift = Input.is_action_pressed("drift")
 	c.nitro = Input.is_action_pressed("nitro")
 	c.fire = Input.is_action_pressed("fire")
 	c.drop = Input.is_action_pressed("drop")
-	c.dir = null
 	var tp := hud.touch
 	if tp.used:
 		if not tp.btn.brake and c.brake <= 0.0:
@@ -897,14 +960,12 @@ func _player_input() -> void:
 		c.nitro = c.nitro or tp.btn.nitro
 		c.fire = c.fire or tp.btn.fire
 		c.drop = c.drop or tp.btn.drop
-		if tp.stick_vec.length() > 0.22:
-			var r := cam.global_basis.x
-			var f := -cam.global_basis.z
-			var rr := Vector3(r.x, 0, r.z).normalized()
-			var ff := Vector3(f.x, 0, f.z).normalized()
+		if screen_mode and tp.stick_vec.length() > 0.22:
 			c.dir = (rr * tp.stick_vec.x - ff * tp.stick_vec.y).normalized()
 			c.dir_mag = minf(1.0, (tp.stick_vec.length() - 0.22) / 0.5)
-	if auto_test:
+		elif not screen_mode and absf(tp.stick_vec.x) > 0.15:
+			c.steer = clampf(-tp.stick_vec.x * 1.4, -1.0, 1.0)
+	if auto_test and not OS.get_cmdline_user_args().has("--steertest"):
 		player.cruise = 38.0
 		player.role = "rival"
 		player.ai(track, self, 1.0 / 60.0)
@@ -999,6 +1060,20 @@ func _rules(dt: float) -> void:
 		return
 	var p := player
 	var v := p.linear_velocity
+	# sentido errado: avisa e, se continuar, coloca o carro de volta na direção certa
+	var along_t: float = p.global_transform.basis.z.dot(track.T[p.ti])
+	if along_t < -0.35 and v.length() > 2.0 and not p.in_loop:
+		wrong_t += dt
+	else:
+		wrong_t = maxf(0.0, wrong_t - dt * 2.0)
+	hud.wrong_l.visible = wrong_t > 0.8
+	if hud.wrong_l.visible:
+		hud.wrong_l.modulate.a = 1.0 if int(real * 5.0) % 2 == 0 else 0.4
+	if wrong_t > 3.5:
+		wrong_t = 0.0
+		hud.wrong_l.visible = false
+		_respawn(p, false)
+		hud.popup("DE VOLTA AO SENTIDO CERTO", Color("#2ee6ff"))
 	if p.drifting and p.v_f > 12.0:
 		p.nitro_meter += dt * 0.08 * minf(1.0, p.drift_slip * 2.0)
 	if was_drift and not p.drifting and p.drift_t > 0.8:
@@ -1055,6 +1130,8 @@ func _near_miss(c: Car) -> void:
 
 ## caiu da pista, ficou de cabeça para baixo ou foi destruído: volta para a pista
 func _respawns(dt: float) -> void:
+	if steer_testing:
+		return
 	for c in cars:
 		if c.role == "traffic":
 			continue
@@ -1246,7 +1323,7 @@ func _process(_delta: float) -> void:
 		img.save_png("user://shot_t%d_%s.png" % [track_idx, test_shots[0]])
 		print("SHOT ", track_idx)
 		test_shots.pop_front()
-	if auto_test and OS.get_cmdline_user_args().has("--debugfall") and int(real * 60.0) % (30 if race_t < 30.0 else 600) == 0:
+	if auto_test and OS.get_cmdline_user_args().has("--debugfall") and int(real * 60.0) % (20 if (player.s_track > 400 and player.s_track < 560) else 600) == 0:
 		var p := player
 		print("P t=%d s=%d lat=%.1f h=%.1f v=%.1f vf=%.1f gnd=%s road=%s up=%s n=%s feat=%d loop=%d thr=%.1f br=%.1f" % [int(real), int(p.s_track), p.lat, p.h_track, p.linear_velocity.length(), p.v_f, p.on_ground, p.on_road, str(p.global_transform.basis.y.snapped(Vector3.ONE * 0.01)), str(p.ground_n.snapped(Vector3.ONE * 0.01)), track.feat[p.ti], track.loopf[p.ti], p.ctrl.throttle, p.ctrl.brake])
 	if auto_test and real > 240.0:

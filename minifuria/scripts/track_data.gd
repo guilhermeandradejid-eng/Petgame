@@ -85,14 +85,14 @@ const THEMES := {
 
 const TRACKS := [
 	{
-		"name": "Circuito do Parque", "theme": "park", "w": 22.0, "traffic": 8,
+		"name": "Circuito do Parque", "theme": "park", "w": 22.0, "traffic": 3,
 		"desc": "Morros, chicane e grampo. Tráfego nos dois sentidos.",
 		"pts": [[-91, 68, 0.6], [-26, 78, 0.6], [39, 75, 1.5], [101, 65, 4], [135, 31, 7], [135, -16, 7], [109, -52, 3], [73, -60, 0.6],
 			[42, -36, 0.6], [8, -23, 0.6], [-23, -47, 0.6], [-47, -81, 1], [-96, -86, 1.5], [-135, -52, 1], [-140, 3, 0.6], [-127, 44, 0.6]],
 		"feat": {},
 	},
 	{
-		"name": "Cidade Neon", "theme": "city", "w": 20.0, "traffic": 10,
+		"name": "Cidade Neon", "theme": "city", "w": 20.0, "traffic": 4,
 		"desc": "Oito à noite com viaduto por cima do cruzamento.",
 		"pts": [[-60, -40, 0.6], [0, 0, 0.6], [60, 40, 0.6], [100, 70, 1], [150, 60, 2], [175, 20, 4], [165, -30, 6], [130, -60, 8], [90, -55, 9],
 			[60, -40, 9], [0, 0, 9], [-60, 40, 9], [-100, 65, 8], [-150, 60, 6], [-178, 20, 4], [-165, -30, 2], [-130, -60, 1], [-90, -55, 0.6]],

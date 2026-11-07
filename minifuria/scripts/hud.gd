@@ -15,6 +15,8 @@ var score_l: Label
 var speed_l: Label
 var onc_l: Label
 var big_l: Label
+var wrong_l: Label
+var steer_btns: Array = []
 var pops: VBoxContainer
 var feed: VBoxContainer
 var status: Control
@@ -148,7 +150,17 @@ func _vcenter(parent: Control, sep := 10) -> VBoxContainer:
 	return v
 
 
+func refresh_steer() -> void:
+	var tela := String(game.save.get("steer", "tela")) == "tela"
+	for b in steer_btns:
+		(b as Button).text = "DIREÇÃO: TELA" if tela else "DIREÇÃO: CARRO"
+
+
 func show_screen(name_: String) -> void:
+	if game and steer_btns.size() > 0:
+		refresh_steer()
+	if name_ != "race" and wrong_l:
+		wrong_l.visible = false
 	menu.visible = name_ == "menu"
 	tracks_s.visible = name_ == "tracks"
 	garage.visible = name_ == "garage"
@@ -203,6 +215,13 @@ func _build_race_hud() -> void:
 	big_l.position = Vector2(-500, -150)
 	big_l.pivot_offset = Vector2(500, 80)
 	big_l.modulate.a = 0.0
+	wrong_l = _label(40, Color.WHITE, Color("#ff2d55"))
+	wrong_l.set_anchors_preset(Control.PRESET_CENTER)
+	wrong_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	wrong_l.size = Vector2(700, 60)
+	wrong_l.position = Vector2(-350, 40)
+	wrong_l.text = "SENTIDO ERRADO! VIRE"
+	wrong_l.visible = false
 	minimap = Control.new()
 	minimap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	minimap.position = Vector2(-196, 8)
@@ -408,7 +427,7 @@ func _build_menu() -> void:
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_btn("CORRER", v).pressed.connect(func(): show_screen("tracks"))
 	var info := Label.new()
-	info.text = "Cada volta recarrega munição e nitro. Destrua rivais para ganhar dinheiro e melhorar o carro.\nTeclado: setas · Z/J tiro · X/K mina · SHIFT nitro · ESPAÇO drift · R volta à pista · P pausa"
+	info.text = "Cada volta recarrega munição e nitro. Destrua rivais para ganhar dinheiro e melhorar o carro.\nSetas/WASD apontam para onde ir na tela · B freio/ré · Z tiro · X mina · SHIFT nitro · ESPAÇO drift · R volta à pista\n(na garagem dá para trocar para direção clássica: setas giram o carro)"
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info.add_theme_font_override("font", SystemFont.new())
 	info.add_theme_font_size_override("font_size", 15)
@@ -535,6 +554,9 @@ func _build_garage() -> void:
 	bot.add_theme_constant_override("separation", 20)
 	v.add_child(bot)
 	_btn("VOLTAR", bot, false, 200, 56).pressed.connect(func(): show_screen("tracks"))
+	var gsb := _btn("DIREÇÃO", bot, false, 330, 56)
+	gsb.pressed.connect(func(): game.toggle_steer())
+	steer_btns.append(gsb)
 	_btn("LARGAR!", bot, true, 280, 64).pressed.connect(func(): game.start_race())
 
 
@@ -616,6 +638,9 @@ func _build_pause() -> void:
 	pt.text = "PAUSA"
 	pt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_btn("CONTINUAR", v).pressed.connect(func(): game.pause(false))
+	var sb := _btn("DIREÇÃO", v, false)
+	sb.pressed.connect(func(): game.toggle_steer())
+	steer_btns.append(sb)
 	_btn("REINICIAR", v, false).pressed.connect(func(): game.start_race())
 	_btn("SAIR DA CORRIDA", v, false).pressed.connect(func(): game.to_menu())
 

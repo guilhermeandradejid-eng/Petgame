@@ -85,8 +85,8 @@ Menu → **escolha da pista** (10) → **garagem** → corrida de 3 voltas contr
 
 | # | Pista | Tema | Destaques |
 |---|---|---|---|
-| 1 | Circuito do Parque | parque, dia | morros, chicane, tráfego nos dois sentidos |
-| 2 | Cidade Neon | cidade à noite | oito com viaduto sobre o cruzamento, tráfego |
+| 1 | Circuito do Parque | parque, dia | morros, chicane, pouco tráfego |
+| 2 | Cidade Neon | cidade à noite | oito com viaduto sobre o cruzamento, pouco tráfego |
 | 3 | Cânion do Deserto | pôr do sol, cactos | dois saltos sobre o vale |
 | 4 | Pico Nevado | neve, gelo escorregadio | espiral de descida com 2 voltas |
 | 5 | Docas do Porto | mar e contêineres | píeres e saltos sobre a água |
@@ -98,14 +98,16 @@ Menu → **escolha da pista** (10) → **garagem** → corrida de 3 voltas contr
 
 ## Controles
 
-- **Celular ou mouse**: arraste à esquerda para apontar a direção. Acelera sozinho. Botões: **TIRO**, **NITRO**, **DRIFT**, **MINA/ÓLEO**, **FREIO**.
-- **Teclado**: setas/WASD, `Z`/`J` tiro, `X`/`K` mina, `Shift` nitro, `Espaço` drift, `R` volta à pista, `P` pausa, `M` som.
+- **Direção "TELA" (padrão)**: você aponta para onde quer ir **na tela** e o carro vira sozinho para lá. Não inverte quando o carro desce a tela. No celular/mouse é o analógico da esquerda; no teclado, as setas/WASD (↑ sobe a tela, ← vai para a esquerda da tela) e o carro acelera sozinho.
+- **Direção "CARRO" (clássica)**: ← → giram o carro em relação a ele mesmo, ↑ acelera, ↓ freia. Troca na garagem ou no menu de pausa.
+- Botões na tela: **TIRO**, **NITRO**, **DRIFT**, **MINA/ÓLEO**, **FREIO**. Teclado: `B`/`C` freio e ré, `Z`/`J` tiro, `X`/`K` mina, `Shift` nitro, `Espaço` drift, `R` volta à pista, `P` pausa, `M` som.
+- Se o carro ficar no sentido errado aparece "SENTIDO ERRADO!" e, se continuar, o jogo te coloca de volta na direção certa.
 
 ## Como a pista 3D é feita
 
 Cada pista é um polígono de pontos `[x, z, altura]` mais elementos especiais (`loop`, `jump`, `helix`, `cork`) em `scripts/track_data.gd`. O `track.gd` expande os elementos em pontos de controle, passa uma Catmull-Rom centrípeta fechada e calcula um referencial por amostra: "para cima" do mundo projetado nos trechos normais, inclinação automática nas curvas e, dentro do looping, o "para cima" aponta para o eixo do looping. Daí saem asfalto, zebras, guard-rails (mais altos nos elementos), parte de baixo, pilares (sem cair em cima de outro trecho), colisores e a decoração (placas de curva, postes, pneus, bandeiras, outdoors). O carro usa a normal da pista como gravidade e tem assistência nos loopings e na torção, no estilo dos jogos de pista de brinquedo.
 
-Ferramentas: `godot --headless -s res://tools/validate_tracks.gd` confere raio mínimo, cruzamentos sem altura suficiente e altura mínima das 10 pistas; `godot --headless --fixed-fps 60 res://scenes/main.tscn -- --autotest --track=N` corre a pista N no piloto automático e imprime o resultado (com `--debugfall` mostra cada queda).
+Ferramentas: `godot --headless -s res://tools/validate_tracks.gd` confere raio mínimo, cruzamentos sem altura suficiente e altura mínima das 10 pistas; `godot --headless --fixed-fps 60 res://scenes/main.tscn -- --autotest --track=N` corre a pista N no piloto automático e imprime o resultado (com `--debugfall` mostra cada queda); `-- --autotest --steertest` confere que as setas viram o carro para o lado certo da tela.
 
 ## Estrutura
 

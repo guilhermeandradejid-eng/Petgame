@@ -78,6 +78,8 @@ var last_hit_by: Car = null
 var last_hit_t := -10.0
 var game_time := 0.0
 var flash_t := 0.0
+var turn_mult := 1.0
+var _uturn := 0.0
 # informação da pista (preenchida pelo jogo a cada passo)
 var track_up := Vector3.UP
 var on_feature := false
@@ -367,9 +369,19 @@ func _physics_process(dt: float) -> void:
 	if ctrl.dir != null:
 		var d: Vector3 = b.inverse() * (ctrl.dir as Vector3)
 		var dh := atan2(d.x, d.z)
+		# meia-volta: com o alvo quase atrás, continua girando para o mesmo lado (sem ficar indeciso)
+		if absf(dh) > 2.4:
+			if _uturn == 0.0:
+				_uturn = signf(dh) if absf(steer_s) < 0.1 else signf(steer_s)
+			dh = _uturn * absf(dh)
+		else:
+			_uturn = 0.0
 		steer = clampf(dh * 2.4, -1.0, 1.0) * float(ctrl.dir_mag)
-		if v_f < -2.0:
+		# só inverte quando o jogador está dando ré de propósito (segurando o freio)
+		if v_f < -2.0 and ctrl.brake > 0.0:
 			steer = -steer
+	else:
+		_uturn = 0.0
 	steer_s = lerpf(steer_s, steer, minf(1.0, dt * 14.0))
 	var vmax: float = sp.vmax * engine_mult
 	var spd01 := minf(1.0, absf(v_f) / vmax)
@@ -407,7 +419,7 @@ func _physics_process(dt: float) -> void:
 		if drifting:
 			target = (steer_s * 1.25 + drift_dir * 0.55) * sp.turn * 0.95
 		else:
-			var rate: float = sp.turn * minf(1.0, absf(v_f) / 5.0) * (1.0 - 0.32 * spd01)
+			var rate: float = sp.turn * turn_mult * minf(1.0, absf(v_f) / 5.0) * (1.0 - 0.28 * spd01)
 			target = steer_s * rate * (1.0 if v_f >= 0.0 else -1.0)
 		var auth := 0.25 if stun > 0.0 else 1.0
 		if oil_t > 0.0:
