@@ -17,23 +17,23 @@ const WHEEL_UP := 0.05   # quanto a roda pode subir visualmente antes de encosta
 const GRAV := 9.8 * 2.2
 
 const SPECS := {
-	"faisca": {"len": 3.7, "wid": 2.0, "h": 0.62, "clr": 0.34, "mass": 1.0, "vmax": 40.0, "nitro": 58.0, "accel": 26.0, "grip": 9.5, "drift_grip": 1.6, "turn": 2.7, "hp": 100.0},
-	"trovao": {"len": 4.1, "wid": 2.1, "h": 0.6, "clr": 0.3, "mass": 1.25, "vmax": 38.0, "nitro": 54.0, "accel": 23.0, "grip": 8.5, "drift_grip": 1.8, "turn": 2.45, "hp": 140.0},
-	"vespa": {"len": 3.6, "wid": 2.0, "h": 0.58, "clr": 0.32, "mass": 0.95, "vmax": 42.0, "nitro": 58.0, "accel": 28.0, "grip": 10.0, "drift_grip": 1.7, "turn": 2.95, "hp": 80.0},
+	"faisca": {"len": 3.7, "wid": 2.0, "h": 0.62, "clr": 0.34, "mass": 1.0, "vmax": 39.5, "nitro": 56.0, "accel": 25.5, "grip": 9.6, "drift_grip": 1.6, "turn": 2.7, "hp": 100.0},
+	"trovao": {"len": 4.1, "wid": 2.1, "h": 0.6, "clr": 0.3, "mass": 1.3, "vmax": 41.5, "nitro": 57.0, "accel": 25.0, "grip": 9.7, "drift_grip": 1.8, "turn": 2.55, "hp": 180.0},
+	"vespa": {"len": 3.6, "wid": 2.0, "h": 0.58, "clr": 0.32, "mass": 0.92, "vmax": 39.8, "nitro": 57.0, "accel": 27.0, "grip": 10.0, "drift_grip": 1.7, "turn": 2.92, "hp": 85.0},
 	"sedan": {"len": 3.9, "wid": 1.95, "h": 0.66, "clr": 0.3, "mass": 1.0, "vmax": 26.0, "nitro": 26.0, "accel": 12.0, "grip": 8.0, "drift_grip": 2.0, "turn": 2.2, "hp": 60.0},
 	"taxi": {"len": 3.9, "wid": 1.95, "h": 0.66, "clr": 0.3, "mass": 1.0, "vmax": 26.0, "nitro": 26.0, "accel": 12.0, "grip": 8.0, "drift_grip": 2.0, "turn": 2.2, "hp": 60.0},
 	"policia": {"len": 3.9, "wid": 1.95, "h": 0.66, "clr": 0.3, "mass": 1.1, "vmax": 30.0, "nitro": 30.0, "accel": 14.0, "grip": 8.0, "drift_grip": 2.0, "turn": 2.2, "hp": 70.0},
 	"picape": {"len": 4.3, "wid": 2.1, "h": 0.8, "clr": 0.45, "mass": 1.5, "vmax": 24.0, "nitro": 24.0, "accel": 10.0, "grip": 8.0, "drift_grip": 2.0, "turn": 2.0, "hp": 80.0},
 	"van": {"len": 4.4, "wid": 2.1, "h": 0.85, "clr": 0.35, "mass": 1.8, "vmax": 22.0, "nitro": 22.0, "accel": 9.0, "grip": 8.0, "drift_grip": 2.0, "turn": 1.9, "hp": 90.0},
 	# picape monstro (comprável): pesada, resistente, menos ágil
-	"monstro": {"len": 4.3, "wid": 2.1, "h": 0.8, "clr": 0.45, "mass": 1.45, "vmax": 39.0, "nitro": 52.0, "accel": 22.0, "grip": 9.2, "drift_grip": 1.9, "turn": 2.35, "hp": 175.0},
+	"monstro": {"len": 4.3, "wid": 2.1, "h": 0.8, "clr": 0.45, "mass": 1.5, "vmax": 42.5, "nitro": 58.0, "accel": 26.0, "grip": 10.2, "drift_grip": 1.9, "turn": 2.54, "hp": 245.0},
 	# carros dos mundos (um por tema, modernos)
-	"zefiro": {"len": 3.9, "wid": 2.05, "h": 0.6, "clr": 0.2, "mass": 1.0, "vmax": 41.5, "nitro": 58.0, "accel": 27.0, "grip": 10.0, "drift_grip": 1.6, "turn": 2.75, "hp": 95.0},
-	"jacare": {"len": 4.2, "wid": 2.15, "h": 0.68, "clr": 0.5, "mass": 1.4, "vmax": 39.0, "nitro": 54.0, "accel": 23.0, "grip": 9.4, "drift_grip": 1.9, "turn": 2.4, "hp": 160.0},
-	"escorpiao": {"len": 4.5, "wid": 2.25, "h": 0.63, "clr": 0.52, "mass": 1.35, "vmax": 41.0, "nitro": 56.0, "accel": 25.0, "grip": 9.6, "drift_grip": 1.8, "turn": 2.45, "hp": 150.0},
-	"nevasca": {"len": 3.95, "wid": 2.1, "h": 0.64, "clr": 0.42, "mass": 1.3, "vmax": 40.5, "nitro": 56.0, "accel": 25.0, "grip": 10.4, "drift_grip": 1.8, "turn": 2.6, "hp": 145.0},
-	"nemesis": {"len": 4.3, "wid": 2.2, "h": 0.59, "clr": 0.15, "mass": 1.2, "vmax": 43.5, "nitro": 60.0, "accel": 29.0, "grip": 10.8, "drift_grip": 1.7, "turn": 2.65, "hp": 120.0},
-	"falcao": {"len": 4.2, "wid": 1.95, "h": 0.56, "clr": 0.24, "mass": 1.05, "vmax": 44.0, "nitro": 61.0, "accel": 29.0, "grip": 10.6, "drift_grip": 1.6, "turn": 2.75, "hp": 110.0},
+	"zefiro": {"len": 3.9, "wid": 2.05, "h": 0.6, "clr": 0.2, "mass": 1.0, "vmax": 41.0, "nitro": 58.0, "accel": 28.0, "grip": 10.0, "drift_grip": 1.6, "turn": 2.76, "hp": 95.0},
+	"jacare": {"len": 4.2, "wid": 2.15, "h": 0.68, "clr": 0.5, "mass": 1.4, "vmax": 41.5, "nitro": 57.0, "accel": 25.5, "grip": 10.1, "drift_grip": 1.9, "turn": 2.56, "hp": 195.0},
+	"escorpiao": {"len": 4.5, "wid": 2.25, "h": 0.63, "clr": 0.52, "mass": 1.3, "vmax": 42.5, "nitro": 59.0, "accel": 27.0, "grip": 10.3, "drift_grip": 1.8, "turn": 2.66, "hp": 180.0},
+	"nevasca": {"len": 3.95, "wid": 2.1, "h": 0.64, "clr": 0.42, "mass": 1.3, "vmax": 43.0, "nitro": 59.0, "accel": 27.5, "grip": 11.0, "drift_grip": 1.8, "turn": 2.72, "hp": 190.0},
+	"nemesis": {"len": 4.3, "wid": 2.2, "h": 0.59, "clr": 0.15, "mass": 1.15, "vmax": 44.5, "nitro": 61.0, "accel": 29.5, "grip": 11.0, "drift_grip": 1.7, "turn": 2.76, "hp": 150.0},
+	"falcao": {"len": 4.2, "wid": 1.95, "h": 0.56, "clr": 0.24, "mass": 1.05, "vmax": 45.5, "nitro": 62.0, "accel": 30.5, "grip": 11.3, "drift_grip": 1.6, "turn": 2.86, "hp": 145.0},
 	# chefes (modelos ampliados 1,6x; vida alta, pesados)
 	"hyper": {"len": 4.1, "wid": 2.15, "h": 0.66, "clr": 0.18, "mass": 1.3, "vmax": 44.0, "nitro": 58.0, "accel": 28.0, "grip": 10.5, "drift_grip": 1.7, "turn": 2.6, "hp": 120.0},
 	"boss_brutus": {"len": 6.6, "wid": 3.45, "h": 1.06, "clr": 0.29, "mass": 4.0, "vmax": 41.0, "nitro": 50.0, "accel": 24.0, "grip": 10.0, "drift_grip": 2.4, "turn": 2.2, "hp": 1100.0},
@@ -81,6 +81,37 @@ const LBL_R := {"mine": "MINA", "oil": "ÓLEO", "spikes": "PREGOS", "barrel": "B
 const PLAYABLE := ["faisca", "vespa", "zefiro", "jacare", "trovao", "escorpiao", "monstro", "nevasca", "nemesis", "falcao"]
 const CAR_NAME := {"faisca": "FAÍSCA", "vespa": "VESPA", "trovao": "TROVÃO", "monstro": "MONSTRO", "zefiro": "ZÉFIRO",
 	"jacare": "JACARÉ", "escorpiao": "ESCORPIÃO", "nevasca": "NEVASCA", "nemesis": "NÊMESIS", "falcao": "FALCÃO"}
+## poder de fogo de cada arma de ataque (0..10), para os medidores da garagem e o balanceamento por preço
+const WPN_POWER := {"mg": 3.5, "zap": 4.5, "laser": 4.5, "rocket": 5.0, "harpoon": 5.0, "mortar": 5.5, "flame": 5.5,
+	"freeze": 6.0, "railgun": 6.5, "plasma": 7.0, "none": 0.0}
+const STAT_KEYS := ["spd", "acc", "han", "arm", "atk"]
+
+
+## notas 0..10 dos medidores da garagem, com a mesma conta da física (motor +4%, pneus +6%, blindagem +20%,
+## dano +25% e cadência +22% por nível). front = "" usa a arma do carro; "none" = sem arma de ataque.
+static func ratings(k: String, up: Dictionary, front := "") -> Dictionary:
+	var s: Dictionary = SPECS[k]
+	var em := 1.0 + 0.04 * int(up.get("engine", 0))
+	var tg := 1.0 + 0.06 * int(up.get("tires", 0))
+	var am := 1.0 + 0.2 * int(up.get("armor", 0))
+	var fk: String = front if front != "" else String(LOADOUT.get(k, ["none"])[0])
+	var atk := 0.0
+	if fk != "none":
+		atk = float(WPN_POWER.get(fk, 4.0)) + 0.5 * int(up.get("dmg", 0)) + 0.4 * int(up.get("rate", 0)) + 0.2 * int(up.get("ammo", 0))
+	return {
+		"spd": clampf((float(s.vmax) * em - 34.0) / 14.0 * 10.0, 0.3, 10.0),
+		"acc": clampf((float(s.accel) * em - 20.0) / 14.0 * 10.0, 0.3, 10.0),
+		"han": clampf(((float(s.grip) * tg - 8.5) / 4.0 * 0.6 + (float(s.turn) - 2.3) / 0.8 * 0.4) * 10.0, 0.3, 10.0),
+		"arm": clampf((float(s.hp) * am - 50.0) / 260.0 * 10.0, 0.3, 10.0),
+		"atk": clampf(atk, 0.0, 10.0),
+	}
+
+
+## nota geral (0..10): média da pilotagem com peso 3/4 e ataque 1/4 — cresce com o preço do carro
+static func overall(r: Dictionary) -> float:
+	return (float(r.spd) + float(r.acc) + float(r.han) + float(r.arm)) / 4.0 * 0.75 + float(r.atk) * 0.25
+
+
 const REAR := {"mine": {"name": "Minas", "cap": 3, "up": 1}, "oil": {"name": "Óleo", "cap": 3, "up": 1},
 	"spikes": {"name": "Pregos", "cap": 3, "up": 1}, "barrel": {"name": "Barril rolante", "cap": 3, "up": 1},
 	"smoke": {"name": "Cortina de fumaça", "cap": 3, "up": 1}, "mud": {"name": "Poça de lama", "cap": 3, "up": 1},
@@ -154,7 +185,8 @@ static var _tire_cache := {}
 static var refl_metal: Material = null   # passada de reflexo do metal (criada pelo main.gd)
 const WHEEL_W := {"faisca": 0.5, "trovao": 0.52, "vespa": 0.5, "picape": 0.5, "zefiro": 0.48, "jacare": 0.5, "escorpiao": 0.55,
 	"nevasca": 0.5, "nemesis": 0.52, "falcao": 0.48, "hyper": 0.5}
-const OFFROAD := ["picape", "jacare", "escorpiao", "nevasca"]   # pneus com cravos e para-barros no kit
+const OFFROAD := ["picape", "jacare", "escorpiao", "nevasca"]
+const STOCK_BULLBAR := ["picape", "jacare", "policia"]   # modelos com quebra-mato de fábrica   # pneus com cravos e para-barros no kit
 ## pneu por nível do upgrade: rua -> esportivo (perfil baixo) -> slick de corrida (nível 3: faixa na cor do kit)
 const TIRE_BY_LEVEL := ["street", "sport", "slick", "slick"]
 var _nitro_was := false
@@ -248,6 +280,9 @@ var wheels: Array = []
 var parts: Dictionary = {}
 var tier := 0                 # nível visual (0 = de fábrica .. 3 = elite), pela soma dos upgrades
 var _kit: Array = []
+var _lib: Node3D = null       # biblioteca de modelos (peças kit_*)
+var _accent: Material = null
+static var _ray_cache := {}
 const TIER_ACCENT := [Color("#d8dbe2"), Color("#ffffff"), Color("#ffcf33"), Color("#2ee6ff")]
 const TIER_RIM := [Color("#c9ccd4"), Color("#202227"), Color("#b0703a"), Color("#f2c230")]
 var paint: StandardMaterial3D
@@ -290,6 +325,7 @@ var scrape_v := Vector3.ZERO
 func setup(lib: Node3D, kind_: String, role_: String, col: Color) -> void:
 	kind = kind_
 	role = role_
+	_lib = lib
 	color = col
 	sp = SPECS[kind]
 	mass = 1000.0 * sp.mass
@@ -1426,6 +1462,74 @@ func _kit_cyl(r: float, h: float, pos: Vector3, mat: Material, rot := Vector3.ZE
 	return mi
 
 
+## distância (espaço do modelo) do ponto 'from' até a lataria ao longo de 'dir' (INF se não acertar). Usa as malhas
+## originais das peças (sem amassados) e guarda o resultado por modelo: serve para encaixar as peças do kit na lataria
+func _body_ray(from: Vector3, dir: Vector3, skip := ["spoiler"]) -> float:
+	var key := "%s|%.2f|%.2f|%.2f|%.1f|%.1f|%.1f|%d" % [mkind, from.x, from.y, from.z, dir.x, dir.y, dir.z, skip.size()]
+	if _ray_cache.has(key):
+		return _ray_cache[key]
+	var best := INF
+	for pn in parts:
+		if pn in skip:
+			continue
+		var mi: MeshInstance3D = parts[pn].mesh
+		var xf: Transform3D = Transform3D(Basis.from_euler(parts[pn].rot), parts[pn].base)
+		var inv := xf.affine_inverse()
+		var lf := inv * from
+		var ld := inv.basis * dir
+		var faces: PackedVector3Array = (parts[pn].orig as Mesh).get_faces()
+		for i in range(0, faces.size(), 3):
+			var hit = Geometry3D.ray_intersects_triangle(lf, ld, faces[i], faces[i + 1], faces[i + 2])
+			if hit != null:
+				best = minf(best, (xf * (hit as Vector3)).distance_to(from))
+	_ray_cache[key] = best
+	return best
+
+
+## altura da lataria em (x, z), olhando de cima (NAN se não houver nada)
+func _top_y(x: float, z: float, skip := ["spoiler"]) -> float:
+	var d := _body_ray(Vector3(x, 6.0, z), Vector3.DOWN, skip)
+	return 6.0 - d if d < INF else NAN
+
+
+## lateral da lataria (x > 0) na altura y e posição z
+func _side_x(y: float, z: float) -> float:
+	var d := _body_ray(Vector3(6.0, y, z), Vector3.LEFT)
+	return 6.0 - d if d < INF else float(sp.wid) / vscale * 0.5
+
+
+## frente (sinal +1) ou traseira (-1) da lataria em (x, y)
+func _end_z(x: float, y: float, sgn: float) -> float:
+	var d := _body_ray(Vector3(x, y, sgn * 8.0), Vector3(0, 0, -sgn))
+	return sgn * (8.0 - d) if d < INF else sgn * float(sp.len) / vscale * 0.5
+
+
+## peça modelada do kit (kit_* do minicars.glb), com os materiais do carro e KitAccent na cor do nível
+func _kit_part(nm: String, pos: Vector3, scl := Vector3.ONE, rot := Vector3.ZERO, tag := "", parent: Node3D = null) -> MeshInstance3D:
+	var src := _lib.get_node_or_null(nm) as MeshInstance3D if _lib else null
+	if src == null:
+		return null
+	var mi := MeshInstance3D.new()
+	mi.mesh = src.mesh
+	for si in mi.mesh.get_surface_count():
+		var sm := mi.mesh.surface_get_material(si)
+		if sm and sm.resource_name == "KitAccent" and _accent:
+			mi.set_surface_override_material(si, _accent)
+		else:
+			mi.set_surface_override_material(si, _car_mat(sm, _mat_cache))
+	mi.position = pos
+	mi.rotation = rot
+	mi.scale = scl
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	mi.set_meta("tag", tag)
+	(parent if parent else model).add_child(mi)
+	_kit.append(mi)
+	return mi
+
+
+## kit visual: aerodinâmica pelo nível (soma dos upgrades) e uma peça por upgrade, que muda a cada nível:
+## motor (tomada de ar -> compressor -> compressor grande), blindagem (quebra-mato -> chapas -> quebra-mato atrás),
+## mobilidade (1 a 3 garrafas de nitro), item de chão (lançador), munição (tambor), dano (colar) e cadência (respiros)
 func _build_kit(up: Dictionary) -> void:
 	for n in _kit:
 		if is_instance_valid(n):
@@ -1437,11 +1541,15 @@ func _build_kit(up: Dictionary) -> void:
 		tier = int(up["_tier"])
 	if role == "traffic" or model == null:
 		return
-	var Lc: float = sp.len
-	var Wc: float = sp.wid
-	var top: float = sp.clr + sp.h
-	var carbon := _kit_mat(Color(0.07, 0.075, 0.085), 0.3, 0.35)
-	var accent := _kit_mat(TIER_ACCENT[tier], 0.3, 0.2, 0.6 if tier == 3 else 0.0)
+	var stock: Dictionary = parts.get("spoiler", {})
+	if not stock.is_empty():
+		(stock.mesh as MeshInstance3D).visible = not bool(stock.off)
+	var Lm: float = float(sp.len) / vscale
+	var Wm: float = float(sp.wid) / vscale
+	var clr: float = float(sp.clr) / vscale
+	var hb: float = float(sp.h) / vscale
+	var ks := Wm / 2.1   # as peças foram modeladas para um carro de 2,1 m de largura
+	_accent = _kit_mat(TIER_ACCENT[tier], 0.3, 0.2, 0.6 if tier == 3 else 0.0)
 	# cor do aro por nível (o material "Rim" das rodas)
 	var rim := _kit_mat(TIER_RIM[tier], 0.2, 1.0)
 	for w in wheels:
@@ -1451,78 +1559,159 @@ func _build_kit(up: Dictionary) -> void:
 			if sm and sm.resource_name == "Rim":
 				mi.set_surface_override_material(si, rim)
 			elif sm and sm.resource_name == "TireStripe" and tier >= 2:
-				mi.set_surface_override_material(si, accent)
+				mi.set_surface_override_material(si, _accent)
 	var offroad: bool = mkind in OFFROAD or mkind == "vespa"
+	var fz := _end_z(0.0, clr + 0.08, 1.0)
+	var rz := _end_z(0.0, clr + 0.12, -1.0)
 	if tier >= 1:
-		# lâmina dianteira rente ao para-choque e filete na cor do kit encostado na lateral (entre as rodas)
-		_kit_box(Vector3(Wc * 0.84, 0.035, 0.2), Vector3(0, sp.clr + 0.02, Lc * 0.5 + 0.03), carbon)
+		# lâmina dianteira por baixo do para-choque e riscos de velocidade nas laterais
+		_kit_part("kit_splitter", Vector3(0, clr - 0.03, fz - 0.05), Vector3(Wm * 0.86 / 1.8, 1, 1), Vector3.ZERO, "tier")
+		var sy := clr + hb * 0.6
+		var sxw := maxf(_side_x(sy, 0.0), maxf(_side_x(sy, 0.45), _side_x(sy, -0.45)))
 		for sx: float in [-1.0, 1.0]:
-			_kit_box(Vector3(0.02, 0.06, Lc * 0.34), Vector3(sx * (Wc * 0.5 + 0.012), sp.clr + sp.h * 0.78, 0.0), accent)
+			_kit_part("kit_stripe", Vector3(sx * (sxw + 0.008), sy, 0.0), Vector3(1, 1, Lm / 4.0), Vector3.ZERO, "tier")
 	if tier >= 2 and offroad:
-		# buggy e picape: em vez de asa de pista, para-barros na cor do kit atrás das rodas traseiras
+		# buggy e picape: para-barros atrás das rodas traseiras em vez de asa de pista
 		for w in wheels:
-			var wb: Vector3 = w.base
+			var wb: Vector3 = w.get("vbase", w.base)
+			var wr := float(w.r) / vscale
 			if wb.z < 0.0:
-				var fl := _kit_box(Vector3(0.36, float(w.r) * 0.9, 0.03), Vector3(wb.x, float(w.r) * 0.75, wb.z - float(w.r) - 0.1), carbon)
-				_kit_box(Vector3(0.37, 0.05, 0.035), Vector3(0, float(w.r) * 0.3, 0), accent, Vector3.ZERO, fl)
+				_kit_part("kit_mudflap", Vector3(wb.x, wr * 1.25, wb.z - wr - 0.1), Vector3(1, wr * 1.15 / 0.4, 1), Vector3.ZERO, "tier")
 	elif tier >= 2:
-		var stock: Dictionary = parts.get("spoiler", {})
 		if not stock.is_empty():
 			(stock.mesh as MeshInstance3D).visible = false
-		var wy := top + (0.55 if tier == 3 else 0.42)
-		var wz := -Lc * 0.5 + 0.3
+		var wz := -Lm * 0.5 + 0.4
+		var dy := -INF
+		for x: float in [-0.5 * ks, 0.5 * ks]:
+			var y := _top_y(x, wz)
+			if not is_nan(y):
+				dy = maxf(dy, y)
+		if dy == -INF:
+			dy = clr + hb
+		_kit_part("kit_wing3" if tier >= 3 else "kit_wing2", Vector3(0, dy - 0.01, wz), Vector3(ks, 1, 1), Vector3.ZERO, "tier")
 		for sx: float in [-1.0, 1.0]:
-			_kit_box(Vector3(0.06, wy - top, 0.14), Vector3(sx * Wc * 0.28, top + (wy - top) * 0.5, wz), carbon)
-			# canards (aletinhas) nos cantos do para-choque
-			_kit_box(Vector3(0.26, 0.025, 0.16), Vector3(sx * Wc * 0.42, sp.clr + 0.22, Lc * 0.5 + 0.06), carbon, Vector3(0, 0, sx * 0.25))
-		var ww := Wc * (1.08 if tier == 3 else 0.96)
-		_kit_box(Vector3(ww, 0.05, 0.46), Vector3(0, wy, wz), carbon, Vector3(-0.14, 0, 0))
-		for sx: float in [-1.0, 1.0]:
-			_kit_box(Vector3(0.035, 0.26, 0.52), Vector3(sx * ww * 0.5, wy - 0.04, wz), accent)
+			var cx := sx * Wm * 0.4
+			var cz := _end_z(cx, clr + 0.22, 1.0)
+			_kit_part("kit_canard", Vector3(cx, clr + 0.22, cz - 0.05), Vector3.ONE, Vector3(0, 0, sx * 0.25), "tier")
 	if tier >= 3:
-		# neon embaixo do carro (cor do carro, brilha no chão)
-		var neon := _kit_mat(color.lightened(0.2), 1.0, 0.0, 3.0)
+		# neon embaixo do carro: tubos brilhando e a luz no chão (cor do carro)
+		var nc := color.lightened(0.25)
+		var neon := _kit_mat(nc, 1.0, 0.0, 3.0)
 		neon.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		_kit_box(Vector3(Wc * 0.84, 0.02, Lc * 0.8), Vector3(0, sp.clr - 0.05, 0), neon)
-	# upgrades individuais
-	var armor := int(up.get("armor", 0))
-	if armor >= 2 and mkind != "trovao":   # o Trovão já vem com placas de fábrica
-		var plate := _kit_mat(Color(0.32, 0.34, 0.37), 0.45, 0.8)
 		for sx: float in [-1.0, 1.0]:
-			# encostada na porta (antes ficava 7 cm para fora, flutuando)
-			_kit_box(Vector3(0.05, sp.h * 0.44, Lc * 0.32), Vector3(sx * (Wc * 0.5 + 0.03), sp.clr + sp.h * 0.4, 0.0), plate)
-			for k in 3:
-				_kit_cyl(0.035, 0.03, Vector3(sx * (Wc * 0.5 + 0.06), sp.clr + sp.h * 0.4, (k - 1) * Lc * 0.11), _kit_mat(Color(0.75, 0.75, 0.78), 0.2, 1.0), Vector3(0, 0, PI / 2))
-	var nit := int(up.get("nitro", 0))
-	if nit >= 2:
-		var blue := _kit_mat(Color("#2f7dff"), 0.25, 0.6, 0.4)
-		for sx: float in [-1.0, 1.0]:
-			_kit_cyl(0.1, 0.45, Vector3(sx * 0.24, top + 0.1, -Lc * 0.5 + 0.45), blue, Vector3(PI / 2, 0, 0))
+			_kit_box(Vector3(0.035, 0.035, Lm * 0.56), Vector3(sx * Wm * 0.36, clr - 0.03, 0.0), neon)
+		var glow := MeshInstance3D.new()
+		var pm := PlaneMesh.new()
+		pm.size = Vector2(Wm * 1.7, Lm * 1.2)
+		glow.mesh = pm
+		var gm := StandardMaterial3D.new()
+		gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		gm.albedo_texture = _glow_tex()
+		gm.albedo_color = Color(nc.r, nc.g, nc.b, 0.55)
+		glow.material_override = gm
+		glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		glow.position = Vector3(0, 0.025, 0)
+		model.add_child(glow)
+		_kit.append(glow)
+	# ---- uma peça por upgrade (o nível muda a peça)
 	var eng := int(up.get("engine", 0))
-	if eng >= 2:
-		var chrome := _kit_mat(Color(0.85, 0.86, 0.9), 0.15, 1.0)
-		_kit_box(Vector3(0.42, 0.18, 0.4), Vector3(0, top + 0.02, Lc * 0.5 - 0.95), chrome)
-		_kit_box(Vector3(0.34, 0.14, 0.12), Vector3(0, top + 0.16, Lc * 0.5 - 0.82), carbon)
-	# arma de ataque melhorada: cano reforçado (dano) e carregador extra (cadência)
-	if weapon_node and front_type != "none":
+	if eng >= 1:
+		var hz := Lm * 0.5 - 0.95
+		if parts.has("hood"):
+			hz = (parts.hood.center as Vector3).z
+		var hy := _top_y(0.0, hz)
+		if not is_nan(hy):
+			var yf := _top_y(0.0, hz + 0.25)
+			var yb := _top_y(0.0, hz - 0.25)
+			var pitch := atan2(yb - yf, 0.5) if not (is_nan(yf) or is_nan(yb)) else 0.0
+			var nm: String = ["kit_scoop", "kit_blower", "kit_blower3"][mini(eng, 3) - 1]
+			_kit_part(nm, Vector3(0, hy - 0.015, hz), Vector3.ONE, Vector3(pitch, 0, 0), "engine")
+	# blindagem: quebra-mato na frente (se o modelo não tiver um de fábrica), chapas nas portas (o Trovão já tem)
+	# e quebra-mato atrás, na ordem, um item por nível
+	var armor := int(up.get("armor", 0))
+	var arm_items: Array = []
+	if not mkind in STOCK_BULLBAR:
+		arm_items.append("front")
+	if mkind != "trovao":
+		arm_items.append("plates")
+	arm_items.append("rear")
+	for ai in arm_items.slice(0, mini(armor, arm_items.size())):
+		match ai:
+			"front":
+				_kit_part("kit_bullbar", Vector3(0, clr - 0.04, fz + 0.03), Vector3(ks, 1, 1), Vector3.ZERO, "armor")
+			"plates":
+				var py := clr + hb * 0.4
+				var px := maxf(_side_x(py, -0.4), maxf(_side_x(py, 0.0), _side_x(py, 0.4)))
+				for sx: float in [-1.0, 1.0]:
+					_kit_part("kit_armor", Vector3(sx * (px + 0.005), py, 0.0), Vector3(1, hb * 0.44 / 0.255, Lm * 0.32 / 1.36), Vector3(0, 0.0 if sx > 0 else PI, 0), "armor")
+			"rear":
+				_kit_part("kit_bullbar", Vector3(0, clr - 0.04, rz - 0.03), Vector3(ks, 1, 1), Vector3(0, PI, 0), "armor")
+	var nit := int(up.get("nitro", 0))
+	if nit >= 1:
+		var xs: Array = [[0.0], [-0.2, 0.2], [-0.27, 0.0, 0.27]][mini(nit, 3) - 1]
+		var cz := -Lm * 0.5 + 0.66
+		# carro de traseira curta (hatch/SUV): garrafas deitadas de lado no teto, atrás da torre
+		var cab_rear := -INF
+		if parts.has("cabin"):
+			cab_rear = (parts.cabin.mesh as MeshInstance3D).get_aabb().position.z + (parts.cabin.base as Vector3).z
+		var deck_ok: bool = not parts.has("cabin") or cab_rear > cz + 0.3
+		for i in xs.size():
+			var x: float = xs[i]
+			if deck_ok:
+				var y := -INF
+				for dz: float in [-0.2, 0.0, 0.2]:
+					for dx: float in [-0.08, 0.08]:
+						var yy := _top_y(x + dx, cz + dz)
+						if not is_nan(yy):
+							y = maxf(y, yy)
+				_kit_part("kit_nos", Vector3(x, (y if y > -INF else clr + hb) - 0.01, cz), Vector3.ONE, Vector3.ZERO, "nitro")
+			else:
+				var rzz := maxf(mount_local.z / vscale - 0.48 - i * 0.24, cab_rear + 0.14)
+				var ry := _top_y(0.0, rzz)
+				_kit_part("kit_nos", Vector3(0, (ry if not is_nan(ry) else clr + hb + 0.5) - 0.01, rzz), Vector3(0.9, 0.9, 0.9), Vector3(0, PI / 2, 0), "nitro")
+	if int(up.get("rear", 0)) >= 1 and rear_type != "none":
+		var rl := int(up.get("rear", 0))
+		_kit_part("kit_dispenser", Vector3(0, clr + 0.1, rz - 0.04), Vector3(0.8 + 0.12 * rl, 1, 1), Vector3.ZERO, "rear")
+	# arma de ataque melhorada: colar de dissipação (dano), respiros (cadência) e tambor (munição)
+	if weapon_node and front_type != "none" and wpn_gun:
 		var dl := int(up.get("dmg", 0))
-		var rl := int(up.get("rate", 0))
+		var rl2 := int(up.get("rate", 0))
+		var al := int(up.get("ammo", 0))
 		var pb := _pod_box()
-		# só o "miolo" do corpo (sem esfera, tanques altos ou mira)
 		pb = AABB(Vector3(maxf(pb.position.x, -0.2), maxf(pb.position.y, -0.13), pb.position.z), Vector3(minf(pb.size.x, 0.4), minf(pb.size.y, 0.26), pb.size.z))
 		if dl >= 1:
-			# DANO: cinta laranja de dissipação abraçando o corpo da arma (mais larga por nível)
-			var hot := _kit_mat(Color("#ff6a1a"), 0.35, 0.5, 0.25 * dl)
-			_kit_box(Vector3(pb.size.x + 0.04, pb.size.y + 0.03, 0.05 + 0.03 * dl), pb.get_center() + Vector3(0, 0, pb.size.z * 0.12), hot, Vector3.ZERO, wpn_gun)
-		if rl >= 1:
-			# CADÊNCIA: respiros azuis nas laterais do corpo (um par por nível)
-			var cool := _kit_mat(Color("#2ee6ff"), 0.3, 0.4, 0.35 * rl)
-			for k in rl:
-				for sx: float in [-1.0, 1.0]:
-					_kit_box(Vector3(0.03, pb.size.y * 0.4, 0.07), Vector3(pb.get_center().x + sx * (pb.size.x * 0.5 + 0.012), pb.get_center().y, pb.get_center().z - 0.12 + k * 0.11), cool, Vector3.ZERO, wpn_gun)
-	if int(up.get("ammo", 0)) >= 2 and wpn_gun and front_type != "none":
-		var pb3 := _pod_box()
-		_kit_cyl(0.11, 0.16, Vector3(pb3.end.x + 0.08, pb3.position.y + 0.12, pb3.get_center().z - pb3.size.z * 0.15), _kit_mat(Color("#c8a43a"), 0.35, 0.8), Vector3(0, 0, PI / 2), wpn_gun)
+			_kit_part("kit_heatsink", pb.get_center() + Vector3(0, 0, pb.size.z * 0.12), Vector3(pb.size.x + 0.04, pb.size.y + 0.03, 0.05 + 0.03 * dl), Vector3.ZERO, "dmg", wpn_gun)
+		for k in rl2:
+			for sx: float in [-1.0, 1.0]:
+				_kit_part("kit_vent", Vector3(pb.get_center().x + sx * (pb.size.x * 0.5 + 0.014), pb.get_center().y, pb.get_center().z - 0.12 + k * 0.11), Vector3.ONE, Vector3.ZERO, "rate", wpn_gun)
+		if al >= 1:
+			var ds := 0.75 + 0.12 * mini(al, 2)
+			_kit_part("kit_drum", Vector3(pb.end.x + 0.08 * ds, pb.position.y + 0.12, pb.get_center().z - pb.size.z * 0.15), Vector3.ONE * ds, Vector3.ZERO, "ammo", wpn_gun)
+			if al >= 3:
+				_kit_part("kit_drum", Vector3(pb.position.x - 0.08 * ds, pb.position.y + 0.12, pb.get_center().z - pb.size.z * 0.15), Vector3.ONE * ds, Vector3.ZERO, "ammo", wpn_gun)
+
+
+static var _glow_cache: Texture2D = null
+
+
+static func _glow_tex() -> Texture2D:
+	if _glow_cache == null:
+		var g := GradientTexture2D.new()
+		g.fill = GradientTexture2D.FILL_RADIAL
+		g.fill_from = Vector2(0.5, 0.5)
+		g.fill_to = Vector2(0.5, 0.0)
+		g.width = 128
+		g.height = 128
+		var gr := Gradient.new()
+		gr.set_color(0, Color(1, 1, 1, 1))
+		gr.set_color(1, Color(1, 1, 1, 0))
+		gr.add_point(0.45, Color(1, 1, 1, 0.45))
+		g.gradient = gr
+		_glow_cache = g
+	return _glow_cache
+
 
 
 ## encostado na mureta: o carro não "sobe" nela nem é lançado para fora (tira a velocidade para cima

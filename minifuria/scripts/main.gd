@@ -5,7 +5,7 @@ extends Node3D
 const LAPS := 3
 const PRIZE := [1000, 650, 400, 250, 120]
 const KILL_BONUS := 150
-const UP_PRICE := [400, 900, 1600]
+const UP_PRICE := [450, 1000, 1800]
 const CAM_YAW := PI / 4.0
 const CAM_PITCH := 0.62
 const CAM_DIST := 70.0   # câmera ortográfica: mais perto = sombras do sol cobrindo a tela toda
@@ -61,6 +61,17 @@ var race_end_t := -1.0     # multijogador: depois que o 1º humano termina, a co
 ## paleta da garagem (cor da pintura do seu carro)
 const PAINT_COLORS := ["#e8352b", "#ff7a1a", "#ffcf33", "#7dff6a", "#1fae5b", "#2ee6ff", "#2f6fd6", "#5b3df0", "#c04de0", "#ff4fa3", "#f4f2ff", "#2a2a33"]
 const HUMAN_COLORS := ["#e8352b", "#2f6fd6", "#2fbf71", "#ffb31a", "#c04de0", "#ff7a1a", "#2ee6ff", "#f2f2f2"]
+## carreira: upgrades dos rivais por mundo (curva de dificuldade) e carros de apoio da mesma faixa de preço
+const RIVAL_UP := {"engine": [0, 0, 1, 1, 2, 2], "armor": [0, 0, 1, 1, 2, 2], "tires": [0, 1, 1, 2, 2, 3],
+	"dmg": [0, 0, 0, 1, 1, 2], "rate": [0, 0, 0, 0, 1, 1]}
+const WORLD_SUPPORT := [
+	[["faisca", "#ff7a1a", "FAGULHA"], ["vespa", "#2fbf71", "JARARACA"]],
+	[["vespa", "#ffb31a", "VESPA"], ["trovao", "#2f6fd6", "TROVÃO"]],
+	[["trovao", "#8a5cd6", "CORISCO"], ["jacare", "#7a8f3a", "ARRAIA"]],
+	[["escorpiao", "#c9473a", "DUNA"], ["monstro", "#3d8bd6", "ROLO"]],
+	[["monstro", "#e2553b", "BRUTA"], ["nevasca", "#bfe6ff", "GEADA"]],
+	[["nevasca", "#7fc8d9", "CRISTAL"], ["nemesis", "#ff4fa3", "VOLT"]],
+]
 const MORE_AI := [
 	{"kind": "faisca", "color": "#6b6f7a", "name": "FUMAÇA"},
 	{"kind": "trovao", "color": "#d6455c", "name": "BRASA"},
@@ -418,8 +429,27 @@ func _ui_shots() -> void:
 			await get_tree().process_frame
 		get_viewport().get_texture().get_image().save_png("user://ui_loader.png")
 		loader.visible = false
-	for scr in ["menu", "tracks", "garage", "local", "online", "config", "config2", "pause", "career", "world", "garage2"]:
-		if scr == "garage2":
+	var only := ""
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--only="):
+			only = a.substr(7)
+	for scr in ["menu", "tracks", "garage", "local", "online", "config", "config2", "pause", "career", "world", "garage2", "garage3", "garage4", "garage5", "results"]:
+		if only != "" and not scr in only.split(","):
+			continue
+		if scr == "garage3":
+			# peça selecionada: prévia do próximo nível no carro e nos medidores
+			hud.garage_ui._part_sel("engine")
+		elif scr == "garage4":
+			hud.garage_ui._set_tab("arsenal")
+		elif scr == "garage5":
+			hud.garage_ui._set_tab("paint")
+			hud.garage_ui._car_view("nemesis")
+		elif scr == "results":
+			career_lines = ["+10 PONTOS", "MUNDO 1 · 24 / 24", "CHEFE LIBERADO!"]
+			hud.set_results("VITÓRIA!", [["flag", "1:32.40", "TEMPO"], ["spd", "0:29.81", "MELHOR VOLTA"], ["skull", "3", "DESTRUÍDOS"],
+				["han", "2.4s", "MAIOR DRIFT"], ["jump", "1.1s", "MAIOR PULO"]], career_lines, 1000, int(save.cash))
+			hud.show_screen("results")
+		elif scr == "garage2":
 			# garagem no modo história (carro novo: só o item de chão)
 			career.event = {"world": 0, "track": 0, "boss": false}
 			hud.show_screen("garage")
@@ -1223,7 +1253,7 @@ func _spawn_cars() -> void:
 		var bc := _make_car(String(wd.boss), "rival", Color(String(wd.boss_col)))
 		bc.display_name = String(wd.boss_name)
 		bc.seed_f = 0.3
-		bc.cruise = 38.5 + int(ev.world) * 0.8
+		bc.cruise = 38.5 + int(ev.world) * 1.0
 		bc.ai_skill = 1.02
 		bc.next_bash = 4.0
 		bc.configure(lib, "none", "none", "short", {"engine": 0, "armor": 0, "_tier": 3, "_tire_vis": 3})
@@ -1244,6 +1274,10 @@ func _spawn_cars() -> void:
 		if not ev.is_empty() and i % 2 == 0:
 			var wr: Array = WORLD_RIVAL[int(ev.world)]
 			r = {"kind": wr[0], "color": wr[1], "name": wr[2] if i == 0 else String(wr[2]) + " II"}
+		elif not ev.is_empty():
+			# carreira: os outros rivais correm com carros da mesma faixa de preço do mundo
+			var sr: Array = WORLD_SUPPORT[int(ev.world)][(i / 2) % 2]
+			r = {"kind": sr[0], "color": sr[1], "name": sr[2]}
 		elif ev.is_empty() and i % 3 == 1:
 			var wr2: Array = WORLD_RIVAL[(track_idx + i) % WORLD_RIVAL.size()]
 			r = {"kind": wr2[0], "color": wr2[1], "name": wr2[2]}
@@ -1254,12 +1288,14 @@ func _spawn_cars() -> void:
 		c.ai_skill = randf_range(0.95, 1.03) if session.kind != "online" else 0.99 + 0.01 * (i % 3)
 		c.next_bash = 6.0 + i * 3.0
 		var lv := clampi(track_idx / 3 + (i % 3), 0, 3)
+		var rup := {"engine": lv / 2, "armor": lv / 2, "ammo": 0, "nitro": 0, "tires": lv / 2, "_tier": lv, "_tire_vis": lv, "dmg": 0, "rate": 0}
 		if wlv >= 0:
-			# carreira: rivais mais fortes a cada mundo (motor, blindagem e pneus)
+			# carreira: rivais mais fortes a cada mundo, numa curva suave (velocidade de cruzeiro e upgrades)
+			var w := int(ev.world)
 			lv = clampi(wlv + (i % 2), 0, 3)
-			c.cruise = 36.5 + wlv * 1.3 + i * 0.4
-		var rup := {"engine": lv / 2 + (1 if wlv >= 2 else 0), "armor": lv / 2, "ammo": 0, "nitro": 0, "tires": lv / 2, "_tier": lv, "_tire_vis": lv,
-			"dmg": maxi(0, wlv - 2) if wlv >= 0 else 0, "rate": maxi(0, wlv - 3) if wlv >= 0 else 0}
+			c.cruise = 36.2 + w * 0.95 + i * 0.35
+			rup = {"engine": mini(3, RIVAL_UP.engine[w] + i % 2), "armor": RIVAL_UP.armor[w], "tires": RIVAL_UP.tires[w], "ammo": 0, "nitro": 0,
+				"dmg": RIVAL_UP.dmg[w], "rate": RIVAL_UP.rate[w], "_tier": lv, "_tire_vis": lv}
 		var lo: Array = Car.LOADOUT.get(String(r.kind), ["mg", "oil", "short"])
 		# especial dos rivais: no modo história só a partir do 2º mundo
 		var rsp := ""
@@ -2464,20 +2500,17 @@ func _show_results() -> void:
 			rows.append("%dº  %s%s   %s   ·   %d destruídos" % [i + 1, c.display_name, "  (você)" if c.local_idx >= 0 and locals.size() == 1 else "", tm, int(c.get_meta("kills", 0))])
 		if locals.size() > 1:
 			hud.res_title.text = "%s VENCEU!" % (order[0] as Car).display_name
+		hud.set_results(hud.res_title.text, [], [], int(stats.prize), int(save.cash))
 		hud.res_list.text = "\n".join(rows)
-		hud.res_cash.text = "+$%d   (total $%d)" % [int(stats.prize), int(save.cash)]
 		hud.show_screen("results")
 		if auto_test:
 			get_tree().quit()
 		return
-	var lines := [
-		"Tempo total   %s" % _fmt(race_t), "Melhor volta   %s" % _fmt(best_lap),
-		"Destruídos   %d  (takedowns %d)" % [stats.kills, stats.takedowns], "Quedas   %d   ·   Destruições sofridas   %d" % [stats.falls, stats.deaths],
-		"Maior drift   %.1fs   ·   Maior pulo   %.1fs" % [stats.best_drift, stats.air], "Pontos   %d" % stats.score]
-	hud.res_list.text = "\n".join(lines)
-	hud.res_cash.text = "+$%d   (total $%d)" % [int(stats.prize), int(save.cash)]
+	var tiles := [["flag", _fmt(race_t), "TEMPO"], ["spd", _fmt(best_lap), "MELHOR VOLTA"], ["skull", str(int(stats.kills)), "DESTRUÍDOS"],
+		["han", "%.1fs" % float(stats.best_drift), "MAIOR DRIFT"], ["jump", "%.1fs" % float(stats.air), "MAIOR PULO"]]
+	hud.res_list.text = ""
+	hud.set_results(hud.res_title.text, tiles, career_lines, int(stats.prize), int(save.cash))
 	if career_lines.size() > 0:
-		hud.res_list.text += "\n\n" + "\n".join(career_lines)
 		if auto_test:
 			print("CAREER ", career_lines, " unlocked=", save.career.unlocked)
 	hud.show_screen("results")

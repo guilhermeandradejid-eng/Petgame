@@ -105,6 +105,11 @@ static func _pop(b: Button, on: bool) -> void:
 	b.pivot_offset = b.size * 0.5
 	var tw := b.create_tween()
 	tw.tween_property(b, "scale", Vector2(1.05, 1.05) if on else Vector2.ONE, 0.09).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if b.has_meta("no_arrow"):
+		var ic = b.get_meta("icon_node", null)
+		if ic and is_instance_valid(ic):
+			(ic as Icon).set_icon((ic as Icon).icon, (INK if b.get_meta("primary", false) else Color.WHITE) if on else b.get_meta("icon_col", TEXT))
+		return
 	var t: String = b.text
 	if on and not t.begins_with("▸ "):
 		b.text = "▸ " + t
@@ -228,3 +233,89 @@ static func checker(parent: Node, w := 260.0, h := 10.0) -> Control:
 		)
 	parent.add_child(c)
 	return c
+
+
+## botão com ícone vetorial à esquerda (sem a seta de foco: o ícone muda de cor)
+static func icon_button(txt: String, icon: String, primary: bool, fs: int, w: float, h: float) -> Button:
+	var b := Button.new()
+	b.text = txt
+	b.custom_minimum_size = Vector2(w, h)
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.set_meta("no_arrow", true)
+	b.set_meta("primary", primary)
+	style_button(b, primary, fs)
+	var icol := INK if primary else TEXT
+	b.set_meta("icon_col", icol)
+	for st in ["normal", "hover", "focus", "pressed", "disabled"]:
+		var sb := b.get_theme_stylebox(st) as StyleBoxFlat
+		if sb:
+			sb = sb.duplicate()
+			sb.content_margin_left = h * 0.62 + 26 if txt != "" else 0
+			b.add_theme_stylebox_override(st, sb)
+	var ic := Icon.make(icon, h * 0.5, icol)
+	ic.position = Vector2(h * 0.3, h * 0.22) if txt != "" else Vector2((w - h * 0.5) * 0.5, h * 0.22)
+	b.add_child(ic)
+	b.set_meta("icon_node", ic)
+	return b
+
+
+static var _outline_cache := {}
+
+
+## traçado da pista (vista isométrica como no jogo), normalizado em [0,1]x[0,1] mantendo a proporção
+static func track_outline(i: int) -> PackedVector2Array:
+	if _outline_cache.has(i):
+		return _outline_cache[i]
+	var pts: Array = TrackData.TRACKS[i].pts
+	var n := pts.size()
+	var raw := PackedVector2Array()
+	for k in n:
+		var p0: Array = pts[(k - 1 + n) % n]
+		var p1: Array = pts[k]
+		var p2: Array = pts[(k + 1) % n]
+		var p3: Array = pts[(k + 2) % n]
+		for j in 8:
+			var t := j / 8.0
+			var a := Vector2(p0[0], p0[1])
+			var b := Vector2(p1[0], p1[1])
+			var c := Vector2(p2[0], p2[1])
+			var d := Vector2(p3[0], p3[1])
+			var q := 0.5 * ((2.0 * b) + (c - a) * t + (2.0 * a - 5.0 * b + 4.0 * c - d) * t * t + (3.0 * b - a - 3.0 * c + d) * t * t * t)
+			raw.append(Vector2((q.x - q.y) * 0.7071, (q.x + q.y) * 0.7071 * 0.62))
+	raw.append(raw[0])
+	var mn := Vector2(1e9, 1e9)
+	var mx := Vector2(-1e9, -1e9)
+	for q in raw:
+		mn = mn.min(q)
+		mx = mx.max(q)
+	var sz := mx - mn
+	var sc := 1.0 / maxf(sz.x, sz.y)
+	var off := (Vector2.ONE - sz * sc) * 0.5
+	var out := PackedVector2Array()
+	for q in raw:
+		out.append((q - mn) * sc + off)
+	_outline_cache[i] = out
+	return out
+
+
+## desenha o traçado da pista 'i' dentro de 'rc' (contorno escuro, faixa clara e a largada)
+static func draw_track(ci: CanvasItem, i: int, rc: Rect2, col := Color.WHITE, w := 4.0) -> void:
+	var o := track_outline(i)
+	var pts := PackedVector2Array()
+	var s := minf(rc.size.x, rc.size.y)
+	var org := rc.position + (rc.size - Vector2(s, s)) * 0.5
+	for q in o:
+		pts.append(org + q * s)
+	ci.draw_polyline(pts, Color(0, 0, 0, 0.55), w + 3.0, true)
+	ci.draw_polyline(pts, col, w, true)
+	ci.draw_circle(pts[0], w * 0.9 + 1.5, HOT)
+
+
+## ícones dos elementos da pista (loop, salto, espiral, saca-rolhas)
+static func track_feats(i: int) -> Array:
+	var out: Array = []
+	for f in (TrackData.TRACKS[i].feat as Dictionary).values():
+		var k := String(f[0])
+		if not out.has(k):
+			out.append(k)
+	return out

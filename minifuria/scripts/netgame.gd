@@ -9,6 +9,7 @@ const SEND_HZ := 20.0
 const DELAY := 0.1
 const K_STATE := 1
 const CAR_NAMES := Car.CAR_NAME
+var car_th: TextureRect
 
 var game: Node
 var hud: Hud
@@ -163,7 +164,15 @@ func _build_lobby() -> void:
 	lobby_list.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var r1 := _row(v)
 	hud._btn("<", r1, false, 60, 52).pressed.connect(func(): _cycle_car(-1))
-	car_l = hud._label(22, Color("#2ee6ff"), Color(0, 0, 0, 0.6), r1)
+	var cv := VBoxContainer.new()
+	cv.add_theme_constant_override("separation", -6)
+	r1.add_child(cv)
+	car_th = TextureRect.new()
+	car_th.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	car_th.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	car_th.custom_minimum_size = Vector2(220, 110)
+	cv.add_child(car_th)
+	car_l = hud._label(22, Color("#2ee6ff"), Color(0, 0, 0, 0.6), cv)
 	car_l.custom_minimum_size = Vector2(220, 0)
 	car_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hud._btn(">", r1, false, 60, 52).pressed.connect(func(): _cycle_car(1))
@@ -421,6 +430,8 @@ func _refresh_lobby() -> void:
 			"  (você)" if id == net.my_id else "", "  · FALANDO" if voice.is_talking(id) else ""])
 	lobby_list.text = "\n".join(lines) + "\n%d/%d pessoas · ping %d ms" % [ids.size(), int(net.room.max), int(net.ping_ms)]
 	car_l.text = CAR_NAMES.get(my_car, my_car)
+	if hud.show3d and Car.LOADOUT.has(my_car):
+		hud.show3d.thumb("car:" + my_car, car_th)
 	var td: Dictionary = TrackData.TRACKS[clampi(sel_track, 0, TrackData.TRACKS.size() - 1)]
 	track_b.text = "PISTA: %s" % String(td.name).to_upper()
 	ai_b.text = "IA: %s" % ("COMPLETA O GRID" if ai_fill else "SEM IA")

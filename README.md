@@ -71,7 +71,7 @@ Referências de game design: **Rock n' Roll Racing** (armas e nitro limitados qu
 
 ## Fluxo do jogo
 
-Menu → **escolha da pista** (10) → **garagem** → corrida de 3 voltas contra 4 rivais armados → **resultado** com prêmio em dinheiro → próxima pista. O progresso (dinheiro, upgrades, equipamento, melhores colocações) fica salvo.
+Menu → **escolha da pista** → **garagem (vitrine 3D)** → corrida de 3 voltas contra 4 rivais armados → **resultado** com prêmio em dinheiro → próxima pista. O progresso (dinheiro, upgrades, equipamento, melhores colocações) fica salvo.
 
 - **Carros**: Faísca (equilibrado), Trovão (pesado e blindado), Vespa (rápida e ágil, mas frágil).
 - **Arma frontal**: Metralhadora (60 tiros por volta, mira automática no cone da frente) ou Lança-foguetes (4 por volta, teleguiado leve, explosão em área).
@@ -151,7 +151,7 @@ Referências: [Coasterpedia: Heartline roll](https://coasterpedia.net/wiki/Heart
   - nível 1: splitter dianteiro, faixa lateral e aro preto;
   - nível 2: asa traseira com pilares, canards e aro bronze (o aerofólio de fábrica sai);
   - nível 3: asa grande com placas coloridas, neon embaixo do carro e aro dourado.
-- **Cada upgrade aparece no carro**: blindagem nível 2+ coloca placas parafusadas nas portas, nitro 2+ põe cilindros azuis atrás, motor 2+ põe um blower cromado no capô e munição 2+ põe um tambor extra na arma.
+- **Cada upgrade aparece no carro** com peças modeladas que mudam a cada nível (veja **Kit de upgrades modelado**).
 
 ## Carros remodelados
 
@@ -160,7 +160,7 @@ Os carros foram refeitos do zero (`build_car2` em `blender/build_assets.py`):
 - **Rodas embutidas**: a face do pneu fica rente à lateral, as caixas de roda são recortadas na lataria e a linha de cintura passa acima da roda (sem para-lama "de Fusca").
 - **Cabine em estufa**: vidro inclinado para dentro, colunas e teto na cor do carro.
 - **Portas**: só vincos gravados na lataria, maçaneta e retrovisor; friso cromado e saia lateral.
-- **Silhuetas de combate distintas**: Faísca esportivo em cunha com asa; Vespa trophy truck com gaiola e estepe; Trovão muscle blindado com blower, janelas em fresta e chapas rebitadas; Monstro picape alta com caçamba, chaminés e para-choque de impulsão; hipercarro elétrico (chefe BRUTUS) com corcovas sobre as rodas dianteiras, LED de ponta a ponta, bolha de vidro e asa; e mais sedã, táxi e viatura. A van com baú saiu.
+- **Silhuetas de combate distintas**: Faísca esportivo em cunha com asa; Vespa trophy truck com gaiola e estepe; Trovão muscle blindado com janelas em fresta e chapas rebitadas (o compressor e o quebra-mato agora vêm dos upgrades); Monstro picape alta com caçamba, chaminés e para-choque de impulsão; hipercarro elétrico (chefe BRUTUS) com corcovas sobre as rodas dianteiras, LED de ponta a ponta, bolha de vidro e asa; e mais sedã, táxi e viatura. A van com baú saiu.
 - **Cor da pintura**: paleta de 12 cores na garagem. A cor fica salva e vale no solo, na carreira, para o P1 no local e no online (os outros veem a sua cor).
 
 ## Pneus (upgrade PNEUS) e materiais
@@ -241,31 +241,31 @@ Inspirada no Rock n' Roll Racing (menu **CARREIRA**). Módulos: `career.gd` (reg
 
 | Mundo | Pistas | Pontos p/ chefe | Chefe (pista) | Prêmios |
 |---|---|---|---|---|
-| 1 · PARQUE | Lago Azul, Circuito do Parque, Trilha do Bosque, Colina dos Ventos | 24 | BRUTUS (Circuito do Parque) | x1,0 |
-| 2 · PÂNTANO | Brejo das Garças, Raízes Retorcidas, Pântano Sombrio, Ponte Podre | 28 | CROCODILO DO BREJO (Pântano Sombrio) | x1,4 |
-| 3 · DESERTO | Dunas Altas, Cânion do Deserto, Mesa Vermelha, Desfiladeiro | 30 | XERIFE DE AÇO (Cânion) | x1,8 |
-| 4 · NEVE | Lago Congelado, Pico Nevado, Trilha do Yeti, Avalanche | 32 | AVALANCHE (Pico Nevado) | x2,2 |
-| 5 · CIDADE NEON | Cidade Neon, Viaduto, Centro Financeiro, Túnel de Neon | 34 | BLACKOUT (Cidade Neon) | x2,7 |
-| 6 · CÉU | Estratosfera, Nuvem Nove, Arco-íris, Espiral do Céu | 36 | O IMPERADOR (Estratosfera) | x3,2 |
+| 1 · PARQUE | Lago Azul, Circuito do Parque, Trilha do Bosque, Colina dos Ventos | 24 | BRUTUS (Circuito do Parque) | x1,0 · chefe $3.000 |
+| 2 · PÂNTANO | Brejo das Garças, Raízes Retorcidas, Pântano Sombrio, Ponte Podre | 28 | CROCODILO DO BREJO (Pântano Sombrio) | x1,5 · chefe $5.000 |
+| 3 · DESERTO | Dunas Altas, Cânion do Deserto, Mesa Vermelha, Desfiladeiro | 30 | XERIFE DE AÇO (Cânion) | x2,1 · chefe $7.500 |
+| 4 · NEVE | Lago Congelado, Pico Nevado, Trilha do Yeti, Avalanche | 32 | AVALANCHE (Pico Nevado) | x2,8 · chefe $10.000 |
+| 5 · CIDADE NEON | Cidade Neon, Viaduto, Centro Financeiro, Túnel de Neon | 34 | BLACKOUT (Cidade Neon) | x3,6 · chefe $14.000 |
+| 6 · CÉU | Estratosfera, Nuvem Nove, Arco-íris, Espiral do Céu | 36 | O IMPERADOR (Estratosfera) | x4,5 · chefe $20.000 |
 
 Dentro de cada mundo, as pistas vão da mais simples para a mais difícil (das curvas e morros até saltos, espirais, loopings e saca-rolhas). As 18 pistas novas passaram no validador de geometria (`tools/validate_tracks.gd`: sem sobreposição, sem trecho enterrado, sem conflito de cruzamento). A música é por tema (`music/park.ogg`, `swamp.ogg`, ...), e as corridas de chefe têm música própria (`boss.ogg`).
 
-- **Pontos por corrida**: 1º 10 · 2º 7 · 3º 5 · 4º 3 · 5º 2 · 6º 1. Somando a meta do mundo, o chefe é liberado; vencer o chefe (chegar na frente dele) paga um prêmio grande ($3.000 / $5.500 / $9.000), abre o próximo mundo e põe carros novos na loja. Os rivais ficam mais fortes a cada mundo.
+- **Pontos por corrida**: 1º 10 · 2º 7 · 3º 5 · 4º 3 · 5º 2 · 6º 1. Somando a meta do mundo, o chefe é liberado; vencer o chefe (chegar na frente dele) paga o prêmio do chefe (tabela acima), abre o próximo mundo e põe carros novos na loja. Os rivais ficam mais fortes a cada mundo (veja **Rebalanceamento**).
 - **Dinheiro**: prêmio por colocação × multiplicador do mundo + bônus por destruição ($600 × multiplicador por destruir o chefe; ele volta depois de alguns segundos).
 
 **Carros únicos**, cada um com **arma de ataque**, **item de chão** e **mobilidade** próprios, comprados na garagem, com **upgrades separados por carro**.
 
 | Carro | Preço / onde | Ataque (comprado) | Item de chão | Mobilidade (botão do nitro) |
 |---|---|---|---|---|
-| FAÍSCA | inicial | Metralhadora · $1.200 | Óleo (rodopia) | **Nitro curto**: 4 arrancadas de 1 s |
-| VESPA | $3.000 · mundo 1 | **Raio elétrico**: acerta na hora e salta para um 2º carro · $1.500 | **Pregos**: furam os pneus (lento por 2,5 s) | **Salto**: pula minas, óleo e carros |
-| TROVÃO | $6.500 · mundo 3 | Foguetes teleguiados · $2.200 | Minas | **Nitro longo**: 3 arrancadas de 2,2 s |
-| MONSTRO (picape) | $11.000 · mundo 4 | **Lança-chamas**: jato curto que incendeia · $2.600 | **Barril rolante**: rola para trás e explode | **Investida**: arrancada que atropela e arremessa quem estiver na frente |
+| FAÍSCA | inicial | Metralhadora · $1.000 | Óleo (rodopia) | **Nitro curto**: 4 arrancadas de 1 s |
+| VESPA | $2.500 · mundo 1 | **Raio elétrico**: acerta na hora e salta para um 2º carro · $1.500 | **Pregos**: furam os pneus (lento por 2,5 s) | **Salto**: pula minas, óleo e carros |
+| TROVÃO | $7.000 · mundo 2 | Foguetes teleguiados · $2.600 | Minas | **Nitro longo**: 3 arrancadas de 2,2 s |
+| MONSTRO (picape) | $15.000 · mundo 4 | **Lança-chamas**: jato curto que incendeia · $4.400 | **Barril rolante**: rola para trás e explode | **Investida**: arrancada que atropela e arremessa quem estiver na frente |
 
 **Equipamento no modo história**: o carro sai da loja **só com o item de chão** (e a mobilidade dele). A **arma de ataque** (uma fixa por carro) e o **ESPECIAL** são comprados na garagem entre as corridas. Na corrida rápida e no multijogador vem tudo liberado (o especial é escolhido na garagem).
 
-- **ESPECIAL** (botão próprio: `E`/`L` no teclado, **LB** no controle, botão verde na tela), comprado por carro, um equipado por vez, recarrega a cada volta: **Escudo** (3 s invulnerável + aríete, 2 por volta, $2.500), **Onda de choque** (arremessa e machuca quem está perto, 2 por volta, $3.000), **Reparo** (devolve 40% da blindagem e apaga fogo/pneu furado, 1 por volta, $1.800). Os preços dos especiais e dos upgrades sobem com o carro (Vespa 1,15x, Trovão 1,35x, Monstro 1,6x).
-- **Upgrades** (NV 0–3): motor, blindagem, pneus, mobilidade +1 carga, item de chão +1, e da arma de ataque: **munição**, **DANO** (+25% por nível) e **CADÊNCIA** (+22% de tiros por segundo; foguetes voam mais rápido e o lança-chamas alcança mais longe). Dano e cadência são caros ($1.500 / $3.000 / $5.000 × carro). Cano laranja (dano) e carregadores azuis (cadência) aparecem na arma.
+- **ESPECIAL** (botão próprio: `E`/`L` no teclado, **LB** no controle, botão verde na tela), comprado por carro, um equipado por vez, recarrega a cada volta: **Escudo** (3 s invulnerável + aríete, 2 por volta, $2.500), **Onda de choque** (arremessa e machuca quem está perto, 2 por volta, $3.000), **Reparo** (devolve 40% da blindagem e apaga fogo/pneu furado, 1 por volta, $1.800). Os preços dos especiais e dos upgrades sobem com o carro (de 1,0x na Faísca a 2,9x no Falcão).
+- **Upgrades** (NV 0–3): motor, blindagem, pneus, mobilidade +1 carga, item de chão +1, e da arma de ataque: **munição**, **DANO** (+25% por nível) e **CADÊNCIA** (+22% de tiros por segundo; foguetes voam mais rápido e o lança-chamas alcança mais longe). Upgrades comuns custam $450 / $1.000 / $1.800 × carro; dano e cadência $1.200 / $2.600 / $4.500 × carro. Colar de dissipação laranja (dano), respiros azuis (cadência) e tambor de munição aparecem na arma.
 - Saves antigos com progresso na carreira mantêm a arma de ataque dos carros que já tinham (e o Trovão e a Monstro mantêm o escudo e a onda de choque como especial).
 - **Metralhadora segura o alvo**: cada bala tira ~1,5% do embalo (1% vindo da IA, 0,5% nos chefes) e, enquanto leva tiros, a velocidade máxima cai 14% (7% no nitro, 3% nos chefes).
 - **Revisão visual dos carros**: os discos escuros das caixas de roda não descem mais até o chão (apareciam como hastes debaixo do buggy e da picape); placas de blindagem do kit encostadas na porta (flutuavam 7 cm para fora) e o Trovão não ganha placa dupla; filete do kit rente à lateral e lâmina dianteira menor; Vespa e Monstro ganham para-barros em vez de asa de pista; dano (faixa laranja) e munição (tambor) encaixados no casulo pelo tamanho real da arma.
@@ -288,14 +288,14 @@ Dentro de cada mundo, as pistas vão da mais simples para a mais difícil (das c
 
 | Carro | Mundo · preço | Arma de ataque | Item de chão | Mobilidade |
 |---|---|---|---|---|
-| ZÉFIRO (GT elétrico) | Parque · $4.500 | **Laser**: feixe contínuo que queima | **Fumaça**: ninguém mira em quem está dentro | **Esquiva**: salto lateral |
-| JACARÉ (SUV anfíbio) | Pântano · $7.500 | **Arpão**: fisga, puxa e segura | **Lama** | Nitro longo |
-| ESCORPIÃO (trophy truck) | Deserto · $9.500 | **Morteiro**: granada em arco onde o alvo vai estar | **Rastro de fogo** | Salto |
-| NEVASCA (SUV de neve) | Neve · $12.500 | **Canhão de gelo**: o alvo escorrega | **Placa de gelo** | Nitro curto |
-| NÊMESIS (hipercarro) | Cidade · $15.000 | **Canhão de trilho**: atravessa todos na linha | **Mina EMP** | Esquiva |
-| FALCÃO (aerocarro) | Céu · $19.000 | **Plasma**: rajada teleguiada | **Vórtice**: segura e gira quem entra | **Planar**: impulso e voo planado com leme |
+| ZÉFIRO (GT elétrico) | Parque · $4.500 · laser $1.800 | **Laser**: feixe contínuo que queima | **Fumaça**: ninguém mira em quem está dentro | **Esquiva**: salto lateral |
+| JACARÉ (SUV anfíbio) | Pântano · $8.500 · arpão $3.000 | **Arpão**: fisga, puxa e segura | **Lama** | Nitro longo |
+| ESCORPIÃO (trophy truck) | Deserto · $12.000 · morteiro $3.800 | **Morteiro**: granada em arco onde o alvo vai estar | **Rastro de fogo** | Salto |
+| NEVASCA (SUV de neve) | Neve · $18.000 · gelo $5.000 | **Canhão de gelo**: o alvo escorrega | **Placa de gelo** | Nitro curto |
+| NÊMESIS (hipercarro) | Cidade · $24.000 · trilho $6.200 | **Canhão de trilho**: atravessa todos na linha | **Mina EMP** | Esquiva |
+| FALCÃO (aerocarro) | Céu · $32.000 · plasma $7.500 | **Plasma**: rajada teleguiada | **Vórtice**: segura e gira quem entra | **Planar**: impulso e voo planado com leme |
 
-- Garagem com os 10 carros em duas colunas; rótulos das armas centralizados (`Car.LBL_F`/`LBL_R`), multijogador local e online com todos os carros.
+- Garagem em vitrine 3D com os 10 carros (veja **Vitrine**); rótulos das armas centralizados (`Car.LBL_F`/`LBL_R`), multijogador local e online com todos os carros.
 - **Texturas CC0 (ambientCG)** em `minifuria/textures/cc0` (créditos em `CREDITOS.txt`), aplicadas em projeção triplanar com normal, rugosidade e detalhe de cor: borracha nos pneus e mangueiras (Rubber004), plástico fosco nos para-choques (Plastic006), metal escovado nos cromados e aros (Metal009), metal gasto no corpo das armas, blindagens e escapamentos (Metal046A), pintura riscada nas peças pintadas das armas (PaintedMetal004), chapa xadrez na base das torres e no assoalho das caçambas (DiamondPlate004) e couro nos bancos (Leather026). Convertidas de KTX2 com `Image.load_ktx_from_buffer` do Godot.
 - **Escapamento aberto**: ponteira cromada oca com lábio e fundo escuro recuado (antes era um cilindro fechado).
 - **Motor vivo**: a carroceria (não as rodas) treme com a rotação — mais forte acelerando parado na largada, mais fina em alta, extra no nitro; fumaça saindo das ponteiras (mais grossa e escura com o pé no fundo) e estalo com clarão ao tirar o pé em alta rotação.
@@ -313,6 +313,55 @@ Dentro de cada mundo, as pistas vão da mais simples para a mais difícil (das c
 Testes automáticos: as três corridas de chefe e corridas com cada carro rodam sem erros, com as armas novas e os ataques em uso. Com a Faísca no máximo, o Brutus foi vencido e o Mundo 2 foi liberado. No online, os especiais também são sincronizados.
 
 **Carregamento**: o carrinho agora é o carro de verdade do jogo, renderizado do modelo 3D (`tools/render_sprites.gd` → `ui/load_car.png`), com as rodas reais (pneu esportivo) girando por cima. Vale para a web e para o jogo.
+
+## Vitrine 3D (garagem e menu) e menus com menos texto
+
+![garagem em vitrine 3D](minifuria/docs/vitrine_garagem.png)
+
+![menu, carreira, mundo e resultado](minifuria/docs/menus.png)
+
+A garagem virou uma **vitrine de miniaturas** (`scripts/showroom.gd` + `scripts/garage.gd`), no estilo de showroom de carrinhos de coleção:
+- **Estúdio próprio** num `SubViewport` (o 3D da pista para de desenhar enquanto a vitrine está na tela): ciclorama escuro feito com shader de céu (`shaders/showroom_sky.gdshader`), com "softboxes" que só aparecem nos reflexos; piso envernizado semitransparente com o **carro espelhado por baixo** (reflexo de verdade); **plataforma giratória** com anel de LEDs correndo e marcas que giram junto (`shaders/showroom_floor.gdshader`); luz principal com sombra suave, recortes ciano/âmbar só no carro e luz de cima. O nome gigante do carro fica atrás dele, no próprio 3D.
+- O carro é o `Car` do jogo (mesmo kit, armas e pneus da corrida). Arraste para girar; ao escolher uma peça, a plataforma gira e a câmera aproxima dela (motor, blindagem, pneus, nitro, item de chão, arma).
+- **Vitrine de carros** embaixo: os 10 carros em miniatura renderizada do modelo 3D (cabine de fotos que tira uma miniatura por quadro, em cache), com preço, cadeado do mundo ou "SEU". Escolher um carro da loja mostra ele na plataforma; o botão principal vira **COMPRAR $** (ou **MUNDO N** se ainda estiver trancado).
+- **Medidores por carro** (VELOCIDADE, ACELERAÇÃO, CONTROLE, BLINDAGEM, ATAQUE) em segmentos: branco = base do carro, âmbar = upgrades comprados, **verde piscando = o que o próximo nível dá**; vendo outro carro, uma marca ciano mostra onde o seu carro atual está. A **NOTA** geral (0–100) sobe com o preço do carro. As notas usam a mesma conta da física (`Car.ratings`).
+- **Cartões de peças**: a miniatura mostra a peça do **próximo nível** (tomada de ar → compressor → compressor grande; quebra-mato → chapas; pneu esportivo → slick; garrafa de nitro; lançador; tambor), níveis em "pips" e o preço. Primeiro toque mostra a prévia no carro e nos medidores; o segundo (ou o botão verde) compra.
+- **ARSENAL**: miniatura da torre da arma com barra de poder, cargas por volta do item de chão e da mobilidade, e os 3 especiais com ícone. **PINTURA**: 12 cores grandes.
+- **Menu principal**: logo e botões com ícone à esquerda; à direita, o seu carro girando na vitrine, com o dinheiro no canto. Saíram a linha de slogan e o parágrafo de controles.
+- **Carreira**: cada mundo é um cartão com número, nome, multiplicador, a **miniatura do chefe** (silhueta enquanto trancado) e a barra de pontos com o chefe na ponta. **Mundo**: cartões das pistas com o **traçado** desenhado, ícones dos elementos (loop, salto, espiral, saca-rolhas) e a melhor colocação; o chefe aparece em miniatura com os ataques em selos curtos e o prêmio.
+- **Corrida rápida**: grade de pistas com traçado, ícones e medalha (sem texto de tema/elementos). **Resultado**: blocos com ícone (tempo, melhor volta, destruídos, drift, pulo), selos da carreira e o prêmio. **Pausa** e **multijogador local** com ícones e miniaturas dos carros; o lobby online mostra a miniatura do carro escolhido.
+- Ícones vetoriais próprios (`scripts/icons.gd`, sem imagens) e `UI.icon_button` para os botões com ícone.
+
+## Kit de upgrades modelado e props refeitos
+
+As peças de upgrade eram caixas e cilindros do Godot; agora são **peças modeladas no Blender** (`kit_*` no `minicars.glb`) e encaixadas na lataria por raios contra a malha de cada carro (capô, tampa traseira, laterais, para-choques), sem flutuar:
+- **Aerodinâmica pelo nível do kit**: lâmina dianteira de fibra com filete colorido (nv1), riscos de velocidade nas laterais (nv1), asa com perfil de verdade e pescoço de cisne (nv2), asa de dois elementos com placas grandes, gurney e tirantes (nv3); canards nos cantos (nv2+); buggy e picapes ganham para-barros; nv3 tem neon embaixo com luz no chão.
+- **Uma peça por upgrade, que muda a cada nível**: MOTOR tomada de ar → compressor (blower) com polia e correia → compressor grande com chapéu na cor do kit; BLINDAGEM quebra-mato → chapas xadrez rebitadas nas portas → quebra-mato atrás; MOBILIDADE 1 a 3 garrafas de nitro com válvula e cintas (na tampa traseira, na caçamba ou deitadas no teto, conforme o carro); ITEM DE CHÃO lançador traseiro com luzes; MUNIÇÃO tambor (dois no nv3); DANO colar de dissipação com aletas de cobre; CADÊNCIA respiros com venezianas.
+- O Trovão perdeu o compressor e o quebra-mato de fábrica (agora vêm dos upgrades, como nos outros carros).
+- **Props refeitos**: arquibancada com degraus, cadeiras coloridas, torcida (alguns com o braço levantado), paredes, cobertura com treliça e faixas de patrocínio; outdoor com pernas em I, travessas, passarela, refletores e arte de chevrons; bandeira quadriculada ondulando; muro de pneus com faixas vermelhas/brancas e cinta; barril com nervuras e etiqueta de perigo; itens da pista (caixa de munição com balas, maleta de reparo com chave, garrafa de nitro).
+- `tools/part_shot.gd` fotografa uma peça solta e `tools/kit_bench.gd` mede o encaixe do kit (~25 ms na primeira vez de cada carro, <1 ms depois).
+
+## Rebalanceamento por progressão e custo
+
+Cada carro tem um perfil (pesados: mais blindagem e menos aceleração; leves: mais controle) e a **nota geral cresce com o preço**. Um carro do mundo seguinte, de fábrica, fica perto de um carro do mundo anterior bem melhorado.
+
+| Carro | Mundo · preço | Vel. máx | Acel. | Aderência | Giro | Vida | Nota |
+|---|---|---|---|---|---|---|---|
+| FAÍSCA | 1 · inicial | 39,5 | 25,5 | 9,6 | 2,70 | 100 | 34 |
+| VESPA | 1 · $2.500 | 39,8 | 27,0 | 10,0 | 2,92 | 85 | 41 |
+| ZÉFIRO | 1 · $4.500 | 41,0 | 28,0 | 10,0 | 2,76 | 95 | 43 |
+| TROVÃO | 2 · $7.000 | 41,5 | 25,0 | 9,7 | 2,55 | 180 | 44 |
+| JACARÉ | 2 · $8.500 | 41,5 | 25,5 | 10,1 | 2,56 | 195 | 47 |
+| ESCORPIÃO | 3 · $12.000 | 42,5 | 27,0 | 10,3 | 2,66 | 180 | 52 |
+| MONSTRO | 4 · $15.000 | 42,5 | 26,0 | 10,2 | 2,54 | 245 | 54 |
+| NEVASCA | 4 · $18.000 | 43,0 | 27,5 | 11,0 | 2,72 | 190 | 58 |
+| NÊMESIS | 5 · $24.000 | 44,5 | 29,5 | 11,0 | 2,76 | 150 | 62 |
+| FALCÃO | 6 · $32.000 | 45,5 | 30,5 | 11,3 | 2,86 | 145 | 67 |
+
+- **Economia**: prêmio por mundo x1,0 / 1,5 / 2,1 / 2,8 / 3,6 / 4,5 e chefes $3.000 / 5.000 / 7.500 / 10.000 / 14.000 / 20.000 (ganho estimado por mundo: ~$6,5 mil, ~$10 mil, ~$15 mil, ~$20 mil, ~$27 mil, ~$36 mil). Dá para comprar um carro por mundo e ainda melhorar, mas não tudo.
+- **Armas de ataque** custam pelo poder: metralhadora $1.000, raio $1.500, laser $1.800, foguetes $2.600, arpão $3.000, morteiro $3.800, lança-chamas $4.400, gelo $5.000, trilho $6.200, plasma $7.500. Upgrades comuns $450 / $1.000 / $1.800 e da arma $1.200 / $2.600 / $4.500, vezes o fator do carro (1,0x Faísca → 2,9x Falcão).
+- **Rivais da carreira**: velocidade de cruzeiro e upgrades sobem numa curva suave por mundo (`RIVAL_UP` em `main.gd`); além dos dois carros do tema, os outros rivais usam carros da mesma faixa de preço do mundo (`WORLD_SUPPORT`).
+- Testes no piloto automático (`--careertest --fastplayer`): Faísca de fábrica no mundo 1 chega em 3º; Faísca no máximo vence o BRUTUS; Escorpião de fábrica no mundo 3 chega em 2º; Falcão de fábrica no mundo 6 chega em 4º (o último mundo pede upgrades).
 
 ## Identidade visual, carregamento e configurações
 
@@ -387,9 +436,9 @@ Ferramentas: `godot --headless -s res://tools/validate_tracks.gd` confere raio m
 
 ## Estrutura
 
-- `minifuria/blender/build_assets.py`: carros em peças destrutíveis, props de todos os temas, armas e itens, com oclusão ambiente assada nos vértices (Cycles) → `minifuria/assets/minicars.glb`.
-- `minifuria/scripts/track_data.gd` (pistas e temas), `track.gd` (geração 3D), `car.gd` (física, dano, IA), `weapons.gd` (armas), `main.gd` (fluxo, regras, câmera, efeitos), `fx.gd` (partículas e efeitos), `hud.gd` / `touch.gd` (interface), `sfx.gd` (áudio sintetizado).
-- `minifuria/shaders/`: asfalto por tema, chão (grama, areia, neve, água, lava, lua, cidade, tapete, nuvens), chama do nitro, efeitos no chão, barra de vida e pós-processamento.
+- `minifuria/blender/build_assets.py`: carros em peças destrutíveis, peças do kit de upgrades (`kit_*`), props de todos os temas, armas e itens, com oclusão ambiente assada nos vértices (Cycles) → `minifuria/assets/minicars.glb`.
+- `minifuria/scripts/track_data.gd` (pistas e temas), `track.gd` (geração 3D), `car.gd` (física, dano, IA), `weapons.gd` (armas), `main.gd` (fluxo, regras, câmera, efeitos), `fx.gd` (partículas e efeitos), `hud.gd` / `touch.gd` (interface), `showroom.gd` (vitrine 3D e miniaturas), `garage.gd` (garagem), `icons.gd` (ícones vetoriais), `sfx.gd` (áudio sintetizado).
+- `minifuria/shaders/`: asfalto por tema, chão (grama, areia, neve, água, lava, lua, cidade, tapete, nuvens), chama do nitro, efeitos no chão, barra de vida, pós-processamento e a vitrine (`showroom_sky`, `showroom_floor`, `showroom_vignette`).
 - `minifuria/tools/pack_web.py`: divide o export web em arquivos de 4 MB.
 - Fonte Bungee (SIL OFL), ver `minifuria/fonts/FONT-LICENSE.txt`.
 

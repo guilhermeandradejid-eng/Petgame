@@ -31,10 +31,6 @@ var results: Control
 var res_title: Label
 var res_list: Label
 var res_cash: Label
-var cash_l: Label
-var g_title: Label
-var g_boxes := {}
-var g_up := {}
 var mute_b: Button
 var pause_extra: VBoxContainer   # opções do online (voz) entram aqui
 var extra_screens := {}   # telas registradas por outros módulos (multijogador local, online)
@@ -162,19 +158,23 @@ func show_screen(name_: String) -> void:
 	touch.visible = name_ == "race" and not touch.get_meta("split_hide", false)
 	if name_ == "tracks":
 		_refresh_tracks()
-	if name_ == "garage":
-		refresh_garage()
 	if extra_screens.has(name_) or name_ in ["menu", "tracks", "garage", "pause", "results"]:
 		_focus_first.call_deferred(name_)
 	for k in extra_screens:
 		(extra_screens[k] as Control).visible = k == name_
 	cur_screen = name_
+	_sync_showroom.call_deferred()
 
 
 ## controle/teclado no menu: o primeiro botão da tela recebe o foco (navega com direcional e confirma com A)
 func _focus_first(name_: String) -> void:
 	var scr: Control = extra_screens.get(name_, {"menu": menu, "tracks": tracks_s, "garage": garage, "pause": pause_m, "results": results}.get(name_))
 	if scr == null or not scr.visible:
+		return
+	if name_ == "garage" and garage_ui and not garage_ui.action_b.disabled:
+		var fo0 := get_viewport().gui_get_focus_owner()
+		if not (fo0 and scr.is_ancestor_of(fo0) and fo0.is_visible_in_tree()):
+			garage_ui.action_b.grab_focus()
 		return
 	var fo := get_viewport().gui_get_focus_owner()
 	if fo and scr.is_ancestor_of(fo) and fo.is_visible_in_tree():
@@ -469,62 +469,99 @@ func _rot(p: Vector2) -> Vector2:
 
 # ------------------------------------------------------------------ menu
 func _build_menu() -> void:
-	menu = _screen(0.55)
-	# navegação vertical à esquerda (mesma posição em todas as telas); a pista passa ao fundo, à direita
+	# menu: logo e botões com ícone à esquerda; à direita o SEU carro girando na vitrine (Showroom, atrás das telas)
+	menu = Control.new()
+	menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	menu.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(menu)
+	var vg := ColorRect.new()
+	vg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var vm := ShaderMaterial.new()
+	vm.shader = preload("res://shaders/ui_backdrop.gdshader")
+	vm.set_shader_parameter("dim", 0.55)
+	vm.set_shader_parameter("ink", UI.INK)
+	vm.set_shader_parameter("hot", UI.HOT)
+	vg.material = vm
+	menu.add_child(vg)
 	var m := MarginContainer.new()
-	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	m.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+	m.offset_right = 520
 	m.add_theme_constant_override("margin_left", 64)
-	m.add_theme_constant_override("margin_top", 40)
-	m.add_theme_constant_override("margin_bottom", 34)
+	m.add_theme_constant_override("margin_top", 44)
+	m.add_theme_constant_override("margin_bottom", 40)
+	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	menu.add_child(m)
 	var v := VBoxContainer.new()
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.add_theme_constant_override("separation", 10)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	m.add_child(v)
 	var logo := UI.title(v, "MINI", 72, UI.TEXT)
 	logo.label_settings.shadow_color = UI.BAD
-	var logo2 := UI.title(v, "FÚRIA", 92, UI.HOT)
 	logo.add_theme_constant_override("line_spacing", -14)
-	UI.checker(v, 330, 12)
-	var tag := UI.text(v, "6 MUNDOS  ·  26 PISTAS  ·  6 CHEFES  ·  ATÉ 8 ONLINE", 16, UI.INFO, true)
-	tag.add_theme_font_override("font", UI.body_bold)
+	UI.title(v, "FÚRIA", 96, UI.HOT)
+	UI.checker(v, 340, 12)
 	var sp := Control.new()
-	sp.custom_minimum_size = Vector2(0, 6)
+	sp.custom_minimum_size = Vector2(0, 14)
 	v.add_child(sp)
-	var items := [["CARREIRA", true, func(): game.career.open()],
-		["CORRIDA RÁPIDA", false, func(): game.set_solo(); game.career.event = {}; show_screen("tracks")],
-		["MULTIJOGADOR LOCAL", false, func(): game.multi.open_join()],
-		["ONLINE", false, func(): game.online.open()],
-		["CONFIGURAÇÕES", false, func(): game.settings.open("menu")]]
+	var big := UI.icon_button("CARREIRA", "trophy", true, 30, 400, 76)
+	big.pressed.connect(func(): game.sfx.play("coin", -14.0, 1.6); game.career.open())
+	v.add_child(big)
+	for it in [["CORRIDA RÁPIDA", "flag", func(): game.set_solo(); game.career.event = {}; show_screen("tracks")],
+			["LOCAL", "people", func(): game.multi.open_join()],
+			["ONLINE", "globe", func(): game.online.open()]]:
+		var b := UI.icon_button(it[0], it[1], false, 20, 340, 56)
+		b.pressed.connect(func(): game.sfx.play("coin", -14.0, 1.6); it[2].call())
+		v.add_child(b)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	v.add_child(row)
+	var cfg := UI.icon_button("", "gear", false, 18, 76, 56)
+	cfg.tooltip_text = "Configurações"
+	cfg.pressed.connect(func(): game.settings.open("menu"))
+	row.add_child(cfg)
 	if OS.get_name() in ["Windows", "Linux", "macOS", "FreeBSD"]:
-		items.append(["SAIR", false, func(): get_tree().quit()])
-	var k := 0
-	for it in items:
-		var b := _btn(it[0], v, it[1], 380 - k * 6, 60 if it[1] else 50)
-		b.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.pressed.connect(it[2])
-		k += 1
-	var sp2 := Control.new()
-	sp2.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	v.add_child(sp2)
-	var info := UI.text(v, "Teclado: setas/WASD dirigem · B freio · Z tiro · X mina · SHIFT nitro · R volta à pista\nControle: analógico dirige · A acelera · B freio · X tiro · Y mina · RB nitro · START pausa", 14, UI.MUTED)
-	info.modulate = Color(1, 1, 1, 0.85)
+		var ex := UI.icon_button("", "exit", false, 18, 76, 56)
+		ex.tooltip_text = "Sair"
+		ex.pressed.connect(func(): get_tree().quit())
+		row.add_child(ex)
+	# dinheiro e nome do carro (canto direito)
+	var tr := HBoxContainer.new()
+	tr.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	tr.offset_left = -320
+	tr.offset_right = -32
+	tr.offset_top = 26
+	tr.offset_bottom = 70
+	tr.alignment = BoxContainer.ALIGNMENT_END
+	tr.add_theme_constant_override("separation", 10)
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	menu.add_child(tr)
+	tr.add_child(Icon.make("coin", 30, UI.OK))
+	menu_cash = UI.title(tr, "", 30, UI.OK)
+	menu_car = UI.title(menu, "", 34, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	menu_car.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	menu_car.offset_left = -760
+	menu_car.offset_right = -40
+	menu_car.offset_top = -86
+	menu_car.offset_bottom = -40
+	menu_car.label_settings.font_color = Color(1, 1, 1, 0.9)
+
+
+var menu_cash: Label
+var menu_car: Label
 
 
 # ------------------------------------------------------------------ seleção de pista
 func _build_tracks() -> void:
 	tracks_s = _screen(0.72)
-	var v := _vcenter(tracks_s, 12)
-	var tl := _label(44, Color("#ffcf33"), Color("#c74200"), v)
-	tl.text = "ESCOLHA A PISTA"
-	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tl.label_settings.font_color = UI.HOT
+	var v := _vcenter(tracks_s, 14)
+	var tl := UI.title(v, "CORRIDA RÁPIDA", 40, UI.HOT, HORIZONTAL_ALIGNMENT_CENTER)
 	tl.label_settings.outline_color = UI.INK
 	var grid := GridContainer.new()
 	grid.columns = 7
 	grid.add_theme_constant_override("h_separation", 10)
-	grid.add_theme_constant_override("v_separation", 12)
+	grid.add_theme_constant_override("v_separation", 10)
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	grid.name = "Grid"
 	v.add_child(grid)
@@ -532,288 +569,144 @@ func _build_tracks() -> void:
 		var d: Dictionary = TrackData.TRACKS[i]
 		var th: Dictionary = TrackData.THEMES[d.theme]
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(168, 96)
-		b.clip_text = true
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-		b.add_theme_font_size_override("font_size", 11)
-		b.add_theme_font_override("font", UI.display_it)
-		var c1 := Color(th.sky_hor).darkened(0.45).lerp(UI.INK2, 0.35)
-		var sb := UI.box(c1, Color(th.curb[0]), 3, 0.12, 6, Color(0, 0, 0, 0.5), 8)
-		sb.border_width_left = 8
-		var sh := UI.box(c1.lightened(0.15), Color.WHITE, 4, 0.12, 6, Color.WHITE, 8)
-		sh.border_width_left = 10
+		b.custom_minimum_size = Vector2(160, 112)
+		b.tooltip_text = String(d.name)
+		var c1 := Color(th.sky_hor).darkened(0.55).lerp(UI.INK2, 0.4)
+		var sb := UI.box(c1, Color(th.curb[0]), 2, 0.08, 5, Color(0, 0, 0, 0.5), 8)
+		sb.border_width_left = 7
+		var sh := UI.box(c1.lightened(0.15), Color.WHITE, 3, 0.08, 5, Color.WHITE, 8)
+		sh.border_width_left = 9
 		b.add_theme_stylebox_override("normal", sb)
 		b.add_theme_stylebox_override("hover", sh)
 		b.add_theme_stylebox_override("pressed", sh)
 		b.add_theme_stylebox_override("focus", sh)
-		for k in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-			b.add_theme_color_override(k, Color.WHITE)
-		b.add_theme_constant_override("outline_size", 6)
-		b.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
 		b.pressed.connect(func(): game.choose_track(i))
 		b.set_meta("idx", i)
 		grid.add_child(b)
-	_btn("VOLTAR", v, false, 220, 52).pressed.connect(func(): show_screen("menu"))
+		# traçado da pista, ícones dos elementos, nome e medalha
+		var ti := i
+		var art := Control.new()
+		art.position = Vector2(14, 6)
+		art.size = Vector2(110, 74)
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		art.draw.connect(func(): UI.draw_track(art, ti, Rect2(Vector2.ZERO, art.size), Color(th.curb[1]).lerp(Color.WHITE, 0.5), 3.0))
+		b.add_child(art)
+		var fy := 8.0
+		for f in UI.track_feats(i):
+			var ic := Icon.make(f, 18, UI.INFO)
+			ic.position = Vector2(132, fy)
+			b.add_child(ic)
+			fy += 21.0
+		var nm := UI.text(b, String(d.name).to_upper(), 11, UI.TEXT)
+		nm.add_theme_font_override("font", UI.display_it)
+		nm.position = Vector2(12, 84)
+		nm.size = Vector2(140, 18)
+		nm.clip_text = true
+		var md := Label.new()
+		md.name = "Medal"
+		md.add_theme_font_override("font", UI.display_it)
+		md.add_theme_font_size_override("font_size", 14)
+		md.add_theme_color_override("font_color", UI.INK)
+		md.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		md.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		md.position = Vector2(4, 4)
+		md.size = Vector2(32, 22)
+		md.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(md)
+	var back := UI.icon_button("VOLTAR", "back", false, 18, 220, 52)
+	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	back.pressed.connect(func(): show_screen("menu"))
+	v.add_child(back)
 
 
 func _refresh_tracks() -> void:
 	var grid := tracks_s.find_child("Grid", true, false)
 	for b in grid.get_children():
 		var i: int = b.get_meta("idx")
-		var d: Dictionary = TrackData.TRACKS[i]
-		var th: Dictionary = TrackData.THEMES[d.theme]
-		var feats: Array = []
-		for f in d.feat.values():
-			var nm := {"loop": "LOOP", "jump": "SALTO", "cork": "TORÇÃO", "helix": "ESPIRAL"}[f[0]] as String
-			if not feats.has(nm):
-				feats.append(nm)
-		if d.traffic > 0:
-			feats.append("TRÁFEGO")
 		var best: Dictionary = game.save.best.get(str(i), {})
-		var medal := ""
-		if best.has("place"):
-			medal = "  [%dº]" % int(best.place)
-		b.text = "%s\n%s%s\n%s" % [String(d.name).to_upper(), th.label.to_upper() + (" · EXTRA" if i >= 24 else ""), medal, " · ".join(feats) if feats.size() > 0 else "CIRCUITO"]
+		var md: Label = b.get_node("Medal")
+		md.text = "%dº" % int(best.place) if best.has("place") else ""
+		var mc: Color = [Color("#ffcf33"), Color("#d8dbe2"), Color("#d08a4a")][clampi(int(best.get("place", 3)) - 1, 0, 2)]
+		var st := StyleBoxFlat.new()
+		st.bg_color = mc if best.has("place") and int(best.place) <= 3 else Color(1, 1, 1, 0.25)
+		st.set_corner_radius_all(12)
+		md.add_theme_stylebox_override("normal", st if best.has("place") else StyleBoxEmpty.new())
 
 
-# ------------------------------------------------------------------ garagem
-const UP_NAMES := {"engine": "MOTOR", "armor": "BLINDAGEM", "ammo": "ARMA · MUNIÇÃO", "rear": "ITEM DE CHÃO +1", "nitro": "MOBILIDADE +1",
-	"tires": "PNEUS", "dmg": "ARMA · DANO", "rate": "ARMA · CADÊNCIA"}
-const UP_ORDER := ["engine", "armor", "tires", "nitro", "rear", "ammo", "dmg", "rate"]
-const WPN_UPS := ["ammo", "dmg", "rate"]
-var g_weap: Label
-var g_swatches: Array = []
+# ------------------------------------------------------------------ garagem (vitrine 3D)
 var boss_bar: Control
+var show3d: Showroom
+var garage_ui: Garage
 
 
 func _build_garage() -> void:
-	garage = _screen(0.82)
-	var v := _vcenter(garage, 10)
-	var top := HBoxContainer.new()
-	top.alignment = BoxContainer.ALIGNMENT_CENTER
-	top.add_theme_constant_override("separation", 40)
-	v.add_child(top)
-	g_title = _label(34, Color("#ffcf33"), Color("#c74200"), top)
-	cash_l = _label(30, Color("#7dff6a"), Color(0, 0, 0, 0.6), top)
-	var cols := HBoxContainer.new()
-	cols.alignment = BoxContainer.ALIGNMENT_CENTER
-	cols.add_theme_constant_override("separation", 16)
-	v.add_child(cols)
-	var c1 := _panel(cols, "CARROS")
-	# 10 carros em duas colunas (os dos mundos aparecem na loja ao chegar em cada mundo)
-	var cgrid := GridContainer.new()
-	cgrid.columns = 2
-	cgrid.add_theme_constant_override("h_separation", 6)
-	cgrid.add_theme_constant_override("v_separation", 6)
-	c1.add_child(cgrid)
-	for k in Career.CAR_ORDER:
-		_choice(cgrid, "car", k, 54, 154)
-	var cl := UI.title(c1, "COR DA PINTURA", 16, UI.INFO)
-	cl.label_settings.outline_size = 3
-	var cg := GridContainer.new()
-	cg.columns = 6
-	cg.add_theme_constant_override("h_separation", 8)
-	cg.add_theme_constant_override("v_separation", 8)
-	c1.add_child(cg)
-	for hexc in game.PAINT_COLORS:
-		var sw := Button.new()
-		sw.custom_minimum_size = Vector2(40, 32)
-		sw.set_meta("col", hexc)
-		sw.tooltip_text = hexc
-		sw.pressed.connect(func():
-			game.save.color = hexc
-			game._write_save()
-			game.sfx.play("coin", -10.0, 1.4)
-			refresh_garage())
-		cg.add_child(sw)
-		g_swatches.append(sw)
-	var c2 := _panel(cols, "EQUIPAMENTO")
-	g_weap = UI.text(c2, "", 14, UI.TEXT)
-	g_weap.add_theme_font_override("font", UI.body_bold)
-	g_weap.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	g_weap.custom_minimum_size = Vector2(310, 0)
-	_choice(c2, "front", "atk", 52)
-	var stl := UI.title(c2, "ESPECIAL · BOTÃO PRÓPRIO", 15, UI.INFO)
-	stl.label_settings.outline_size = 3
-	for spk in Car.SPECIAL_ORDER:
-		_choice(c2, "special", spk, 48)
-	var c3 := _panel(cols, "UPGRADES DO CARRO")
-	for k in UP_ORDER:
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
-		c3.add_child(row)
-		var l := Label.new()
-		l.custom_minimum_size = Vector2(190, 0)
-		l.add_theme_font_size_override("font_size", 15)
-		row.add_child(l)
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(118, 40)
-		b.add_theme_font_size_override("font_size", 15)
-		b.add_theme_font_override("font", UI.display_it)
-		b.add_theme_stylebox_override("normal", UI.box(Color("#1f8a3a"), Color(0, 0, 0, 0), 0, UI.SKEW, 4, Color("#0d4a1c"), 4))
-		b.add_theme_stylebox_override("hover", UI.box(Color("#2fb04f"), Color.WHITE, 2, UI.SKEW, 4, Color.WHITE, 4))
-		b.add_theme_stylebox_override("focus", UI.box(Color("#2fb04f"), Color.WHITE, 2, UI.SKEW, 4, Color.WHITE, 4))
-		b.add_theme_stylebox_override("pressed", UI.box(Color("#2fb04f"), Color.WHITE, 2, UI.SKEW, 1, Color.WHITE, 4))
-		b.add_theme_stylebox_override("disabled", UI.box(Color(1, 1, 1, 0.06), UI.LINE, 1, UI.SKEW, 2, Color.BLACK, 4))
-		l.add_theme_font_override("font", UI.body_bold)
-		l.add_theme_font_size_override("font_size", 17)
-		b.pressed.connect(func(): game.buy_upgrade(k))
-		row.add_child(b)
-		g_up[k] = {"label": l, "btn": b}
-	var hint := Label.new()
-	hint.custom_minimum_size = Vector2(320, 0)
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD
-	hint.add_theme_font_override("font", SystemFont.new())
-	hint.add_theme_font_size_override("font_size", 13)
-	hint.modulate = Color(1, 1, 1, 0.75)
-	hint.text = "Dano: +25% por nível. Cadência: atira mais rápido e o projétil voa mais rápido. Munição, mobilidade e especial recarregam a cada volta."
-	c3.add_child(hint)
-	var bot := HBoxContainer.new()
-	bot.alignment = BoxContainer.ALIGNMENT_CENTER
-	bot.add_theme_constant_override("separation", 20)
-	v.add_child(bot)
-	_btn("VOLTAR", bot, false, 200, 56).pressed.connect(func(): show_screen("tracks"))
-	var gsb := _btn("DIREÇÃO", bot, false, 330, 56)
-	gsb.pressed.connect(func(): game.toggle_steer())
-	steer_btns.append(gsb)
-	_btn("LARGAR!", bot, true, 280, 64).pressed.connect(func(): game.start_race())
-
-
-func _panel(parent: Node, title: String) -> VBoxContainer:
-	var pc := PanelContainer.new()
-	pc.add_theme_stylebox_override("panel", UI.panel_box(UI.HOT))
-	pc.custom_minimum_size = Vector2(340, 0)
-	parent.add_child(pc)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 8)
-	pc.add_child(v)
-	var l := UI.title(v, title, 20, UI.INFO)
-	l.label_settings.outline_size = 3
-	return v
-
-
-func _choice(parent: Node, slot: String, key: String, h: int, w := 310) -> void:
-	var b := Button.new()
-	b.custom_minimum_size = Vector2(w, h)
-	b.clip_text = true
-	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.add_theme_font_size_override("font_size", 14)
-	b.add_theme_font_override("font", UI.body_bold)
-	b.add_theme_stylebox_override("normal", UI.box(Color(1, 1, 1, 0.06), UI.LINE, 1, 0.1, 0, Color.BLACK, 6))
-	b.add_theme_stylebox_override("hover", UI.box(Color(1, 1, 1, 0.14), Color.WHITE, 2, 0.1, 0, Color.BLACK, 6))
-	b.add_theme_stylebox_override("focus", UI.box(Color(1, 1, 1, 0.14), Color.WHITE, 2, 0.1, 0, Color.BLACK, 6))
-	b.add_theme_stylebox_override("pressed", UI.box(Color(1, 1, 1, 0.18), UI.HOT, 2, 0.1, 0, Color.BLACK, 6))
-	b.pressed.connect(func(): game.equip(slot, key))
-	parent.add_child(b)
-	g_boxes[slot + ":" + key] = b
-
-
-func _bar(v: float) -> String:
-	return "%d/5" % clampi(int(round(v * 5.0)), 1, 5)
+	# a vitrine 3D fica atrás de todas as telas (menu e garagem usam o mesmo estúdio)
+	show3d = Showroom.new()
+	root.add_child(show3d)
+	root.move_child(show3d, 0)
+	show3d.setup(game)
+	show3d.visible = false
+	garage = Control.new()
+	garage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	garage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(garage)
+	garage_ui = Garage.new()
+	garage.add_child(garage_ui)
+	garage_ui.setup(game, self, show3d)
 
 
 func refresh_garage() -> void:
-	var s: Dictionary = game.save
-	var d: Dictionary = TrackData.TRACKS[game.track_idx]
-	g_title.text = "GARAGEM · " + String(d.name).to_upper()
-	cash_l.text = "$ %d" % int(s.cash)
-	var names := {"faisca": "FAÍSCA", "trovao": "TROVÃO", "vespa": "VESPA"}
-	for key in g_boxes:
-		var b: Button = g_boxes[key]
-		var parts: PackedStringArray = key.split(":")
-		var slot := parts[0]
-		var k := parts[1]
-		var ck := String(s.car)
-		var hist: bool = game.career.active()
-		var on: bool = s.get(slot, "") == k
-		var txt := ""
-		match slot:
-			"front":
-				# arma de ataque fixa do carro: no modo história é comprada
-				var fk: String = Car.LOADOUT[ck][0]
-				on = game.career.has_front(ck)
-				var tag := "   ✓ COMPRADA" if on and hist else ("" if on else "   [COMPRAR $%d]" % game.career.weapon_price(ck))
-				txt = "ATAQUE · %s%s\n%s" % [String(Car.FRONT[fk].name).to_upper(), tag, Career.WEAPON_DESC[fk]]
-				b.disabled = false
-			"special":
-				var owned: bool = game.career.owns_special(ck, k)
-				on = game.career.cur_special(ck) == k
-				var tag2 := ("   EQUIPADO" if on else "") if owned else "   [$%d]" % game.career.special_price(k)
-				txt = "%s%s\n%s" % [String(Car.SPECIAL[k].name).to_upper(), tag2, Career.WEAPON_DESC[k]]
-			"car":
-				var sp: Dictionary = Car.SPECS[k]
-				var shop: Dictionary = Career.SHOP[k]
-				var tag := ""
-				if not game.career.owned(k):
-					tag = "   [$%d]" % int(shop.price) if game.career.available(k) else "   [MUNDO %d]" % (int(shop.world) + 1)
-				tag = ""
-				if not game.career.owned(k):
-					tag = " $%d" % int(shop.price) if game.career.available(k) else " M%d" % (int(shop.world) + 1)
-				txt = "%s%s\nV%s B%s C%s" % [shop.name, tag, _bar((sp.vmax - 34.0) / 10.0).left(1), _bar(sp.hp / 175.0).left(1), _bar((sp.turn - 2.0) / 1.1).left(1)]
-				b.add_theme_font_size_override("font_size", 12)
-				b.disabled = not game.career.owned(k) and not game.career.available(k)
-			"front":
-				txt = "FRENTE: %s (%d por volta)" % [String(Car.FRONT[k].name).to_upper(), int(Car.FRONT[k].cap)]
-			"rear":
-				txt = "TRÁS: %s (%d por volta)" % [String(Car.REAR[k].name).to_upper(), int(Car.REAR[k].cap)]
-			"nitro":
-				txt = "%s (%d x %.1fs)" % [String(Car.NITRO[k].name).to_upper(), int(Car.NITRO[k].cap), float(Car.NITRO[k].dur)]
-		b.text = ("> " if on else "   ") + txt
-		var col := UI.HOT if on else Color(1, 1, 1, 0.06)
-		b.add_theme_stylebox_override("normal", UI.box(col, Color.WHITE if on else UI.LINE, 2 if on else 1, 0.1, 3 if on else 0, UI.HOT_DARK, 6))
-		b.add_theme_color_override("font_color", UI.INK if on else UI.TEXT)
-		b.add_theme_color_override("font_hover_color", UI.TEXT)
-	var cur := String(s.get("color", game.PAINT_COLORS[0]))
-	for sw in g_swatches:
-		var c := Color(String(sw.get_meta("col")))
-		var on: bool = String(sw.get_meta("col")) == cur
-		sw.add_theme_stylebox_override("normal", UI.box(c, Color.WHITE if on else Color(0, 0, 0, 0.6), 4 if on else 2, 0.12, 0, Color.BLACK, 4))
-		sw.add_theme_stylebox_override("hover", UI.box(c.lightened(0.15), Color.WHITE, 3, 0.12, 0, Color.BLACK, 4))
-		sw.add_theme_stylebox_override("focus", UI.box(c.lightened(0.15), Color.WHITE, 3, 0.12, 0, Color.BLACK, 4))
-		sw.add_theme_stylebox_override("pressed", UI.box(c, Color.WHITE, 4, 0.12, 0, Color.BLACK, 4))
-		sw.text = "✓" if on else ""
-		sw.add_theme_color_override("font_color", Color.BLACK if c.get_luminance() > 0.5 else Color.WHITE)
-	var lo: Array = Car.LOADOUT[String(s.car)]
-	g_weap.text = "%s · %s\n\nCHÃO · %s\n%s\n\nMOBILIDADE (NITRO) · %s\n%s" % [Career.SHOP[s.car].name, Career.SHOP[s.car].desc,
-		String(Car.REAR[lo[1]].name).to_upper(), Career.WEAPON_DESC[lo[1]], String(Car.NITRO[lo[2]].name).to_upper(), Career.WEAPON_DESC[lo[2]]]
-	if not game.career.active():
-		g_weap.text += "\n\nCorrida rápida: arma e especiais liberados."
-	if game.career.active():
-		var ev: Dictionary = game.career.event
-		g_title.text = ("CHEFE · " if ev.boss else "MUNDO %d · " % (int(ev.world) + 1)) + String(d.name).to_upper()
-	for k in g_up:
-		var lvl: int = s.up.get(k, 0)
-		var row: Dictionary = g_up[k]
-		(row.label as Label).text = "%s  NV %d/3" % [UP_NAMES[k], lvl]
-		var b: Button = row.btn
-		if k in WPN_UPS and not game.career.has_front(String(s.car)):
-			b.text = "SEM ARMA"
-			b.disabled = true
-			continue
-		if lvl >= 3:
-			b.text = "MÁX"
-			b.disabled = true
-		else:
-			var price: int = game.upgrade_price(k)
-			b.text = "$ %d" % price
-			b.disabled = int(s.cash) < price
+	if garage_ui and garage.visible:
+		garage_ui.refresh()
+
+
+## liga a vitrine nas telas que mostram o carro (menu e garagem); nas outras a pista volta a aparecer ao fundo
+func _sync_showroom() -> void:
+	if show3d == null or game == null or game.career == null:
+		return
+	var on := cur_screen in ["menu", "garage"]
+	show3d.activate(on)
+	if on and not show3d.has_meta("warm"):
+		show3d.set_meta("warm", true)
+		show3d.prewarm()
+	if not on:
+		return
+	if cur_screen == "garage":
+		show3d.frame_off = Vector2(0.0, -0.035)
+		show3d.auto_spin = true
+		garage_ui.open()
+	else:
+		# menu: o seu carro girando à direita, sem painéis
+		show3d.frame_off = Vector2(0.17, -0.02)
+		show3d.auto_spin = true
+		show3d.set_focus("")
+		var k := String(game.save.car)
+		menu_cash.text = garage_ui._money(int(game.save.cash))
+		menu_car.text = String(Career.SHOP[k].name)
+		var kit: Array = game.career.loadout(k)
+		show3d.show_car(k, Color(String(game.save.get("color", game.PAINT_COLORS[0]))), kit[0], kit[1], kit[2], game.save.up, kit[3])
 
 
 # ------------------------------------------------------------------ pausa e resultado
 func _build_pause() -> void:
 	pause_m = _screen(0.62)
-	var v := _vcenter(pause_m)
-	var pt := _label(64, Color("#ffcf33"), Color("#c74200"), v)
-	pt.text = "PAUSA"
-	pt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_btn("CONTINUAR", v).pressed.connect(func(): game.pause(false))
-	var sb := _btn("DIREÇÃO", v, false)
+	var v := _vcenter(pause_m, 12)
+	UI.title(v, "PAUSA", 64, UI.HOT, HORIZONTAL_ALIGNMENT_CENTER)
+	var cb := UI.icon_button("CONTINUAR", "play", true, 24, 340, 66)
+	cb.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	cb.pressed.connect(func(): game.pause(false))
+	v.add_child(cb)
+	var sb := UI.icon_button("DIREÇÃO", "han", false, 18, 340, 54)
+	sb.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	sb.pressed.connect(func(): game.toggle_steer())
+	v.add_child(sb)
 	steer_btns.append(sb)
-	_btn("REINICIAR", v, false).pressed.connect(func(): game.start_race())
-	_btn("CONFIGURAÇÕES", v, false).pressed.connect(func(): game.settings.open("pause"))
-	_btn("SAIR DA CORRIDA", v, false).pressed.connect(func(): game.to_menu())
+	for it in [["REINICIAR", "flag", func(): game.start_race()], ["CONFIGURAÇÕES", "gear", func(): game.settings.open("pause")],
+			["SAIR DA CORRIDA", "exit", func(): game.to_menu()]]:
+		var b := UI.icon_button(it[0], it[1], false, 18, 340, 54)
+		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		b.pressed.connect(it[2])
+		v.add_child(b)
 	pause_extra = VBoxContainer.new()
 	pause_extra.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.add_child(pause_extra)
@@ -821,20 +714,88 @@ func _build_pause() -> void:
 
 func _build_results() -> void:
 	results = _screen(0.7)
-	var v := _vcenter(results)
-	res_title = _label(64, Color("#ffcf33"), Color("#c74200"), v)
-	res_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var v := _vcenter(results, 16)
+	res_title = UI.title(v, "", 72, UI.HOT, HORIZONTAL_ALIGNMENT_CENTER)
+	# números da corrida em blocos (ícone + valor + rótulo curto)
+	res_tiles = HBoxContainer.new()
+	res_tiles.alignment = BoxContainer.ALIGNMENT_CENTER
+	res_tiles.add_theme_constant_override("separation", 12)
+	v.add_child(res_tiles)
 	res_list = Label.new()
 	res_list.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	res_list.add_theme_font_size_override("font_size", 20)
 	res_list.add_theme_font_override("font", UI.body_bold)
 	v.add_child(res_list)
-	res_cash = _label(30, Color("#7dff6a"), Color(0, 0, 0, 0.6), v)
-	res_cash.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	res_chips = HBoxContainer.new()
+	res_chips.alignment = BoxContainer.ALIGNMENT_CENTER
+	res_chips.add_theme_constant_override("separation", 10)
+	v.add_child(res_chips)
+	var cr := HBoxContainer.new()
+	cr.alignment = BoxContainer.ALIGNMENT_CENTER
+	cr.add_theme_constant_override("separation", 10)
+	v.add_child(cr)
+	cr.add_child(Icon.make("coin", 40, UI.OK))
+	res_cash = UI.title(cr, "", 40, UI.OK)
+	res_total = UI.text(cr, "", 18, UI.MUTED)
+	res_total.add_theme_font_override("font", UI.display_it)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 16)
 	v.add_child(row)
-	_btn("PRÓXIMA PISTA", row, true, 300, 64).pressed.connect(func(): game.next_track())
-	_btn("GARAGEM", row, false, 200, 56).pressed.connect(func(): show_screen("garage"))
-	_btn("CORRER DE NOVO", row, false, 240, 56).pressed.connect(func(): game.start_race())
+	var nb := UI.icon_button("PRÓXIMA", "play", true, 24, 280, 66)
+	nb.pressed.connect(func(): game.next_track())
+	row.add_child(nb)
+	var gb := UI.icon_button("GARAGEM", "wrench", false, 18, 220, 58)
+	gb.pressed.connect(func(): show_screen("garage"))
+	row.add_child(gb)
+	var rb := UI.icon_button("DE NOVO", "flag", false, 18, 220, 58)
+	rb.pressed.connect(func(): game.start_race())
+	row.add_child(rb)
+
+
+var res_tiles: HBoxContainer
+var res_chips: HBoxContainer
+var res_total: Label
+
+
+## resultado: blocos [ícone, valor, rótulo], frases da carreira viram selos, e o prêmio
+func set_results(title: String, tiles: Array, chips: Array, prize: int, total: int) -> void:
+	res_title.text = title
+	for ch in res_tiles.get_children():
+		ch.queue_free()
+	for ch in res_chips.get_children():
+		ch.queue_free()
+	for t in tiles:
+		var p := PanelContainer.new()
+		var st := UI.box(Color(0.08, 0.07, 0.15, 0.9), Color(1, 1, 1, 0.1), 1, 0.1, 0, Color(0, 0, 0, 0), 8)
+		st.content_margin_left = 16
+		st.content_margin_right = 16
+		st.content_margin_top = 10
+		st.content_margin_bottom = 10
+		p.add_theme_stylebox_override("panel", st)
+		p.custom_minimum_size = Vector2(150, 0)
+		res_tiles.add_child(p)
+		var tv := VBoxContainer.new()
+		tv.alignment = BoxContainer.ALIGNMENT_CENTER
+		tv.add_theme_constant_override("separation", 2)
+		p.add_child(tv)
+		var ic := Icon.make(String(t[0]), 30, UI.HOT)
+		ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		tv.add_child(ic)
+		UI.title(tv, String(t[1]), 26, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+		var l := UI.text(tv, String(t[2]), 12, UI.MUTED)
+		l.add_theme_font_override("font", UI.body_bold)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	for c in chips:
+		var cp := PanelContainer.new()
+		var cs := UI.box(Color(1, 0.7, 0.1, 0.16), UI.HOT, 2, 0.15, 0, Color(0, 0, 0, 0), 6)
+		cs.content_margin_left = 14
+		cs.content_margin_right = 14
+		cs.content_margin_top = 6
+		cs.content_margin_bottom = 6
+		cp.add_theme_stylebox_override("panel", cs)
+		res_chips.add_child(cp)
+		var cl := UI.text(cp, String(c), 16, UI.TEXT)
+		cl.add_theme_font_override("font", UI.display_it)
+	res_cash.text = "+" + garage_ui._money(prize)
+	res_total.text = "TOTAL " + garage_ui._money(total)

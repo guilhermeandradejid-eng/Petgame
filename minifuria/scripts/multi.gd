@@ -36,42 +36,72 @@ func setup(g: Node, h: Hud) -> void:
 func _build_join() -> void:
 	join_scr = hud._screen(0.78)
 	var v := hud._vcenter(join_scr, 14)
-	var t := hud._label(46, Color("#ffcf33"), Color("#c74200"), v)
-	t.text = "MULTIJOGADOR LOCAL"
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var sub := Label.new()
-	sub.text = "Até 4 pessoas na mesma tela. Para entrar: A ou START no controle · ESPAÇO (teclado WASD) · ENTER (teclado setas)\nNo seu quadro: esquerda/direita troca o carro · B / Q / vírgula sai · START ou o botão abaixo escolhe a pista"
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub.add_theme_font_override("font", SystemFont.new())
-	sub.add_theme_font_size_override("font_size", 15)
-	sub.modulate = Color(1, 1, 1, 0.85)
-	v.add_child(sub)
+	UI.title(v, "LOCAL", 50, UI.HOT, HORIZONTAL_ALIGNMENT_CENTER)
+	# como entrar, em ícones de tecla/botão (sem parágrafo)
+	var how := HBoxContainer.new()
+	how.alignment = BoxContainer.ALIGNMENT_CENTER
+	how.add_theme_constant_override("separation", 18)
+	v.add_child(how)
+	for k in ["A / START", "ESPAÇO", "ENTER"]:
+		var chip := PanelContainer.new()
+		var cs := UI.box(Color(1, 1, 1, 0.08), Color(1, 1, 1, 0.2), 1, 0.12, 3, Color(0, 0, 0, 0.5), 6)
+		cs.content_margin_left = 12
+		cs.content_margin_right = 12
+		cs.content_margin_top = 4
+		chip.add_theme_stylebox_override("panel", cs)
+		how.add_child(chip)
+		var kl := UI.text(chip, k, 15, UI.TEXT)
+		kl.add_theme_font_override("font", UI.display_it)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 14)
 	v.add_child(row)
 	for i in 4:
 		var p := PanelContainer.new()
-		p.custom_minimum_size = Vector2(250, 200)
-		p.add_theme_stylebox_override("panel", hud._sb(Color(1, 1, 1, 0.07), 16, Color(game.HUMAN_COLORS[i]), 3))
+		p.custom_minimum_size = Vector2(260, 250)
+		var ps := UI.box(Color(0.08, 0.07, 0.15, 0.92), Color(game.HUMAN_COLORS[i]), 3, 0.06, 0, Color(0, 0, 0, 0), 12)
+		ps.border_width_top = 10
+		p.add_theme_stylebox_override("panel", ps)
 		row.add_child(p)
-		var l := Label.new()
-		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		l.add_theme_font_size_override("font_size", 18)
-		p.add_child(l)
-		slot_boxes.append(l)
+		var c := Control.new()
+		c.custom_minimum_size = Vector2(236, 226)
+		p.add_child(c)
+		var pl := UI.title(c, "P%d" % (i + 1), 34, Color(game.HUMAN_COLORS[i]))
+		pl.position = Vector2(6, 0)
+		var dev := UI.text(c, "", 14, UI.MUTED)
+		dev.add_theme_font_override("font", UI.body_bold)
+		dev.position = Vector2(84, 14)
+		var th := TextureRect.new()
+		th.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		th.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		th.position = Vector2(0, 52)
+		th.size = Vector2(236, 120)
+		c.add_child(th)
+		var nm := UI.title(c, "", 22, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+		nm.position = Vector2(0, 178)
+		nm.size = Vector2(236, 30)
+		var la := Icon.make("back", 26, UI.HOT)
+		la.position = Vector2(4, 180)
+		c.add_child(la)
+		var ra := Icon.make("play", 22, UI.HOT)
+		ra.position = Vector2(208, 182)
+		c.add_child(ra)
+		var wait := Icon.make("play", 54, Color(1, 1, 1, 0.25))
+		wait.position = Vector2(91, 86)
+		c.add_child(wait)
+		slot_boxes.append({"dev": dev, "thumb": th, "name": nm, "arrows": [la, ra], "wait": wait})
 	hint_l = hud._label(18, Color("#2ee6ff"), Color(0, 0, 0, 0.6), v)
 	hint_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var bot := HBoxContainer.new()
 	bot.alignment = BoxContainer.ALIGNMENT_CENTER
 	bot.add_theme_constant_override("separation", 16)
 	v.add_child(bot)
-	var back := hud._btn("VOLTAR", bot, false, 200, 56)
+	var back := UI.icon_button("VOLTAR", "back", false, 18, 200, 56)
 	back.pressed.connect(func(): game.set_solo(); hud.show_screen("menu"))
-	var go := hud._btn("ESCOLHER PISTA", bot, true, 320, 60)
+	bot.add_child(back)
+	var go := UI.icon_button("PISTA", "flag", true, 24, 280, 60)
 	go.pressed.connect(_go)
+	bot.add_child(go)
 	hud.extra_screens["local"] = join_scr
 	join_scr.visible = false
 	_refresh_join()
@@ -99,16 +129,23 @@ func _go() -> void:
 
 func _refresh_join() -> void:
 	for i in 4:
-		var l: Label = slot_boxes[i]
-		if i < slots.size():
+		var sb: Dictionary = slot_boxes[i]
+		var on := i < slots.size()
+		(sb.wait as Control).visible = not on
+		for ar in sb.arrows:
+			(ar as Control).visible = on
+		(sb.thumb as TextureRect).visible = on
+		if on:
 			var sl: Dictionary = slots[i]
-			l.text = "P%d\n%s\n\n< %s >\n\n%s" % [i + 1, PInput.label(sl.dev), CAR_NAMES[sl.car], PInput.help(sl.dev)]
-			l.modulate = Color.WHITE
+			(sb.dev as Label).text = PInput.label(sl.dev)
+			(sb.name as Label).text = String(CAR_NAMES[sl.car])
+			if hud.show3d:
+				hud.show3d.thumb("car:" + String(sl.car), sb.thumb)
 		else:
-			l.text = "P%d\n\naperte A / START\nESPAÇO ou ENTER" % (i + 1)
-			l.modulate = Color(1, 1, 1, 0.45)
+			(sb.dev as Label).text = ""
+			(sb.name as Label).text = ""
 	if hint_l:
-		hint_l.text = "%d jogador(es) prontos" % slots.size() if slots.size() > 0 else ""
+		hint_l.text = "%d PRONTO%s" % [slots.size(), "S" if slots.size() != 1 else ""] if slots.size() > 0 else ""
 
 
 func _slot_of(dev: String) -> int:
