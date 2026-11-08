@@ -269,6 +269,15 @@ Dentro de cada mundo, as pistas vão da mais simples para a mais difícil (das c
 - Saves antigos com progresso na carreira mantêm a arma de ataque dos carros que já tinham (e o Trovão e a Monstro mantêm o escudo e a onda de choque como especial).
 - **Metralhadora segura o alvo**: cada bala tira ~1,5% do embalo (1% vindo da IA, 0,5% nos chefes) e, enquanto leva tiros, a velocidade máxima cai 14% (7% no nitro, 3% nos chefes).
 - **Revisão visual dos carros**: os discos escuros das caixas de roda não descem mais até o chão (apareciam como hastes debaixo do buggy e da picape); placas de blindagem do kit encostadas na porta (flutuavam 7 cm para fora) e o Trovão não ganha placa dupla; filete do kit rente à lateral e lâmina dianteira menor; Vespa e Monstro ganham para-barros em vez de asa de pista; dano (faixa laranja) e munição (tambor) encaixados no casulo pelo tamanho real da arma.
+- **Acabamento de miniatura** (pesquisa de carrinhos estilizados: formas robustas com chanfro arredondado, silhueta limpa, normais ponderadas, nada "colado" por fora):
+  - Sombreamento liso com quinas vivas e **normais ponderadas pela área** (faces grandes retas, só os chanfros arredondam o brilho), no lugar do sombreamento chapado em degraus.
+  - **Moldura nas caixas de roda** (filete escuro nos esportivos, alargador largo no buggy e na picape) escondendo o corte; corcova automática no para-lama dianteiro quando o pneu passaria da linha do capô (acabou o buraco no canto do capô).
+  - Capô mais fino com **vão escuro** em volta (fica na carroceria quando o capô voa).
+  - **Faróis** com carcaça embutida, dois projetores e filete de LED; **lanternas** com moldura e luz de ré; **grade** com frisos cromados.
+  - **Retrovisor** preso na quina da porta (base, haste, capa na cor do carro e espelho); antes era um cubo solto.
+  - **Escapamento embutido** no para-choque com moldura (antes pendurado por baixo).
+  - **Gaiola do buggy** com juntas soldadas e sapatas; banco com encosto. Aros mais claros (o aro escuro sumia no pneu).
+  - `tools/car_studio.gd` agora tem céu (metal e cromo refletem como na pista) e câmera de perto, para revisar acabamento.
 - Rivais: no mundo 1 quase nenhum tem especial; a partir do mundo 2 todos têm, e nos mundos finais também têm dano e cadência melhorados.
 
 **Chefes**: carros gigantes (modelo 1,6–1,7x, vida 1.100–1.500, barra de vida na tela). Os ataques são diferentes das armas equipáveis e **sempre avisados no chão** antes de acertar:

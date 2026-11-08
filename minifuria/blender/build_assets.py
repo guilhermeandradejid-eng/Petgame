@@ -94,7 +94,7 @@ M = {
     "stripe": mat("RampStripe", "#26272d", 0.6),
     "seat": mat("Seat", "#3d3f47", 0.8),
     "well": mat("Well", "#121216", 0.95),
-    "rim_dark": mat("RimDark", "#2a2d34", 0.35, 0.8),
+    "rim_dark": mat("RimDark", "#4a4e57", 0.35, 0.8),
     "sidewall": mat("Sidewall", "#2c2c33", 0.85),
     "moss": mat("Moss", "#4f6b2a", 0.95),
     "reed": mat("Reed", "#7a8f3a", 0.85),
@@ -677,6 +677,18 @@ def boolean(ob, other, op):
     bpy.data.objects.remove(other, do_unlink=True)
 
 
+def smooth_weighted(ob, deg=50.0):
+    """Acabamento de miniatura: faces lisas com quinas vivas acima de 'deg' e normais ponderadas pela área
+    (as faces grandes ficam retas e só os chanfros arredondam o brilho — sem o 'degrau' do sombreamento chapado)."""
+    ob.data.shade_smooth()
+    ob.data.set_sharp_from_angle(angle=math.radians(deg))
+    md = ob.modifiers.new("wn", "WEIGHTED_NORMAL")
+    md.mode = "FACE_AREA"
+    md.weight = 80
+    md.keep_sharp = True
+    apply_mods(ob)
+
+
 def build_car2(key, s):
     L, W, clr = s["L"], s["W"], s["clr"]
     wr, wrr, wb, ww = s["wr"], s.get("wrr", s["wr"]), s["wb"], s["ww"]
@@ -699,16 +711,30 @@ def build_car2(key, s):
         prof.insert(5, (cowl + 0.05, zb))
     body = prism(key + "_b", prof, W / 2, W / 2, 0, 0, paint, bevel=s.get("bev", 0.1))
     apply_mods(body)
+    top_pts = [p for p in prof[2:-2]]
+
+    def top_at(yq):
+        # altura da lataria (linha do capô/tampa) na posição yq
+        for (ya, za), (yb, zb_) in zip(top_pts, top_pts[1:]):
+            if ya <= yq <= yb and yb > ya:
+                return za + (zb_ - za) * (yq - ya) / (yb - ya)
+        return zb
     # para-lamas retos, fundidos à carroceria (cobrem o pneu que passa da linha de cintura)
     for n, (sd, y, r, fr) in WH.items():
         top = 2 * r + 0.1
-        hump = fr and s.get("front_fenders")
+        # corcova sobre a roda dianteira quando o recorte da roda abriria um buraco no capô
+        # (fora-de-estrada não precisa: o alargador escuro já cobre a roda)
+        auto_h = fr and not s.get("offroad") and 2 * r + 0.075 > top_at(y) - 0.05
+        hump = fr and (s.get("front_fenders") or auto_h)
         if 2 * r + 0.08 > zb or hump:
             # para-lama integrado (corcova de hipercarro sobre a roda dianteira)
-            top = 2 * r + (0.17 if hump else 0.1)
-            fw = ww + (0.24 if hump else 0.18)
-            z0_ = (nose - 0.15) if hump else zb - 0.2
-            f = box(f"{key}_fl{n}", (fw, 2 * r + (0.45 if hump else 0.6), top - z0_), (sd * (W / 2 - fw / 2 + 0.02), y, (top + z0_) / 2), paint, bevel=0.13 if hump else 0.09)
+            slim = auto_h and not s.get("front_fenders")
+            top = 2 * r + (0.12 if slim else (0.17 if hump else 0.1))
+            fw = ww + (0.16 if slim else (0.24 if hump else 0.18))
+            z0_ = (top_at(y) - 0.12) if slim else ((nose - 0.15) if hump else zb - 0.2)
+            ln = 2 * r + (0.3 if slim else (0.45 if hump else 0.6))
+            f = box(f"{key}_fl{n}", (fw, ln, top - z0_), (sd * (W / 2 - fw / 2 + 0.02), y, (top + z0_) / 2), paint,
+                    bevel=0.06 if slim else (0.13 if hump else 0.09), taper=(0.92, 0.8) if slim else None)
             apply_mods(f)
             boolean(body, f, "UNION")
     # caixas de roda (frente mais funda: a roda esterça)
@@ -724,6 +750,15 @@ def build_car2(key, s):
         boolean(dsc, box(f"{key}_wlc{n}", (0.3, 2 * r + 0.6, 3.0), (wx_, y, clr + 0.04 + 1.5), M["well"]), "INTERSECT")
         P["body"].append(dsc)
     P["body"].append(body)
+    # moldura da caixa de roda: borda escura que esconde o corte (fora-de-estrada: alargador largo)
+    off = s.get("offroad", False)
+    for n, (sd, y, r, fr) in WH.items():
+        R0 = r + 0.07
+        ext = 0.13 if off else 0.055
+        wd = (ww * 0.55 + 0.1) if off else 0.07
+        a0 = max(-12.0, math.degrees(math.asin(max(-1.0, min(1.0, (clr + 0.04 - r) / R0)))))
+        ar = arch(f"{key}_ar{n}", R0, R0 + ext, wd, (sd * (W / 2 - wd / 2 + 0.035), y, r), M["trim"], a0=a0, a1=180.0 - a0, segs=16)
+        P["body"].append(ar)
     # assoalho/saia escura, friso cromado na linha de cintura e saia lateral (quebram a lateral chapada)
     P["body"].append(box(key + "_fl", (W * 0.94, wb + 0.4, 0.08), (0, oy, clr + 0.02), M["trim"]))
     for sd in (-1, 1):
@@ -736,7 +771,9 @@ def build_car2(key, s):
     if not s.get("no_hood"):
         hy0, hz0 = yF + 0.3, nose + 0.012
         hy1, hz1 = cowl - 0.12, zb + 0.012 if not s.get("flat_hood") else nose + 0.02
-        P["hood"].append(beam(key + "_hd", (0, hy0, hz0), (0, hy1, hz1), W * 0.72, 0.035, paint, bevel=0.012))
+        P["hood"].append(beam(key + "_hd", (0, hy0, hz0), (0, hy1, hz1), W * 0.72, 0.024, paint, bevel=0.01))
+        # vão do capô: moldura escura um pouco maior por baixo (fica na carroceria quando o capô voa)
+        P["body"].append(beam(key + "_hdg", (0, hy0 - 0.025, hz0 - 0.008), (0, hy1 + 0.025, hz1 - 0.008), W * 0.72 + 0.05, 0.012, M["well"]))
         for ex in s.get("extras", []):
             if ex[0] == "scoop":
                 P["hood"].append(box(key + "_hs", (0.55, 0.55, 0.16), (0, (hy0 + hy1) / 2 + 0.1, (hz0 + hz1) / 2 + 0.07), M["trim"], bevel=0.04, taper=(0.8, 0.6)))
@@ -748,20 +785,41 @@ def build_car2(key, s):
                     P["hood"].append(box(f"{key}_hv{k}", (0.5, 0.06, 0.03), (0, hy1 - 0.18 - k * 0.12, hz1 - 0.01 + 0.02 * k), M["well"]))
     # ---- frente: para-choque, grade e faróis rasgados
     P["bumperF"].append(box(key + "_bf", (W * 0.97, 0.26, 0.22), (0, yF + 0.08, clr + 0.11), M["trim"], bevel=0.06))
-    P["bumperF"].append(box(key + "_gr", (W * 0.5, 0.06, max(0.08, nose - clr - 0.38)), (0, yF - 0.005, (nose + clr) / 2 + 0.02), M["well"], bevel=0.02))
+    gh = max(0.08, nose - clr - 0.38)
+    gz = (nose + clr) / 2 + 0.02
+    P["bumperF"].append(box(key + "_gr", (W * 0.5, 0.06, gh), (0, yF - 0.005, gz), M["well"], bevel=0.02))
+    # frisos da grade
+    for i_ in range(3):
+        P["bumperF"].append(box(f"{key}_gs{i_}", (W * 0.46, 0.02, 0.014), (0, yF - 0.035, gz - gh * 0.3 + i_ * gh * 0.3), M["chrome"]))
+    tilt = math.atan2(0.1, 0.16) * 0.6
     for sd in (-1, 1):
-        hl = box(f"{key}_hl{sd}", (W * 0.24, 0.07, 0.07), (sd * W * 0.32, yF + 0.07, nose - 0.06), M["head"], bevel=0.02)
-        hl.rotation_euler = (math.atan2(nose - (nose - 0.1), 0.16) * 0.6, 0, 0)
-        P["bumperF"].append(hl)
-        P["bumperF"].append(box(f"{key}_hh{sd}", (W * 0.27, 0.06, 0.11), (sd * W * 0.32, yF + 0.09, nose - 0.07), M["trim"], bevel=0.02))
+        # farol: carcaça escura embutida, dois projetores e filete de LED por cima
+        hx, hy, hz = sd * W * (0.25 if s.get("offroad") else 0.32), yF + 0.08, nose - 0.065
+        bz = box(f"{key}_hh{sd}", (W * (0.22 if s.get("offroad") else 0.27), 0.07, 0.12), (hx, hy, hz), M["well"], bevel=0.025)
+        bz.rotation_euler = (tilt, 0, 0)
+        P["bumperF"].append(bz)
+        for j in (-1, 1):
+            pj = cyl(f"{key}_hp{sd}{j}", 0.038, 0.05, (hx + j * W * 0.06, hy - 0.035, hz - 0.012), M["head"], verts=12, axis="Y")
+            pj.rotation_euler = (tilt, 0, 0)
+            P["bumperF"].append(pj)
+        led = box(f"{key}_hl{sd}", (W * (0.19 if s.get("offroad") else 0.24), 0.05, 0.018), (hx, hy - 0.02, hz + 0.038), M["head"])
+        led.rotation_euler = (tilt, 0, 0)
+        P["bumperF"].append(led)
     # ---- traseira: para-choque, lanternas, escapamento
     P["bumperR"].append(box(key + "_br", (W * 0.97, 0.26, 0.22), (0, yR - 0.08, clr + 0.11), M["trim"], bevel=0.06))
     P["bumperR"].append(box(key + "_tlb", (W * 0.7, 0.05, 0.06), (0, yR + 0.005, tail - 0.18), M["tail"]))
     for sd in (-1, 1):
-        P["bumperR"].append(box(f"{key}_tl{sd}", (W * 0.2, 0.06, 0.12), (sd * W * 0.36, yR + 0.004, tail - 0.18), M["tail"], bevel=0.02))
-        P["bumperR"].append(cyl(f"{key}_ex{sd}", 0.07, 0.3, (sd * W * 0.25, yR + 0.05, clr + 0.02), M["exhaust"], verts=12, axis="Y"))
-        P["bumperR"].append(cyl(f"{key}_ext{sd}", 0.085, 0.08, (sd * W * 0.25, yR + 0.2, clr + 0.02), M["chrome"], verts=12, axis="Y"))
-        ex = empty(key + ("_exR" if sd > 0 else "_exL"), (sd * W * 0.25, yR + 0.26, clr + 0.02))
+        # lanterna: moldura escura, lente vermelha e luz de ré branca no canto interno
+        P["bumperR"].append(box(f"{key}_th{sd}", (W * 0.24, 0.05, 0.15), (sd * W * 0.36, yR - 0.002, tail - 0.18), M["well"], bevel=0.02))
+        P["bumperR"].append(box(f"{key}_tl{sd}", (W * 0.18, 0.06, 0.1), (sd * W * 0.37, yR + 0.006, tail - 0.18), M["tail"], bevel=0.015))
+        P["bumperR"].append(box(f"{key}_rv{sd}", (W * 0.04, 0.062, 0.06), (sd * W * 0.26, yR + 0.006, tail - 0.18), M["head"]))
+        # escapamento embutido no para-choque (antes ficava pendurado por baixo)
+        ez = clr + 0.08
+        P["bumperR"].append(box(f"{key}_exh{sd}", (0.22, 0.03, 0.16), (sd * W * 0.25, yR + 0.05, ez), M["well"], bevel=0.02))
+        P["bumperR"].append(cyl(f"{key}_ex{sd}", 0.06, 0.2, (sd * W * 0.25, yR + 0.02, ez), M["exhaust"], verts=12, axis="Y"))
+        P["bumperR"].append(cyl(f"{key}_ext{sd}", 0.072, 0.07, (sd * W * 0.25, yR + 0.12, ez), M["chrome"], verts=14, axis="Y"))
+        P["bumperR"].append(cyl(f"{key}_exi{sd}", 0.05, 0.02, (sd * W * 0.25, yR + 0.16, ez), M["well"], verts=12, axis="Y"))
+        ex = empty(key + ("_exR" if sd > 0 else "_exL"), (sd * W * 0.25, yR + 0.22, ez))
         parent(ex, root)
     # ---- cabine em estufa: vidro inclinado, teto e colunas (cor do carro)
     cab = s.get("cab")
@@ -781,9 +839,13 @@ def build_car2(key, s):
             if y3 - y0 > 1.4:
                 ym = (y1 + y2) / 2
                 P["cabin"].append(beam(f"{key}_pb{sd}", (sd * (hb + 0.01), ym, zb), (sd * (ht + 0.02), ym, zt), 0.08, 0.08, paint))
-            # retrovisor
-            P["doorL" if sd < 0 else "doorR"].append(box(f"{key}_ms{sd}", (0.14, 0.05, 0.05), (sd * (hb + 0.07), y0 + 0.22, zb + 0.06), M["trim"]))
-            P["doorL" if sd < 0 else "doorR"].append(box(f"{key}_mh{sd}", (0.1, 0.15, 0.11), (sd * (hb + 0.16), y0 + 0.22, zb + 0.09), paint, bevel=0.02))
+            # retrovisor: base na quina da porta, haste e capa na cor do carro com espelho atrás
+            dn = "doorL" if sd < 0 else "doorR"
+            my = y0 + 0.2
+            P[dn].append(box(f"{key}_mb{sd}", (0.08, 0.14, 0.05), (sd * (W / 2 - 0.03), my, zb + 0.01), M["trim"], bevel=0.015))
+            P[dn].append(beam(f"{key}_ms{sd}", (sd * (W / 2 - 0.02), my, zb + 0.02), (sd * (W / 2 + 0.1), my + 0.01, zb + 0.1), 0.035, 0.035, M["trim"]))
+            P[dn].append(box(f"{key}_mh{sd}", (0.13, 0.1, 0.09), (sd * (W / 2 + 0.14), my + 0.01, zb + 0.11), paint, bevel=0.025))
+            P[dn].append(box(f"{key}_mg{sd}", (0.1, 0.012, 0.065), (sd * (W / 2 + 0.14), my + 0.065, zb + 0.11), M["glass"]))
         mount_z = zt + 0.04
         mount_y = (y1 + y2) / 2
     # ---- portas: vincos gravados na lataria + maçaneta (nada colado por fora)
@@ -826,7 +888,14 @@ def build_car2(key, s):
                 P["cabin"].append(beam(f"{key}_cg{sd}c", (sd * W * 0.3, y1 - 0.2, zt), (sd * W * 0.36, y1, zb), 0.07, 0.07, M["chrome"]))
             P["cabin"].append(beam(key + "_cgx0", (-W * 0.3, y0 + 0.35, zt), (W * 0.3, y0 + 0.35, zt), 0.07, 0.07, M["chrome"]))
             P["cabin"].append(beam(key + "_cgx1", (-W * 0.3, y1 - 0.2, zt), (W * 0.3, y1 - 0.2, zt), 0.07, 0.07, M["chrome"]))
+            # juntas soldadas nos cantos e sapatas na carroceria (os tubos não terminam "no ar")
+            for sd in (-1, 1):
+                for yy in (y0 + 0.35, y1 - 0.2):
+                    P["cabin"].append(box(f"{key}_cj{sd}{yy:.2f}", (0.11, 0.11, 0.11), (sd * W * 0.3, yy, zt), M["chrome"], bevel=0.03))
+                for yy in (y0, y1):
+                    P["cabin"].append(box(f"{key}_cf{sd}{yy:.2f}", (0.17, 0.17, 0.035), (sd * W * 0.36, yy, zb + 0.012), M["trim"], bevel=0.012))
             P["cabin"].append(box(key + "_seat", (W * 0.5, 0.45, 0.42), (0, (y0 + y1) / 2 + 0.1, zb + 0.18), M["seat"], bevel=0.06))
+            P["cabin"].append(box(key + "_seatb", (W * 0.46, 0.12, 0.5), (0, (y0 + y1) / 2 + 0.36, zb + 0.4), M["seat"], bevel=0.05))
             P["cabin"].append(box(key + "_ws", (W * 0.62, 0.05, 0.28), (0, y0 + 0.15, zb + 0.18), M["glass"], bevel=0.02))
             mount_z = zt + 0.05
             mount_y = (y0 + y1) / 2
@@ -889,7 +958,7 @@ def build_car2(key, s):
         if not objs:
             continue
         ob = join(f"{key}_{n}", objs)
-        flat(ob)
+        smooth_weighted(ob)
         parent(ob, root)
     for n, (sd, y, r, fr) in WH.items():
         w = cyl(f"{key}_w{n}", r, ww, (sd * wx, y, r), M["tire"], verts=12)
@@ -907,14 +976,14 @@ CARS2 = {
                    cowl=-0.3, deck=0.95, cab=(-0.3, 0.22, 0.7, 1.02, 1.3, 0.84, 0.62), door=(-0.28, 0.75),
                    extras=[("wing", 0.42), ("intakes",), ("stripe",), ("vents",)]),
     # trophy truck (Dirt Devil): alto, rodas enormes dentro dos para-lamas, gaiola, sem teto
-    "vespa": dict(L=3.4, W=2.0, clr=0.48, wr=0.5, wb=2.15, ww=0.55, zb=1.14, nose=0.98, tail=1.1, bev=0.08,
+    "vespa": dict(offroad=True, L=3.4, W=2.0, clr=0.48, wr=0.5, wb=2.15, ww=0.55, zb=1.14, nose=0.98, tail=1.1, bev=0.08,
                   cowl=-0.5, deck=1.05, no_doors=True, extras=[("cage", -0.45, 0.85, 1.85), ("lightbar", -0.2, 1.9), ("spare",), ("skid",)]),
     # muscle blindado (Havac): comprido, capô plano com blower, janelas em fresta, chapas laterais
     "trovao": dict(L=4.1, W=2.1, clr=0.26, wr=0.38, wrr=0.4, wb=2.55, ww=0.52, zb=0.93, nose=0.82, tail=0.94, flat_hood=True,
                    cowl=-0.1, deck=1.25, cab=(-0.1, 0.35, 0.9, 1.3, 1.4, 0.86, 0.66), door=(-0.05, 1.0),
                    extras=[("blower",), ("armor", 1.4), ("slits",), ("ducktail",), ("bullbar",)]),
     # picape monstro (Battle Trak): alta, larga, cabine dupla curta, caçamba com santo-antônio, para-choque de impulsão
-    "picape": dict(L=4.3, W=2.1, clr=0.48, wr=0.5, wb=2.65, ww=0.5, zb=1.14, nose=1.0, tail=1.1, flat_hood=True,
+    "picape": dict(offroad=True, L=4.3, W=2.1, clr=0.48, wr=0.5, wb=2.65, ww=0.5, zb=1.14, nose=1.0, tail=1.1, flat_hood=True,
                    cowl=-0.75, deck=0.55, cab=(-0.75, -0.42, 0.25, 0.55, 1.85, 0.9, 0.78), door=(-0.7, 0.45),
                    extras=[("bed", 0.6, 2.1, 0.32), ("bullbar",), ("stacks", 0.7), ("lightbar", -0.3, 1.97)]),
     "sedan": dict(L=3.9, W=1.95, clr=0.26, wr=0.36, wb=2.4, ww=0.42, zb=0.86, nose=0.68, tail=0.86,

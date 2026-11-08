@@ -16,11 +16,19 @@ func _init() -> void:
 	var root3 := Node3D.new()
 	get_root().add_child(root3)
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.82, 0.86, 0.92)
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.75, 0.8, 0.9)
-	env.ambient_light_energy = 0.8
+	# céu procedural: metais e cromados precisam de algo para refletir (como na pista)
+	var sky := Sky.new()
+	var sm := ProceduralSkyMaterial.new()
+	sm.sky_top_color = Color(0.45, 0.62, 0.9)
+	sm.sky_horizon_color = Color(0.85, 0.88, 0.92)
+	sm.ground_bottom_color = Color(0.25, 0.24, 0.23)
+	sm.ground_horizon_color = Color(0.6, 0.6, 0.62)
+	sky.sky_material = sm
+	env.background_mode = Environment.BG_SKY
+	env.sky = sky
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+	env.ambient_light_energy = 0.9
 	env.tonemap_mode = Environment.TONE_MAPPER_AGX
 	var we := WorldEnvironment.new()
 	we.environment = env
@@ -60,7 +68,7 @@ func _init() -> void:
 		c.global_transform = Transform3D(Basis(Vector3.UP, deg_to_rad(ang)), at)
 	var cam := Camera3D.new()
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
-	cam.size = 13.0 if solo == "" else 5.6
+	cam.size = 13.0 if solo == "" else (float(args[6]) if args.size() > 6 else 5.6)
 	root3.add_child(cam)
 	var look := Vector3(0, 0.6, 0)
 	var cp := look + Vector3(14, float(args[5]) if args.size() > 5 else 11.0, 14)
