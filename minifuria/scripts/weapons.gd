@@ -143,9 +143,9 @@ func _target(car: Car, max_d: float, cos_cone: float) -> Car:
 func update(dt: float) -> void:
 	for car in game.cars:
 		var c: Car = car
-		if c.wrecked or c.role == "traffic" or c.freeze:
+		if c.wrecked or c.role == "traffic" or (c.freeze and not c.net_remote):
 			continue
-		if c.role == "rival":
+		if c.role == "rival" and not c.net_remote and not c.human:
 			_ai(c)
 		if c.ctrl.fire and c.fire_cd <= 0.0 and c.ammo_f > 0:
 			if c.front_type == "mg":

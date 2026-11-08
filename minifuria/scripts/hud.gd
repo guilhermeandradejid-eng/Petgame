@@ -36,6 +36,9 @@ var g_title: Label
 var g_boxes := {}
 var g_up := {}
 var mute_b: Button
+var pause_extra: VBoxContainer   # opções do online (voz) entram aqui
+var extra_screens := {}   # telas registradas por outros módulos (multijogador local, online)
+var cur_screen := ""
 var t := 0.0
 var track: Track
 var cars: Array = []
@@ -169,12 +172,34 @@ func show_screen(name_: String) -> void:
 	results.visible = name_ == "results"
 	var racing := name_ == "race" or name_ == "pause"
 	for nd in race_nodes:
-		nd.visible = racing
-	touch.visible = name_ == "race"
+		nd.visible = racing and not (nd as Node).get_meta("split_hide", false)
+	touch.visible = name_ == "race" and not touch.get_meta("split_hide", false)
 	if name_ == "tracks":
 		_refresh_tracks()
 	if name_ == "garage":
 		refresh_garage()
+	if extra_screens.has(name_) or name_ in ["menu", "tracks", "garage", "pause", "results"]:
+		_focus_first.call_deferred(name_)
+	for k in extra_screens:
+		(extra_screens[k] as Control).visible = k == name_
+	cur_screen = name_
+
+
+## controle/teclado no menu: o primeiro botão da tela recebe o foco (navega com direcional e confirma com A)
+func _focus_first(name_: String) -> void:
+	var scr: Control = extra_screens.get(name_, {"menu": menu, "tracks": tracks_s, "garage": garage, "pause": pause_m, "results": results}.get(name_))
+	if scr == null or not scr.visible:
+		return
+	var fo := get_viewport().gui_get_focus_owner()
+	if fo and scr.is_ancestor_of(fo) and fo.is_visible_in_tree():
+		return
+	var stack: Array = [scr]
+	while stack.size() > 0:
+		var nd: Node = stack.pop_front()
+		if nd is BaseButton and (nd as Control).is_visible_in_tree() and (nd as Control).focus_mode != Control.FOCUS_NONE and not (nd as BaseButton).disabled:
+			(nd as Control).grab_focus()
+			return
+		stack.append_array(nd.get_children())
 
 
 # ------------------------------------------------------------------ HUD da corrida
@@ -436,9 +461,15 @@ func _build_menu() -> void:
 	var tag := _label(16, Color("#2ee6ff"), Color(0, 0, 0, 0.5), v)
 	tag.text = "9 PISTAS · ARMAS · LOOPINGS · UPGRADES"
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_btn("CORRER", v).pressed.connect(func(): show_screen("tracks"))
+	_btn("CORRER", v).pressed.connect(func(): game.set_solo(); show_screen("tracks"))
+	var mrow := HBoxContainer.new()
+	mrow.alignment = BoxContainer.ALIGNMENT_CENTER
+	mrow.add_theme_constant_override("separation", 14)
+	v.add_child(mrow)
+	_btn("LOCAL (ATÉ 4)", mrow, false, 240, 56).pressed.connect(func(): game.multi.open_join())
+	_btn("ONLINE (ATÉ 8)", mrow, false, 240, 56).pressed.connect(func(): game.online.open())
 	var info := Label.new()
-	info.text = "Cada volta recarrega munição e nitro. Destrua rivais para ganhar dinheiro e melhorar o carro.\nSetas/WASD apontam para onde ir na tela (o drift é automático nas curvas fortes) · B freio/ré · Z tiro · X mina · SHIFT nitro · R volta à pista\n(na garagem dá para trocar para direção clássica: setas giram o carro)"
+	info.text = "Cada volta recarrega munição e nitro. Destrua rivais para ganhar dinheiro e melhorar o carro.\nSetas/WASD apontam para onde ir na tela (o drift é automático nas curvas fortes) · B freio/ré · Z tiro · X mina · SHIFT nitro · R volta à pista\nControle: analógico dirige · A/RT acelera · B/LT freio · X tiro · Y mina · RB nitro · START pausa · BACK volta à pista"
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info.add_theme_font_override("font", SystemFont.new())
 	info.add_theme_font_size_override("font_size", 15)
@@ -654,6 +685,9 @@ func _build_pause() -> void:
 	steer_btns.append(sb)
 	_btn("REINICIAR", v, false).pressed.connect(func(): game.start_race())
 	_btn("SAIR DA CORRIDA", v, false).pressed.connect(func(): game.to_menu())
+	pause_extra = VBoxContainer.new()
+	pause_extra.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_child(pause_extra)
 
 
 func _build_results() -> void:

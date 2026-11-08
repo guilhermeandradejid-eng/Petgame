@@ -34,6 +34,12 @@ const NITRO := {"short": {"name": "Nitro curto", "cap": 4, "dur": 1.0, "acc": 2.
 
 var kind := ""
 var role := "traffic"       # player | rival | traffic
+var human := false          # dirigido por uma pessoa (local ou de outra máquina)
+var net_remote := false     # simulado em outra máquina: aqui só recebe o estado pela rede
+var owner_id := 0           # id de rede de quem simula este carro (0 = offline)
+var slot := -1              # posição no grid / índice na corrida em rede
+var local_idx := -1         # jogador local (0..3) que controla este carro
+var net_buf: Array = []     # estados recebidos [t, xform, vel, ...] para interpolar
 var display_name := ""
 var sp: Dictionary
 var color := Color.RED
@@ -783,6 +789,9 @@ func _detect_scrape() -> void:
 # ------------------------------------------------------------------ dano e vida
 ## dano de batida física (dv = variação de velocidade no impacto)
 func take_impact(point: Vector3, dv: float, wall := false) -> void:
+	if net_remote:
+		_deform(point, dv * 0.5)
+		return
 	var tough := 0.55 if role == "player" else 1.0
 	if wall:
 		tough *= 0.45   # raspar/bater na mureta amassa, mas raramente destrói
@@ -795,6 +804,10 @@ func take_impact(point: Vector3, dv: float, wall := false) -> void:
 ## dano de qualquer fonte (armas, batidas). Retorna true se destruiu o carro.
 func apply_damage(amount: float, point: Vector3, attacker: Car, deform := true) -> bool:
 	if wrecked or invuln > 0.0 or amount <= 0.0:
+		return false
+	if net_remote:
+		# quem decide o dano é a máquina dona do carro; aqui só o efeito visual (e quem atirou leva o crédito lá)
+		flash_t = 0.06
 		return false
 	health -= amount
 	flash_t = 0.06
@@ -1196,8 +1209,14 @@ func ai(track: Track, game: Node, dt: float) -> void:
 		if special:
 			want = maxf(want, 32.0)   # loopings e saltos pedem velocidade
 		ctrl.nitro = max_c < 0.01 and v_f > 25.0 and nitro_ch > 0 and sin(game.time_g * 0.5 + seed_f) > 0.6
-		var p: Car = game.player
-		if p and not p.wrecked and global_position.distance_to(p.global_position) < 9.0 and game.time_g > next_bash:
+		var p: Car = null
+		var pd := 1e9
+		for h in game.humans:
+			var dd: float = global_position.distance_to(h.global_position)
+			if dd < pd and not h.wrecked:
+				pd = dd
+				p = h
+		if p and not p.wrecked and pd < 9.0 and game.time_g > next_bash:
 			lane_t = clampf(p.lat, -track.HALF + 2.0, track.HALF - 2.0)
 			next_bash = game.time_g + randf_range(3, 6)
 	var blocked = null

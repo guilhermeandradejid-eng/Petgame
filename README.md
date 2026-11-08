@@ -228,11 +228,40 @@ Sobre as músicas do Rock n' Roll Racing ("Bad to the Bone", "Paranoid", "Born t
 - Retrovisores, saias laterais e portas encaixadas entre os para-lamas; o capô fica entre os para-lamas.
 - `tools/car_preview.gd` tira uma foto de estúdio dos carros com as armas para conferir a montagem.
 
+## Multijogador
+
+### Local (até 4 na mesma tela)
+Menu → **LOCAL (ATÉ 4)**. Cada pessoa entra apertando **A ou START** no controle, **ESPAÇO** (teclado WASD) ou **ENTER** (teclado setas). No quadro de cada um, esquerda/direita troca o carro e B / Q / vírgula sai. START (ou o botão) escolhe a pista e a corrida começa direto.
+- **Tela dividida**: 2 jogadores lado a lado; 3–4 em 2×2 (com 3, o 4º quadro segue o líder). Cada quadro é um `SubViewport` que desenha o mesmo mundo com a câmera daquele jogador, com a mesma lógica da câmera do solo (loops, saca-rolhas, nitro). Cada quadro tem posição, volta, velocidade, vida, munição e os avisos daquele jogador.
+- **Teclados**: WASD + E tiro, Q mina, Shift nitro, Espaço freio · Setas + . tiro, , mina, / nitro, Enter freio. **Controles**: veja abaixo.
+- No multijogador a câmera lenta e o "hitstop" ficam desligados (afetariam todo mundo).
+- Fim: quando todas as pessoas terminam, ou 30 s depois que a primeira termina. O resultado mostra a classificação de todos.
+
+### Online (até 8 por sala)
+Menu → **ONLINE (ATÉ 8)** → nome + endereço do servidor → **CONECTAR** → **CRIAR SALA** (gera um código de 4 letras) ou **ENTRAR** pelo código ou pela lista de salas abertas. No **lobby**: cada um escolhe o carro; o anfitrião escolhe a pista, se a IA completa o grid, e **LARGA**. Depois do resultado, todo mundo volta ao lobby.
+- **Como sincroniza**: cada máquina simula a física dos seus carros e envia o estado 20 vezes por segundo (~47 bytes por carro). O anfitrião simula a IA. Os carros dos outros aparecem 100 ms "no passado", interpolados com Hermite (posição + velocidade), e colidem normalmente. Tiros e minas dos outros são simulados em todas as máquinas, mas o dano de cada carro é decidido pela máquina dona dele. Destruições e chegadas são avisadas por mensagem, então a classificação é a mesma para todos.
+- **Se o anfitrião cai**, o servidor promove outra pessoa, e a IA passa a ser simulada por ela sem parar a corrida. Quem sai no meio fica como "(saiu)" no resultado.
+- **Testes** (rodando aqui): 2, 3, 4 e 8 pessoas reais (instâncias do jogo) pela rede, com o servidor Godot e com o servidor Node. Todas as máquinas registraram exatamente a mesma classificação e os mesmos tempos. O erro de posição entre o dono do carro e quem assiste ficou em 0,22–0,44 m de mediana (p90 < 1 m). Também testei o anfitrião caindo aos 30 s.
+
+### Chat de voz por proximidade
+No lobby (ou no menu de pausa): **VOZ: DESLIGADA → MICROFONE ABERTO → APERTE V / L3 PARA FALAR**. No lobby todos se ouvem. Na corrida, o volume cai com a distância entre os carros (cheio até 12 m, some a 70 m) e o som vem do lado em que o outro carro está na tela. Quem está falando aparece no canto da tela.
+- Microfone → mono 12 kHz → IMA ADPCM 4 bits em pacotes de 40 ms (~6 KB/s; 28 dB de SNR no teste `tools/voice_test.gd`) → servidor → `AudioStreamGenerator` por pessoa, com ~80 ms de fila contra variação da rede. No modo aberto só transmite quando você fala.
+- Android pede a permissão de microfone; no navegador, o próprio navegador pergunta.
+
+### Servidor de salas
+O jogo precisa de um servidor de salas (ele só repassa mensagens; quem simula são os jogadores). Opções:
+1. **Rede local, sem instalar nada**: no PC ou Android, **HOSPEDAR AQUI** abre o servidor dentro do jogo e mostra o endereço (`ws://192.168.x.x:9080`) para os outros digitarem.
+2. **Servidor dedicado com o próprio jogo**: `MiniFuria.exe --headless -- --server --port=9080` (ou `godot --headless --path minifuria -- --server`). Com `--cert=cert.pem --key=key.pem` ele já serve `wss://`.
+3. **Na internet, de graça ou barato (recomendado)**: `minifuria/server/` tem a mesma coisa em Node.js (`relay.js`, ~150 linhas, com Dockerfile). Hospede no Render, Fly.io, Railway, etc.: elas dão HTTPS, então o endereço vira `wss://seu-app...`. **A versão web do jogo só consegue conectar em `wss://`** (página https). Para PC/Android, `ws://ip:porta` também funciona (abra a porta 9080 no roteador se for pela internet).
+
+Protocolo: JSON para salas (`hello`, `list`, `create`, `join`, `leave`, `lock`, `room`) e binário `[tipo][remetente][dados]` para estado dos carros (tipo 1) e voz (tipo 2). Está documentado no topo de `scripts/net_server.gd`.
+
 ## Controles
 
 - **Direção "TELA" (padrão)**: você aponta para onde quer ir **na tela** e o carro vira sozinho para lá. Não inverte quando o carro desce a tela. No celular/mouse é o analógico da esquerda; no teclado, as setas/WASD (↑ sobe a tela, ← vai para a esquerda da tela) e o carro acelera sozinho.
 - **Direção "CARRO" (clássica)**: ← → giram o carro em relação a ele mesmo, ↑ acelera, ↓ freia. Troca na garagem ou no menu de pausa.
 - Botões na tela: **TIRO**, **NITRO**, **MINA/ÓLEO**, **FREIO**. O **drift é automático**: numa curva forte em velocidade o carro entra num drift suave sozinho e sai quando a curva alivia. Teclado: `B`/`C` freio e ré, `Z`/`J` tiro, `X`/`K` mina, `Shift` nitro, `R` volta à pista, `P` pausa, `M` som.
+- **Controle (gamepad)**: analógico/direcional dirige (no modo TELA aponta na tela e acelera sozinho), **A/RT** acelera, **B/LT** freio e ré, **X** tiro, **Y** mina/óleo, **RB/LB** nitro, **START** pausa, **BACK** volta à pista, **L3** fala no chat de voz (modo "aperte para falar"). Nos menus o direcional navega e **A** confirma.
 - Se o carro ficar no sentido errado aparece "SENTIDO ERRADO!" e, se continuar, o jogo te coloca de volta na direção certa.
 
 ## Como a pista 3D é feita
@@ -248,6 +277,11 @@ Ferramentas: `godot --headless -s res://tools/validate_tracks.gd` confere raio m
 - `minifuria/shaders/`: asfalto por tema, chão (grama, areia, neve, água, lava, lua, cidade, tapete, nuvens), chama do nitro, efeitos no chão, barra de vida e pós-processamento.
 - `minifuria/tools/pack_web.py`: divide o export web em arquivos de 4 MB.
 - Fonte Bungee (SIL OFL), ver `minifuria/fonts/FONT-LICENSE.txt`.
+
+## PC (Windows e Linux)
+
+Presets **Windows** e **Linux** no `export_presets.cfg` geram um executável único (dados embutidos):
+`godot --headless --path minifuria --export-release "Windows" build/pc/MiniFuria.exe` (e `"Linux" build/pc/MiniFuria.x86_64`). Suportam controle (XInput/SDL: Xbox, PlayStation, Switch Pro e genéricos), tela dividida, online e voz. O ícone do .exe precisa do `rcedit` configurado no editor; sem ele, fica o ícone padrão.
 
 ## APK para Android
 

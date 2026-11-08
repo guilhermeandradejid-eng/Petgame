@@ -46,7 +46,20 @@ var rivals: Array = []
 var traffic: Array = []
 var props: Array = []
 var pickups: Array = []
-var player: Car
+var player: Car            # jogador principal desta máquina (P1): save, prêmio, som do motor, HUD cheio
+var humans: Array = []     # todos os carros dirigidos por pessoas (locais e de outras máquinas)
+var locals: Array = []     # jogadores desta máquina: {"car", "dev", "idx", "name", "done"}
+## sessão: "solo" | "local" (tela dividida, até 4) | "online" (até 8, em salas)
+var session := {"kind": "solo", "players": []}
+var multi: Multi
+var online: NetGame
+var race_end_t := -1.0     # multijogador: depois que o 1º humano termina, a corrida acaba em 30 s
+const HUMAN_COLORS := ["#e8352b", "#2f6fd6", "#2fbf71", "#ffb31a", "#c04de0", "#ff7a1a", "#2ee6ff", "#f2f2f2"]
+const MORE_AI := [
+	{"kind": "faisca", "color": "#6b6f7a", "name": "FUMAÇA"},
+	{"kind": "trovao", "color": "#d6455c", "name": "BRASA"},
+	{"kind": "vespa", "color": "#38c7c7", "name": "PIRANHA"},
+]
 var em := {}
 var scrape_pool: Array = []
 
@@ -101,13 +114,32 @@ var cam_loop_u := 1.0   # 0 = câmera de loop completa, 1 = câmera normal
 var cam_kick := Vector3.ZERO
 var oil_fx := 0.0
 var nitro_zoom := 0.0
+var cam_size_mul := 1.0   # tela dividida 2x2: um pouco mais de zoom (quadros menores)
 
 
 func _ready() -> void:
 	randomize()
+	var args := OS.get_cmdline_user_args()
+	if "--server" in args:
+		# servidor de salas dedicado (sem gráficos): godot --headless -- --server --port=9080
+		var port := 9080
+		var cert := ""
+		var key := ""
+		for a in args:
+			if a.begins_with("--port="):
+				port = int(a.substr(7))
+			if a.begins_with("--cert="):
+				cert = a.substr(7)
+			if a.begins_with("--key="):
+				key = a.substr(6)
+		var sv := NetServer.new()
+		add_child(sv)
+		sv.start(port, "*", cert, key)
+		set_process(false)
+		set_physics_process(false)
+		return
 	_setup_input()
 	_load_save()
-	var args := OS.get_cmdline_user_args()
 	auto_test = "--autotest" in args
 	for a in args:
 		if a.begins_with("--shots="):
@@ -187,6 +219,22 @@ func _ready() -> void:
 	add_child(hud)
 	music = Music.new()
 	add_child(music)
+	multi = Multi.new()
+	add_child(multi)
+	multi.setup(self, hud)
+	online = NetGame.new()
+	add_child(online)
+	online.setup(self, hud)
+	if "--localtest" in args:
+		var devs: Array = ["kbA", "kbB", "joy0", "joy1"]
+		var np := 2
+		for a in args:
+			if a.begins_with("--players="):
+				np = int(a.substr(10))
+		var pl: Array = []
+		for i in np:
+			pl.append({"dev": devs[i], "car": Multi.CARS[i % 3], "name": "P%d" % (i + 1), "color": HUMAN_COLORS[i], "local": true})
+		session = {"kind": "local", "players": pl}
 	load_track(track_idx)
 	_last_us = Time.get_ticks_usec()
 	if not auto_test:
@@ -199,6 +247,8 @@ func _ready() -> void:
 		_steer_test()
 	elif "--uishot" in args:
 		_ui_shots()
+	elif "--server" in args or "--netclient" in args:
+		pass   # servidor/cliente de teste: o módulo online cuida
 	elif auto_test:
 		start_race()
 
@@ -315,8 +365,15 @@ func _overview_shots() -> void:
 
 
 func _ui_shots() -> void:
-	for scr in ["menu", "tracks", "garage"]:
-		hud.show_screen(scr)
+	for scr in ["menu", "tracks", "garage", "local", "online"]:
+		if scr == "local":
+			multi.open_join()
+			multi.slots = [{"dev": "kbA", "car": "faisca"}, {"dev": "joy0", "car": "vespa"}]
+			multi._refresh_join()
+		elif scr == "online":
+			online.open()
+		else:
+			hud.show_screen(scr)
 		for k in 20:
 			await get_tree().process_frame
 		get_viewport().get_texture().get_image().save_png("user://ui_%s.png" % scr)
@@ -342,6 +399,28 @@ func _setup_input() -> void:
 			var e := InputEventKey.new()
 			e.physical_keycode = k
 			InputMap.action_add_event(a, e)
+	# controles (qualquer um, no jogo solo): analógico/direcional, A/RT acelera, B/LT freio, X tiro,
+	# Y mina, RB/LB nitro, Start pausa, Back volta à pista
+	var axes := {"left": [JOY_AXIS_LEFT_X, -1.0], "right": [JOY_AXIS_LEFT_X, 1.0], "up": [JOY_AXIS_LEFT_Y, -1.0], "down": [JOY_AXIS_LEFT_Y, 1.0],
+		"accel": [JOY_AXIS_TRIGGER_RIGHT, 1.0], "brake": [JOY_AXIS_TRIGGER_LEFT, 1.0]}
+	var btns := {"left": [JOY_BUTTON_DPAD_LEFT], "right": [JOY_BUTTON_DPAD_RIGHT], "up": [JOY_BUTTON_DPAD_UP], "down": [JOY_BUTTON_DPAD_DOWN],
+		"accel": [JOY_BUTTON_A], "brake": [JOY_BUTTON_B], "fire": [JOY_BUTTON_X], "drop": [JOY_BUTTON_Y],
+		"nitro": [JOY_BUTTON_RIGHT_SHOULDER, JOY_BUTTON_LEFT_SHOULDER], "pause": [JOY_BUTTON_START], "reset": [JOY_BUTTON_BACK]}
+	if not InputMap.has_action("accel"):
+		InputMap.add_action("accel")
+	for a in axes:
+		var ja := InputEventJoypadMotion.new()
+		ja.device = -1
+		ja.axis = axes[a][0]
+		ja.axis_value = axes[a][1]
+		InputMap.action_add_event(a, ja)
+		InputMap.action_set_deadzone(a, 0.2)
+	for a in btns:
+		for bi in btns[a]:
+			var jb := InputEventJoypadButton.new()
+			jb.device = -1
+			jb.button_index = bi
+			InputMap.action_add_event(a, jb)
 
 
 # ------------------------------------------------------------------ save
@@ -983,31 +1062,67 @@ func _place(c: Car, s: float, lat: float, speed: float) -> void:
 func _spawn_cars() -> void:
 	var L := track.length
 	var lw := track.W * 0.22
-	var grid := [[-9.0, -lw], [-9.0, lw], [-18.0, -lw], [-18.0, lw], [-27.0, 0.0]]
 	var fronts := ["mg", "rocket"]
 	var rears := ["mine", "oil"]
 	var nitros := ["short", "long"]
-	for i in RIVALS.size():
-		var r: Dictionary = RIVALS[i]
+	humans.clear()
+	locals.clear()
+	# quem corre: pessoas (locais ou da sala online) + IA para completar o grid
+	var people: Array = session.players if session.kind != "solo" and session.players.size() > 0 else [{"dev": "solo", "name": "VOCÊ", "car": save.car, "local": true}]
+	var n_ai: int = int(session.get("ai", -1))
+	if n_ai < 0:
+		n_ai = mini(RIVALS.size(), 8 - people.size()) if session.kind != "online" else clampi(6 - people.size(), 0, 4)
+	if session.kind == "solo":
+		n_ai = RIVALS.size()
+	var total: int = people.size() + n_ai
+	# grid: fileiras de 2 (o último sozinho no meio se sobrar); IA na frente, pessoas atrás (como no solo)
+	var grid: Array = []
+	for i in total:
+		var row := i / 2
+		var lat := (-lw if i % 2 == 0 else lw)
+		if i == total - 1 and total % 2 == 1:
+			lat = 0.0
+		grid.append([-9.0 - row * 9.0, lat])
+	var ai_list: Array = RIVALS + MORE_AI
+	for i in n_ai:
+		var r: Dictionary = ai_list[i % ai_list.size()]
 		var c := _make_car(r.kind, "rival", Color(r.color))
 		c.display_name = r.name
 		c.seed_f = i * 2.1 + 0.5
 		c.cruise = 36.0 + i * 0.5 + track_idx * 0.25
-		c.ai_skill = randf_range(0.95, 1.03)
+		c.ai_skill = randf_range(0.95, 1.03) if session.kind != "online" else 0.99 + 0.01 * (i % 3)
 		c.next_bash = 6.0 + i * 3.0
 		var lv := clampi(track_idx / 3 + (i % 3), 0, 3)
 		# o kit mostra o nível; no desempenho o ganho é pequeno (no máximo +4% de motor)
 		var rup := {"engine": lv / 2, "armor": lv / 2, "ammo": 0, "nitro": 0, "tires": lv / 2, "_tier": lv, "_tire_vis": lv}
 		c.configure(lib, fronts[(i + track_idx) % 2], rears[(i / 2 + track_idx) % 2], nitros[i % 2], rup)
 		_add_xray(c)
+		c.slot = i
 		_place(c, L + grid[i][0], grid[i][1], 0)
 		rivals.append(c)
-	player = _make_car(save.car, "player", Color("#e8352b"))
-	player.display_name = "VOCÊ"
-	player.configure(lib, save.front, save.rear, save.nitro, save.up)
-	_add_xray(player)
-	player.turn_mult = 1.15
-	_place(player, L + grid[4][0], grid[4][1], 0)
+	var li := 0
+	for k in people.size():
+		var pp: Dictionary = people[k]
+		var is_local: bool = bool(pp.get("local", true))
+		var c := _make_car(String(pp.get("car", "faisca")), "player" if is_local else "rival", Color(String(pp.get("color", HUMAN_COLORS[k % HUMAN_COLORS.size()]))))
+		c.human = true
+		c.display_name = String(pp.get("name", "P%d" % (k + 1)))
+		c.slot = n_ai + k
+		c.owner_id = int(pp.get("id", 0))
+		var up: Dictionary = pp.get("up", save.up) if not is_local or li == 0 else save.up
+		c.configure(lib, String(pp.get("front", save.front)), String(pp.get("rear", save.rear)), String(pp.get("nitro", save.nitro)), up)
+		_add_xray(c)
+		c.turn_mult = 1.15
+		_place(c, L + grid[n_ai + k][0], grid[n_ai + k][1], 0)
+		humans.append(c)
+		if is_local:
+			c.local_idx = li
+			locals.append({"car": c, "dev": String(pp.get("dev", "solo")), "idx": li, "name": c.display_name, "done": false})
+			li += 1
+		else:
+			c.net_remote = true
+			c.role = "remote"
+	player = locals[0].car if locals.size() > 0 else humans[0]
 	var tc: int = track.data.traffic
 	for i in tc:
 		var t: Array = TRAFFIC[i % TRAFFIC.size()]
@@ -1024,14 +1139,72 @@ func _spawn_cars() -> void:
 		c.dist = pr.s - L if pr.s > L * 0.5 else pr.s
 		c.prev_s = pr.s
 		c.lap = 0
-	for c in [player] + rivals:
+	for c in humans + rivals:
 		c.freeze = true
+	if online:
+		online.on_spawned()
+
+
+## carros da corrida (pessoas + IA), sem o trânsito
+func racers() -> Array:
+	return rivals + humans
+
+
+func is_mp() -> bool:
+	return session.kind != "solo"
+
+
+func local_of(c: Car) -> Dictionary:
+	if c == null or c.local_idx < 0 or c.local_idx >= locals.size():
+		return {}
+	return locals[c.local_idx]
+
+
+## mensagens/sacudidas do jogador c: P1 em tela cheia usa o HUD normal; na tela dividida vão para o quadro dele
+func pop_for(c: Car, text: String, col: Color, sub := "") -> void:
+	if c == null or c.local_idx < 0:
+		return
+	if multi and multi.split:
+		multi.pop(c.local_idx, text + ("  " + sub if sub != "" else ""), col)
+	else:
+		hud.popup(text, col, sub)
+
+
+func big_for(c: Car, text: String, col: Color, outline: Color) -> void:
+	if c == null or c.local_idx < 0:
+		return
+	if multi and multi.split:
+		multi.pop(c.local_idx, text, col, true)
+	else:
+		hud.big(text, col, outline)
+
+
+func shake_for(c: Car, a: float) -> void:
+	if c == player:
+		_shake(a)
+	elif c and c.local_idx > 0 and multi:
+		multi.shake(c.local_idx, a)
 
 
 # ------------------------------------------------------------------ fluxo
 func choose_track(i: int) -> void:
+	if online and online.in_room():
+		online.pick_track(i)
+		return
 	load_track(i)
+	if session.kind == "local":
+		start_race()
+		return
 	hud.show_screen("garage")
+
+
+func set_solo() -> void:
+	session = {"kind": "solo", "players": []}
+
+
+func to_menu_mp() -> void:
+	set_solo()
+	to_menu()
 
 
 func next_track() -> void:
@@ -1051,8 +1224,14 @@ func start_race() -> void:
 	hitstop = 0.0
 	crash_t = -1.0
 	cam_focus = null
-	place = 5
+	place = racers().size()
 	finished_n = 0
+	race_end_t = -1.0
+	for c in racers():
+		c.set_meta("done", false)
+		c.set_meta("kills", 0)
+	if multi:
+		multi.setup_views()
 	hud.show_screen("race")
 	hud.touch.release_all()
 	hud.touch.labels["drop"] = "MINA" if player.rear_type == "mine" else "ÓLEO"
@@ -1071,12 +1250,24 @@ func start_race() -> void:
 
 
 func to_menu() -> void:
+	if online:
+		online.leave()
+	set_solo()
+	Engine.time_scale = 1.0
+	if multi:
+		multi.setup_views()
 	load_track(track_idx)
 	hud.show_screen("menu")
 	music.play_menu()
 
 
 func pause(on: bool) -> void:
+	if on and online.racing and mode in ["race", "countdown", "finish"]:
+		hud.show_screen("pause")   # online o jogo não para: só abre o menu por cima
+		return
+	if not on and online.racing and hud.cur_screen == "pause":
+		hud.show_screen("race")
+		return
 	if on and mode in ["race", "countdown"]:
 		prev_mode = mode
 		mode = "paused"
@@ -1117,6 +1308,8 @@ func _on_hit(c: Car, other: Object, point: Vector3, dv: float) -> void:
 		fx.sparks(point + Vector3.UP * 0.3, out + back, clampf(dv / 14.0, 0.3, 2.0))
 		if dv > 10.0:
 			fx.hit_light(point + Vector3.UP, Color(1.0, 0.7, 0.3), clampf(dv * 0.35, 3.0, 9.0), 9.0, 0.25)
+	if c.local_idx > 0 and dv > 5.0:
+		shake_for(c, minf(0.5, dv * 0.022))
 	if c == player and dv > 5.0:
 		_shake(minf(0.5, dv * 0.022))
 		sfx.play("bump", linear_to_db(clampf(dv / 20.0, 0.2, 1.0)))
@@ -1141,6 +1334,19 @@ func _on_died(c: Car, killer: Car) -> void:
 		fx.explosion(c.global_position, big)
 		sfx.play("crash", 0.0 if big else -5.0)
 		_shake(0.6 if big else 0.25)
+	if killer and killer != c and mode == "race":
+		killer.set_meta("kills", int(killer.get_meta("kills", 0)) + 1)
+	if online:
+		online.on_died(c, killer)
+	if c.local_idx >= 0 and (c != player or is_mp()):
+		big_for(c, "CAIU!" if fell else "DESTRUÍDO!", Color("#ffe14d"), Color("#ff5a1a"))
+		hud.killfeed("%s destruiu %s" % [killer.display_name if killer else "A PISTA", c.display_name], Color("#ff7a7a"))
+		shake_for(c, 0.6)
+		if c == player:
+			stats.deaths += 1
+			crash_t = 0.0
+		Input.vibrate_handheld(150)
+		return
 	if c == player:
 		stats.deaths += 1
 		hud.big("CAIU!" if fell else "DESTRUÍDO!", Color("#ffe14d"), Color("#ff5a1a"))
@@ -1151,6 +1357,10 @@ func _on_died(c: Car, killer: Car) -> void:
 		crash_t = 0.0
 		zoom_kick -= 8.0
 		Input.vibrate_handheld(150)
+		return
+	if killer and killer.local_idx >= 0 and killer != player and mode == "race":
+		pop_for(killer, "DESTRUIU %s!" % c.display_name, Color("#ff2d55"))
+		hud.killfeed("%s destruiu %s" % [killer.display_name, c.display_name], Color("#7dff6a"))
 		return
 	if killer == player and mode == "race":
 		var ram := player.linear_velocity.length() > 15.0 and c.global_position.distance_to(player.global_position) < 6.0
@@ -1164,7 +1374,7 @@ func _on_died(c: Car, killer: Car) -> void:
 				stats.takedowns += 1
 			hud.big("TAKEDOWN!" if ram else "DESTRUIU!", Color.WHITE, Color("#ff2d55"))
 			hud.popup(c.display_name, Color("#ff2d55"), "+$%d" % KILL_BONUS)
-			hud.killfeed("VOCÊ destruiu %s" % c.display_name, Color("#7dff6a"))
+			hud.killfeed("%s destruiu %s" % [player.display_name if is_mp() else "VOCÊ", c.display_name], Color("#7dff6a"))
 			stats.score += 1000
 			sfx.play("fanfare", -6.0)
 			_flash(Color(1, 0.9, 0.6), 0.3)
@@ -1175,6 +1385,11 @@ func _on_died(c: Car, killer: Car) -> void:
 			Input.vibrate_handheld(80)
 	elif c.role != "traffic" and mode == "race":
 		hud.killfeed("%s destruiu %s" % [killer.display_name if killer else "A PISTA", c.display_name], Color(1, 1, 1, 0.85))
+
+
+## tiro local acertou carro de outra máquina (o dono decide o dano): só efeito visual
+func net_report_hit(_c: Car, _amount: float, _point: Vector3, _attacker: Car) -> void:
+	pass
 
 
 func on_player_hit_enemy(_c: Car, _killed: bool) -> void:
@@ -1240,13 +1455,22 @@ func _flash(c: Color, a: float) -> void:
 
 
 func _slowmo(target: float, dur: float) -> void:
+	if is_mp():
+		return   # câmera lenta afeta todo mundo: no multijogador fica desligada
 	ts_target = target
 	slow_t = dur
 	ts = minf(ts, target + 0.15)
 
 
 func _on_screen(p: Vector3) -> bool:
-	return Vector2(p.x - cam_pos.x, p.z - cam_pos.z).length() < view_h * 1.4
+	if Vector2(p.x - cam_pos.x, p.z - cam_pos.z).length() < view_h * 1.4:
+		return true
+	if multi and multi.split:
+		for c in multi.cells:
+			var cp: Vector3 = c.rig.cam_pos
+			if Vector2(p.x - cp.x, p.z - cp.z).length() < float(c.rig.view_h) * 1.4:
+				return true
+	return false
 
 
 # ------------------------------------------------------------------ física e regras
@@ -1256,22 +1480,37 @@ func _physics_process(dt: float) -> void:
 	time_g += dt
 	for c in cars:
 		c.game_time = time_g
-		if c.role != "player" and not c.wrecked:
+		if c.role != "player" and not c.wrecked and not c.net_remote:
 			c.ai(track, self, dt)
-	if mode == "race" and not player.wrecked:
-		_player_input()
-	elif not player.wrecked:
-		player.ctrl.fire = false
-		player.ctrl.drop = false
-		player.ctrl.nitro = false
-		player.ctrl.drift = false
-		player.ctrl.brake = 0.0
-		player.ctrl.dir = null
-		player.ctrl.steer = 0.0
-		player.ctrl.throttle = 0.0
-		if mode == "finish":
-			player.ai(track, self, dt)
-			player.ctrl.nitro = false
+	if online:
+		online.physics(dt)
+	for lp in locals:
+		var pc: Car = lp.car
+		if pc.wrecked:
+			continue
+		if mode == "race" and not lp.done:
+			if lp.dev == "solo":
+				_player_input()
+			else:
+				_local_input(lp)
+		else:
+			pc.ctrl.fire = false
+			pc.ctrl.drop = false
+			pc.ctrl.nitro = false
+			pc.ctrl.drift = false
+			pc.ctrl.brake = 0.0
+			pc.ctrl.dir = null
+			pc.ctrl.steer = 0.0
+			pc.ctrl.throttle = 0.0
+			if mode == "finish" or (mode == "race" and lp.done):
+				# terminou: o carro segue sozinho até o fim da corrida
+				pc.cruise = 30.0
+				pc.role = "rival"
+				pc.ai(track, self, dt)
+				pc.role = "player"
+				pc.ctrl.nitro = false
+				pc.ctrl.fire = false
+				pc.ctrl.drop = false
 	if mode in ["race", "finish"]:
 		weapons.update(dt)
 	for c in cars:
@@ -1293,9 +1532,11 @@ func _physics_process(dt: float) -> void:
 				for sgn: float in [-1.0, 1.0]:
 					fx.sparks(c.global_transform * Vector3(sgn * c.sp.wid * 0.45, 0.15, -c.sp.len * 0.45), -f + c.ground_n * 0.35, 0.9)
 				fx.nitro_burst(c.global_transform * c.exhaust_local, f)
+			if c.local_idx > 0:
+				pop_for(c, "TURBO!", Color("#ff9a1a"))
 			if c == player:
 				sfx.play("nitro", -2.0)
-				hud.popup("TURBO!", Color("#ff9a1a"))
+				pop_for(c, "TURBO!", Color("#ff9a1a"))
 				zoom_kick += 5.0
 				cam_kick -= f * 2.2
 				_shake(0.22)
@@ -1339,6 +1580,20 @@ func _feature_stats(_dt: float) -> void:
 		c.set_meta("stall", on_f and slow)
 
 
+## jogador local com teclado próprio ou controle (tela dividida)
+func _local_input(lp: Dictionary) -> void:
+	var pc: Car = lp.car
+	var rr := Vector3(cos(CAM_YAW), 0, -sin(CAM_YAW))
+	var ff := Vector3(-sin(CAM_YAW), 0, -cos(CAM_YAW))
+	PInput.read(String(lp.dev), pc.ctrl, String(save.get("steer", "tela")) == "tela", rr, ff)
+	if auto_test:
+		pc.role = "rival"
+		pc.cruise = 37.0
+		pc.ai(track, self, 1.0 / 60.0)
+		pc.role = "player"
+		pc.ctrl.fire = weapons._target(pc, 50.0, 0.97) != null
+
+
 func _player_input() -> void:
 	var c := player.ctrl
 	var screen_mode := String(save.get("steer", "tela")) == "tela"
@@ -1352,13 +1607,16 @@ func _player_input() -> void:
 	if screen_mode:
 		var kx := Input.get_action_strength("right") - Input.get_action_strength("left")
 		var ky := Input.get_action_strength("up") - Input.get_action_strength("down")
-		if absf(kx) + absf(ky) > 0.1:
+		var kv := Vector2(kx, ky)
+		if kv.length() > 0.1:
 			c.dir = (rr * kx + ff * ky).normalized()
-			c.dir_mag = 1.0
+			c.dir_mag = minf(1.0, kv.length() * 1.4)
+			c.throttle = 1.0
+		elif Input.get_action_strength("accel") > 0.3:
 			c.throttle = 1.0
 	else:
 		c.steer = Input.get_action_strength("left") - Input.get_action_strength("right")
-		c.throttle = Input.get_action_strength("up")
+		c.throttle = maxf(Input.get_action_strength("up"), Input.get_action_strength("accel"))
 		c.brake = maxf(c.brake, Input.get_action_strength("down"))
 	if c.brake > 0.0:
 		c.throttle = 0.0
@@ -1427,10 +1685,10 @@ func _pickups(dt: float) -> void:
 						c.health = minf(c.max_health, c.health + c.max_health * 0.4)
 					"nitro":
 						c.nitro_ch = mini(c.nitro_cap + 1, c.nitro_ch + 1)
-				if c == player:
+				if c.local_idx >= 0:
 					sfx.play("pickup")
 					var names := {"ammo": "MUNIÇÃO!", "repair": "REPARO!", "nitro": "NITRO!"}
-					hud.popup(names[pk.kind], Color("#7dff6a"))
+					pop_for(c, names[pk.kind], Color("#7dff6a"))
 					fx.sparkle(nd.global_position, {"ammo": Color(0.7, 1.4, 0.5), "repair": Color(1.4, 0.6, 0.5), "nitro": Color(0.5, 1.0, 1.6)}[pk.kind])
 				break
 
@@ -1470,38 +1728,56 @@ func _rules(dt: float) -> void:
 		c.dist += d
 		c.prev_s = pr.s
 		var lap := int(floor(c.dist / L))
-		if lap >= LAPS and c != player and not c.get_meta("done", false) and mode == "race":
+		if c.net_remote:
+			lap = c.lap   # volta de carro de outra máquina vem pela rede
+		if lap >= LAPS and not c.get_meta("done", false) and mode == "race" and not c.net_remote:
 			c.set_meta("done", true)
-			finished_n += 1
-			if c != player and finished_n == rivals.size() and player.lap < LAPS:
+			c.set_meta("fin_t", race_t)
+			if not c.human:
+				finished_n += 1
+			if not is_mp() and c != player and finished_n == rivals.size() and player.lap < LAPS:
 				hud.popup("TODOS OS RIVAIS TERMINARAM", Color("#ff7a7a"))
 				_finish()
+			elif is_mp():
+				_mp_finished(c)
 		if lap > c.lap:
 			if OS.get_cmdline_user_args().has("--debuglap"):
 				var d0: float = (c.global_position - track.P[0]).dot(track.T[0])
 				var lat0: float = (c.global_position - track.P[0]).dot(track.L[0])
 				print("LAP %s lap=%d along_line=%.2f lat=%.1f s=%.1f ti=%d v=%.1f" % [c.display_name, lap, d0, lat0, pr.s, pr.i, c.linear_velocity.length()])
 			c.lap = lap
-			c.refill()
+			if not c.net_remote:
+				c.refill()
 			if c == player and mode == "race":
 				var lt := race_t - lap_start
 				lap_start = race_t
 				best_lap = minf(best_lap, lt)
+			if c.local_idx >= 0 and mode == "race":
 				if lap >= LAPS:
-					_finish()
+					if not is_mp():
+						_finish()
 				else:
-					hud.big("ÚLTIMA VOLTA!" if lap == LAPS - 1 else "VOLTA %d" % (lap + 1), Color("#ffcf33"), Color("#c74200"))
-					hud.popup("MUNIÇÃO E NITRO RECARREGADOS", Color("#2ee6ff"))
+					big_for(c, "ÚLTIMA VOLTA!" if lap == LAPS - 1 else "VOLTA %d" % (lap + 1), Color("#ffcf33"), Color("#c74200"))
+					pop_for(c, "MUNIÇÃO E NITRO RECARREGADOS", Color("#2ee6ff"))
 					sfx.play("fanfare", -6.0)
-					fx.burst("confetti", player.global_position + Vector3.UP)
+					fx.burst("confetti", c.global_position + Vector3.UP)
 	if mode != "race":
 		return
 	race_t += dt
-	var order := [player] + rivals
-	order.sort_custom(func(a, b): return a.dist > b.dist)
+	var order := standings()
 	place = order.find(player) + 1
+	if race_end_t >= 0.0:
+		race_end_t -= dt
+		if race_end_t <= 0.0:
+			_finish()
+			return
+	# borracha da IA: mira no humano mais à frente (no solo, o jogador)
+	var lead := player.dist
+	if is_mp():
+		for h in humans:
+			lead = maxf(lead, h.dist)
 	for r in rivals:
-		r.rubber = clampf(1.0 + (player.dist - r.dist) * 0.0028, 0.86, 1.1)
+		r.rubber = clampf(1.0 + (lead - r.dist) * 0.0028, 0.86, 1.1)
 	if player.wrecked:
 		return
 	var p := player
@@ -1579,10 +1855,10 @@ func _respawns(dt: float) -> void:
 	if steer_testing:
 		return
 	for c in cars:
-		if c.role == "traffic":
+		if c.role == "traffic" or c.net_remote:
 			continue
 		if c.wrecked:
-			if c != player and c.wreck_t > 3.0:
+			if c.local_idx < 0 and c.wreck_t > 3.0:
 				_respawn(c, false)
 			continue
 		if c.freeze:
@@ -1614,8 +1890,7 @@ func _respawns(dt: float) -> void:
 			c.stuck_t = 0.0
 		if c.stuck_t > 3.0:
 			c.stuck_t = 0.0
-			if c == player:
-				hud.popup("VOLTANDO À PISTA", Color("#2ee6ff"))
+			pop_for(c, "VOLTANDO À PISTA", Color("#2ee6ff"))
 			_respawn(c, false)
 			continue
 		if c.off_t > (0.15 if in_water else (0.6 if (below or away) else 1.5)):
@@ -1633,6 +1908,11 @@ func _respawns(dt: float) -> void:
 		if crash_t > 2.2:
 			crash_t = -1.0
 			_respawn(player, false)
+	# outros jogadores locais: voltam 2,2 s depois de destruídos
+	for lp in locals:
+		var pc: Car = lp.car
+		if pc != player and pc.wrecked and pc.wreck_t > 2.2:
+			_respawn(pc, false)
 
 
 ## faróis acesos à noite: uma luz spot (ilumina a pista) + dois fachos aditivos
@@ -1816,12 +2096,16 @@ func _respawn(c: Car, fell: bool) -> void:
 	c.dist = old_dist
 	c.prev_s = track.project(c.global_position).s
 	c.invuln = 2.0
-	if c == player:
-		zoom_kick += 4.0
+	if online:
+		online.on_respawn(c)
+	if c.local_idx >= 0:
+		if c == player:
+			zoom_kick += 4.0
 		fx.sparkle(c.global_position + Vector3.UP, Color(1.2, 1.2, 1.3))
 		if fell:
-			stats.falls += 1
-			hud.popup("CAIU! VOLTANDO", Color("#ffcf33"))
+			if c == player:
+				stats.falls += 1
+			pop_for(c, "CAIU! VOLTANDO", Color("#ffcf33"))
 	elif fell:
 		stats.ai_falls = int(stats.get("ai_falls", 0)) + 1
 
@@ -1851,9 +2135,58 @@ func _recycle() -> void:
 			c.nm_state = null
 
 
+## ordem da corrida: quem terminou (pelo tempo) e depois quem ainda corre (pela distância)
+func standings() -> Array:
+	var order := racers()
+	order.sort_custom(func(a, b):
+		var da: bool = a.get_meta("done", false)
+		var db: bool = b.get_meta("done", false)
+		if da != db:
+			return da
+		if da and db:
+			return float(a.get_meta("fin_t", 0.0)) < float(b.get_meta("fin_t", 0.0))
+		return a.dist > b.dist)
+	return order
+
+
+## multijogador: alguém completou as voltas
+func _mp_finished(c: Car) -> void:
+	if online.racing:
+		online.send_fin(c)
+	var order := standings()
+	var pl := order.find(c) + 1
+	if c.human:
+		hud.killfeed("%s terminou em %dº" % [c.display_name, pl], Color("#ffcf33"))
+	var lp := local_of(c)
+	if not lp.is_empty():
+		lp.done = true
+		big_for(c, "VITÓRIA!" if pl == 1 else "%dº LUGAR" % pl, Color("#ffcf33"), Color("#c74200"))
+		fx.burst("confetti", c.global_position + Vector3.UP)
+		sfx.play("fanfare")
+		if c == player:
+			place = pl
+	# todos os humanos terminaram: fim. Senão, quem falta tem 30 s (avisa na tela)
+	var all_done := true
+	for h in humans:
+		if not h.get_meta("done", false):
+			all_done = false
+	if all_done:
+		_finish()
+	elif c.human and race_end_t < 0.0:
+		race_end_t = 30.0
+		hud.popup("30 s PARA TERMINAR!", Color("#ff7a7a"))
+
+
 func _finish() -> void:
+	if mode == "finish":
+		return
 	mode = "finish"
-	var prize: int = PRIZE[place - 1] + int(stats.kills) * KILL_BONUS
+	race_end_t = -1.0
+	if is_mp():
+		place = standings().find(player) + 1
+	if online:
+		online.on_finish()
+	var prize: int = (PRIZE[place - 1] if place <= PRIZE.size() else 60) + int(stats.kills) * KILL_BONUS
 	stats.prize = prize
 	save.cash = int(save.cash) + prize
 	var key := str(track_idx)
@@ -1867,13 +2200,31 @@ func _finish() -> void:
 	_slowmo(0.35, 1.2)
 	get_tree().create_timer(2.0, true, false, true).timeout.connect(_show_results)
 	if auto_test:
-		print("RESULT ", JSON.stringify({"track": track_idx, "place": place, "time": snappedf(race_t, 0.1), "stats": stats}))
+		var ord: Array = []
+		for oc in standings():
+			ord.append("%s%s" % [oc.display_name, "@%.1f" % float(oc.get_meta("fin_t", 0.0)) if oc.get_meta("done", false) else ""])
+		print("RESULT ", JSON.stringify({"track": track_idx, "place": place, "time": snappedf(race_t, 0.1), "order": ord, "stats": stats}))
 
 
 func _show_results() -> void:
 	if mode != "finish":
 		return
 	hud.res_title.text = "VITÓRIA!" if place == 1 else "%dº LUGAR" % place
+	if is_mp():
+		var order := standings()
+		var rows: Array = []
+		for i in order.size():
+			var c: Car = order[i]
+			var tm: String = _fmt(float(c.get_meta("fin_t", 0.0))) if c.get_meta("done", false) else "não terminou"
+			rows.append("%dº  %s%s   %s   ·   %d destruídos" % [i + 1, c.display_name, "  (você)" if c.local_idx >= 0 and locals.size() == 1 else "", tm, int(c.get_meta("kills", 0))])
+		if locals.size() > 1:
+			hud.res_title.text = "%s VENCEU!" % (order[0] as Car).display_name
+		hud.res_list.text = "\n".join(rows)
+		hud.res_cash.text = "+$%d   (total $%d)" % [int(stats.prize), int(save.cash)]
+		hud.show_screen("results")
+		if auto_test:
+			get_tree().quit()
+		return
 	var lines := [
 		"Tempo total   %s" % _fmt(race_t), "Melhor volta   %s" % _fmt(best_lap),
 		"Destruídos   %d  (takedowns %d)" % [stats.kills, stats.takedowns], "Quedas   %d   ·   Destruições sofridas   %d" % [stats.falls, stats.deaths],
@@ -1902,6 +2253,12 @@ func _process(_delta: float) -> void:
 	real += rdt
 	if Input.is_action_just_pressed("pause"):
 		pause(mode != "paused")
+	if mode == "race" and locals.size() > 1:
+		for lp in locals:
+			var pc: Car = lp.car
+			if PInput.reset_pressed(String(lp.dev)) and not pc.wrecked and not pc.freeze and float(pc.get_meta("rs_t", -9.0)) < real - 2.0:
+				pc.set_meta("rs_t", real)
+				_respawn(pc, false)
 	if Input.is_action_just_pressed("mute"):
 		toggle_mute()
 	if Input.is_action_just_pressed("reset") and mode == "race" and not player.wrecked:
@@ -1915,6 +2272,9 @@ func _process(_delta: float) -> void:
 			ts_target = 1.0
 	ts = lerpf(ts, ts_target, minf(1.0, rdt * (12.0 if ts_target < ts else 3.0)))
 	var eff := ts
+	if is_mp():
+		hitstop = 0.0
+		eff = 1.0
 	if hitstop > 0.0:
 		hitstop -= rdt
 		eff = 0.03
@@ -1937,7 +2297,9 @@ func _process(_delta: float) -> void:
 			sfx.play("go")
 			_shake(0.3)
 			zoom_kick += 4.0
-			for c in [player] + rivals:
+			for c in racers():
+				if c.net_remote:
+					continue
 				c.freeze = false
 				c.launch_t = 0.85   # pneus cantando na largada
 			if Input.is_action_pressed("up") or hud.touch.used or auto_test:
@@ -1963,9 +2325,14 @@ func _process(_delta: float) -> void:
 		slip += 0.5
 	sfx.drive(clampf(sp01, 0.0, 1.3), player.ctrl.throttle, slip, player.nitroing, ts < 0.6, mode in ["race", "countdown", "finish"] and not player.wrecked)
 	_camera(rdt)
-	_post(rdt)
-	_update_flares(rdt)
+	if multi and multi.split:
+		multi.update(rdt)
+	else:
+		_post(rdt)
+		_update_flares(rdt)
 	_hud()
+	if online:
+		online.frame(rdt)
 	# onda de luz das placas de turbo depois que alguém passa
 	for pd in track.pads:
 		if float(pd.get("hit", 0.0)) > 0.0 and pd.has("mat"):
@@ -2254,9 +2621,9 @@ func _camera(rdt: float) -> void:
 	cam_kick *= exp(-rdt * 5.0)
 	if mode != "shots":
 		cam_pos = cam_pos.lerp(target + cam_kick, k)
-	var vs := get_viewport().get_visible_rect().size
+	var vs := cam.get_viewport().get_visible_rect().size
 	var aspect := vs.x / maxf(1.0, vs.y)
-	var base := maxf(28.0, 26.0 / aspect) if aspect < 1.0 else 28.0
+	var base := (maxf(28.0, 26.0 / aspect) if aspect < 1.0 else 28.0) * cam_size_mul
 	var sp := v.length()
 	var want := base + clampf(sp / 55.0, 0.0, 1.0) * 8.0 + nz * base * 0.34 + focus_h + (-8.0 if p.wrecked else 0.0) + extra
 	if size_fix > 0.0:

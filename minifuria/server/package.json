@@ -1,0 +1,10 @@
+{
+  "name": "minifuria-salas",
+  "version": "1.0.0",
+  "description": "Servidor de salas (relay WebSocket) do Mini Fúria — mesmo protocolo de scripts/net_server.gd",
+  "main": "relay.js",
+  "scripts": { "start": "node relay.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "ws": "^8.18.0" },
+  "license": "MIT"
+}
