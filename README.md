@@ -184,6 +184,21 @@ Ferramentas: `godot --headless -s res://tools/validate_tracks.gd` confere raio m
 - `minifuria/tools/pack_web.py`: divide o export web em arquivos de 4 MB.
 - Fonte Bungee (SIL OFL), ver `minifuria/fonts/FONT-LICENSE.txt`.
 
+## APK para Android
+
+Preset **Android** em `export_presets.cfg`: pacote `com.minifuria.jogo`, Android 7.0+ (API 24, alvo 36), ARM 64 e 32 bits, paisagem, tela cheia, permissão só de vibração, e o ícone em `icons/` (gerado por `tools/make_icon.gd`).
+
+```
+# 1) templates Android do Godot 4.7 (android_release.apk) em ~/.local/share/godot/export_templates/4.7.stable/
+# 2) exporta sem assinar (package/signed=false)
+godot --headless --path minifuria --export-release "Android" build/minifuria-unsigned.apk
+# 3) assina com APK Signature Scheme v2 (não precisa do Android SDK)
+python3 minifuria/tools/apk_sign_v2.py --gen chave.pem cert.der        # só na primeira vez
+python3 minifuria/tools/apk_sign_v2.py build/minifuria-unsigned.apk build/MiniFuria.apk chave.pem cert.der
+```
+
+O Godot exige um caminho de Android SDK nas Editor Settings mesmo exportando sem assinar. Com o SDK oficial (`apksigner`) dá para assinar direto pelo Godot. Guarde a chave: atualizar o app instalado exige a mesma chave. `apk_sign_v2.py` precisa do pacote `cryptography` e foi conferido com o `apksigtool verify`.
+
 ## Exportar para a web
 
 Com os templates do Godot 4.7 instalados, dentro de `minifuria/`: `godot --headless --export-release "Web" build/web/index.html` e, se o host limitar o tamanho por arquivo, `python3 tools/pack_web.py build/web build/web_split`.
