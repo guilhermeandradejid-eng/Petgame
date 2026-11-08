@@ -156,6 +156,19 @@ Referências: [Coasterpedia: Heartline roll](https://coasterpedia.net/wiki/Heart
 - **Shaders pré-aquecidos**: na contagem regressiva, cada efeito (explosões, nitro e calor, foguete, mina, graxa, confete, fachos, raio-X) é desenhado uma vez escondido sob a largada. Sem isso, na web a primeira explosão, nitro ou foguete compilava o shader na hora e travava.
 - **Pós-processamento mais leve**: o blur e a aberração só fazem as amostras extras quando estão ativos, e o lens flare usa no máximo 8 fontes.
 
+## Largada, voltas e fim da corrida
+
+- **Contagem**: o nome da pista aparece por ~1 s e depois 3, 2, 1, VAI!. O aviso grande ficava fora da tela, porque com âncora no centro a `position` virava posição absoluta; agora usa offsets. Cada aviso também cancela a animação do anterior.
+- **Volta exata na linha xadrez**: ao reaparecer na pista, o carro volta 6 m ou mais (até um trecho seguro), e essa distância agora é descontada. Antes a volta podia ser contada de 7 a 90 m antes da linha. Nos testes a volta conta entre 0 e 0,6 m depois da linha.
+- **Fim da corrida**: termina quando você completa as voltas (com a sua colocação) ou quando todos os rivais já terminaram (você fica em último).
+- **Arco de chegada**: sempre de pé e alinhado com a linha. Ele não herda mais a inclinação nem a rampa da pista, e os pés ficam na borda mais baixa.
+
+## Música
+
+`scripts/music.gd` toca em loop o que estiver em `minifuria/music/` (veja `music/LEIA-ME.txt`): `pista1..9`, o nome do tema (`park`, `city`, ...), `corrida1..8` ou `menu`, em `.ogg`, `.mp3` ou `.wav`. Sem arquivos, o jogo **compõe e sintetiza um rock instrumental original** para cada pista, com bateria, baixo, guitarra distorcida (power chords com palhetada abafada) e solo, em 16 compassos (~26 s). A síntese é feita em fatias por quadro, para não travar. Na Boca do Vulcão o solo é "Na Gruta do Rei da Montanha", de Edvard Grieg (1875), melodia em domínio público arranjada como rock.
+
+Sobre as músicas do Rock n' Roll Racing ("Bad to the Bone", "Paranoid", "Born to Be Wild", "Highway Star", "Peter Gunn"): são obras protegidas. Usar num jogo exige licença de sincronização da editora (composição) e licença da gravação (gravadora), ou uma regravação própria, que ainda precisa da licença da editora. Use só músicas que você tenha direito de usar.
+
 ## Cenário do Céu e do Pântano
 
 - **Espiral do Céu**: mar de nuvens animado (topo iluminado, vales azulados, sombras de nuvens altas), ilhas flutuantes com gramado, pedras e árvore em várias alturas, e balões de ar quente subindo e descendo.

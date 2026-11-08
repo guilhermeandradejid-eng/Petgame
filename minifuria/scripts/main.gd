@@ -71,6 +71,8 @@ var flash := Color(1, 1, 1, 0)
 var race_t := 0.0
 var countdown := 0.0
 var last_beep := 4
+var finished_n := 0   # rivais que já completaram todas as voltas
+var music: Music
 var lap_start := 0.0
 var best_lap := INF
 var crash_t := -1.0
@@ -182,8 +184,12 @@ func _ready() -> void:
 	hud = Hud.new()
 	hud.game = self
 	add_child(hud)
+	music = Music.new()
+	add_child(music)
 	load_track(track_idx)
 	_last_us = Time.get_ticks_usec()
+	if not auto_test:
+		music.play_menu()
 	if "--overview" in args:
 		_overview_shots()
 	elif "--steertest" in args:
@@ -503,7 +509,14 @@ func _build_scenery() -> void:
 	var a0 := track.at(0.0)
 	var gate := _inst("prop_gate")
 	var gs: float = (track.WALL - 0.35) / 13.0
-	gate.transform = Transform3D((a0.basis as Basis).scaled_local(Vector3(gs, 1, 1)), a0.pos)
+	# arco sempre de pé e alinhado com a linha xadrez: só o rumo da pista (sem a inclinação nem a rampa),
+	# com os pés na altura mais baixa das bordas (nenhum pé fica flutuando)
+	var th := Vector3((a0.tan as Vector3).x, 0, (a0.tan as Vector3).z).normalized()
+	var lh := Vector3(th.z, 0, -th.x)
+	var e1: Vector3 = (a0.pos as Vector3) + (a0.left as Vector3) * (track.WALL - 0.35)
+	var e2: Vector3 = (a0.pos as Vector3) - (a0.left as Vector3) * (track.WALL - 0.35)
+	var gate_p := Vector3((a0.pos as Vector3).x, minf(e1.y, e2.y) - 0.05, (a0.pos as Vector3).z)
+	gate.transform = Transform3D(Basis(lh, Vector3.UP, th).scaled_local(Vector3(gs, 1, 1)), gate_p)
 	world.add_child(gate)
 	for e in [[24.0, -1.0], [50.0, -1.0], [-30.0, 1.0]]:
 		var p := track.at(e[0], e[1] * (track.WALL + 4.0))
@@ -932,12 +945,15 @@ func start_race() -> void:
 	crash_t = -1.0
 	cam_focus = null
 	place = 5
+	finished_n = 0
 	hud.show_screen("race")
 	hud.touch.release_all()
 	hud.touch.labels["drop"] = "MINA" if player.rear_type == "mine" else "ÓLEO"
 	hud.touch.labels["fire"] = "TIRO" if player.front_type == "mg" else "FOGUETE"
 	mode = "countdown"
-	countdown = 3.0
+	if not auto_test:
+		music.play_track(track_idx, String(track.data.theme))
+	countdown = 4.2   # ~1 s mostrando o nome da pista, depois 3, 2, 1, VAI!
 	# compila os shaders dos efeitos agora, escondidos sob a largada (evita tranco na 1ª explosão/nitro)
 	var a0 := track.at(6.0)
 	fx.prewarm((a0.pos as Vector3) - (a0.up as Vector3) * 2.5, lib)
@@ -948,6 +964,7 @@ func start_race() -> void:
 func to_menu() -> void:
 	load_track(track_idx)
 	hud.show_screen("menu")
+	music.play_menu()
 
 
 func pause(on: bool) -> void:
@@ -956,9 +973,11 @@ func pause(on: bool) -> void:
 		mode = "paused"
 		hud.show_screen("pause")
 		Engine.time_scale = 0.0
+		music.set_paused(true)
 	elif not on and mode == "paused":
 		mode = prev_mode
 		hud.show_screen("race")
+		music.set_paused(false)
 
 
 func toggle_steer() -> void:
@@ -1255,7 +1274,7 @@ func _player_input() -> void:
 		elif not screen_mode and absf(tp.stick_vec.x) > 0.15:
 			c.steer = clampf(-tp.stick_vec.x * 1.4, -1.0, 1.0)
 	if auto_test and not OS.get_cmdline_user_args().has("--steertest"):
-		player.cruise = 38.0
+		player.cruise = 21.0 if OS.get_cmdline_user_args().has("--slowplayer") else 38.0
 		player.role = "rival"
 		player.ai(track, self, 1.0 / 60.0)
 		player.role = "player"
@@ -1336,7 +1355,17 @@ func _rules(dt: float) -> void:
 		c.dist += d
 		c.prev_s = pr.s
 		var lap := int(floor(c.dist / L))
+		if lap >= LAPS and c != player and not c.get_meta("done", false) and mode == "race":
+			c.set_meta("done", true)
+			finished_n += 1
+			if c != player and finished_n == rivals.size() and player.lap < LAPS:
+				hud.popup("TODOS OS RIVAIS TERMINARAM", Color("#ff7a7a"))
+				_finish()
 		if lap > c.lap:
+			if OS.get_cmdline_user_args().has("--debuglap"):
+				var d0: float = (c.global_position - track.P[0]).dot(track.T[0])
+				var lat0: float = (c.global_position - track.P[0]).dot(track.L[0])
+				print("LAP %s lap=%d along_line=%.2f lat=%.1f s=%.1f ti=%d v=%.1f" % [c.display_name, lap, d0, lat0, pr.s, pr.i, c.linear_velocity.length()])
 			c.lap = lap
 			c.refill()
 			if c == player and mode == "race":
@@ -1658,7 +1687,9 @@ func _fall_wreck(c: Car, water: bool) -> void:
 
 func _respawn(c: Car, fell: bool) -> void:
 	var s := track.safe_s(c.s_track - 6.0)
-	var old_dist := c.dist
+	# a distância corrida acompanha o recuo (6 m ou mais, até um trecho seguro): sem isso a volta
+	# era contada 7–90 m antes da linha de chegada
+	var old_dist := c.dist - wrapf(c.s_track - s, -track.length * 0.5, track.length * 0.5)
 	if c.wrecked:
 		c.repair()
 	var lat: float = [0.0, -track.W * 0.25, track.W * 0.25][randi() % 3] if track.data.traffic == 0 else track.lanes_fwd[0]
@@ -1776,7 +1807,7 @@ func _process(_delta: float) -> void:
 	if mode == "countdown":
 		countdown -= rdt
 		var n := int(ceil(countdown))
-		if n < last_beep and n > 0:
+		if n < last_beep and n > 0 and n <= 3:
 			last_beep = n
 			hud.big(str(n), Color.WHITE, Color("#2e7dff"))
 			sfx.play("beep")

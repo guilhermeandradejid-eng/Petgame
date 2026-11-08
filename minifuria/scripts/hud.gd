@@ -15,6 +15,7 @@ var score_l: Label
 var speed_l: Label
 var onc_l: Label
 var big_l: Label
+var _big_tw: Tween
 var wrong_l: Label
 var steer_btns: Array = []
 var pops: VBoxContainer
@@ -211,15 +212,21 @@ func _build_race_hud() -> void:
 	big_l.set_anchors_preset(Control.PRESET_CENTER)
 	big_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	big_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	big_l.size = Vector2(1000, 160)
-	big_l.position = Vector2(-500, -150)
+	# offsets explícitos a partir do centro (com "position" o Godot usava a posição absoluta e o aviso
+	# grande — contagem 3, 2, 1, VAI! — ficava fora da tela, no canto superior esquerdo)
+	big_l.offset_left = -500
+	big_l.offset_right = 500
+	big_l.offset_top = -150
+	big_l.offset_bottom = 10
 	big_l.pivot_offset = Vector2(500, 80)
 	big_l.modulate.a = 0.0
 	wrong_l = _label(40, Color.WHITE, Color("#ff2d55"))
 	wrong_l.set_anchors_preset(Control.PRESET_CENTER)
 	wrong_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	wrong_l.size = Vector2(700, 60)
-	wrong_l.position = Vector2(-350, 40)
+	wrong_l.offset_left = -350
+	wrong_l.offset_right = 350
+	wrong_l.offset_top = 40
+	wrong_l.offset_bottom = 100
 	wrong_l.text = "SENTIDO ERRADO! VIRE"
 	wrong_l.visible = false
 	minimap = Control.new()
@@ -300,6 +307,9 @@ func killfeed(text: String, col: Color) -> void:
 
 
 func big(text: String, col: Color, outline: Color) -> void:
+	# cancela a animação anterior (senão o fade-out dela apagava o aviso novo — a contagem sumia)
+	if _big_tw and _big_tw.is_valid():
+		_big_tw.kill()
 	big_l.text = text
 	big_l.label_settings.font_color = col
 	big_l.label_settings.outline_color = outline
@@ -307,6 +317,7 @@ func big(text: String, col: Color, outline: Color) -> void:
 	big_l.rotation = -0.18
 	big_l.modulate.a = 0.0
 	var tw := big_l.create_tween()
+	_big_tw = tw
 	tw.tween_property(big_l, "scale", Vector2(0.9, 0.9), 0.18).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 	tw.parallel().tween_property(big_l, "modulate:a", 1.0, 0.12)
 	tw.parallel().tween_property(big_l, "rotation", -0.05, 0.18)

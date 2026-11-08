@@ -1,0 +1,15 @@
+Músicas do Mini Fúria
+=====================
+
+Coloque aqui arquivos .ogg (recomendado), .mp3 ou .wav. O jogo toca em loop:
+
+  pista1.ogg ... pista9.ogg   -> só naquela pista (1 = Circuito do Parque ... 9 = Pântano Sombrio)
+  park.ogg, city.ogg, desert.ogg, snow.ogg, port.ogg, volcano.ogg, toy.ogg, sky.ogg, swamp.ogg
+                              -> pela ambientação (tema) da pista
+  corrida1.ogg ... corrida8.ogg -> sorteadas nas pistas que não têm música própria
+  menu.ogg                    -> menu
+
+Sem nenhum arquivo, o jogo compõe e toca um rock instrumental original (sintetizado no próprio jogo).
+
+Use só músicas que você tem direito de usar: compostas por você, encomendadas, de bancos com licença
+para jogos, geradas por IA num plano com uso comercial, ou arranjos próprios de obras em domínio público.
