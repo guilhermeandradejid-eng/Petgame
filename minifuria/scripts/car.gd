@@ -98,6 +98,7 @@ var track_ref: Track = null
 var guided_spd := 0.0
 var _susp_forces := true
 var jump_cd := 0.0
+var _jump_armed := true
 var launch_t := 0.0     # largada: pneus cantando e fumaça
 var fall_t := 0.0
 var oily_t := 0.0      # pneus sujos de graxa: deixam rastro escuro por um tempo
@@ -175,7 +176,7 @@ func setup(lib: Node3D, kind_: String, role_: String, col: Color) -> void:
 	mass = 1000.0 * sp.mass
 	gravity_scale = 0.0
 	center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
-	center_of_mass = Vector3(0, 0.45, 0)
+	center_of_mass = Vector3(0, 0.3, 0)   # centro de massa baixo: mais "peso", difícil de capotar
 	continuous_cd = true
 	contact_monitor = true
 	max_contacts_reported = 6
@@ -186,7 +187,7 @@ func setup(lib: Node3D, kind_: String, role_: String, col: Color) -> void:
 	collision_mask = 1 | 2 | 4
 	var pm := PhysicsMaterial.new()
 	pm.friction = 0.25
-	pm.bounce = 0.15
+	pm.bounce = 0.02
 	physics_material_override = pm
 	max_health = sp.hp
 	health = max_health
@@ -351,6 +352,7 @@ func _physics_process(dt: float) -> void:
 	invuln = maxf(0.0, invuln - dt)
 	stun = maxf(0.0, stun - dt)
 	oil_t = maxf(0.0, oil_t - dt)
+	_wall_hold()
 	var guided := on_feature and (in_loop or feat_type == "cork") and h_surf < 3.0 and h_surf > -1.5 and track_ref != null
 	_susp_forces = not guided
 	var grounded := _suspension(false)
@@ -358,7 +360,9 @@ func _physics_process(dt: float) -> void:
 	var was_ground := on_ground
 	on_ground = grounded >= 2
 	jump_cd = maxf(0.0, jump_cd - dt)
-	if was_ground and not on_ground and feat_type == "jump" and track_ref != null and jump_cd <= 0.0:
+	if on_ground:
+		_jump_armed = true
+	elif _jump_armed and feat_type == "jump" and track_ref != null and jump_cd <= 0.0:
 		_jump_assist()
 	# "ímã" de pista nos loopings, espirais e saca-rolhas (arcade, estilo pista de brinquedo)
 	var magnet := on_feature and h_surf < 2.6 and h_surf > -1.2 and linear_velocity.length() > 6.0
@@ -565,7 +569,7 @@ func _physics_process(dt: float) -> void:
 		var force := fwd_g * a * mass + left_g * (-lost / dt) * mass
 		apply_force(force, -up * 0.15 + b * center_of_mass)
 		_applied += force
-		var dfc := -up * mass * clampf(absf(v_f) * 0.12, 0, 6)
+		var dfc := -up * mass * clampf(absf(v_f) * 0.2, 0, 10)   # pressão aerodinâmica: cola no chão
 		apply_central_force(dfc)
 		_applied += dfc
 	elif nitroing:
@@ -582,8 +586,9 @@ func _physics_process(dt: float) -> void:
 		# acompanha a rotação da pista na hora (sem isso o carro "descola" no saca-rolhas)
 		angular_velocity = up * wy + tilt * 18.0
 	else:
-		var stab := 22.0 if on_ground else 6.0
-		apply_torque((tilt * stab - ang_nyaw * (3.0 if on_ground else 1.0)) * inertia)
+		var stab := 30.0 if on_ground else 10.0   # no ar o carro se nivela (pousa de rodas)
+		# peso: amortece capotar/empinar (não a virada), então o carro não "bóia" nas batidas
+		apply_torque((tilt * stab - ang_nyaw * (4.5 if on_ground else 1.8)) * inertia)
 
 
 func _suspension(wreck_mode: bool) -> int:
@@ -677,10 +682,12 @@ func _detect_scrape() -> void:
 
 # ------------------------------------------------------------------ dano e vida
 ## dano de batida física (dv = variação de velocidade no impacto)
-func take_impact(point: Vector3, dv: float) -> void:
+func take_impact(point: Vector3, dv: float, wall := false) -> void:
 	var tough := 0.55 if role == "player" else 1.0
-	_deform(point, dv)
-	var dmg := maxf(0.0, dv - 7.0) * 1.7 * tough
+	if wall:
+		tough *= 0.45   # raspar/bater na mureta amassa, mas raramente destrói
+	_deform(point, dv * (0.7 if wall else 1.0))
+	var dmg := maxf(0.0, dv - (10.0 if wall else 7.5)) * 1.5 * tough
 	if dmg > 0.0:
 		apply_damage(dmg, point, last_hit_by if game_time - last_hit_t < 1.5 else null, false)
 
@@ -870,6 +877,28 @@ func place(xform: Transform3D, speed: float) -> void:
 	v_f = speed
 
 
+## encostado na mureta: o carro não "sobe" nela nem é lançado para fora (tira a velocidade para cima
+## e o giro de capotagem), e devolve parte da velocidade ao longo da pista
+func _wall_hold() -> void:
+	if wrecked:
+		return
+	var touching := false
+	for c in _contacts:
+		var ob: Object = c[0]
+		if ob is Node and (ob as Node).has_meta("rail"):
+			touching = true
+			break
+	if not touching:
+		return
+	var up := track_up
+	var vu := linear_velocity.dot(up)
+	if vu > 1.0:
+		linear_velocity -= up * (vu - 1.0) * 0.85
+	var b := global_transform.basis
+	var yaw := angular_velocity.dot(b.y)
+	angular_velocity = angular_velocity.lerp(b.y * yaw, 0.5)
+
+
 ## salto assistido (arcade): na decolagem o carro sai alinhado com a pista e com a rapidez mínima
 ## para cair na rampa de pouso (sem pousar torto na mureta nem cair no vão por falta de embalo)
 func _jump_assist() -> void:
@@ -877,32 +906,36 @@ func _jump_assist() -> void:
 	var j := ti
 	var k := 0
 	# só na ponta da rampa (o vão começa logo à frente): um pulinho no começo da rampa não conta
-	while k < 4 and tr.gap[tr.idx(j)] == 0:
+	while k < 5 and tr.gap[tr.idx(j)] == 0:
 		j += 1
 		k += 1
-	if tr.gap[tr.idx(j)] == 0 or linear_velocity.y < 0.5:
+	if tr.gap[tr.idx(j)] == 0:
 		return
+	if h_surf < -0.5:
+		return   # já caiu abaixo da rampa: não dá mais para salvar
+	_jump_armed = false
 	while k < 60 and tr.gap[tr.idx(j)] == 1:
 		j += 1
 		k += 1
 	jump_cd = 1.2
-	var li := tr.idx(j + 3)
+	var li := tr.idx(j + 6)
 	var land: Vector3 = tr.P[li] + tr.L[li] * clampf(lat, -road_half * 0.4, road_half * 0.4)
 	var to := land - global_position
 	var D := Vector2(to.x, to.z).length()
 	var G := GRAV * grav_factor
 	var v := linear_velocity
-	var vy := maxf(v.y, 0.0)
+	var vy := maxf(v.y, 5.5)   # arco mínimo: salto "de verdade", não um pulinho
 	# tempo de voo até a altura do pouso: vy·t − ½·G·t² = Δy (se o pouso estiver acima do ápice, usa o ápice)
 	var disc := vy * vy - 2.0 * G * to.y
 	var tf := (vy + sqrt(maxf(disc, 0.0))) / G
 	var need := D / maxf(tf, 0.2)
 	var vh := Vector2(v.x, v.z).length()
 	var hd := Vector3(to.x, 0, to.z).normalized()
-	var newh := clampf(maxf(vh, need), 0.0, maxf(vh, 8.0) * 1.35 + 5.0)
+	var newh := clampf(maxf(vh, need), 0.0, maxf(vh, 8.0) * 1.5 + 6.0)
 	if OS.get_cmdline_user_args().has("--debugjump"):
 		print("JUMP %s s=%d k=%d D=%.1f dy=%.1f vy=%.1f tf=%.2f vh=%.1f need=%.1f new=%.1f ang=%.0f" % [display_name, int(s_track), k, D, to.y, v.y, tf, vh, need, newh, rad_to_deg(Vector2(v.x, v.z).angle_to(Vector2(to.x, to.z)))])
-	linear_velocity = hd * newh + Vector3.UP * v.y
+	linear_velocity = hd * newh + Vector3.UP * vy
+	angular_velocity = Vector3.ZERO   # sai reto da rampa (sem cambalhota)
 
 
 # ------------------------------------------------------------------ IA
@@ -1002,7 +1035,10 @@ func _visuals(dt: float) -> void:
 		var mi: MeshInstance3D = w.mesh
 		var y: float = w.base.y + SUSP - w.dist + w.r
 		mi.position.y = lerpf(mi.position.y, clampf(y, w.base.y - 0.25, w.base.y + WHEEL_UP), minf(1.0, dt * 25.0))
-		w.spin += (v_f + (35.0 if launch_t > 0.0 and not w.front else 0.0)) / maxf(0.2, w.r) * dt
+		# giro visível: acima de ~3 voltas/s o olho vê o raio "parado" (efeito estroboscópico);
+		# o giro desenhado é limitado para os raios sempre parecerem girar para a frente
+		var wspin: float = (v_f + (35.0 if launch_t > 0.0 and not w.front else 0.0)) / maxf(0.2, w.r)
+		w.spin += clampf(wspin, -19.0, 19.0) * dt
 		var st := 0.0
 		if w.front:
 			st = (-drift_dir * 0.28 + steer_s * 0.14) if drifting else steer_s * 0.32

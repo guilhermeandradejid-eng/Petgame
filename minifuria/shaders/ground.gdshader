@@ -64,9 +64,42 @@ void fragment() {
 		float k = mod(g.x + g.y, 2.0);
 		c = mix(col_a.rgb, col_b.rgb, k) * (0.95 + n * 0.08);
 	} else if (mode == 8) {
-		float cl = fbm(q * 0.015 + vec2(TIME * 0.01, 0.0));
-		c = mix(vec3(0.62, 0.72, 0.95), col_a.rgb, smoothstep(0.35, 0.7, cl));
-		emit = c * 0.25;
+		// mar de nuvens: camadas que andam devagar, topo iluminado pelo sol, vales azulados e frestas
+		vec2 wq = q + vec2(TIME * 0.6, TIME * 0.25);
+		float big = fbm(wq * 0.008);
+		float cl = fbm(wq * 0.018 + big * 1.5);
+		float puff = fbm(wq * 0.06 + vec2(3.0, 1.0));
+		float h = smoothstep(0.3, 0.75, cl * 0.75 + puff * 0.35);
+		vec3 deep = vec3(0.42, 0.55, 0.86);
+		vec3 lit = mix(col_a.rgb, vec3(1.0, 0.96, 0.9), 0.4);
+		vec3 shade = mix(col_b.rgb, deep, 0.35);
+		c = mix(deep, mix(shade, lit, smoothstep(0.45, 0.85, puff + h * 0.4)), h);
+		// sombras de nuvens altas passando
+		float sh = smoothstep(0.55, 0.75, fbm(q * 0.006 + vec2(TIME * 0.02, 0.0)));
+		c *= 1.0 - sh * 0.18;
+		emit = c * 0.22;
+		rough = 1.0;
+		spec = 0.1;
+	} else if (mode == 9) {
+		// pântano: água escura e parada, lentilha-d'água em manchas, vitórias-régias, ondinhas e reflexo
+		float t = TIME * 0.05;
+		float murk = fbm(q * 0.04 + vec2(t, 0.0));
+		c = mix(col_a.rgb * 0.55, col_b.rgb * 0.62, murk);
+		float weed = smoothstep(0.62, 0.74, fbm(q * 0.09 + vec2(4.0, t * 0.5)) + hash(floor(q * 6.0)) * 0.05);
+		c = mix(c, vec3(0.36, 0.5, 0.14), weed * 0.85);
+		// vitórias-régias: discos verdes com um "corte" em V
+		vec2 g = q * 0.22;
+		vec2 cell = floor(g);
+		vec2 f = fract(g) - 0.5 - (vec2(hash(cell), hash(cell + 5.3)) - 0.5) * 0.5;
+		float rad = 0.12 + hash(cell + 9.1) * 0.1;
+		float ang = atan(f.y, f.x) + hash(cell) * 6.28;
+		float notch = step(0.25, abs(fract(ang / 6.2831 + 0.5) - 0.5) * 2.0 + 0.0);
+		float pad = smoothstep(rad, rad - 0.02, length(f)) * step(0.72, hash(cell + 2.2)) * (1.0 - step(abs(sin(ang * 0.5)), 0.12));
+		c = mix(c, vec3(0.3, 0.56, 0.2) * (0.85 + 0.15 * sin(length(f) * 60.0)), pad);
+		float rip = sin(length(fract(q * 0.05) - 0.5) * 40.0 - TIME * 2.0) * 0.5 + 0.5;
+		c += vec3(0.05, 0.06, 0.04) * rip * (1.0 - weed) * (1.0 - pad) * 0.4;
+		rough = mix(0.12, 0.8, max(weed, pad));
+		spec = mix(0.75, 0.3, max(weed, pad));
 	}
 	ALBEDO = c;
 	ROUGHNESS = rough;

@@ -423,7 +423,7 @@ func _build_menu() -> void:
 	logo2.text = "FÚRIA"
 	logo2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var tag := _label(16, Color("#2ee6ff"), Color(0, 0, 0, 0.5), v)
-	tag.text = "10 PISTAS · ARMAS · LOOPINGS · UPGRADES"
+	tag.text = "9 PISTAS · ARMAS · LOOPINGS · UPGRADES"
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_btn("CORRER", v).pressed.connect(func(): show_screen("tracks"))
 	var info := Label.new()

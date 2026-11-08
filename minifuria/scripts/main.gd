@@ -333,6 +333,45 @@ func equip(slot: String, key: String) -> void:
 
 
 # ------------------------------------------------------------------ materiais e cenário
+## textura de detalhe procedural (normal map por ruído, em coordenadas do objeto): borracha, metal escovado
+## e flocos de pintura — dá "material" às peças sem precisar de UV nos modelos low-poly
+var _detail_tex := {}
+
+
+func _detail(m: StandardMaterial3D, kind: String, depth: float) -> void:
+	if not _detail_tex.has(kind):
+		var nz := FastNoiseLite.new()
+		var tex := NoiseTexture2D.new()
+		tex.width = 256
+		tex.height = 256
+		tex.seamless = true
+		tex.as_normal_map = true
+		match kind:
+			"rubber":
+				nz.noise_type = FastNoiseLite.TYPE_CELLULAR
+				nz.frequency = 0.09
+				tex.bump_strength = 4.0
+			"brushed":
+				nz.noise_type = FastNoiseLite.TYPE_SIMPLEX
+				nz.frequency = 0.02
+				nz.fractal_octaves = 3
+				tex.bump_strength = 2.0
+			_:
+				nz.noise_type = FastNoiseLite.TYPE_VALUE
+				nz.frequency = 0.35
+				tex.bump_strength = 1.2
+		tex.noise = nz
+		_detail_tex[kind] = tex
+	m.normal_enabled = true
+	m.normal_texture = _detail_tex[kind]
+	m.normal_scale = depth
+	m.uv1_triplanar = true
+	m.uv1_world_triplanar = false
+	m.uv1_scale = Vector3.ONE * (6.0 if kind == "rubber" else (3.0 if kind == "brushed" else 9.0))
+	if kind == "brushed":
+		m.uv1_scale = Vector3(1.0, 14.0, 1.0)   # riscos alongados (escovado)
+
+
 func _prep_materials(n: Node, done: Dictionary) -> void:
 	if n is MeshInstance3D:
 		var mi := n as MeshInstance3D
@@ -351,15 +390,25 @@ func _prep_materials(n: Node, done: Dictionary) -> void:
 					m.rim_enabled = true
 					m.rim = 0.25
 					m.rim_tint = 0.6
+					_detail(m, "flake", 0.12)   # pintura metálica: "flocos" finos no reflexo
+				"Tire", "Sidewall":
+					m.roughness = 0.92
+					m.metallic_specular = 0.3
+					_detail(m, "rubber", 0.9)   # borracha granulada
+				"RimDark":
+					m.roughness = 0.38
+					m.metallic = 0.85
+					_detail(m, "brushed", 0.35)
+				"Trim", "Gunmetal":
+					_detail(m, "rubber", 0.35)
 				"Glass":
 					m.roughness = 0.03
 					m.metallic = 0.7
 					m.metallic_specular = 1.0
 				"Chrome", "Rim":
-					m.roughness = 0.12
+					m.roughness = 0.16
 					m.metallic = 1.0
-				"Tire":
-					m.roughness = 0.95
+					_detail(m, "brushed", 0.25)   # metal escovado
 				"SignYellow", "SignBlack", "Metal":
 					m.cull_mode = BaseMaterial3D.CULL_DISABLED
 				"Headlight", "Taillight", "LampGlow", "Window", "Billboard", "Billboard2", "CrystalC", "CrystalM", "RedLight", "NitroBlue":
@@ -531,6 +580,9 @@ func _build_scenery() -> void:
 		placed += 1
 	if theme.ground == 8:
 		_clouds(rng, mn, mx)
+		_sky_decor(rng, mn, mx)
+	if theme.ground == 9:
+		_swamp_decor(rng, mn, mx)
 	for ps in track.pickup_spots:
 		var a := track.at(ps.s, ps.lat)
 		var nd := _inst("pickup_" + String(ps.kind))
@@ -563,6 +615,87 @@ func _build_scenery() -> void:
 			made += 1
 
 
+## Céu: ilhas flutuantes em várias alturas e balões subindo e descendo devagar
+func _sky_decor(rng: RandomNumberGenerator, mn: Vector2, mx: Vector2) -> void:
+	var placed := 0
+	for k in 220:
+		if placed >= 16:
+			break
+		var x := rng.randf_range(mn.x - 30, mx.x + 30)
+		var z := rng.randf_range(mn.y - 30, mx.y + 30)
+		var p := Vector3(x, 0, z)
+		if track.clearance_xz(p) < track.WALL + 16.0:
+			continue
+		var isl := _inst("prop_island")
+		var sc := rng.randf_range(0.8, 1.9)
+		isl.position = Vector3(x, float(theme.gy) + rng.randf_range(6.0, 26.0), z)
+		isl.rotation.y = rng.randf() * TAU
+		isl.scale = Vector3.ONE * sc
+		world.add_child(isl)
+		placed += 1
+	placed = 0
+	for k in 200:
+		if placed >= 7:
+			break
+		var x := rng.randf_range(mn.x, mx.x)
+		var z := rng.randf_range(mn.y, mx.y)
+		if track.clearance_xz(Vector3(x, 0, z)) < track.WALL + 10.0:
+			continue
+		var b := _inst("prop_balloon")
+		var y0 := float(theme.gy) + rng.randf_range(18.0, 40.0)
+		b.position = Vector3(x, y0, z)
+		b.rotation.y = rng.randf() * TAU
+		b.scale = Vector3.ONE * rng.randf_range(1.4, 2.0)
+		world.add_child(b)
+		var tw := b.create_tween().set_loops()
+		tw.tween_property(b, "position:y", y0 + 2.5, rng.randf_range(3.5, 5.5)).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(b, "position:y", y0, rng.randf_range(3.5, 5.5)).set_trans(Tween.TRANS_SINE)
+		placed += 1
+
+
+## Pântano: touceiras de taboa na beira da pista e vaga-lumes no ar
+func _swamp_decor(rng: RandomNumberGenerator, mn: Vector2, mx: Vector2) -> void:
+	for i in range(0, track.n, 7):
+		if track.feat[i] == 1 or track.gap[i] == 1 or track.P[i].y - float(theme.gy) > 4.0:
+			continue
+		for sg: float in [-1.0, 1.0]:
+			if rng.randf() < 0.45:
+				continue
+			var off := track.WALL + rng.randf_range(1.5, 6.0)
+			var pp: Vector3 = track.P[i] + track.L[i] * sg * off
+			if track.clearance_xz(pp) < track.WALL + 1.0:
+				continue
+			var r := _inst("prop_reeds")
+			r.position = Vector3(pp.x, float(theme.gy) - 0.1, pp.z)
+			r.rotation.y = rng.randf() * TAU
+			r.scale = Vector3.ONE * rng.randf_range(1.0, 1.7)
+			world.add_child(r)
+	var ff := CPUParticles3D.new()
+	ff.amount = 160
+	ff.lifetime = 6.0
+	ff.preprocess = 6.0
+	ff.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	var c := (mn + mx) * 0.5
+	ff.position = Vector3(c.x, float(theme.gy) + 3.0, c.y)
+	ff.emission_box_extents = Vector3((mx.x - mn.x) * 0.5, 2.5, (mx.y - mn.y) * 0.5)
+	ff.direction = Vector3(0, 1, 0)
+	ff.spread = 180
+	ff.initial_velocity_min = 0.2
+	ff.initial_velocity_max = 0.8
+	ff.gravity = Vector3.ZERO
+	ff.damping_min = 0.1
+	ff.damping_max = 0.3
+	var q := QuadMesh.new()
+	q.size = Vector2(0.35, 0.35)
+	q.material = fx._bb_mat(fx.star_tex, true)
+	ff.mesh = q
+	ff.color_ramp = fx._ramp([Color(2.2, 2.6, 0.6, 0.0), Color(2.4, 2.8, 0.7, 1.0), Color(1.6, 2.2, 0.4, 0.0), Color(2.4, 2.8, 0.7, 0.9), Color(2.2, 2.6, 0.6, 0.0)])
+	ff.local_coords = false
+	ff.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(ff)
+	ff.emitting = true
+
+
 func _mound(p: Vector3, r: float) -> void:
 	# ilhota de terra/pedra embaixo dos objetos na água ou na lava
 	var mi := MeshInstance3D.new()
@@ -574,7 +707,7 @@ func _mound(p: Vector3, r: float) -> void:
 	cm.rings = 1
 	mi.mesh = cm
 	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(theme.shoulder).darkened(0.1) if theme.ground != 3 else Color("#5a6b3a")
+	m.albedo_color = Color(theme.shoulder).darkened(0.1) if (theme.ground != 3 and theme.ground != 9) else Color("#4f5e30")
 	m.roughness = 1.0
 	mi.material_override = m
 	mi.position = p + Vector3(0, -0.1, 0)
@@ -847,7 +980,8 @@ func _on_hit(c: Car, other: Object, point: Vector3, dv: float) -> void:
 		c.last_hit_t = time_g
 	if mode != "race":
 		return
-	c.take_impact(point, dv)
+	var wall: bool = other is Node and (other as Node).has_meta("rail")
+	c.take_impact(point, dv, wall)
 	var vis := _on_screen(point)
 	var out := (point - c.global_position).normalized()
 	if vis and dv > 4.0:
@@ -908,9 +1042,7 @@ func _on_died(c: Car, killer: Car) -> void:
 			_flash(Color(1, 0.9, 0.6), 0.3)
 			hitstop = 0.07
 			if randf() < 0.6:
-				_slowmo(0.35, 0.7)
-				cam_focus = c
-				focus_t = 0.8
+				hitstop = maxf(hitstop, 0.05)
 			_add_meter(0.5)
 			Input.vibrate_handheld(80)
 	elif c.role != "traffic" and mode == "race":
@@ -1830,15 +1962,25 @@ func _cam_mode(rdt: float) -> String:
 	if p.wrecked:
 		return ""
 	var want := ""
-	var steps := int(26.0 / track.ds)
+	# já num loop? olha mais longe: dois loops seguidos ficam na mesma câmera (sem ir e voltar)
+	var reach := 80.0 if cam_mode == "loop" else 30.0
+	var steps := int(reach / track.ds)
 	for k in range(-2, steps):
 		var j := track.idx(p.ti + k)
 		if track.loopf[j] == 1:
-			want = "loop"
-			cam_loop = track.loop_info(j)
+			if k <= int(30.0 / track.ds) or cam_mode == "loop":
+				want = "loop"
+				# troca de looping só quando o carro já saiu do anterior
+				if cam_mode != "loop" or track.loopf[p.ti] == 1 or k < int(18.0 / track.ds):
+					cam_loop = track.loop_info(j)
 			break
-		if track.feat[j] == 1 and track.ftype[j] == "cork":
+		if track.feat[j] == 1 and track.ftype[j] == "cork" and k <= int(30.0 / track.ds):
 			want = "twist"
+			for k2 in range(maxi(k, 0), steps):
+				var j2 := track.idx(p.ti + k2)
+				if track.corkf[j2] == 1:
+					cam_loop = track.loop_info(j2)
+					break
 			break
 		if track.feat[j] == 1 and track.ftype[j] == "helix" and k < 6:
 			want = "helix"
@@ -1847,7 +1989,7 @@ func _cam_mode(rdt: float) -> String:
 		want = "air"
 	if want != "":
 		cam_mode = want
-		cam_mode_t = 0.45
+		cam_mode_t = 0.7
 	else:
 		cam_mode_t -= rdt
 		if cam_mode_t <= 0.0:
@@ -1880,36 +2022,40 @@ func _camera(rdt: float) -> void:
 	var size_fix := -1.0
 	match cm:
 		"loop":
-			# vista lateral: olhando ao longo do eixo do loop, o círculo inteiro aparece na tela
+			# vista 3/4: de lado e um pouco de frente, alta o bastante para ver o asfalto por dentro
 			var lc: Vector3 = cam_loop.center
 			var ax: Vector3 = cam_loop.axis
 			var axh := Vector3(ax.x, 0, ax.z).normalized()
 			var y1 := atan2(axh.x, axh.z)
 			var y2 := atan2(-axh.x, -axh.z)
-			want_yaw = y1 if absf(angle_difference(CAM_YAW, y1)) <= absf(angle_difference(CAM_YAW, y2)) else y2
-			want_pitch = 0.2
+			var ys := y1 if absf(angle_difference(CAM_YAW, y1)) <= absf(angle_difference(CAM_YAW, y2)) else y2
+			# gira 38° para o lado de onde a câmera normal vem (continua familiar para o jogador)
+			want_yaw = ys + signf(angle_difference(ys, CAM_YAW)) * deg_to_rad(38.0)
+			want_pitch = 0.42
 			var along := (pp - lc).dot(ax)
 			var mid := lc + ax * along
-			target = mid.lerp(pp, 0.25)
-			size_fix = float(cam_loop.r) * 2.0 + 18.0
-			follow = 3.5
+			target = mid.lerp(pp, 0.3)
+			size_fix = float(cam_loop.r) * 2.0 + 20.0
+			follow = 3.2
 		"twist":
-			# atrás do carro, um pouco alto: dá para ver a pista girando
-			var t3: Vector3 = track.T[p.ti]
-			var th := Vector3(t3.x, 0, t3.z).normalized()
+			# saca-rolhas: a câmera segue o EIXO da espiral (reto e fixo), não a pista que gira em volta dele
+			var ax2: Vector3 = cam_loop.get("axis", track.T[p.ti])
+			var c0: Vector3 = cam_loop.get("center", pp)
+			var th := Vector3(ax2.x, 0, ax2.z).normalized()
 			var yb := atan2(-th.x, -th.z)
-			want_yaw = lerp_angle(CAM_YAW, yb, 0.75)
-			want_pitch = 0.45
-			target = pp + th * 7.0 + Vector3.UP * 1.5
-			size_fix = 26.0
-			follow = 5.0
+			want_yaw = lerp_angle(CAM_YAW, yb, 0.7)
+			want_pitch = 0.5
+			var on_axis := c0 + ax2 * (pp - c0).dot(ax2)
+			target = on_axis + th * 6.0
+			size_fix = 32.0
+			follow = 3.5
 		"helix":
-			want_pitch = 1.05
-			extra = 14.0
+			want_pitch = 0.9
+			extra = 11.0
 		"air":
 			want_pitch = 0.5
 			extra = 6.0
-	var bk := 1.0 - exp(-rdt * 3.2)
+	var bk := 1.0 - exp(-rdt * 2.4)   # trocas de câmera mais macias
 	cam_yaw = lerp_angle(cam_yaw, want_yaw, bk)
 	cam_pitch = lerpf(cam_pitch, want_pitch, bk)
 	if mode == "menu" or mode == "shots":

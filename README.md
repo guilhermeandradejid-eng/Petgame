@@ -81,7 +81,7 @@ Menu → **escolha da pista** (10) → **garagem** → corrida de 3 voltas contr
 - Na pista: caixas de **munição**, **reparo** e **nitro**; boost pads; barris e pneus destrutíveis.
 - Cair da pista (vãos, água, lava, nuvens) ou ser destruído faz você voltar um pouco atrás, piscando.
 
-## As 10 pistas
+## As 9 pistas
 
 | # | Pista | Tema | Destaques |
 |---|---|---|---|
@@ -92,9 +92,8 @@ Menu → **escolha da pista** (10) → **garagem** → corrida de 3 voltas contr
 | 5 | Docas do Porto | mar e contêineres | píeres e saltos sobre a água |
 | 6 | Boca do Vulcão | lava e cristais | looping sobre a lava e salto |
 | 7 | Loop Mania | pista de brinquedo laranja | 2 loopings, espiral, saca-rolhas, salto |
-| 8 | Espiral do Céu | nas nuvens | espirais de subida e descida, saca-rolhas, salto |
-| 9 | Pântano Sombrio | brejo e palmeiras | oito com ponte alta, saltos |
-| 10 | Estação Lunar | lua, gravidade baixa | saltos enormes e looping |
+| 8 | Espiral do Céu | mar de nuvens, ilhas flutuantes e balões | espirais de subida e descida, saca-rolhas, salto |
+| 9 | Pântano Sombrio | brejo ao entardecer, taboas e vaga-lumes | oito com ponte alta, saltos |
 
 ## Metralhadora, nitro e acabamento
 
@@ -138,12 +137,29 @@ Referências: [Coasterpedia: Heartline roll](https://coasterpedia.net/wiki/Heart
 - **Foguetes**: modelo novo (ogiva em dois estágios, faixas, bocal e aletas), 45% maiores, girando no próprio eixo, com núcleo de fogo contínuo e chama tremulando, além da fumaça. Saem só um pouco mais rápidos que o carro e aceleram até 50 m/s: alcançam na reta normal (40 m/s), mas **dá para fugir com nitro** (~58 m/s) e desviar, porque a curva de perseguição é mais suave.
 - **Confete**: pedaços maiores de papel que viram no ar (frente colorida, verso mais escuro), mais serpentinas compridas caindo devagar.
 
+## Peso, batidas, saltos e câmera
+
+- **Peso**: centro de massa mais baixo, mais pressão aerodinâmica e capotagem/empinada amortecidas (sem frear a virada). No ar o carro se nivela e pousa de rodas.
+- **Mureta segura**: sem quique, com atrito baixo (o carro desliza encostado). Ao encostar nela o carro não "sobe" nem é lançado: perde a velocidade para cima e o giro de capotar. Bater na mureta amassa, mas dá menos da metade do dano de bater em carro. A mureta comum ficou mais alta (1,45 m).
+- **Saltos**: a assistência dispara no primeiro instante no ar perto do vão (não depende mais de estar subindo), garante um arco de verdade (pelo menos 5,5 m/s para cima), mira mais longe na rampa de pouso e tira a cambalhota.
+- **Câmera**: no saca-rolhas ela segue o eixo fixo da espiral (não balança junto com a pista); no looping fica em 3/4, de lado e um pouco de frente, alta o bastante para ver o asfalto por dentro; dois loopings seguidos mantêm a mesma câmera; as trocas de câmera são mais macias. Ao destruir um rival a câmera não sai mais do seu carro.
+
+## Rodas e materiais
+
+- Pneus com banda de rodagem em blocos e flanco, aro escuro com 5 raios metálicos e cubo cromado. O giro desenhado é limitado (~3 voltas/s) para não haver efeito estroboscópico.
+- Detalhe de material procedural (normal map por ruído, triplanar): borracha granulada nos pneus, metal escovado nos aros e cromados e flocos finos na pintura metálica.
+
 ## Fluidez (sem "travadinhas")
 
 - **Interpolação de física**: a física roda a 60 Hz e a tela desenha o carro entre dois passos (`physics_interpolation`). A câmera e os efeitos presos ao carro (fumaça, sombra, rastros, flares) usam a posição interpolada. As rodas, a suspensão, o "squash" e o recuo da arma são atualizados no passo de física. Teleportes (reaparecer na pista) zeram a interpolação para não "arrastar".
 - **VSync** ligado no projeto (no navegador o quadro já segue o `requestAnimationFrame`).
 - **Shaders pré-aquecidos**: na contagem regressiva, cada efeito (explosões, nitro e calor, foguete, mina, graxa, confete, fachos, raio-X) é desenhado uma vez escondido sob a largada. Sem isso, na web a primeira explosão, nitro ou foguete compilava o shader na hora e travava.
 - **Pós-processamento mais leve**: o blur e a aberração só fazem as amostras extras quando estão ativos, e o lens flare usa no máximo 8 fontes.
+
+## Cenário do Céu e do Pântano
+
+- **Espiral do Céu**: mar de nuvens animado (topo iluminado, vales azulados, sombras de nuvens altas), ilhas flutuantes com gramado, pedras e árvore em várias alturas, e balões de ar quente subindo e descendo.
+- **Pântano Sombrio**: água escura e parada com reflexo, lentilha-d'água em manchas, vitórias-régias, ondinhas, taboas na beira da pista, árvores mortas, tocos com musgo, neblina mais densa e vaga-lumes no ar.
 
 ## Iluminação, sombras e lens flare
 
@@ -174,7 +190,7 @@ Referências: [Coasterpedia: Heartline roll](https://coasterpedia.net/wiki/Heart
 
 Cada pista é um polígono de pontos `[x, z, altura]` mais elementos especiais (`loop`, `jump`, `helix`, `cork`) em `scripts/track_data.gd`. O `track.gd` expande os elementos em pontos de controle, passa uma Catmull-Rom centrípeta fechada e calcula um referencial por amostra: "para cima" do mundo projetado nos trechos normais, inclinação automática nas curvas e, dentro do looping, o "para cima" aponta para o eixo do looping. Daí saem asfalto, zebras, guard-rails (mais altos nos elementos), parte de baixo, pilares (sem cair em cima de outro trecho), colisores e a decoração (placas de curva, postes, pneus, bandeiras, outdoors). O carro usa a normal da pista como gravidade e tem assistência nos loopings e na torção, no estilo dos jogos de pista de brinquedo.
 
-Ferramentas: `godot --headless -s res://tools/validate_tracks.gd` confere raio mínimo, cruzamentos sem altura suficiente e altura mínima das 10 pistas; `godot --headless --fixed-fps 60 res://scenes/main.tscn -- --autotest --track=N` corre a pista N no piloto automático e imprime o resultado (com `--debugfall` mostra cada queda); `-- --overview --only=N` fotografa a pista N de cima e nos elementos especiais, para inspeção; `-- --autotest --steertest` confere que as setas viram o carro para o lado certo da tela; `-- --autotest --track=N --debugstall` conta e descreve cada vez que um carro quase para num looping, torção ou espiral (com os contatos físicos naquele instante); `-- --autotest --track=N --camshots` salva quadros das câmeras dinâmicas. A validação também acusa trechos que ocupam o mesmo espaço em 3D (`overlap3d`).
+Ferramentas: `godot --headless -s res://tools/validate_tracks.gd` confere raio mínimo, cruzamentos sem altura suficiente e altura mínima das 9 pistas; `godot --headless --fixed-fps 60 res://scenes/main.tscn -- --autotest --track=N` corre a pista N no piloto automático e imprime o resultado (com `--debugfall` mostra cada queda); `-- --overview --only=N` fotografa a pista N de cima e nos elementos especiais, para inspeção; `-- --autotest --steertest` confere que as setas viram o carro para o lado certo da tela; `-- --autotest --track=N --debugstall` conta e descreve cada vez que um carro quase para num looping, torção ou espiral (com os contatos físicos naquele instante); `-- --autotest --track=N --camshots` salva quadros das câmeras dinâmicas. A validação também acusa trechos que ocupam o mesmo espaço em 3D (`overlap3d`).
 
 ## Estrutura
 

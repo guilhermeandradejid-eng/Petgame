@@ -509,7 +509,7 @@ func build(ground_shader: Shader, road_shader: Shader) -> void:
 	var dp0 := PackedFloat32Array()
 	for i in n:
 		var lp := loopf[i] == 1
-		rh0.append(1.4 if lp else (2.2 if feat[i] == 1 else 1.15))
+		rh0.append(1.4 if lp else (2.2 if feat[i] == 1 else 1.45))
 		rw0.append(0.2 if lp else 0.5)
 		dp0.append(-0.35 if lp else -0.8)
 	var rhs := PackedFloat32Array()
@@ -642,9 +642,11 @@ func build(ground_shader: Shader, road_shader: Shader) -> void:
 	add_child(rb)
 	var wb := StaticBody3D.new()
 	wb.name = "Rails"
+	wb.set_meta("rail", true)
+	# mureta "segura": sem quique (o carro desliza encostado em vez de ser arremessado)
 	var wpm := PhysicsMaterial.new()
-	wpm.friction = 0.15
-	wpm.bounce = 0.2
+	wpm.friction = 0.08
+	wpm.bounce = 0.0
 	wb.physics_material_override = wpm
 	var wcs := CollisionShape3D.new()
 	var wsh := ConcavePolygonShape3D.new()

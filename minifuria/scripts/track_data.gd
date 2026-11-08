@@ -1,5 +1,5 @@
 class_name TrackData
-## As 10 pistas e os temas de ambientação.
+## As 9 pistas e os temas de ambientação.
 ##
 ## Cada pista é um polígono fechado de pontos [x, z, altura]. "feat" põe elementos especiais:
 ##   no ponto i:          ["helix", voltas(+esq/-dir), raio, desnível]   espiral que sobe/desce
@@ -69,9 +69,9 @@ const THEMES := {
 	},
 	"swamp": {
 		"label": "Pântano", "sky_top": "#5d7d6a", "sky_hor": "#b9c9a8", "bg": "#a4b693", "sun": "#f2f0c8", "sun_e": 1.2, "sun_rot": [-50, 10],
-		"amb": 0.9, "fog": "#9fb090", "ground": 3, "ga": "#2b3a22", "gb": "#4c5e30", "gy": -1.5, "road": 0, "tint": "#c8c0a8",
+		"amb": 0.9, "fog": "#9fb090", "fog_d": 0.0018, "ground": 9, "ga": "#2b3a22", "gb": "#4c5e30", "gy": -1.5, "road": 0, "tint": "#c8c0a8",
 		"curb": ["#6b8f2a", "#e8e0c0"], "rail": ["#7a5a3a", "#a8c050"], "shoulder": "#6a5a40",
-		"props": [["prop_palm", 3], ["prop_tree", 2]], "density": 160, "bldg": 0, "night": false, "dusk": true,
+		"props": [["prop_deadtree", 4], ["prop_reeds", 6], ["prop_stump", 2], ["prop_tree", 2], ["prop_palm", 1]], "density": 260, "bldg": 0, "night": false, "dusk": true,
 		"grav": 1.0, "grip": 0.95, "pillars": true,
 	},
 	"moon": {
@@ -146,12 +146,5 @@ const TRACKS := [
 		"pts": [[-150, -40, 1], [-80, -80, 1], [0, -60, 2], [60, 0, 3], [110, 60, 4], [170, 50, 6], [190, -10, 8], [150, -65, 10], [95, -50, 11],
 			[60, 0, 11], [10, 55, 9], [-60, 75, 6], [-130, 60, 3], [-175, 10, 1]],
 		"feat": {1: ["jump", 11.0, 2.0], 11: ["jump", 12.0, 1.5]},
-	},
-	{
-		"name": "Estação Lunar", "theme": "moon", "w": 22.0, "traffic": 0,
-		"desc": "Gravidade baixa: saltos enormes e looping.",
-		"pts": [[-150, -30, 1], [-90, -95, 2], [0, -105, 6], [90, -90, 6], [140, -80, 5], [168, -45, 4], [168, 45, 2], [110, 90, 3], [30, 80, 8],
-			[-40, 100, 12], [-110, 85, 8], [-170, 30, 3]],
-		"feat": {2: ["jump", 20.0, 0.9], 5: ["loop", 14.0], 9: ["jump", 18.0, 0.9]},
 	},
 ]

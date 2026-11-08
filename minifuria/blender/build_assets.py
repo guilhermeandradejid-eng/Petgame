@@ -94,6 +94,18 @@ M = {
     "stripe": mat("RampStripe", "#26272d", 0.6),
     "seat": mat("Seat", "#3d3f47", 0.8),
     "well": mat("Well", "#121216", 0.95),
+    "rim_dark": mat("RimDark", "#2a2d34", 0.35, 0.8),
+    "sidewall": mat("Sidewall", "#2c2c33", 0.85),
+    "moss": mat("Moss", "#4f6b2a", 0.95),
+    "reed": mat("Reed", "#7a8f3a", 0.85),
+    "cattail": mat("Cattail", "#5a3a22", 0.9),
+    "deadwood": mat("DeadWood", "#5b4a3c", 0.95),
+    "grass_isle": mat("GrassIsle", "#6cc24a", 0.9),
+    "earth": mat("Earth", "#8a6a4a", 0.95),
+    "balloon_a": mat("BalloonA", "#ff5a4d", 0.6),
+    "balloon_b": mat("BalloonB", "#ffd23a", 0.6),
+    "balloon_c": mat("BalloonC", "#4db8ff", 0.6),
+    "wicker": mat("Wicker", "#a0703c", 0.9),
 }
 
 
@@ -204,14 +216,34 @@ def parent(child, par):
 
 # ---------------------------------------------------------------- rodas
 def wheel(name, r, w, loc, side):
-    tire = cyl(name + "_t", r, w, (0, 0, 0), M["tire"], verts=18)
+    """Roda com banda de rodagem em blocos, flanco do pneu, aro escuro com 5 raios metálicos e cubo.
+    Os blocos e os raios deixam o giro visível (um cilindro liso parece parado)."""
+    parts = []
+    tire = cyl(name + "_t", r * 0.965, w, (0, 0, 0), M["tire"], verts=24)
     md = tire.modifiers.new("bevel", "BEVEL")
-    md.width = r * 0.18
+    md.width = r * 0.12
     md.segments = 2
-    # aro saliente no lado de fora
-    rim = cyl(name + "_r", r * 0.58, w * 0.3, (side * w * 0.38, 0, 0), M["rim"], verts=10)
-    hub = cyl(name + "_h", r * 0.2, w * 0.36, (side * w * 0.45, 0, 0), M["trim"], verts=8)
-    ob = join(name, [tire, rim, hub])
+    parts.append(tire)
+    n = 16
+    for k in range(n):
+        th = 2 * math.pi * k / n
+        radial = (0, -math.sin(th), math.cos(th))
+        blk = box(f"{name}_tr{k}", (w * 0.84, 2 * math.pi * r / n * 0.52, 0.07),
+                  (0, radial[1] * (r * 0.965 + 0.015), radial[2] * (r * 0.965 + 0.015)), M["tire"], bevel=0.012)
+        blk.rotation_euler = (th, 0, 0)
+        parts.append(blk)
+    # flanco (anel um pouco mais claro) e aro
+    parts.append(cyl(name + "_sw", r * 0.82, w * 0.06, (side * w * 0.48, 0, 0), M["sidewall"], verts=24))
+    parts.append(cyl(name + "_r", r * 0.6, w * 0.12, (side * w * 0.5, 0, 0), M["rim_dark"], verts=20))
+    parts.append(cyl(name + "_rl", r * 0.62, w * 0.05, (side * w * 0.53, 0, 0), M["rim"], verts=20))
+    for k in range(5):
+        th = 2 * math.pi * k / 5
+        radial = (0, -math.sin(th), math.cos(th))
+        sp = box(f"{name}_sp{k}", (w * 0.08, 0.09, r * 0.46), (side * w * 0.55, radial[1] * r * 0.3, radial[2] * r * 0.3), M["rim"], bevel=0.015)
+        sp.rotation_euler = (th, 0, 0)
+        parts.append(sp)
+    parts.append(cyl(name + "_h", r * 0.17, w * 0.16, (side * w * 0.58, 0, 0), M["chrome"], verts=10))
+    ob = join(name, parts)
     flat(ob)
     ob.location = loc
     return ob
@@ -501,6 +533,54 @@ prop("prop_pine", [
     cyl("pine_2", 1.05, 1.4, (0, 0, 2.6), M["leaf2"], verts=8, axis="Z", r2=0.15),
     cyl("pine_3", 0.7, 1.2, (0, 0, 3.5), M["leaf"], verts=8, axis="Z", r2=0.0),
 ])
+# ---- pântano: taboas, árvore morta, toco com musgo
+reeds = []
+for i in range(9):
+    ang = i * 2.399
+    rr = 0.25 + (i % 4) * 0.18
+    x, y = math.cos(ang) * rr, math.sin(ang) * rr
+    h = 1.2 + (i * 37 % 7) * 0.12
+    st = cyl(f"reed_s{i}", 0.035, h, (x, y, h / 2), M["reed"], verts=5, axis="Z")
+    st.rotation_euler = (x * 0.25, y * 0.25, 0)
+    reeds.append(st)
+    if i % 2 == 0:
+        reeds.append(cyl(f"reed_c{i}", 0.07, 0.32, (x * 1.1, y * 1.1, h * 0.86), M["cattail"], verts=6, axis="Z"))
+    lf = box(f"reed_l{i}", (0.06, 0.02, h * 0.8), (x + 0.08, y, h * 0.4), M["reed"])
+    lf.rotation_euler = (0.3 * (1 if i % 2 else -1), 0.2, ang)
+    reeds.append(lf)
+prop("prop_reeds", reeds)
+dead = [cyl("dt_trunk", 0.32, 3.4, (0, 0, 1.7), M["deadwood"], verts=7, axis="Z", r2=0.14)]
+for i, (a, h, l) in enumerate([(0.4, 2.2, 1.6), (2.6, 2.8, 1.3), (4.3, 1.7, 1.1), (1.5, 3.2, 0.9)]):
+    br = cyl(f"dt_b{i}", 0.09, l, (math.cos(a) * l * 0.4, math.sin(a) * l * 0.4, h + 0.3), M["deadwood"], verts=5, axis="Z", r2=0.03)
+    br.rotation_euler = (math.sin(a) * 0.9, -math.cos(a) * 0.9, 0)
+    dead.append(br)
+dead.append(ico("dt_moss", 0.5, (0.15, 0.1, 0.15), M["moss"], sub=1, scale=(1.3, 1.1, 0.35)))
+prop("prop_deadtree", dead)
+prop("prop_stump", [
+    cyl("stump_b", 0.5, 0.7, (0, 0, 0.35), M["deadwood"], verts=8, axis="Z", r2=0.42),
+    cyl("stump_t", 0.43, 0.05, (0, 0, 0.71), M["wood"], verts=8, axis="Z"),
+    ico("stump_m", 0.45, (0.25, 0, 0.55), M["moss"], sub=1, scale=(0.8, 1.2, 0.5)),
+])
+# ---- céu: ilha flutuante (rocha + gramado + arvorezinha) e balão
+isle = [cyl("isle_rock", 4.2, 3.4, (0, 0, -1.6), M["earth"], verts=9, axis="Z", r2=0.6),
+        cyl("isle_rock2", 2.0, 2.0, (0.8, 0.5, -4.0), M["rock"], verts=7, axis="Z", r2=0.2),
+        cyl("isle_grass", 4.35, 0.5, (0, 0, 0.2), M["grass_isle"], verts=9, axis="Z"),
+        cyl("isle_tt", 0.18, 1.2, (1.2, -0.8, 1.0), M["trunk"], verts=6, axis="Z"),
+        ico("isle_tl", 1.0, (1.2, -0.8, 2.1), M["leaf"], sub=1),
+        ico("isle_r1", 0.6, (-1.6, 1.0, 0.6), M["rock"], sub=1, scale=(1.2, 1.0, 0.7))]
+prop("prop_island", isle)
+bal = []
+for i in range(8):
+    sl = ico(f"bal_{i}", 2.2, (0, 0, 4.6), [M["balloon_a"], M["balloon_b"], M["balloon_c"]][i % 3], sub=2, scale=(0.45, 1.0, 1.15))
+    sl.rotation_euler = (0, 0, i * math.pi / 8)
+    bal.append(sl)
+bal.append(box("bal_basket", (0.9, 0.9, 0.7), (0, 0, 0.35), M["wicker"], bevel=0.06))
+for sx in (-1, 1):
+    for sy in (-1, 1):
+        rp = cyl(f"bal_rope{sx}{sy}", 0.025, 2.4, (sx * 0.5, sy * 0.5, 1.8), M["wood_dark"], verts=4, axis="Z")
+        rp.rotation_euler = (-sy * 0.12, sx * 0.12, 0)
+        bal.append(rp)
+prop("prop_balloon", bal)
 # pedra
 prop("prop_rock", [ico("rock", 1.0, (0, 0, 0.45), M["rock"], sub=1, scale=(1.3, 1.0, 0.7))])
 # poste de luz
