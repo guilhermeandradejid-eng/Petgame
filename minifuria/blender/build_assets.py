@@ -1321,14 +1321,6 @@ for i in range(4):
     stripes[-1].rotation_euler = (math.atan2(RH, RL), 0, 0)
 prop("prop_ramp", [ramp] + stripes)
 
-# arco de largada (o tabuleiro xadrez é textura do jogo; aqui a estrutura)
-prop("prop_gate", [
-    box("gate_l", (0.8, 0.8, 6.0), (-13, 0, 3.0), M["red"], bevel=0.08),
-    box("gate_r", (0.8, 0.8, 6.0), (13, 0, 3.0), M["red"], bevel=0.08),
-    box("gate_t", (27.0, 1.0, 1.4), (0, 0, 6.3), M["trim"], bevel=0.1),
-    box("gate_lt", (25.0, 0.2, 0.3), (0, -0.55, 5.85), M["lamp"]),
-])
-
 # detritos de batida (pedaços de lataria e vidro)
 prop("debris_panel", [box("dp", (0.8, 0.6, 0.08), (0, 0, 0), M["paint"], bevel=0.02)])
 prop("debris_glass", [box("dg", (0.35, 0.3, 0.04), (0, 0, 0), M["glass"])])
@@ -1897,6 +1889,39 @@ st.append(cyl("sd_rr", 0.04, 14.0, (0, -0.62, 1.5), M["chrome"], verts=8, axis="
 for k in range(6):
     st.append(box(f"sd_bn{k}", (2.1, 0.04, 0.5), (-5.75 + k * 2.3, -0.66, 0.85), M["board"] if k % 2 else M["board2"]))
 kprop("prop_stand", st)
+
+
+# arco de largada: pórtico com pivô no CENTRO do chão (antes o pivô era o pé do poste esquerdo e o arco aparecia
+# deslocado 13 m para o lado e afundado 3 m). Postes com base, viga em treliça com faixa quadriculada dos dois
+# lados, barra de luz e as 5 luzes de largada no meio. O jogo estica só a largura (x) até a mureta.
+gt = []
+for sx in (-1, 1):
+    x = sx * 13.0
+    gt += [box(f"gt_pb{sx}", (1.5, 1.5, 0.5), (x, 0, 0.25), M["concrete"], bevel=0.05),
+           box(f"gt_p{sx}", (0.85, 0.85, 6.2), (x, 0, 3.35), M["trim"], bevel=0.06),
+           box(f"gt_ps{sx}", (0.9, 0.9, 0.5), (x, 0, 1.4), M["red"], bevel=0.04),
+           box(f"gt_ps2{sx}", (0.9, 0.9, 0.5), (x, 0, 2.6), M["white"], bevel=0.04),
+           box(f"gt_ps3{sx}", (0.9, 0.9, 0.5), (x, 0, 3.8), M["red"], bevel=0.04),
+           box(f"gt_cap{sx}", (1.2, 1.2, 0.25), (x, 0, 6.55), M["metal"], bevel=0.04)]
+gt.append(box("gt_beam", (27.6, 1.0, 1.6), (0, 0, 6.6), M["trim"], bevel=0.08))
+# faixa quadriculada nas duas faces da viga
+n_sq = 48
+for i in range(n_sq):
+    for j in range(2):
+        x = -12.0 + (i + 0.5) * 24.0 / n_sq
+        z = 6.45 + j * 0.5
+        mt = M["white"] if (i + j) % 2 == 0 else M["sign_k"]
+        for sy in (-1, 1):
+            gt.append(box(f"gt_ck{i}_{j}_{sy}", (24.0 / n_sq, 0.04, 0.5), (x, sy * 0.52, z), mt))
+gt.append(box("gt_lt", (25.0, 0.2, 0.18), (0, -0.56, 5.92), M["lamp"]))
+gt.append(box("gt_lt2", (25.0, 0.2, 0.18), (0, 0.56, 5.92), M["lamp"]))
+# 5 luzes de largada penduradas no meio
+gt.append(box("gt_lb", (3.6, 0.5, 0.7), (0, 0, 5.45), M["trim"], bevel=0.05))
+for k in range(5):
+    x = -1.4 + k * 0.7
+    for sy in (-1, 1):
+        gt.append(cyl(f"gt_l{k}{sy}", 0.22, 0.06, (x, sy * 0.26, 5.45), M["red_light"], verts=14, axis="Y"))
+kprop("prop_gate", gt)
 
 # outdoor: pernas em I com travessas, passarela, refletores e arte de chevrons
 bbd = []

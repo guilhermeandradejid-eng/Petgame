@@ -333,6 +333,19 @@ A garagem virou uma **vitrine de miniaturas** (`scripts/showroom.gd` + `scripts/
 - **Corrida rápida**: grade de pistas com traçado, ícones e medalha (sem texto de tema/elementos). **Resultado**: blocos com ícone (tempo, melhor volta, destruídos, drift, pulo), selos da carreira e o prêmio. **Pausa** e **multijogador local** com ícones e miniaturas dos carros; o lobby online mostra a miniatura do carro escolhido.
 - Ícones vetoriais próprios (`scripts/icons.gd`, sem imagens) e `UI.icon_button` para os botões com ícone.
 
+## Interface da corrida (HUD) e arco da largada
+
+![HUD da corrida, tela dividida e pausa](minifuria/docs/hud.jpg)
+
+- **HUD no estilo da identidade**, com ícones no lugar de texto (`hud.gd`):
+  - canto esquerdo: placa inclinada com a **posição** grande (fica âmbar quando você está em 1º) e o total de carros; ao lado, bandeira + volta, relógio + tempo e velocímetro + km/h; embaixo, destruídos e dinheiro;
+  - no alto, no centro: **blindagem** em segmentos inclinados (escudo verde → vermelho, pisca no fim), **cargas da mobilidade** em "pips" ciano com o ícone da mobilidade (nitro, salto, investida, esquiva, planar) e o medidor de manobras, **cargas do especial** em verde e, à direita, a munição da arma de ataque (mira) e do item de chão (triângulo);
+  - **barra do chefe** com caveira, logo abaixo da sua blindagem (embaixo ela batia nos botões de toque);
+  - minimapa com moldura inclinada, largada marcada e o chefe em vermelho; botões de som e pausa com ícones.
+- **Botões de toque** em vidro escuro com anel colorido, ícone da arma/item/mobilidade/especial/freio e a contagem embaixo (apagados quando a carga acaba); a dica do analógico virou um anel com setas, sem texto.
+- **Tela dividida**: cada quadro tem a placa de posição na cor do jogador, nome, volta, velocidade, blindagem em segmentos e munição com ícones.
+- **Arco da largada**: o pivô do modelo era o pé do poste esquerdo (13 m para o lado e 3 m acima do chão), então o arco aparecia deslocado e afundado em todas as pistas. Agora o pivô é o centro do chão e o arco fica centrado sobre a linha quadriculada, com os pés nas bordas. Foi remodelado: postes listrados com base de concreto, viga com faixa quadriculada nos dois lados, barras de luz e as 5 luzes de largada no meio.
+
 ## Kit de upgrades modelado e props refeitos
 
 As peças de upgrade eram caixas e cilindros do Godot; agora são **peças modeladas no Blender** (`kit_*` no `minicars.glb`) e encaixadas na lataria por raios contra a malha de cada carro (capô, tampa traseira, laterais, para-choques), sem flutuar:

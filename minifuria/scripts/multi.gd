@@ -329,9 +329,19 @@ func _cell_ui(root: Control, idx: int) -> Dictionary:
 	msg.offset_bottom = -40
 	msg.modulate.a = 0.0
 	ui.msg = msg
+	# HUD do quadro desenhado no estilo da identidade (placa de posição, blindagem em segmentos e munição com ícones)
+	var pan := Control.new()
+	pan.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	pan.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pan.draw.connect(_draw_cell.bind(pan))
+	root.add_child(pan)
+	ui.pan = pan
 	if idx < 0:
 		top.text = "LÍDER"
 		bar_bg.visible = false
+	else:
+		for nd in [top, spd, bar_bg, ammo]:
+			nd.visible = false
 	# remove do race_nodes do HUD (estes nós são do quadro, não da tela cheia)
 	for nd in [top, spd, ammo, msg]:
 		hud.race_nodes.erase(nd)
@@ -381,6 +391,9 @@ func update(rdt: float) -> void:
 			continue
 		var car: Car = game.locals[c.idx].car
 		var pl: int = order.find(car) + 1
+		(ui.pan as Control).set_meta("car", car)
+		(ui.pan as Control).set_meta("pl", pl)
+		(ui.pan as Control).queue_redraw()
 		(ui.top as Label).text = "%s · %dº · VOLTA %d/%d" % [car.display_name, pl, clampi(car.lap + 1, 1, game.LAPS), game.LAPS]
 		(ui.top as Label).label_settings.font_color = car.color.lightened(0.35)
 		(ui.spd as Label).text = "%d km/h" % int(car.linear_velocity.length() * 3.6 * 1.25)
@@ -393,3 +406,43 @@ func update(rdt: float) -> void:
 		if car.special_type != "":
 			tx += " · %s %d" % [String(Car.SPECIAL[car.special_type].label), car.spec_ch]
 		(ui.ammo as Label).text = tx
+
+
+func _draw_cell(pan: Control) -> void:
+	if not pan.has_meta("car"):
+		return
+	var car: Car = pan.get_meta("car")
+	if not is_instance_valid(car):
+		return
+	var pl := int(pan.get_meta("pl", 1))
+	var sk := 10.0
+	# placa: posição grande, faixa na cor do jogador, nome e volta
+	pan.draw_colored_polygon(PackedVector2Array([Vector2(8 + sk, 8), Vector2(80 + sk, 8), Vector2(80, 56), Vector2(8, 56)]), Color(0.06, 0.05, 0.11, 0.8))
+	pan.draw_colored_polygon(PackedVector2Array([Vector2(8 + sk, 8), Vector2(14 + sk, 8), Vector2(14, 56), Vector2(8, 56)]), car.color)
+	var w := hud._outlined(pan, UI.display_it, Vector2(26, 50), str(pl), 38, Color.WHITE, 5)
+	hud._outlined(pan, UI.display_it, Vector2(27 + w, 32), "º", 16, UI.HOT, 3)
+	hud._outlined(pan, UI.display_it, Vector2(100, 28), car.display_name, 18, car.color.lightened(0.35), 4)
+	Icon.paint(pan, "flag", Rect2(100, 34, 18, 18), UI.HOT)
+	hud._outlined(pan, UI.display_it, Vector2(122, 51), "%d/%d" % [clampi(car.lap + 1, 1, game.LAPS), game.LAPS], 16, Color.WHITE, 4)
+	# velocidade (canto direito)
+	var sp := str(int(car.linear_velocity.length() * 3.6 * 1.25))
+	var sw := UI.display_it.get_string_size(sp, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x
+	hud._outlined(pan, UI.body_bold, Vector2(pan.size.x - 46, 30), "KM/H", 11, UI.MUTED, 3)
+	hud._outlined(pan, UI.display_it, Vector2(pan.size.x - 52 - sw, 32), sp, 22, Color.WHITE, 4)
+	# embaixo: blindagem e munição
+	var y := pan.size.y - 58
+	var hr := clampf(car.health / car.max_health, 0.0, 1.0)
+	var hc := Color("#ff3048").lerp(Color("#5dff6a"), hr)
+	pan.draw_colored_polygon(PackedVector2Array([Vector2(6, y - 6), Vector2(270, y - 6), Vector2(262, y + 44), Vector2(0, y + 44)]), Color(0.03, 0.02, 0.07, 0.55))
+	Icon.paint(pan, "arm", Rect2(10, y - 2, 22, 22), hc)
+	hud._seg_bar(pan, Rect2(38, y, 220, 14), 16, hr, hc)
+	var x := 12.0
+	var items: Array = [["atk", car.ammo_f, Color("#ff6a3a")], ["rear", car.ammo_r, UI.HOT], [car.nitro_type, car.nitro_ch, UI.INFO]]
+	if car.front_type == "none":
+		items.pop_front()
+	if car.special_type != "":
+		items.append([car.special_type, car.spec_ch, UI.OK])
+	for it in items:
+		var col: Color = it[2] if int(it[1]) > 0 else Color(1, 1, 1, 0.35)
+		Icon.paint(pan, String(it[0]), Rect2(x, y + 20, 20, 20), col)
+		x += 24.0 + hud._outlined(pan, UI.display_it, Vector2(x + 24, y + 37), str(int(it[1])), 16, col, 4) + 14.0

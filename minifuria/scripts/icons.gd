@@ -199,5 +199,25 @@ static func paint(ci: CanvasItem, nm: String, rc: Rect2, col: Color) -> void:
 			ci.draw_rect(Rect2(c + Vector2(-8 * u, -9 * u), Vector2(9 * u, 18 * u)), col, false, w)
 			ci.draw_line(c + Vector2(-2 * u, 0), c + Vector2(9 * u, 0), col, w * 1.2)
 			ci.draw_polyline(PackedVector2Array([c + Vector2(5 * u, -4 * u), c + Vector2(9 * u, 0), c + Vector2(5 * u, 4 * u)]), col, w * 1.2)
+		"brake":   # disco de freio com pinça
+			_arc(ci, c, 8.5 * u, 0, TAU, col, w * 1.3)
+			ci.draw_circle(c, 3 * u, col)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(3 * u, -11 * u), c + Vector2(11 * u, -6 * u), c + Vector2(8 * u, -1 * u), c + Vector2(1 * u, -6 * u)]), col)
+		"pause":
+			ci.draw_rect(Rect2(c + Vector2(-7 * u, -8 * u), Vector2(5 * u, 16 * u)), col)
+			ci.draw_rect(Rect2(c + Vector2(2 * u, -8 * u), Vector2(5 * u, 16 * u)), col)
+		"sound", "mute":
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-9 * u, -3 * u), c + Vector2(-5 * u, -3 * u), c + Vector2(1 * u, -8 * u),
+				c + Vector2(1 * u, 8 * u), c + Vector2(-5 * u, 3 * u), c + Vector2(-9 * u, 3 * u)]), col)
+			if nm == "sound":
+				_arc(ci, c + Vector2(1 * u, 0), 5 * u, -0.9, 0.9, col, w)
+				_arc(ci, c + Vector2(1 * u, 0), 9 * u, -0.9, 0.9, col, w)
+			else:
+				ci.draw_line(c + Vector2(4 * u, -5 * u), c + Vector2(11 * u, 5 * u), col, w)
+				ci.draw_line(c + Vector2(4 * u, 5 * u), c + Vector2(11 * u, -5 * u), col, w)
+		"clock":
+			_arc(ci, c, 9 * u, 0, TAU, col, w)
+			ci.draw_line(c, c + Vector2(0, -6 * u), col, w, true)
+			ci.draw_line(c, c + Vector2(4.5 * u, 2 * u), col, w, true)
 		_:
 			ci.draw_circle(c, 4 * u, col)

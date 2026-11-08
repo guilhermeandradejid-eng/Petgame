@@ -190,18 +190,24 @@ func _focus_first(name_: String) -> void:
 
 # ------------------------------------------------------------------ HUD da corrida
 func _build_race_hud() -> void:
-	pos_l = _label(52, Color.WHITE, Color("#ff2d55"))
-	pos_l.position = Vector2(18, 6)
-	lap_l = _label(17, Color("#ffcf33"), Color(0, 0, 0, 0.6))
-	lap_l.position = Vector2(110, 14)
-	time_l = _label(22, Color.WHITE, Color(0, 0, 0, 0.6))
-	time_l.position = Vector2(110, 36)
-	score_l = _label(16, Color("#7dff6a"), Color(0, 0, 0, 0.6))
-	score_l.position = Vector2(110, 64)
+	# placa de posição, volta, tempo e velocidade (desenhada: ícones no lugar de texto)
+	info = Control.new()
+	info.position = Vector2(16, 10)
+	info.size = Vector2(330, 120)
+	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info.draw.connect(_draw_info)
+	root.add_child(info)
+	# rótulos antigos (o jogo ainda escreve neles; ficam escondidos)
+	pos_l = _label(10, Color.WHITE, Color.BLACK)
+	lap_l = _label(10, Color.WHITE, Color.BLACK)
+	time_l = _label(10, Color.WHITE, Color.BLACK)
+	score_l = _label(10, Color.WHITE, Color.BLACK)
+	for l in [pos_l, lap_l, time_l, score_l]:
+		l.visible = false
 	status = Control.new()
 	status.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	status.position = Vector2(-230, 8)
-	status.size = Vector2(460, 84)
+	status.position = Vector2(-240, 12)
+	status.size = Vector2(480, 64)
 	status.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status.draw.connect(_draw_status)
 	root.add_child(status)
@@ -210,12 +216,11 @@ func _build_race_hud() -> void:
 	onc_l.position = Vector2(-70, 96)
 	onc_l.text = "CONTRAMÃO!"
 	onc_l.modulate.a = 0.0
-	speed_l = _label(30, Color.WHITE, Color(0, 0, 0, 0.6))
-	speed_l.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	speed_l.position = Vector2(18, -54)
+	speed_l = _label(10, Color.WHITE, Color.BLACK)
+	speed_l.visible = false
 	pops = VBoxContainer.new()
 	pops.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	pops.position = Vector2(-250, 118)
+	pops.position = Vector2(-250, 140)
 	pops.custom_minimum_size = Vector2(500, 0)
 	pops.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(pops)
@@ -242,15 +247,16 @@ func _build_race_hud() -> void:
 	wrong_l.visible = false
 	minimap = Control.new()
 	minimap.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	minimap.position = Vector2(-196, 8)
-	minimap.size = Vector2(128, 128)
+	minimap.position = Vector2(-210, 10)
+	minimap.size = Vector2(140, 132)
 	minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	minimap.draw.connect(_draw_minimap)
 	root.add_child(minimap)
+	# barra do chefe: em cima, logo abaixo da sua blindagem (embaixo ela batia nos botões de toque)
 	boss_bar = Control.new()
-	boss_bar.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	boss_bar.position = Vector2(-300, -84)
-	boss_bar.size = Vector2(600, 60)
+	boss_bar.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	boss_bar.position = Vector2(-240, 76)
+	boss_bar.size = Vector2(480, 54)
 	boss_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	boss_bar.visible = false
 	boss_bar.draw.connect(_draw_boss)
@@ -264,16 +270,23 @@ func _build_race_hud() -> void:
 	root.add_child(feed)
 	var btns := VBoxContainer.new()
 	btns.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	btns.position = Vector2(-62, 8)
+	btns.position = Vector2(-62, 10)
+	btns.add_theme_constant_override("separation", 8)
 	root.add_child(btns)
-	mute_b = _small_btn("SOM", btns)
+	mute_b = _small_btn("", btns)
+	mute_icon = Icon.make("sound", 26, UI.TEXT)
+	mute_icon.position = Vector2(13, 9)
+	mute_b.add_child(mute_icon)
 	mute_b.pressed.connect(func(): game.toggle_mute())
-	var pb := _small_btn("II", btns)
+	var pb := _small_btn("", btns)
+	var pic := Icon.make("pause", 26, UI.TEXT)
+	pic.position = Vector2(13, 9)
+	pb.add_child(pic)
 	pb.pressed.connect(func(): game.pause(true))
 	touch = TouchPad.new()
 	touch.font = font
 	root.add_child(touch)
-	race_nodes = [pos_l, lap_l, time_l, score_l, status, onc_l, speed_l, minimap, feed, btns]
+	race_nodes = [info, status, onc_l, minimap, feed, btns]
 
 
 func _small_btn(txt: String, parent: Node) -> Button:
@@ -282,11 +295,62 @@ func _small_btn(txt: String, parent: Node) -> Button:
 	b.custom_minimum_size = Vector2(52, 44)
 	b.add_theme_font_size_override("font_size", 14)
 	b.focus_mode = Control.FOCUS_NONE
-	var sb := _sb(Color(0.1, 0.08, 0.2, 0.6), 12)
-	for st in ["normal", "hover", "pressed"]:
-		b.add_theme_stylebox_override(st, sb)
+	var sb := UI.box(Color(0.06, 0.05, 0.11, 0.7), Color(1, 1, 1, 0.18), 1, 0.12, 0, Color(0, 0, 0, 0), 6)
+	var sh := UI.box(Color(0.14, 0.11, 0.26, 0.85), UI.HOT, 2, 0.12, 0, Color(0, 0, 0, 0), 6)
+	b.add_theme_stylebox_override("normal", sb)
+	b.add_theme_stylebox_override("hover", sh)
+	b.add_theme_stylebox_override("pressed", sh)
 	parent.add_child(b)
 	return b
+
+
+var info: Control
+var mute_icon: Icon
+var _ri := {}
+
+
+## dados da placa do canto (posição, volta, tempo, velocidade, destruídos, dinheiro): o jogo chama a cada quadro
+func set_race_info(d: Dictionary) -> void:
+	_ri = d
+	info.queue_redraw()
+
+
+func _outlined(c: CanvasItem, f: Font, pos: Vector2, txt: String, fs: int, col: Color, ow := 5) -> float:
+	c.draw_string_outline(f, pos, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ow, Color(0.03, 0.02, 0.07, 0.85))
+	c.draw_string(f, pos, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
+	return f.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+
+
+func _draw_info() -> void:
+	if _ri.is_empty():
+		return
+	var c := info
+	var sk := 16.0
+	var pw := 112.0
+	var ph := 74.0
+	# placa da posição: paralelogramo escuro com faixa âmbar; 1º lugar fica âmbar inteira
+	var first := int(_ri.place) == 1
+	c.draw_colored_polygon(PackedVector2Array([Vector2(sk, 0), Vector2(pw + sk, 0), Vector2(pw, ph), Vector2(0, ph)]),
+		Color(1.0, 0.7, 0.1, 0.92) if first else Color(0.06, 0.05, 0.11, 0.8))
+	c.draw_colored_polygon(PackedVector2Array([Vector2(sk, 0), Vector2(sk + 8, 0), Vector2(8, ph), Vector2(0, ph)]), UI.BAD if first else UI.HOT)
+	var pl := "%d" % int(_ri.place)
+	var w := _outlined(c, UI.display_it, Vector2(24, 62), pl, 56, UI.INK if first else Color.WHITE, 0 if first else 6)
+	_outlined(c, UI.display_it, Vector2(26 + w, 40), "º", 22, UI.INK if first else UI.HOT, 0 if first else 4)
+	_outlined(c, UI.display_it, Vector2(30 + w, 64), "/%d" % int(_ri.n), 16, Color(0.03, 0.02, 0.07, 0.7) if first else UI.MUTED, 0 if first else 4)
+	# volta, tempo e velocidade
+	var x0 := pw + sk + 14.0
+	Icon.paint(c, "flag", Rect2(x0, 2, 24, 24), UI.HOT)
+	_outlined(c, UI.display_it, Vector2(x0 + 30, 24), "%d/%d" % [int(_ri.lap), int(_ri.laps)], 24, Color.WHITE)
+	Icon.paint(c, "clock", Rect2(x0 + 2, 32, 20, 20), UI.MUTED)
+	_outlined(c, UI.body_bold, Vector2(x0 + 30, 49), String(_ri.time), 19, Color.WHITE, 4)
+	Icon.paint(c, "spd", Rect2(x0 + 2, 56, 20, 20), UI.MUTED)
+	var sw := _outlined(c, UI.display_it, Vector2(x0 + 30, 74), "%d" % int(_ri.spd), 18, Color.WHITE, 4)
+	_outlined(c, UI.body_bold, Vector2(x0 + 34 + sw, 74), "KM/H", 11, UI.MUTED, 3)
+	# destruídos e dinheiro, pequenos, embaixo da placa
+	Icon.paint(c, "skull", Rect2(2, ph + 8, 18, 18), UI.BAD)
+	var kw := _outlined(c, UI.display_it, Vector2(24, ph + 24), "%d" % int(_ri.kills), 16, Color.WHITE, 4)
+	Icon.paint(c, "coin", Rect2(36 + kw, ph + 8, 18, 18), UI.OK)
+	_outlined(c, UI.display_it, Vector2(58 + kw, ph + 24), garage_ui._money(int(_ri.cash)) if garage_ui else str(int(_ri.cash)), 16, UI.OK, 4)
 
 
 func popup(text: String, col: Color, sub := "") -> void:
@@ -360,12 +424,34 @@ func _draw_boss() -> void:
 		return
 	var W := boss_bar.size.x
 	var u := clampf(b.health / b.max_health, 0.0, 1.0)
-	var sk := 14.0
-	boss_bar.draw_string_outline(UI.display_it, Vector2(sk, 20), b.display_name + ("  · DESTRUÍDO" if b.wrecked else ""), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, 6, UI.INK)
-	boss_bar.draw_string(UI.display_it, Vector2(sk, 20), b.display_name + ("  · DESTRUÍDO" if b.wrecked else ""), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, UI.BAD)
-	boss_bar.draw_colored_polygon(PackedVector2Array([Vector2(sk, 28), Vector2(W, 28), Vector2(W - sk, 50), Vector2(0, 50)]), Color(0, 0, 0, 0.6))
-	if u > 0.0:
-		boss_bar.draw_colored_polygon(PackedVector2Array([Vector2(sk + 3, 31), Vector2(sk + 3 + (W - sk - 6) * u, 31), Vector2((W - sk - 6) * u, 47), Vector2(3, 47)]), UI.BAD.lerp(UI.HOT, 1.0 - u))
+	Icon.paint(boss_bar, "skull", Rect2(2, 2, 26, 26), UI.BAD)
+	_outlined(boss_bar, UI.display_it, Vector2(36, 20), b.display_name + ("  · DESTRUÍDO" if b.wrecked else ""), 16, UI.BAD, 5)
+	boss_bar.draw_colored_polygon(PackedVector2Array([Vector2(46, 26), Vector2(W, 26), Vector2(W - 10, 46), Vector2(36, 46)]), Color(0.03, 0.02, 0.07, 0.6))
+	_seg_bar(boss_bar, Rect2(38, 28, W - 44, 16), 30, u, UI.BAD.lerp(UI.HOT, 1.0 - u))
+
+
+## segmentos inclinados (barras da identidade): fração cheia com a cor, o resto apagado
+func _seg_bar(c: Control, r: Rect2, n: int, frac: float, col: Color, empty := Color(1, 1, 1, 0.1)) -> void:
+	var sk := r.size.y * 0.5
+	var gap := 2.0
+	var sw := (r.size.x - sk - gap * (n - 1)) / n
+	for i in n:
+		var x := r.position.x + i * (sw + gap)
+		var y := r.position.y
+		var on := (i + 0.5) / n <= frac
+		c.draw_colored_polygon(PackedVector2Array([Vector2(x + sk, y), Vector2(x + sk + sw, y), Vector2(x + sw, y + r.size.y), Vector2(x, y + r.size.y)]),
+			col if on else empty)
+
+
+func _pips(c: Control, x: float, y: float, n: int, full: int, col: Color, active := -1) -> float:
+	for i in n:
+		var px := x + i * 27.0
+		var cc := col if i < full else Color(0.06, 0.05, 0.11, 0.75)
+		if i == active:
+			cc = Color.WHITE
+		c.draw_colored_polygon(PackedVector2Array([Vector2(px + 7, y), Vector2(px + 25, y), Vector2(px + 18, y + 16), Vector2(px, y + 16)]), Color(0, 0, 0, 0.45))
+		c.draw_colored_polygon(PackedVector2Array([Vector2(px + 8, y + 2), Vector2(px + 24, y + 2), Vector2(px + 17, y + 14), Vector2(px + 1, y + 14)]), cc)
+	return x + n * 27.0
 
 
 func _draw_status() -> void:
@@ -373,44 +459,36 @@ func _draw_status() -> void:
 		return
 	var p := player
 	var w := status.size.x
-	# vida
+	# blindagem: escudo + barra em segmentos (verde -> vermelho; pisca quando está no fim)
 	var hr := clampf(p.health / p.max_health, 0.0, 1.0)
-	var hb := Rect2(0, 0, w, 22)
-	status.draw_rect(hb.grow(3), Color(1, 1, 1, 0.85), true)
-	status.draw_rect(hb, Color(0.1, 0.08, 0.2, 0.95), true)
 	var hc := Color("#ff3048").lerp(Color("#5dff6a"), hr)
 	if hr < 0.3 and int(t * 6.0) % 2 == 0:
 		hc = Color.WHITE
-	status.draw_rect(Rect2(0, 0, w * hr, 22), hc, true)
-	_text(status, "BLINDAGEM", Vector2(w * 0.5, 17), 13, true)
-	# nitro (cargas) + medidor de manobras
+	Icon.paint(status, "arm", Rect2(0, -2, 28, 28), hc)
+	status.draw_colored_polygon(PackedVector2Array([Vector2(44, 0), Vector2(w, 0), Vector2(w - 12, 24), Vector2(32, 24)]), Color(0.03, 0.02, 0.07, 0.6))
+	_seg_bar(status, Rect2(36, 3, w - 42, 18), 24, hr, hc)
+	# mobilidade (cargas + medidor de manobras) e especial
 	var y := 32.0
-	_text(status, String(Car.NITRO[p.nitro_type].label), Vector2(0, y + 15), 13, false)
-	for i in p.nitro_cap:
-		var r := Rect2(82 + i * 30, y, 24, 18)
-		var full := i < p.nitro_ch
-		var col := Color("#2ee6ff") if full else Color(0.1, 0.08, 0.2, 0.9)
-		if p.nitroing and i == p.nitro_ch:
-			col = Color.WHITE
-		status.draw_rect(r.grow(2), Color(1, 1, 1, 0.7), true)
-		status.draw_rect(r, col, true)
-	status.draw_rect(Rect2(82, y + 22, 30 * p.nitro_cap - 6, 4), Color(0.1, 0.08, 0.2, 0.9), true)
-	status.draw_rect(Rect2(82, y + 22, (30 * p.nitro_cap - 6) * p.nitro_meter, 4), Color("#b4f6ff"), true)
-	# especial comprado (botão próprio): cargas verdes
+	Icon.paint(status, p.nitro_type, Rect2(4, y - 2, 24, 24), UI.INFO)
+	var cur := p.nitro_ch if p.nitroing else -1
+	var xe := _pips(status, 36, y, p.nitro_cap, p.nitro_ch, UI.INFO, cur)
+	status.draw_rect(Rect2(38, y + 19, xe - 44, 3), Color(0.03, 0.02, 0.07, 0.7), true)
+	status.draw_rect(Rect2(38, y + 19, (xe - 44) * p.nitro_meter, 3), Color("#b4f6ff"), true)
 	if p.special_type != "":
-		var sy := y + 32.0
-		_text(status, String(Car.SPECIAL[p.special_type].label), Vector2(0, sy + 13), 12, false, false, Color("#9dffb0"))
-		for i in p.spec_cap:
-			var r := Rect2(82 + i * 30, sy, 24, 14)
-			status.draw_rect(r.grow(2), Color(1, 1, 1, 0.7), true)
-			status.draw_rect(r, Color("#5dff6a") if i < p.spec_ch else Color(0.1, 0.08, 0.2, 0.9), true)
-	# armas
-	var fa := "%s %d" % [String(Car.LBL_F.get(p.front_type, "MG")), p.ammo_f]
-	if p.front_type == "none":
-		fa = "SEM ARMA"
-	var ra := "%s x%d" % [String(Car.LBL_R.get(p.rear_type, "MINA")), p.ammo_r]
-	_text(status, fa, Vector2(w - 4, y + 15), 15, false, true, Color("#ffb08a") if p.ammo_f > 0 else Color(1, 1, 1, 0.35))
-	_text(status, ra, Vector2(w - 4, y + 38), 13, false, true, Color("#ffe27a") if p.ammo_r > 0 else Color(1, 1, 1, 0.35))
+		var sx := xe + 16.0
+		Icon.paint(status, p.special_type, Rect2(sx, y - 2, 24, 24), UI.OK)
+		_pips(status, sx + 30, y, p.spec_cap, p.spec_ch, UI.OK)
+	# armas (à direita): arma de ataque e item de chão com a munição
+	var ra := "%d" % p.ammo_r
+	var rw := UI.display_it.get_string_size(ra, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
+	_outlined(status, UI.display_it, Vector2(w - rw, y + 17), ra, 18, UI.HOT if p.ammo_r > 0 else Color(1, 1, 1, 0.35), 4)
+	Icon.paint(status, "rear", Rect2(w - rw - 28, y - 1, 22, 22), UI.HOT if p.ammo_r > 0 else Color(1, 1, 1, 0.35))
+	if p.front_type != "none":
+		var fa := "%d" % p.ammo_f
+		var fw := UI.display_it.get_string_size(fa, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
+		var fx := w - rw - 48 - fw
+		_outlined(status, UI.display_it, Vector2(fx, y + 17), fa, 18, Color("#ffb08a") if p.ammo_f > 0 else Color(1, 1, 1, 0.35), 4)
+		Icon.paint(status, "atk", Rect2(fx - 28, y - 1, 22, 22), Color("#ff6a3a") if p.ammo_f > 0 else Color(1, 1, 1, 0.35))
 
 
 func _text(c: Control, s: String, pos: Vector2, fs: int, center: bool, right := false, col := Color.WHITE) -> void:
@@ -437,7 +515,7 @@ func set_track(tr: Track) -> void:
 		mx = mx.max(p)
 	raw.append(raw[0])
 	var s := minimap.size
-	_mm_sc = minf((s.x - 16) / (mx.x - mn.x), (s.y - 16) / (mx.y - mn.y))
+	_mm_sc = minf((s.x - 40) / (mx.x - mn.x), (s.y - 22) / (mx.y - mn.y))
 	_mm_o = s * 0.5 - (mn + mx) * 0.5 * _mm_sc
 	for p in raw:
 		_mm_pts.append(p * _mm_sc + _mm_o)
@@ -446,17 +524,25 @@ func set_track(tr: Track) -> void:
 func _draw_minimap() -> void:
 	if track == null or _mm_pts.size() < 2:
 		return
-	minimap.draw_rect(Rect2(Vector2.ZERO, minimap.size), Color(0.1, 0.08, 0.2, 0.4), true)
-	minimap.draw_polyline(_mm_pts, Color(0.1, 0.1, 0.2, 0.6), 8.0, true)
-	minimap.draw_polyline(_mm_pts, Color(0.95, 0.94, 1.0), 4.0, true)
+	var ms := minimap.size
+	var sk := 14.0
+	minimap.draw_colored_polygon(PackedVector2Array([Vector2(sk, 0), Vector2(ms.x, 0), Vector2(ms.x - sk, ms.y), Vector2(0, ms.y)]), Color(0.06, 0.05, 0.11, 0.62))
+	minimap.draw_polyline(PackedVector2Array([Vector2(sk, 0), Vector2(ms.x, 0), Vector2(ms.x - sk, ms.y), Vector2(0, ms.y), Vector2(sk, 0)]), Color(1, 1, 1, 0.14), 1.5, true)
+	minimap.draw_polyline(_mm_pts, Color(0.03, 0.02, 0.07, 0.8), 8.0, true)
+	minimap.draw_polyline(_mm_pts, Color(0.92, 0.9, 1.0), 4.0, true)
+	minimap.draw_circle(_mm_pts[0], 4.0, UI.HOT)
 	for c in cars:
 		if c.wrecked:
 			continue
 		var p := _rot(Vector2(c.global_position.x, c.global_position.z)) * _mm_sc + _mm_o
 		if c.role == "traffic":
 			minimap.draw_circle(p, 2.0, Color(0.4, 0.4, 0.5, 0.7))
+		elif c == game.boss:
+			minimap.draw_circle(p, 7.0, UI.INK)
+			minimap.draw_circle(p, 5.5, UI.BAD)
 		elif c.role == "rival":
-			minimap.draw_circle(p, 4.5, c.color)
+			minimap.draw_circle(p, 5.0, UI.INK)
+			minimap.draw_circle(p, 3.8, c.color)
 	if player:
 		var p := _rot(Vector2(player.global_position.x, player.global_position.z)) * _mm_sc + _mm_o
 		minimap.draw_circle(p, 6.5, Color.WHITE)

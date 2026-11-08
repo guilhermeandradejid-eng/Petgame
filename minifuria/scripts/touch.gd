@@ -12,6 +12,7 @@ var used := false
 var counts := {"fire": "", "nitro": "", "drop": "", "special": ""}
 var labels := {"fire": "TIRO", "nitro": "NITRO", "drift": "DRIFT", "drop": "MINA", "brake": "FREIO", "special": ""}
 var nitro_on := false
+var icons := {"fire": "atk", "nitro": "short", "drop": "rear", "brake": "brake", "special": "shield"}
 var font: Font
 const R := 70.0
 
@@ -115,42 +116,45 @@ func _draw() -> void:
 	if not visible:
 		return
 	if font == null:
-		font = get_theme_default_font()
+		font = UI.display_it if UI.display_it else get_theme_default_font()
 	var rects := _btn_rects()
-	var cols := {"fire": Color(1.0, 0.32, 0.22), "nitro": Color(0.2, 0.75, 1.0), "drift": Color(0.78, 0.49, 1.0), "drop": Color(1.0, 0.8, 0.2), "brake": Color(0.4, 0.4, 0.5), "special": Color(0.36, 1.0, 0.5)}
+	var cols := {"fire": Color("#ff5a3a"), "nitro": Color("#2ee6ff"), "drift": Color(0.78, 0.49, 1.0), "drop": Color("#ffb21a"), "brake": Color("#a49ec4"), "special": Color("#5dff6a")}
 	for k in rects:
 		var c: Vector2 = rects[k][0]
 		var r: float = rects[k][1]
 		var down: bool = btn[k]
-		var off := Vector2(0, 4) if down else Vector2.ZERO
-		draw_circle(c + Vector2(0, 6), r, Color(0, 0, 0, 0.35))
+		var off := Vector2(0, 3) if down else Vector2.ZERO
 		var cc: Color = cols[k]
 		if k == "nitro" and nitro_on:
-			cc = Color(0.6, 0.95, 1.0)
-		draw_circle(c + off, r, Color(0.1, 0.08, 0.18, 0.7))
-		draw_circle(c + off, r * 0.9, cc * Color(1, 1, 1, 0.9 if down else 0.62))
-		draw_arc(c + off, r, 0, TAU, 48, Color(1, 1, 1, 0.75 if down else 0.4), 3.0)
-		var fs := int(r * 0.3)
-		var lb: String = labels[k]
-		var tw := font.get_string_size(lb, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		var ty := fs * 0.1 if counts.get(k, "") != "" else fs * 0.35
-		draw_string_outline(font, c + off + Vector2(-tw / 2.0, ty), lb, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, Color(0, 0, 0, 0.5))
-		draw_string(font, c + off + Vector2(-tw / 2.0, ty), lb, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
+			cc = Color.WHITE
 		var cnt: String = counts.get(k, "")
+		var empty := cnt == "0"
+		# vidro escuro com anel colorido; apertado = cheio da cor
+		draw_circle(c + Vector2(0, 5), r, Color(0, 0, 0, 0.3))
+		draw_circle(c + off, r, Color(cc, 0.85) if down else Color(0.06, 0.05, 0.11, 0.62))
+		draw_arc(c + off, r - 3.0, 0, TAU, 48, Color(cc, 0.35 if empty else 0.95), 5.0, true)
+		draw_arc(c + off, r * 0.78, PI * 1.1, PI * 1.6, 12, Color(1, 1, 1, 0.12), 3.0, true)
+		var ic_col := UI.INK if down else (Color(1, 1, 1, 0.35) if empty else Color.WHITE)
+		var isz := r * (0.78 if cnt != "" else 0.95)
+		var icy := -r * 0.16 if cnt != "" else 0.0
+		Icon.paint(self, String(icons.get(k, "atk")), Rect2(c + off + Vector2(-isz * 0.5, -isz * 0.5 + icy), Vector2(isz, isz)), ic_col)
 		if cnt != "":
-			var fs2 := int(r * 0.34)
+			var fs2 := int(r * 0.36)
 			var tw2 := font.get_string_size(cnt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2).x
-			draw_string_outline(font, c + off + Vector2(-tw2 / 2.0, fs2 * 1.25), cnt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, 4, Color(0, 0, 0, 0.5))
-			draw_string(font, c + off + Vector2(-tw2 / 2.0, fs2 * 1.25), cnt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, Color(1, 1, 0.8))
+			var tp := c + off + Vector2(-tw2 / 2.0, r * 0.62)
+			draw_string_outline(font, tp, cnt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, 4, Color(0.03, 0.02, 0.07, 0.8))
+			draw_string(font, tp, cnt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, UI.INK if down else (Color(1, 1, 1, 0.4) if empty else cc.lightened(0.4)))
 	if stick_id != -1:
-		draw_circle(stick_origin, R * 1.05, Color(1, 1, 1, 0.12))
-		draw_arc(stick_origin, R * 1.05, 0, TAU, 48, Color(1, 1, 1, 0.45), 3.0)
-		draw_circle(stick_origin + stick_vec * R, 30, Color(1, 0.55, 0.65, 0.95))
-		draw_circle(stick_origin + stick_vec * R - Vector2(8, 8), 10, Color(1, 1, 1, 0.6))
+		draw_circle(stick_origin, R * 1.05, Color(0.06, 0.05, 0.11, 0.35))
+		draw_arc(stick_origin, R * 1.05, 0, TAU, 48, Color(1, 1, 1, 0.4), 3.0, true)
+		draw_circle(stick_origin + stick_vec * R, 30, Color(0.06, 0.05, 0.11, 0.75))
+		draw_arc(stick_origin + stick_vec * R, 28, 0, TAU, 32, UI.HOT, 4.0, true)
 	else:
+		# dica do analógico: anel com quatro setas (sem texto)
 		var hint := Vector2(size.x * 0.15, size.y * 0.72)
-		draw_arc(hint, R, 0, TAU, 48, Color(1, 1, 1, 0.18), 2.0)
-		draw_circle(hint, 26, Color(1, 1, 1, 0.12))
-		var t := "ARRASTE PARA DIRIGIR"
-		var tw3 := font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-		draw_string(font, hint + Vector2(-tw3 / 2.0, R + 22), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1, 0.5))
+		draw_arc(hint, R, 0, TAU, 48, Color(1, 1, 1, 0.16), 2.0, true)
+		draw_circle(hint, 24, Color(1, 1, 1, 0.1))
+		for d in [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]:
+			var tip: Vector2 = hint + d * (R - 10)
+			var sd := Vector2(-d.y, d.x)
+			draw_colored_polygon(PackedVector2Array([tip, tip - d * 12 + sd * 9, tip - d * 12 - sd * 9]), Color(1, 1, 1, 0.22))

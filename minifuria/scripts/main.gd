@@ -1482,6 +1482,8 @@ func _start_race_now() -> void:
 	hud.touch.labels["fire"] = String(Car.LBL_F.get(player.front_type, "TIRO"))
 	hud.touch.labels["nitro"] = String(Car.NITRO[player.nitro_type].label)
 	hud.touch.labels["special"] = String(Car.SPECIAL[player.special_type].label) if player.special_type != "" else ""
+	hud.touch.icons = {"fire": "atk" if player.front_type != "none" else "lock", "drop": "rear", "nitro": player.nitro_type,
+		"brake": "brake", "special": player.special_type}
 	mode = "countdown"
 	if not auto_test:
 		music.play_track(track_idx, String(track.data.theme), boss != null)
@@ -1535,6 +1537,8 @@ func toggle_steer() -> void:
 
 func toggle_mute() -> void:
 	sfx.set_muted(not sfx.muted)
+	if hud.mute_icon:
+		hud.mute_icon.set_icon("mute" if sfx.muted else "sound", UI.BAD if sfx.muted else UI.TEXT)
 
 
 # ------------------------------------------------------------------ eventos
@@ -2956,11 +2960,8 @@ func _post(rdt: float) -> void:
 
 func _hud() -> void:
 	var p := player
-	hud.pos_l.text = "%dº" % place
-	hud.lap_l.text = "VOLTA %d/%d" % [clampi(p.lap + 1, 1, LAPS), LAPS]
-	hud.time_l.text = _fmt(race_t)
-	hud.score_l.text = "$%d  ·  %d DESTRUÍDOS" % [int(save.cash), int(stats.get("kills", 0))]
-	hud.speed_l.text = "%d km/h" % int(p.linear_velocity.length() * 3.6 * 1.25)
+	hud.set_race_info({"place": place, "n": racers().size(), "lap": clampi(p.lap + 1, 1, LAPS), "laps": LAPS, "time": _fmt(race_t),
+		"spd": int(p.linear_velocity.length() * 3.6 * 1.25), "kills": int(stats.get("kills", 0)), "cash": int(save.cash)})
 	hud.boss_bar.visible = boss != null and mode in ["race", "countdown", "finish"] and not (multi and multi.split)
 	if hud.boss_bar.visible:
 		hud.boss_bar.queue_redraw()
