@@ -345,6 +345,12 @@ func _bullet_impact(tr: Dictionary) -> void:
 			dmg *= c.dmg_mult
 		var killed := tc.apply_damage(dmg, p, c if is_instance_valid(c) else null)
 		tc.apply_impulse(aim * 140.0, p - tc.global_position)
+		# cada bala tira um pouco de embalo (só na horizontal) e segura a velocidade máxima por um instante
+		if not tc.net_remote and not tc.wrecked:
+			var keep := 0.995 if tc.is_boss else (0.985 if is_instance_valid(c) and c.human else 0.99)
+			var lv := tc.linear_velocity
+			tc.linear_velocity = Vector3(lv.x * keep, lv.y, lv.z * keep)
+			tc.slow_t = 0.35
 		if vis:
 			fx.sparks(p, -aim + tc.global_transform.basis.y * 0.5, 0.18)
 			_muzzle_flash(p - aim * 0.3, -aim)

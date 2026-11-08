@@ -718,7 +718,11 @@ def build_car2(key, s):
         boolean(body, c, "DIFFERENCE")
     # interior escuro da caixa de roda (some o "vazio" atrás do pneu)
     for n, (sd, y, r, fr) in WH.items():
-        P["body"].append(cyl(f"{key}_wl{n}", r + 0.06, 0.04, (sd * (W / 2 - ww - (0.28 if fr and not s.get("front_fenders") else 0.12)), y, r), M["well"], verts=24))
+        # o disco fica só acima do assoalho (antes descia até o chão e aparecia como haste debaixo do carro)
+        wx_ = sd * (W / 2 - ww - (0.28 if fr and not s.get("front_fenders") else 0.12))
+        dsc = cyl(f"{key}_wl{n}", r + 0.06, 0.04, (wx_, y, r), M["well"], verts=24)
+        boolean(dsc, box(f"{key}_wlc{n}", (0.3, 2 * r + 0.6, 3.0), (wx_, y, clr + 0.04 + 1.5), M["well"]), "INTERSECT")
+        P["body"].append(dsc)
     P["body"].append(body)
     # assoalho/saia escura, friso cromado na linha de cintura e saia lateral (quebram a lateral chapada)
     P["body"].append(box(key + "_fl", (W * 0.94, wb + 0.4, 0.08), (0, oy, clr + 0.02), M["trim"]))

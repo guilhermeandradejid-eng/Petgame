@@ -325,9 +325,15 @@ func _steer_test() -> void:
 ## vitrine (teste): carros parados lado a lado com pneus/nível 0..3, câmera bem perto
 func _showroom() -> void:
 	start_race()
+	# espera a pista carregar (a largada passa pela tela de loading)
+	while mode != "countdown" and mode != "race":
+		await get_tree().physics_frame
 	for f in 10:
 		await get_tree().physics_frame
-	var specs := [["faisca", 0], ["faisca", 1], ["faisca", 2], ["faisca", 3], ["trovao", 2], ["vespa", 3]]
+	loader.visible = false
+	hud.touch.visible = false
+	# os 4 carros jogáveis com o kit real (armas do LOADOUT), em níveis diferentes, + Faísca de fábrica sem arma
+	var specs := [["faisca", 1], ["vespa", 2], ["trovao", 3], ["monstro", 2], ["faisca", 0], ["monstro", 0]]
 	var a0 := track.at(30.0)
 	var used := 0
 	for c in cars:
@@ -352,7 +358,8 @@ func _showroom() -> void:
 		add_child(c)
 		c.setup(lib, String(sp[0]), "rival", [Color("#e8352b"), Color("#2f6fd6"), Color("#ffd23a"), Color("#33c46b"), Color("#9b4dff"), Color("#ff7a1a")][k])
 		var lv: int = sp[1]
-		c.configure(lib, "mg" if k % 2 == 0 else "rocket", "mine", "short", {"engine": lv, "armor": lv, "ammo": lv, "nitro": lv, "tires": lv})
+		var lo: Array = Car.LOADOUT[String(sp[0])]
+		c.configure(lib, lo[0] if k != 4 else "none", lo[1], lo[2], {"engine": lv, "armor": lv, "ammo": lv, "nitro": lv, "tires": lv, "dmg": lv, "rate": lv})
 		c.freeze = true
 		var p := (a0.pos as Vector3) + (a0.left as Vector3) * (float(k % 3) - 1.0) * 5.5 - (a0.tan as Vector3) * float(k / 3) * 7.0
 		c.global_transform = Transform3D((a0.basis as Basis).rotated(a0.up, 0.6), p + (a0.up as Vector3) * 0.05)

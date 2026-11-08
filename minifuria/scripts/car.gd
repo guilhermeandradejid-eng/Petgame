@@ -91,6 +91,7 @@ var burn_by: Car = null
 var ice_t := 0.0            # no gelo (chefe AVALANCHE): quase sem aderência
 var emp_t := 0.0            # pulso EMP (chefe BLACKOUT): armas e especial desligados
 var mud_t := 0.0            # atolado na lama (chefe CROCODILO)
+var slow_t := 0.0           # levando tiro de metralhadora: perde um pouco de velocidade
 var special_cd := 0.0
 var game: Node = null
 var _burn_acc := 0.0
@@ -773,6 +774,10 @@ func _physics_process(dt: float) -> void:
 	nitroing = nitro_t > 0.0
 	var nacc: float = NITRO[nitro_type].acc
 	var vmax_now: float = (sp.nitro * engine_mult) if nitroing else vmax
+	slow_t = maxf(0.0, slow_t - dt)
+	if slow_t > 0.0:
+		# rajada de metralhadora segura o carro (o nitro ajuda a escapar; chefes sentem menos)
+		vmax_now *= (0.97 if is_boss else (0.93 if nitroing else 0.86))
 	# descidas embalam (e subidas freiam menos): a gravidade "de verdade" ao longo da rampa
 	var slope_a := 0.0
 	if on_ground and not magnet and not on_feature:
@@ -1173,6 +1178,21 @@ func _kit_mat(col: Color, rough := 0.4, metal := 0.3, emit := 0.0) -> StandardMa
 	return m
 
 
+## caixa que envolve o casulo da arma (sem os enfeites de upgrade), em coordenadas do nó da arma
+func _pod_box() -> AABB:
+	if weapon_node is MeshInstance3D:
+		return (weapon_node as MeshInstance3D).get_aabb()   # o casulo do modelo é uma malha só
+	var out := AABB()
+	var first := true
+	for ch in weapon_node.get_children():
+		# só as peças do casulo vindas do modelo (wp_*), sem bobina/tanques extras nem enfeites
+		if ch is MeshInstance3D and not _kit.has(ch) and String(ch.name).begins_with("wp_"):
+			var bb: AABB = (ch as MeshInstance3D).transform * (ch as MeshInstance3D).get_aabb()
+			out = bb if first else out.merge(bb)
+			first = false
+	return out if not first else AABB(Vector3(-0.31, 0.09, -0.45), Vector3(0.62, 0.42, 0.9))
+
+
 func _kit_box(size: Vector3, pos: Vector3, mat: Material, rot := Vector3.ZERO, parent: Node3D = null) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var bm := BoxMesh.new()
@@ -1229,11 +1249,20 @@ func _build_kit(up: Dictionary) -> void:
 				mi.set_surface_override_material(si, rim)
 			elif sm and sm.resource_name == "TireStripe" and tier >= 2:
 				mi.set_surface_override_material(si, accent)
+	var offroad: bool = mkind in ["vespa", "picape"]
 	if tier >= 1:
-		_kit_box(Vector3(Wc * 1.02, 0.04, 0.34), Vector3(0, sp.clr - 0.03, Lc * 0.5 + 0.14), carbon)
+		# lâmina dianteira rente ao para-choque e filete na cor do kit encostado na lateral (entre as rodas)
+		_kit_box(Vector3(Wc * 0.84, 0.035, 0.2), Vector3(0, sp.clr + 0.02, Lc * 0.5 + 0.03), carbon)
 		for sx: float in [-1.0, 1.0]:
-			_kit_box(Vector3(0.02, 0.07, Lc * 0.5), Vector3(sx * (Wc * 0.49 + 0.075), sp.clr + sp.h * 0.5, -0.05), accent)
-	if tier >= 2:
+			_kit_box(Vector3(0.02, 0.06, Lc * 0.34), Vector3(sx * (Wc * 0.5 + 0.012), sp.clr + sp.h * 0.78, 0.0), accent)
+	if tier >= 2 and offroad:
+		# buggy e picape: em vez de asa de pista, para-barros na cor do kit atrás das rodas traseiras
+		for w in wheels:
+			var wb: Vector3 = w.base
+			if wb.z < 0.0:
+				var fl := _kit_box(Vector3(0.36, float(w.r) * 0.9, 0.03), Vector3(wb.x, float(w.r) * 0.75, wb.z - float(w.r) - 0.1), carbon)
+				_kit_box(Vector3(0.37, 0.05, 0.035), Vector3(0, float(w.r) * 0.3, 0), accent, Vector3.ZERO, fl)
+	elif tier >= 2:
 		var stock: Dictionary = parts.get("spoiler", {})
 		if not stock.is_empty():
 			(stock.mesh as MeshInstance3D).visible = false
@@ -1254,12 +1283,13 @@ func _build_kit(up: Dictionary) -> void:
 		_kit_box(Vector3(Wc * 0.84, 0.02, Lc * 0.8), Vector3(0, sp.clr - 0.05, 0), neon)
 	# upgrades individuais
 	var armor := int(up.get("armor", 0))
-	if armor >= 2:
+	if armor >= 2 and mkind != "trovao":   # o Trovão já vem com placas de fábrica
 		var plate := _kit_mat(Color(0.32, 0.34, 0.37), 0.45, 0.8)
 		for sx: float in [-1.0, 1.0]:
-			_kit_box(Vector3(0.06, sp.h * 0.48, Lc * 0.34), Vector3(sx * (Wc * 0.5 + 0.1), sp.clr + sp.h * 0.42, 0.0), plate)
+			# encostada na porta (antes ficava 7 cm para fora, flutuando)
+			_kit_box(Vector3(0.05, sp.h * 0.44, Lc * 0.32), Vector3(sx * (Wc * 0.5 + 0.03), sp.clr + sp.h * 0.4, 0.0), plate)
 			for k in 3:
-				_kit_cyl(0.035, 0.03, Vector3(sx * (Wc * 0.5 + 0.14), sp.clr + sp.h * 0.42, (k - 1) * Lc * 0.12), _kit_mat(Color(0.75, 0.75, 0.78), 0.2, 1.0), Vector3(0, 0, PI / 2))
+				_kit_cyl(0.035, 0.03, Vector3(sx * (Wc * 0.5 + 0.06), sp.clr + sp.h * 0.4, (k - 1) * Lc * 0.11), _kit_mat(Color(0.75, 0.75, 0.78), 0.2, 1.0), Vector3(0, 0, PI / 2))
 	var nit := int(up.get("nitro", 0))
 	if nit >= 2:
 		var blue := _kit_mat(Color("#2f7dff"), 0.25, 0.6, 0.4)
@@ -1274,15 +1304,32 @@ func _build_kit(up: Dictionary) -> void:
 	if weapon_node and front_type != "none":
 		var dl := int(up.get("dmg", 0))
 		var rl := int(up.get("rate", 0))
+		var gun: bool = front_type in ["mg", "flame"]
 		if dl >= 1:
-			var hot := _kit_mat(Color("#ff5a1f"), 0.3, 0.6, 0.8 * dl)
-			_kit_cyl(0.075 + 0.012 * dl, 0.34, Vector3(0, 0.32, 0.86), hot, Vector3(PI / 2, 0, 0), weapon_node)
+			# DANO: dissipador laranja abraçando os canos (metralhadora/lança-chamas) ou faixa laranja no casulo
+			var hot := _kit_mat(Color("#ff6a1a"), 0.35, 0.5, 0.25 * dl)
+			if gun:
+				_kit_box(Vector3(0.3, 0.17, 0.12 + 0.06 * dl), Vector3(0, 0.32, 0.72), hot, Vector3.ZERO, weapon_node)
+			else:
+				# faixa abraçando o casulo, pelo tamanho real da peça
+				var pb := _pod_box()
+				_kit_box(Vector3(pb.size.x + 0.04, pb.size.y + 0.03, 0.06 + 0.04 * dl), pb.get_center() - Vector3(0, 0, pb.size.z * 0.18), hot, Vector3.ZERO, weapon_node)
 		if rl >= 1:
-			var cool := _kit_mat(Color("#2ee6ff"), 0.3, 0.5, 0.7 * rl)
+			# CADÊNCIA: respiros azuis nas laterais da arma (um par por nível)
+			var cool := _kit_mat(Color("#2ee6ff"), 0.3, 0.4, 0.35 * rl)
 			for k in rl:
-				_kit_box(Vector3(0.05, 0.05, 0.5), Vector3(-0.3, 0.2 + k * 0.08, 0.1), cool, Vector3.ZERO, weapon_node)
-	if int(up.get("ammo", 0)) >= 2 and weapon_node:
-		_kit_cyl(0.16, 0.2, Vector3(0.36, 0.28, 0.05), _kit_mat(Color("#c8a43a"), 0.35, 0.8), Vector3(0, 0, PI / 2), weapon_node)
+				for sx: float in [-1.0, 1.0]:
+					if gun:
+						_kit_box(Vector3(0.03, 0.06, 0.1), Vector3(sx * 0.26, 0.12, -0.18 + k * 0.14), cool, Vector3.ZERO, weapon_node)
+					else:
+						var pb2 := _pod_box()
+						_kit_box(Vector3(0.03, pb2.size.y * 0.45, 0.08), Vector3(pb2.get_center().x + sx * (pb2.size.x * 0.5 + 0.01), pb2.get_center().y, pb2.get_center().z + 0.1 + k * 0.12), cool, Vector3.ZERO, weapon_node)
+	if int(up.get("ammo", 0)) >= 2 and weapon_node and front_type != "none":
+		var drum_at := Vector3(0.36, 0.28, 0.05)
+		if not front_type in ["mg", "flame"]:
+			var pb3 := _pod_box()
+			drum_at = Vector3(pb3.end.x + 0.09, pb3.position.y + 0.14, pb3.get_center().z - pb3.size.z * 0.2)
+		_kit_cyl(0.13, 0.18, drum_at, _kit_mat(Color("#c8a43a"), 0.35, 0.8), Vector3(0, 0, PI / 2), weapon_node)
 
 
 ## encostado na mureta: o carro não "sobe" nela nem é lançado para fora (tira a velocidade para cima
