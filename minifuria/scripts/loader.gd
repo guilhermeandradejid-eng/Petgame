@@ -24,7 +24,11 @@ var sub := "CARREGANDO"
 var tip := ""
 var puffs: Array = []
 var _fade_tw: Tween
-var car_col := UI.HOT2
+var car_tex: Texture2D = preload("res://ui/load_car.png")
+var wheel_tex: Texture2D = preload("res://ui/load_wheel.png")
+## posição das rodas no sprite (px do sprite 900x420) e tamanho da roda — gerado por tools/render_sprites.gd
+const WHEELS := [Vector2(620.2, 217.2), Vector2(279.8, 211.4)]
+const WHEEL_PX := 152.1
 
 
 func _ready() -> void:
@@ -100,13 +104,11 @@ func _draw() -> void:
 		draw_rect(Rect2(i * 90.0 - dash, cy + 31, 46, 4), Color(1, 1, 1, 0.75))
 	# carrinho (lado), quicando de leve
 	var bounce := sin(t * 18.0) * 1.6 + sin(t * 7.0) * 0.8
-	var cp := Vector2(vs.x * 0.5 + sin(t * 1.3) * 40.0, cy - 12 + bounce)
-	draw_set_transform(cp, 0.0, Vector2(1.7, 1.7))
+	var cp := Vector2(vs.x * 0.5 + sin(t * 1.3) * 40.0, cy + 8)
 	for p in puffs:
 		var a: float = 1.0 - float(p.t) / 0.9
-		draw_circle(p.p as Vector2, float(p.r) * (1.0 + float(p.t) * 1.6), Color(0.75, 0.73, 0.8, 0.35 * a))
-	_draw_car(Vector2.ZERO)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		draw_circle(cp + (p.p as Vector2) * 1.6 + Vector2(-90, 10), float(p.r) * 1.6 * (1.0 + float(p.t) * 1.6), Color(0.75, 0.73, 0.8, 0.35 * a))
+	_draw_car(cp, bounce)
 	# título e progresso (barra inclinada que o carrinho "percorre")
 	var f: Font = UI.display_it
 	var tw := f.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 52).x
@@ -128,7 +130,22 @@ func _draw() -> void:
 	draw_string(bf, Vector2((vs.x - tw2) * 0.5, by + 50), tip, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, UI.MUTED)
 
 
-func _draw_car(c: Vector2) -> void:
+## carro de verdade do jogo (sprite renderizado do modelo 3D) com as rodas girando por cima
+func _draw_car(c: Vector2, bounce: float) -> void:
+	var k := 0.42   # escala do sprite (900 px -> ~380 px)
+	var org := c + Vector2(-450.0, -250.0) * k
+	draw_colored_polygon(_ellipse(c + Vector2(0, 12), 170, 9), Color(0, 0, 0, 0.45))
+	draw_texture_rect(car_tex, Rect2(org + Vector2(0, -bounce), Vector2(900, 420) * k), false)
+	for wp in WHEELS:
+		var wc: Vector2 = org + (wp as Vector2) * k
+		var r := WHEEL_PX * k
+		draw_set_transform(wc, t * 14.0, Vector2.ONE)
+		draw_texture_rect(wheel_tex, Rect2(-r * 0.5, -r * 0.5, r, r), false)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _draw_car_old(c: Vector2) -> void:
+	var car_col := UI.HOT2
 	var body := car_col
 	# sombra
 	draw_colored_polygon(_ellipse(c + Vector2(0, 26), 70, 6), Color(0, 0, 0, 0.35))

@@ -53,6 +53,9 @@ var locals: Array = []     # jogadores desta máquina: {"car", "dev", "idx", "na
 var session := {"kind": "solo", "players": []}
 var multi: Multi
 var settings: Settings
+var career: Career
+var boss: Car = null          # chefe da corrida (carreira)
+var career_lines: Array = []
 var loader: Loader
 var online: NetGame
 var race_end_t := -1.0     # multijogador: depois que o 1º humano termina, a corrida acaba em 30 s
@@ -226,6 +229,25 @@ func _ready() -> void:
 	settings.setup(self, hud)
 	loader = Loader.new()
 	hud.add_child(loader)
+	career = Career.new()
+	add_child(career)
+	career.setup(self, hud)
+	if "--careertest" in args:
+		# teste: corrida da carreira (mundo N, chefe opcional) com um carro escolhido
+		var wi := 0
+		var bs := "--boss" in args
+		for a in args:
+			if a.begins_with("--world="):
+				wi = int(a.substr(8))
+			if a.begins_with("--car="):
+				save.garage.owned.append(a.substr(6))
+				career.pick_car(a.substr(6))
+		if "--maxup" in args:
+			for u in save.up:
+				save.up[u] = 3
+		var tr: int = Career.WORLDS[wi].boss_track if bs else int(Career.WORLDS[wi].tracks[0])
+		career.event = {"world": wi, "track": tr, "boss": bs}
+		track_idx = tr
 	multi = Multi.new()
 	add_child(multi)
 	multi.setup(self, hud)
@@ -379,8 +401,13 @@ func _ui_shots() -> void:
 			await get_tree().process_frame
 		get_viewport().get_texture().get_image().save_png("user://ui_loader.png")
 		loader.visible = false
-	for scr in ["menu", "tracks", "garage", "local", "online", "config", "config2", "pause"]:
-		if scr == "config":
+	for scr in ["menu", "tracks", "garage", "local", "online", "config", "config2", "pause", "career", "world"]:
+		if scr == "career":
+			career.open()
+		elif scr == "world":
+			save.career.points[0] = 22
+			career.open_world(0)
+		elif scr == "config":
 			settings.open("menu")
 		elif scr == "config2":
 			settings._show_tab("video")
@@ -462,11 +489,13 @@ func _write_save() -> void:
 
 
 func upgrade_price(k: String) -> int:
+	if career:
+		return career.up_price(k)
 	return UP_PRICE[mini(int(save.up[k]), 2)]
 
 
 func buy_upgrade(k: String) -> void:
-	var lvl: int = save.up[k]
+	var lvl: int = save.up.get(k, 0)
 	if lvl >= 3:
 		return
 	var price := upgrade_price(k)
@@ -480,6 +509,13 @@ func buy_upgrade(k: String) -> void:
 
 
 func equip(slot: String, key: String) -> void:
+	if slot == "car":
+		var msg := career.pick_car(key)
+		if msg != "":
+			hud.popup(msg, Color("#ff7a7a"))
+		sfx.play("drop", -6.0)
+		hud.refresh_garage()
+		return
 	save[slot] = key
 	_write_save()
 	sfx.play("drop", -6.0)
@@ -1018,6 +1054,7 @@ func _prop_hit(pr: Dictionary, b: Node) -> void:
 # ------------------------------------------------------------------ carros
 func _make_car(kind: String, role: String, col: Color) -> Car:
 	var c := Car.new()
+	c.game = self
 	c.setup(lib, kind, role, col)
 	c.grav_factor = float(theme.grav)
 	c.grip_factor = float(theme.grip)
@@ -1080,10 +1117,10 @@ func _place(c: Car, s: float, lat: float, speed: float) -> void:
 func _spawn_cars() -> void:
 	var L := track.length
 	var lw := track.W * 0.22
-	var fronts := ["mg", "rocket"]
-	var rears := ["mine", "oil"]
-	var nitros := ["short", "long"]
 	humans.clear()
+	boss = null
+	var ev: Dictionary = career.event if career and career.active() else {}
+	var wlv: int = int(Career.WORLDS[int(ev.world)].lv) if not ev.is_empty() else -1
 	locals.clear()
 	# quem corre: pessoas (locais ou da sala online) + IA para completar o grid
 	var people: Array = session.players if session.kind != "solo" and session.players.size() > 0 else [{"dev": "solo", "name": "VOCÊ", "car": save.car, "local": true}]
@@ -1092,7 +1129,9 @@ func _spawn_cars() -> void:
 		n_ai = mini(RIVALS.size(), 8 - people.size()) if session.kind != "online" else clampi(6 - people.size(), 0, 4)
 	if session.kind == "solo":
 		n_ai = RIVALS.size()
-	var total: int = people.size() + n_ai
+	if not ev.is_empty() and bool(ev.boss):
+		n_ai = 3   # chefe + 3 rivais
+	var total: int = people.size() + n_ai + (1 if not ev.is_empty() and bool(ev.boss) else 0)
 	# grid: fileiras de 2 (o último sozinho no meio se sobrar); IA na frente, pessoas atrás (como no solo)
 	var grid: Array = []
 	for i in total:
@@ -1102,6 +1141,26 @@ func _spawn_cars() -> void:
 			lat = 0.0
 		grid.append([-9.0 - row * 9.0, lat])
 	var ai_list: Array = RIVALS + MORE_AI
+	var gi := 0
+	if not ev.is_empty() and bool(ev.boss):
+		# CHEFE: largando na frente de todos
+		var wd: Dictionary = Career.WORLDS[int(ev.world)]
+		var bc := _make_car(String(wd.boss), "rival", Color(String(wd.boss_col)))
+		bc.display_name = String(wd.boss_name)
+		bc.seed_f = 0.3
+		bc.cruise = 38.5 + int(ev.world) * 0.8
+		bc.ai_skill = 1.02
+		bc.next_bash = 4.0
+		bc.configure(lib, "none", "none", "short", {"engine": 0, "armor": 0, "_tier": 3, "_tire_vis": 3})
+		_add_xray(bc)
+		bc.slot = 0
+		_place(bc, L + grid[0][0] + 4.0, 0.0, 0)
+		var bn := Boss.new()
+		bc.add_child(bn)
+		bn.setup(bc, self)
+		rivals.append(bc)
+		boss = bc
+		gi = 1
 	for i in n_ai:
 		var r: Dictionary = ai_list[i % ai_list.size()]
 		var c := _make_car(r.kind, "rival", Color(r.color))
@@ -1111,27 +1170,37 @@ func _spawn_cars() -> void:
 		c.ai_skill = randf_range(0.95, 1.03) if session.kind != "online" else 0.99 + 0.01 * (i % 3)
 		c.next_bash = 6.0 + i * 3.0
 		var lv := clampi(track_idx / 3 + (i % 3), 0, 3)
-		# o kit mostra o nível; no desempenho o ganho é pequeno (no máximo +4% de motor)
-		var rup := {"engine": lv / 2, "armor": lv / 2, "ammo": 0, "nitro": 0, "tires": lv / 2, "_tier": lv, "_tire_vis": lv}
-		c.configure(lib, fronts[(i + track_idx) % 2], rears[(i / 2 + track_idx) % 2], nitros[i % 2], rup)
+		if wlv >= 0:
+			# carreira: rivais mais fortes a cada mundo (motor, blindagem e pneus)
+			lv = clampi(wlv + (i % 2), 0, 3)
+			c.cruise = 36.5 + wlv * 1.3 + i * 0.4
+		var rup := {"engine": lv / 2 + (1 if wlv >= 2 else 0), "armor": lv / 2, "ammo": 0, "nitro": 0, "tires": lv / 2, "_tier": lv, "_tire_vis": lv}
+		var lo: Array = Car.LOADOUT.get(String(r.kind), ["mg", "oil", "short"])
+		c.configure(lib, lo[0], lo[1], lo[2], rup)
 		_add_xray(c)
-		c.slot = i
-		_place(c, L + grid[i][0], grid[i][1], 0)
+		c.slot = gi
+		_place(c, L + grid[gi][0], grid[gi][1], 0)
 		rivals.append(c)
+		gi += 1
 	var li := 0
 	for k in people.size():
 		var pp: Dictionary = people[k]
 		var is_local: bool = bool(pp.get("local", true))
-		var c := _make_car(String(pp.get("car", "faisca")), "player" if is_local else "rival", Color(String(pp.get("color", HUMAN_COLORS[k % HUMAN_COLORS.size()]))))
+		var ck := String(pp.get("car", "faisca"))
+		if not Car.LOADOUT.has(ck):
+			ck = "faisca"
+		var c := _make_car(ck, "player" if is_local else "rival", Color(String(pp.get("color", HUMAN_COLORS[k % HUMAN_COLORS.size()]))))
 		c.human = true
 		c.display_name = String(pp.get("name", "P%d" % (k + 1)))
-		c.slot = n_ai + k
+		c.slot = gi
 		c.owner_id = int(pp.get("id", 0))
-		var up: Dictionary = pp.get("up", save.up) if not is_local or li == 0 else save.up
-		c.configure(lib, String(pp.get("front", save.front)), String(pp.get("rear", save.rear)), String(pp.get("nitro", save.nitro)), up)
+		var up: Dictionary = pp.get("up", save.up) if not is_local or li == 0 else save.garage.up.get(ck, save.up)
+		var lo: Array = Car.LOADOUT[ck]
+		c.configure(lib, lo[0], lo[1], lo[2], up)
 		_add_xray(c)
 		c.turn_mult = 1.15
-		_place(c, L + grid[n_ai + k][0], grid[n_ai + k][1], 0)
+		_place(c, L + grid[gi][0], grid[gi][1], 0)
+		gi += 1
 		humans.append(c)
 		if is_local:
 			c.local_idx = li
@@ -1209,6 +1278,8 @@ func choose_track(i: int) -> void:
 	if online and online.in_room():
 		online.pick_track(i)
 		return
+	if not career.event.is_empty() and int(career.event.track) != i:
+		career.event = {}
 	load_track(i)
 	if session.kind == "local":
 		start_race()
@@ -1226,6 +1297,9 @@ func to_menu_mp() -> void:
 
 
 func next_track() -> void:
+	if career.active():
+		career.open_world(int(career.event.world))
+		return
 	load_track((track_idx + 1) % TrackData.TRACKS.size())
 	hud.show_screen("garage")
 
@@ -1275,8 +1349,9 @@ func _start_race_now() -> void:
 		multi.setup_views()
 	hud.show_screen("race")
 	hud.touch.release_all()
-	hud.touch.labels["drop"] = "MINA" if player.rear_type == "mine" else "ÓLEO"
-	hud.touch.labels["fire"] = "TIRO" if player.front_type == "mg" else "FOGUETE"
+	hud.touch.labels["drop"] = {"mine": "MINA", "oil": "ÓLEO", "spikes": "PREGOS", "barrel": "BARRIL"}.get(player.rear_type, "MINA")
+	hud.touch.labels["fire"] = {"mg": "TIRO", "rocket": "FOGUETE", "zap": "RAIO", "flame": "FOGO"}.get(player.front_type, "TIRO")
+	hud.touch.labels["nitro"] = {"jump": "SALTO", "shield": "ESCUDO", "shock": "CHOQUE"}.get(player.special_type, "NITRO")
 	mode = "countdown"
 	if not auto_test:
 		music.play_track(track_idx, String(track.data.theme))
@@ -1399,6 +1474,11 @@ func _on_died(c: Car, killer: Car) -> void:
 		zoom_kick -= 8.0
 		_vibrate(150)
 		return
+	if c.is_boss and killer and killer.human and mode == "race":
+		var bounty := int(600 * career.mult())
+		save.cash = int(save.cash) + bounty
+		hud.big("CHEFE DESTRUÍDO!", Color.WHITE, Color("#ff2d55"))
+		hud.popup("+$%d" % bounty, Color("#7dff6a"), "ele volta em instantes...")
 	if killer and killer.local_idx >= 0 and killer != player and mode == "race":
 		pop_for(killer, "DESTRUIU %s!" % c.display_name, Color("#ff2d55"))
 		hud.killfeed("%s destruiu %s" % [killer.display_name, c.display_name], Color("#7dff6a"))
@@ -1696,7 +1776,7 @@ func _player_input() -> void:
 		elif not screen_mode and absf(tp.stick_vec.x) > 0.15:
 			c.steer = clampf(-tp.stick_vec.x * 1.4, -1.0, 1.0)
 	if auto_test and not OS.get_cmdline_user_args().has("--steertest"):
-		player.cruise = 21.0 if OS.get_cmdline_user_args().has("--slowplayer") else 38.0
+		player.cruise = 21.0 if OS.get_cmdline_user_args().has("--slowplayer") else (46.0 if OS.get_cmdline_user_args().has("--fastplayer") else 38.0)
 		player.role = "rival"
 		player.ai(track, self, 1.0 / 60.0)
 		player.role = "player"
@@ -1832,7 +1912,12 @@ func _rules(dt: float) -> void:
 		for h in humans:
 			lead = maxf(lead, h.dist)
 	for r in rivals:
-		r.rubber = clampf(1.0 + (lead - r.dist) * 0.0028, 0.86, 1.1)
+		if r.is_boss:
+			# duelo: o chefe segura quando abre vantagem (fica ao alcance dos ataques) e só "solta tudo" na última volta
+			var last: bool = r.lap >= LAPS - 1
+			r.rubber = clampf(1.0 + (lead - r.dist) * 0.006, 0.9 if last else 0.74, 1.06)
+		else:
+			r.rubber = clampf(1.0 + (lead - r.dist) * 0.0028, 0.86, 1.1)
 	if player.wrecked:
 		return
 	var p := player
@@ -2241,7 +2326,13 @@ func _finish() -> void:
 		place = standings().find(player) + 1
 	if online:
 		online.on_finish()
-	var prize: int = (PRIZE[place - 1] if place <= PRIZE.size() else 60) + int(stats.kills) * KILL_BONUS
+	var prize: int = int(((PRIZE[place - 1] if place <= PRIZE.size() else 60) + int(stats.kills) * KILL_BONUS) * career.mult())
+	career_lines = []
+	if career.active():
+		var beat: bool = boss != null and (player.get_meta("done", false) or player.lap >= LAPS) and not boss.get_meta("done", false)
+		if boss != null and boss.get_meta("done", false) and player.get_meta("done", false):
+			beat = float(player.get_meta("fin_t", 1e9)) < float(boss.get_meta("fin_t", 0.0))
+		career_lines = career.apply_result(place, beat)
 	stats.prize = prize
 	save.cash = int(save.cash) + prize
 	var key := str(track_idx)
@@ -2258,7 +2349,7 @@ func _finish() -> void:
 		var ord: Array = []
 		for oc in standings():
 			ord.append("%s%s" % [oc.display_name, "@%.1f" % float(oc.get_meta("fin_t", 0.0)) if oc.get_meta("done", false) else ""])
-		print("RESULT ", JSON.stringify({"track": track_idx, "place": place, "time": snappedf(race_t, 0.1), "order": ord, "stats": stats}))
+		print("RESULT ", JSON.stringify({"track": track_idx, "place": place, "time": snappedf(race_t, 0.1), "order": ord, "stats": stats, "uses": weapons.uses}))
 
 
 func _show_results() -> void:
@@ -2286,6 +2377,10 @@ func _show_results() -> void:
 		"Maior drift   %.1fs   ·   Maior pulo   %.1fs" % [stats.best_drift, stats.air], "Pontos   %d" % stats.score]
 	hud.res_list.text = "\n".join(lines)
 	hud.res_cash.text = "+$%d   (total $%d)" % [int(stats.prize), int(save.cash)]
+	if career_lines.size() > 0:
+		hud.res_list.text += "\n\n" + "\n".join(career_lines)
+		if auto_test:
+			print("CAREER ", career_lines, " unlocked=", save.career.unlocked)
 	hud.show_screen("results")
 	if auto_test:
 		get_tree().quit()
@@ -2518,7 +2613,7 @@ func _car_fx(dt: float) -> void:
 				var tp: Vector3 = cx * c.tail_local[i]
 				fx.trail_push(e.trails[i], tp, real, c.nitroing and vis)
 		(e.dark as CPUParticles3D).emitting = vis and (c.health < c.max_health * 0.45 or c.wrecked)
-		(e.fire as CPUParticles3D).emitting = vis and (c.health < c.max_health * 0.2 or (c.wrecked and c.wreck_t < 3.0))
+		(e.fire as CPUParticles3D).emitting = vis and (c.health < c.max_health * 0.2 or (c.wrecked and c.wreck_t < 3.0) or c.burn_t > 0.0)
 		var sh: MeshInstance3D = e.shadow
 		sh.visible = vis
 		if vis:
@@ -2734,6 +2829,9 @@ func _hud() -> void:
 	hud.time_l.text = _fmt(race_t)
 	hud.score_l.text = "$%d  ·  %d DESTRUÍDOS" % [int(save.cash), int(stats.get("kills", 0))]
 	hud.speed_l.text = "%d km/h" % int(p.linear_velocity.length() * 3.6 * 1.25)
+	hud.boss_bar.visible = boss != null and mode in ["race", "countdown", "finish"] and not (multi and multi.split)
+	if hud.boss_bar.visible:
+		hud.boss_bar.queue_redraw()
 	var tc := hud.touch
 	tc.counts["fire"] = str(p.ammo_f)
 	tc.counts["drop"] = str(p.ammo_r)

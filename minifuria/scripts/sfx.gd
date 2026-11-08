@@ -144,6 +144,19 @@ func _synth(dur: float, f: Callable) -> AudioStreamWAV:
 
 
 func _build_shots() -> void:
+	# raio elétrico: estalo + zumbido serrilhado descendo
+	shots["zap"] = _synth(0.35, func(t, u, st):
+		var nz := randf() * 2.0 - 1.0
+		st.ph += lerpf(1400.0, 300.0, u) / RATE
+		var saw := 2.0 * fmod(st.ph, 1.0) - 1.0
+		var crack := nz * exp(-t * 40.0)
+		return (saw * 0.45 * (1.0 if randf() > 0.15 else -0.4) + crack * 0.9) * exp(-t * 7.0))
+	# lança-chamas: rajada de ar com ronco grave
+	shots["flame"] = _synth(0.3, func(t, u, st):
+		var nz := randf() * 2.0 - 1.0
+		st.lp += (nz - st.lp) * 0.12
+		st.ph += 70.0 / RATE
+		return (st.lp * 1.6 + sin(st.ph * TAU) * 0.25) * sin(u * PI))
 	shots["crash"] = _synth(1.1, func(t, u, st):
 		var nz := randf() * 2.0 - 1.0
 		st.lp += (nz - st.lp) * lerpf(0.6, 0.03, u)

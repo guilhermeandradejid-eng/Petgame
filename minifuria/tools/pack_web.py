@@ -29,7 +29,7 @@ LOADER = """<style>
   background-size:20px 5px;background-position:0 0,0 5px;background-repeat:repeat-x;opacity:.85}
 #mf .lines i{position:absolute;height:2px;background:rgba(255,255,255,.07);animation:mfl linear infinite}
 @keyframes mfl{from{transform:translateX(110vw)}to{transform:translateX(-40vw)}}
-#mf .road{position:relative;width:100%;height:70px;margin:40px 0 26px;background:#25222f}
+#mf .road{position:relative;width:100%;height:70px;margin:110px 0 30px;background:#25222f}
 #mf .road:before,#mf .road:after{content:"";position:absolute;left:0;right:0;height:6px;
   background:repeating-linear-gradient(90deg,#e8352b 0 24px,#fff 24px 48px);background-size:48px 6px;animation:mfr .09s linear infinite}
 #mf .road:before{top:-6px}#mf .road:after{bottom:-6px}
@@ -37,10 +37,10 @@ LOADER = """<style>
   background-size:90px 4px;animation:mfd .17s linear infinite}
 @keyframes mfr{from{background-position:0 0}to{background-position:-48px 0}}
 @keyframes mfd{from{background-position:0 0}to{background-position:-90px 0}}
-#mf .car{position:absolute;left:50%;bottom:30px;width:200px;margin-left:-100px;animation:mfb .22s ease-in-out infinite alternate,mfs 3.2s ease-in-out infinite}
+#mf .car{position:absolute;left:50%;bottom:-22px;width:200px;margin-left:-100px;transform-origin:bottom;scale:1.6;animation:mfb .22s ease-in-out infinite alternate,mfs 3.2s ease-in-out infinite}
 @keyframes mfb{from{transform:translateY(0)}to{transform:translateY(-3px)}}
 @keyframes mfs{0%,100%{margin-left:-130px}50%{margin-left:-70px}}
-#mf .whl{transform-box:fill-box;transform-origin:center;animation:mfw .25s linear infinite}
+#mf .cimg{position:relative;width:200px;height:93px}#mf .cimg img{position:absolute;left:0;top:0}#mf .whl{animation:mfw .3s linear infinite}
 @keyframes mfw{to{transform:rotate(360deg)}}
 #mf .puff{position:absolute;left:-14px;bottom:18px;width:14px;height:14px;border-radius:50%;background:rgba(200,196,210,.4);animation:mfp .9s linear infinite}
 #mf .puff:nth-child(2){animation-delay:.3s}#mf .puff:nth-child(3){animation-delay:.6s}
@@ -54,13 +54,7 @@ LOADER = """<style>
 <div id="mf"><div class="lines"></div>
 <div class="ttl">MINI <b>FÚRIA</b></div><div class="chk"></div>
 <div class="road"><div class="dash"></div><div class="car"><span class="puff"></span><span class="puff"></span><span class="puff"></span>
-<svg viewBox="-75 -45 155 75" width="200"><ellipse cx="0" cy="26" rx="70" ry="6" fill="rgba(0,0,0,.35)"/>
-<path d="M-66 6L-68-14-50-20-22-22-8-38 26-38 44-22 70-14 74 2 66 10-60 10Z" fill="#ff5a1f" stroke="#0f0d1c" stroke-width="3" stroke-linejoin="round"/>
-<path d="M-4-34 22-34 36-22-16-22Z" fill="#1c2a3a"/><path d="M-60-6H66" stroke="#fff" stroke-width="4" opacity=".85"/>
-<path d="M-70-26H-44L-48-20H-68Z" fill="#0f0d1c"/><circle cx="70" cy="-8" r="4" fill="#fff3c4"/>
-<g class="whl"><circle cx="-40" cy="12" r="15" fill="#16151c"/><circle cx="-40" cy="12" r="8.5" fill="#c9ccd4"/><path d="M-40 4V20M-48 12H-32" stroke="#4a4d57" stroke-width="2.5"/></g>
-<g class="whl"><circle cx="44" cy="12" r="15" fill="#16151c"/><circle cx="44" cy="12" r="8.5" fill="#c9ccd4"/><path d="M44 4V20M36 12H52" stroke="#4a4d57" stroke-width="2.5"/></g>
-</svg></div></div>
+<div class="cimg"><img src="load_car.png" width="200" height="93"><img class="whl" src="load_wheel.png" style="left:120.9px;top:31.4px;width:33.8px;height:33.8px"><img class="whl" src="load_wheel.png" style="left:45.3px;top:30.1px;width:33.8px;height:33.8px"></div></div></div>
 <div class="lbl" id="mf-lbl">BAIXANDO A PISTA 0%</div><div class="bar"><div id="mf-bar"></div></div>
 <div class="tip" id="mf-tip"></div><div class="err" id="mf-err"></div></div>
 <script>
@@ -166,6 +160,8 @@ def main(src: str, dst: str) -> None:
         open(os.path.join(dst, f), "wb").write(open(os.path.join(src, f), "rb").read())
     here = os.path.dirname(os.path.abspath(__file__))
     open(os.path.join(dst, "bungee.woff2"), "wb").write(open(os.path.join(here, "..", "fonts", "Bungee.woff2"), "rb").read())
+    for f in ("load_car.png", "load_wheel.png"):
+        open(os.path.join(dst, f), "wb").write(open(os.path.join(here, "..", "ui", f), "rb").read())
     html = open(os.path.join(src, "index.html"), encoding="utf-8").read()
     style = re.search(r"<style>(.*?)</style>", html, re.S).group(1)
     body = re.search(r"<body>(.*)</body>", html, re.S).group(1)

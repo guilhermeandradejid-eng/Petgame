@@ -6,8 +6,8 @@ extends Node
 
 const RIG_FIELDS := ["cam_pos", "cam_yaw", "cam_pitch", "cam_mode", "cam_mode_t", "cam_loop", "cam_loop_u", "cam_kick",
 	"view_h", "nitro_zoom", "zoom_kick", "trauma", "shake_t", "cam", "player", "cam_focus", "focus_t", "cam_size_mul"]
-const CARS := ["faisca", "trovao", "vespa"]
-const CAR_NAMES := {"faisca": "FAÍSCA", "trovao": "TROVÃO", "vespa": "VESPA"}
+const CARS := ["faisca", "vespa", "trovao", "monstro"]
+const CAR_NAMES := {"faisca": "FAÍSCA", "trovao": "TROVÃO", "vespa": "VESPA", "monstro": "MONSTRO"}
 
 var game: Node
 var hud: Hud
@@ -125,7 +125,7 @@ func _input(ev: InputEvent) -> void:
 	if dev != "":
 		var i := _slot_of(dev)
 		if i < 0 and slots.size() < 4:
-			slots.append({"dev": dev, "car": CARS[slots.size() % 3]})
+			slots.append({"dev": dev, "car": CARS[slots.size() % CARS.size()]})
 			game.sfx.play("coin", -6.0)
 			_refresh_join()
 		elif i >= 0 and (ev is InputEventKey or (ev is InputEventJoypadButton and ev.button_index == JOY_BUTTON_START)):

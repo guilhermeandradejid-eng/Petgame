@@ -8,7 +8,7 @@ extends Node
 const SEND_HZ := 20.0
 const DELAY := 0.1
 const K_STATE := 1
-const CAR_NAMES := {"faisca": "FAÍSCA", "trovao": "TROVÃO", "vespa": "VESPA"}
+const CAR_NAMES := {"faisca": "FAÍSCA", "trovao": "TROVÃO", "vespa": "VESPA", "monstro": "MONSTRO"}
 
 var game: Node
 var hud: Hud
@@ -257,8 +257,8 @@ func leave() -> void:
 
 
 func _cycle_car(step: int) -> void:
-	var cars := ["faisca", "trovao", "vespa"]
-	my_car = cars[posmod(cars.find(my_car) + step, 3)]
+	var cars := ["faisca", "vespa", "trovao", "monstro"]
+	my_car = cars[posmod(cars.find(my_car) + step, cars.size())]
 	_send_prof()
 	_refresh_lobby()
 
@@ -383,6 +383,10 @@ func _on_room(from: int, d: Dictionary) -> void:
 				var killer := _car_by_slot(int(d.ks)) if int(d.ks) >= 0 else null
 				c.set_meta("fell", bool(d.get("fell", false)))
 				game._on_died(c, killer)
+		"sp":
+			var c := _car_by_slot(int(d.s))
+			if c and c.net_remote and not c.wrecked:
+				game.weapons.special(c)
 		"fin":
 			var c := _car_by_slot(int(d.s))
 			if game.auto_test:
@@ -533,6 +537,11 @@ func on_respawn(c: Car) -> void:
 func on_died(c: Car, killer: Car) -> void:
 	if racing and not _rx and not c.net_remote:
 		net.room_send({"k": "died", "s": c.slot, "ks": killer.slot if killer else -1, "fell": bool(c.get_meta("fell", false))})
+
+
+func send_special(c: Car) -> void:
+	if racing and not _rx:
+		net.room_send({"k": "sp", "s": c.slot})
 
 
 func send_fin(c: Car) -> void:

@@ -228,6 +228,38 @@ Sobre as músicas do Rock n' Roll Racing ("Bad to the Bone", "Paranoid", "Born t
 - Retrovisores, saias laterais e portas encaixadas entre os para-lamas; o capô fica entre os para-lamas.
 - `tools/car_preview.gd` tira uma foto de estúdio dos carros com as armas para conferir a montagem.
 
+## Carreira: mundos, chefes, carros únicos
+
+Inspirada no Rock n' Roll Racing (menu **CARREIRA**). Módulos: `career.gd` (regras e telas) e `boss.gd` (chefes).
+
+| Mundo | Pistas | Pontos para o chefe | Chefe (pista) | Prêmios |
+|---|---|---|---|---|
+| 1 · TERRA FIRME | Parque, Cidade Neon, Docas | 20 | BRUTUS, O ROLO (Cidade Neon) | x1,0 |
+| 2 · FORNALHA | Cânion, Pântano, Vulcão | 26 | XERIFE DE AÇO (Cânion) | x1,6 |
+| 3 · ALTITUDE | Pico Nevado, Loop Mania, Espiral do Céu | 32 | O IMPERADOR (Pico Nevado) | x2,4 |
+
+- **Pontos por corrida**: 1º 10 · 2º 7 · 3º 5 · 4º 3 · 5º 2 · 6º 1. Somando a meta do mundo, o chefe é liberado; vencer o chefe (chegar na frente dele) paga um prêmio grande ($3.000 / $5.500 / $9.000), abre o próximo mundo e põe carros novos na loja. Os rivais ficam mais fortes a cada mundo.
+- **Dinheiro**: prêmio por colocação × multiplicador do mundo + bônus por destruição ($600 × multiplicador por destruir o chefe; ele volta depois de alguns segundos).
+
+**Carros únicos, cada um com armas próprias** (frente · trás · especial no botão do nitro), comprados na garagem, com **upgrades separados por carro**: motor, blindagem, pneus, arma da frente, arma de trás e especial.
+
+| Carro | Preço / onde | Frente | Trás | Especial |
+|---|---|---|---|---|
+| FAÍSCA | inicial | Metralhadora | Óleo (rodopia) | Nitro |
+| VESPA | $3.000 · mundo 1 | **Raio elétrico**: acerta na hora e salta para um 2º carro | **Pregos**: furam os pneus (lento por 2,5 s) | **Salto**: pula minas, óleo e carros |
+| TROVÃO | $6.500 · mundo 2 | Foguetes teleguiados | Minas | **Escudo**: 3 s invulnerável + dano de aríete |
+| MONSTRO (picape) | $11.000 · mundo 3 | **Lança-chamas**: jato curto que incendeia | **Barril rolante**: rola para trás e explode | **Onda de choque**: arremessa quem está perto |
+
+**Chefes**: carros gigantes (modelo 1,6x, vida 1.100–1.500, barra de vida na tela). Os ataques são diferentes das armas equipáveis e **sempre avisados no chão** antes de acertar:
+- **BRUTUS** (van blindada): **TREMOR**, um círculo onde você vai passar daqui a 1 s, depois o chão explode e arremessa; **BARRIS GIGANTES** rolando para trás quando você está atrás dele.
+- **XERIFE DE AÇO** (viatura): **ÍMÃ**, um raio que te puxa e segura a velocidade (escape com salto, escudo ou distância); **BLOQUEIO**, uma fileira de pregos atravessando a pista com uma única brecha marcada por cones.
+- **O IMPERADOR** (muscle car dourado): **METEOROS**, 4 círculos à sua frente com impacto 1,3 s depois; **MURO DE FOGO** deixado na pista atrás dele.
+- O chefe "segura" quando abre vantagem (o duelo fica ao alcance dos ataques) e só acelera tudo na última volta.
+
+Testes automáticos: as três corridas de chefe e corridas com cada carro rodam sem erros, com as armas novas e os ataques em uso. Com a Faísca no máximo, o Brutus foi vencido e o Mundo 2 foi liberado. No online, os especiais também são sincronizados.
+
+**Carregamento**: o carrinho agora é o carro de verdade do jogo, renderizado do modelo 3D (`tools/render_sprites.gd` → `ui/load_car.png`), com as rodas reais (pneu esportivo) girando por cima. Vale para a web e para o jogo.
+
 ## Identidade visual, carregamento e configurações
 
 **Identidade "FÚRIA"** (`scripts/ui.gd`, aplicada em todas as telas), baseada em referências de interface de corrida:

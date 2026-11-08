@@ -25,11 +25,26 @@ const SPECS := {
 	"policia": {"len": 3.9, "wid": 1.95, "h": 0.66, "clr": 0.3, "mass": 1.1, "vmax": 30.0, "nitro": 30.0, "accel": 14.0, "grip": 8.0, "drift_grip": 2.0, "turn": 2.2, "hp": 70.0},
 	"picape": {"len": 4.3, "wid": 2.1, "h": 0.8, "clr": 0.45, "mass": 1.5, "vmax": 24.0, "nitro": 24.0, "accel": 10.0, "grip": 8.0, "drift_grip": 2.0, "turn": 2.0, "hp": 80.0},
 	"van": {"len": 4.4, "wid": 2.1, "h": 0.85, "clr": 0.35, "mass": 1.8, "vmax": 22.0, "nitro": 22.0, "accel": 9.0, "grip": 8.0, "drift_grip": 2.0, "turn": 1.9, "hp": 90.0},
+	# picape monstro (comprável): pesada, resistente, menos ágil
+	"monstro": {"len": 4.3, "wid": 2.1, "h": 0.8, "clr": 0.45, "mass": 1.45, "vmax": 39.0, "nitro": 52.0, "accel": 22.0, "grip": 9.2, "drift_grip": 1.9, "turn": 2.35, "hp": 175.0},
+	# chefes (modelos ampliados 1,6x; vida alta, pesados)
+	"boss_brutus": {"len": 7.0, "wid": 3.4, "h": 1.36, "clr": 0.56, "mass": 4.0, "vmax": 41.0, "nitro": 50.0, "accel": 24.0, "grip": 10.0, "drift_grip": 2.4, "turn": 2.2, "hp": 1100.0},
+	"boss_xerife": {"len": 6.2, "wid": 3.1, "h": 1.05, "clr": 0.48, "mass": 3.2, "vmax": 42.0, "nitro": 54.0, "accel": 26.0, "grip": 10.5, "drift_grip": 2.2, "turn": 2.4, "hp": 1300.0},
+	"boss_imperador": {"len": 6.6, "wid": 3.4, "h": 0.96, "clr": 0.48, "mass": 3.6, "vmax": 43.0, "nitro": 56.0, "accel": 28.0, "grip": 11.0, "drift_grip": 2.2, "turn": 2.5, "hp": 1500.0},
 }
+## modelo 3D de cada tipo (os chefes e a Monstro reaproveitam modelos, ampliados ou não)
+const MODEL := {"monstro": "picape", "boss_brutus": "van", "boss_xerife": "policia", "boss_imperador": "trovao"}
+const VSCALE := {"boss_brutus": 1.6, "boss_xerife": 1.6, "boss_imperador": 1.6}
+## cada carro tem armas próprias (estilo Rock n' Roll Racing): [frente, trás, especial]
+const LOADOUT := {"faisca": ["mg", "oil", "short"], "vespa": ["zap", "spikes", "jump"],
+	"trovao": ["rocket", "mine", "shield"], "monstro": ["flame", "barrel", "shock"]}
+const SPECIAL := {"jump": {"name": "Salto", "cap": 3}, "shield": {"name": "Escudo", "cap": 2}, "shock": {"name": "Onda de choque", "cap": 2}}
 
 ## equipamentos: valores base por volta (Rock n' Roll Racing: recarregam a cada volta)
-const FRONT := {"mg": {"name": "Metralhadora", "cap": 60, "up": 15}, "rocket": {"name": "Lança-foguetes", "cap": 4, "up": 1}}
-const REAR := {"mine": {"name": "Minas", "cap": 3, "up": 1}, "oil": {"name": "Óleo", "cap": 3, "up": 1}}
+const FRONT := {"mg": {"name": "Metralhadora", "cap": 60, "up": 15}, "rocket": {"name": "Lança-foguetes", "cap": 4, "up": 1},
+	"zap": {"name": "Raio elétrico", "cap": 10, "up": 3}, "flame": {"name": "Lança-chamas", "cap": 60, "up": 15}, "none": {"name": "—", "cap": 0, "up": 0}}
+const REAR := {"mine": {"name": "Minas", "cap": 3, "up": 1}, "oil": {"name": "Óleo", "cap": 3, "up": 1},
+	"spikes": {"name": "Pregos", "cap": 3, "up": 1}, "barrel": {"name": "Barril rolante", "cap": 3, "up": 1}, "none": {"name": "—", "cap": 0, "up": 0}}
 const NITRO := {"short": {"name": "Nitro curto", "cap": 4, "dur": 1.0, "acc": 2.3}, "long": {"name": "Nitro longo", "cap": 2, "dur": 2.6, "acc": 1.7}}
 
 var kind := ""
@@ -49,6 +64,17 @@ var ctrl := {"steer": 0.0, "throttle": 0.0, "brake": 0.0, "drift": false, "nitro
 var front_type := "mg"
 var rear_type := "mine"
 var nitro_type := "short"
+var special_type := ""      # "" = nitro; senão jump | shield | shock
+var mkind := ""             # modelo 3D usado
+var vscale := 1.0           # escala visual (chefes)
+var is_boss := false
+var shield_t := 0.0
+var flat_t := 0.0           # pneus furados (pregos): mais lento e escorregando
+var burn_t := 0.0           # pegando fogo (lança-chamas / muro de fogo)
+var burn_by: Car = null
+var special_cd := 0.0
+var game: Node = null
+var _burn_acc := 0.0
 var front_cap := 60
 var rear_cap := 3
 var nitro_cap := 4
@@ -220,7 +246,10 @@ func setup(lib: Node3D, kind_: String, role_: String, col: Color) -> void:
 	cs.position = Vector3(0, sp.clr + (sp.h + 0.45) * 0.5 + 0.02, 0)
 	add_child(cs)
 
-	model = lib.get_node("car_" + kind).duplicate()
+	mkind = String(MODEL.get(kind, kind))
+	vscale = float(VSCALE.get(kind, 1.0))
+	is_boss = kind.begins_with("boss_")
+	model = lib.get_node("car_" + mkind).duplicate()
 	model.transform = Transform3D.IDENTITY
 	add_child(model)
 	var mat_cache := _mat_cache
@@ -233,7 +262,7 @@ func setup(lib: Node3D, kind_: String, role_: String, col: Color) -> void:
 		for s in mi.mesh.get_surface_count():
 			mats.append(_car_mat(mi.mesh.surface_get_material(s), mat_cache))
 			mi.set_surface_override_material(s, mats[s])
-		var part_name := String(mi.name).substr(kind.length() + 1)
+		var part_name := String(mi.name).substr(mkind.length() + 1)
 		if part_name.begins_with("w") and part_name.length() == 3:
 			wheels.append({"mesh": mi, "base": mi.position, "front": mi.position.z > 0, "r": mi.position.y,
 				"spin": 0.0, "dist": SUSP + mi.position.y, "contact": false, "lost": false, "name": part_name})
@@ -250,15 +279,23 @@ func setup(lib: Node3D, kind_: String, role_: String, col: Color) -> void:
 	exhaust2_local = Vector3(-Wc * 0.26, sp.clr - 0.03, -(Lc * 0.5 + 0.38))
 	mount_local = Vector3(0, sp.clr + sp.h + 0.6, -0.2)
 	# pontos marcados no modelo (Blender): ponteiras do escapamento e base da arma no teto
-	var exr := model.get_node_or_null(kind + "_exR") as Node3D
-	var exl := model.get_node_or_null(kind + "_exL") as Node3D
-	var mnt := model.get_node_or_null(kind + "_mount") as Node3D
+	var exr := model.get_node_or_null(mkind + "_exR") as Node3D
+	var exl := model.get_node_or_null(mkind + "_exL") as Node3D
+	var mnt := model.get_node_or_null(mkind + "_mount") as Node3D
 	if exr:
-		exhaust_local = exr.position
+		exhaust_local = exr.position * vscale
 	if exl:
-		exhaust2_local = exl.position
+		exhaust2_local = exl.position * vscale
 	if mnt:
 		mount_local = mnt.position
+	if vscale != 1.0:
+		# chefe: modelo ampliado; a física usa as rodas na escala nova (o visual continua no espaço do modelo)
+		model.scale = Vector3.ONE * vscale
+		for w in wheels:
+			w.vbase = w.base
+			w.base = (w.base as Vector3) * vscale
+			w.r = float(w.r) * vscale
+			w.dist = SUSP + float(w.r)
 	var tz: float = sp.clr + sp.h * 0.65
 	tail_local = [Vector3(-Wc * 0.32, tz, -Lc * 0.5), Vector3(Wc * 0.32, tz, -Lc * 0.5)]
 	muzzle_local = Vector3(0, sp.clr + sp.h + 0.55, Lc * 0.5 + 0.4)
@@ -283,17 +320,20 @@ func setup(lib: Node3D, kind_: String, role_: String, col: Color) -> void:
 func configure(lib: Node3D, front: String, rear: String, nitro: String, up: Dictionary) -> void:
 	front_type = front
 	rear_type = rear
-	nitro_type = nitro
+	nitro_type = nitro if NITRO.has(nitro) else "short"
+	special_type = "" if NITRO.has(nitro) else nitro
 	front_cap = int(FRONT[front].cap) + int(FRONT[front].up) * int(up.get("ammo", 0))
-	rear_cap = int(REAR[rear].cap) + int(REAR[rear].up) * int(up.get("ammo", 0))
-	nitro_cap = int(NITRO[nitro].cap) + int(up.get("nitro", 0))
+	rear_cap = int(REAR[rear].cap) + int(REAR[rear].up) * int(up.get("rear", up.get("ammo", 0)))
+	nitro_cap = (int(NITRO[nitro].cap) if special_type == "" else int(SPECIAL[special_type].cap)) + int(up.get("nitro", 0))
 	engine_mult = 1.0 + 0.04 * int(up.get("engine", 0))
 	max_health = sp.hp * (1.0 + 0.2 * int(up.get("armor", 0)))
 	health = max_health
 	refill()
 	if weapon_node:
 		weapon_node.queue_free()
-	weapon_node = lib.get_node("wpn_gun" if front == "mg" else "wpn_pod").duplicate()
+	weapon_node = lib.get_node("wpn_gun" if front in ["mg", "flame"] else "wpn_pod").duplicate()
+	if front == "zap" or front == "flame":
+		_weapon_extra(front)
 	# arma parafusada no teto (ponto "_mount" do modelo), sem atravessar cabine nem para-brisa
 	weapon_base = mount_local
 	weapon_node.transform = Transform3D(Basis.IDENTITY, weapon_base)
@@ -301,9 +341,69 @@ func configure(lib: Node3D, front: String, rear: String, nitro: String, up: Dict
 		if c is GeometryInstance3D:
 			c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	model.add_child(weapon_node)
-	muzzle_local = weapon_base + (Vector3(0, 0.32, 1.1) if front == "mg" else Vector3(0, 0.3, 0.55))
+	muzzle_local = weapon_base + (Vector3(0, 0.32, 1.1) if front in ["mg", "flame"] else Vector3(0, 0.3, 0.55))
+	if front == "none":
+		weapon_node.visible = false
 	_apply_tires(lib, up)
 	_build_kit(up)
+
+
+## visual das armas novas: bobina elétrica (raio) e tanques de combustível (lança-chamas)
+func _weapon_extra(front: String) -> void:
+	var em := StandardMaterial3D.new()
+	em.emission_enabled = true
+	if front == "zap":
+		em.albedo_color = Color(0.4, 0.9, 1.0)
+		em.emission = Color(0.35, 0.85, 1.0)
+		em.emission_energy_multiplier = 3.0
+		var coil := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = 0.22
+		sm.height = 0.44
+		coil.mesh = sm
+		coil.material_override = em
+		coil.position = Vector3(0, 0.62, 0.2)
+		weapon_node.add_child(coil)
+		for i in 3:
+			var ring := MeshInstance3D.new()
+			var tm := TorusMesh.new()
+			tm.inner_radius = 0.12 + i * 0.03
+			tm.outer_radius = 0.17 + i * 0.03
+			ring.mesh = tm
+			var rm := StandardMaterial3D.new()
+			rm.albedo_color = Color(0.75, 0.55, 0.3)
+			rm.metallic = 1.0
+			rm.roughness = 0.3
+			ring.material_override = rm
+			ring.position = Vector3(0, 0.3 + i * 0.1, 0.2)
+			weapon_node.add_child(ring)
+	else:
+		em.albedo_color = Color(1.0, 0.5, 0.1)
+		em.emission = Color(1.0, 0.45, 0.1)
+		em.emission_energy_multiplier = 1.5
+		for sx: float in [-0.32, 0.32]:
+			var tank := MeshInstance3D.new()
+			var cm := CylinderMesh.new()
+			cm.top_radius = 0.16
+			cm.bottom_radius = 0.16
+			cm.height = 0.9
+			tank.mesh = cm
+			var tmat := StandardMaterial3D.new()
+			tmat.albedo_color = Color(0.85, 0.12, 0.08)
+			tmat.metallic = 0.5
+			tmat.roughness = 0.35
+			tank.material_override = tmat
+			tank.rotation.x = PI / 2
+			tank.position = Vector3(sx, 0.18, -0.35)
+			weapon_node.add_child(tank)
+		var pilot := MeshInstance3D.new()
+		var ps := SphereMesh.new()
+		ps.radius = 0.08
+		ps.height = 0.16
+		pilot.mesh = ps
+		pilot.material_override = em
+		pilot.position = Vector3(0, 0.32, 1.15)
+		weapon_node.add_child(pilot)
 
 
 ## troca a malha das rodas pela variante de pneu (modelo padrão do Blender, ajustado ao tamanho de cada roda)
@@ -311,7 +411,7 @@ func _apply_tires(lib: Node3D, up: Dictionary) -> void:
 	var lvl := int(up.get("tires", 0))
 	tire_grip = 1.0 + 0.06 * lvl
 	var vis := int(up.get("_tire_vis", lvl))
-	var k: String = "knobby" if kind in ["vespa", "picape"] else String(TIRE_BY_LEVEL[clampi(vis, 0, 3)])
+	var k: String = "knobby" if mkind in ["vespa", "picape"] else String(TIRE_BY_LEVEL[clampi(vis, 0, 3)])
 	if k == tire_kind:
 		return
 	var src := lib.get_node_or_null("tire_" + k) as MeshInstance3D
@@ -584,7 +684,7 @@ func _physics_process(dt: float) -> void:
 		if ea > 0.0 and role == "player":
 			steer *= lerpf(1.0, 0.3, ea)
 	steer_s = lerpf(steer_s, steer, minf(1.0, dt * 14.0))
-	var vmax: float = sp.vmax * engine_mult
+	var vmax: float = sp.vmax * engine_mult * (0.62 if flat_t > 0.0 else 1.0)
 	var spd01 := minf(1.0, absf(v_f) / vmax)
 
 	# auto-drift: curva forte em velocidade entra sozinha num drift suave (sem botão)
@@ -611,7 +711,23 @@ func _physics_process(dt: float) -> void:
 	# nitro por cargas: um toque = uma arrancada
 	nitro_t = maxf(0.0, nitro_t - dt)
 	var np: bool = ctrl.nitro
-	if np and not _nitro_was and nitro_ch > 0 and nitro_t <= 0.0:
+	special_cd = maxf(0.0, special_cd - dt)
+	if burn_t > 0.0:
+		# queimando: dano contínuo (crédito para quem pôs fogo)
+		burn_t -= dt
+		_burn_acc += dt
+		if _burn_acc > 0.25:
+			_burn_acc = 0.0
+			apply_damage(2.2, global_position + Vector3.UP, burn_by, false)
+	shield_t = maxf(0.0, shield_t - dt)
+	flat_t = maxf(0.0, flat_t - dt)
+	if special_type != "":
+		# especial do carro (salto, escudo, onda de choque) no botão do nitro
+		if np and not _nitro_was and nitro_ch > 0 and special_cd <= 0.0 and game and game.weapons.can_special(self):
+			nitro_ch -= 1
+			special_cd = 0.8
+			game.weapons.special(self)
+	elif np and not _nitro_was and nitro_ch > 0 and nitro_t <= 0.0:
 		nitro_ch -= 1
 		nitro_t = float(NITRO[nitro_type].dur)
 	_nitro_was = np
@@ -805,6 +921,9 @@ func take_impact(point: Vector3, dv: float, wall := false) -> void:
 func apply_damage(amount: float, point: Vector3, attacker: Car, deform := true) -> bool:
 	if wrecked or invuln > 0.0 or amount <= 0.0:
 		return false
+	if shield_t > 0.0:
+		flash_t = 0.03   # escudo: nada passa
+		return false
 	if net_remote:
 		# quem decide o dano é a máquina dona do carro; aqui só o efeito visual (e quem atirou leva o crédito lá)
 		flash_t = 0.06
@@ -952,6 +1071,9 @@ func wreck(power: float, from_dir: Vector3, pop := true) -> void:
 
 func repair() -> void:
 	wrecked = false
+	flat_t = 0.0
+	burn_t = 0.0
+	shield_t = 0.0
 	health = max_health
 	angular_damp = 1.2
 	oil_t = 0.0
@@ -1177,7 +1299,7 @@ func _jump_assist() -> void:
 
 
 # ------------------------------------------------------------------ IA
-func ai(track: Track, game: Node, dt: float) -> void:
+func ai(track: Track, _game: Node, dt: float) -> void:
 	var pr := track.project(global_position, ti)
 	ti = pr.i
 	lat = pr.lat
@@ -1271,14 +1393,14 @@ func _visuals(dt: float) -> void:
 		squash = clampf(squash + squash_v * dt, -0.16, 0.2)
 		pitch_v += (-pitch_kick * 120.0 - pitch_v * 10.0) * dt
 		pitch_kick = clampf(pitch_kick + pitch_v * dt, -0.12, 0.12)
-		model.scale = Vector3(1.0 + squash * 0.45, 1.0 - squash, 1.0 - squash * 0.35)
+		model.scale = Vector3(1.0 + squash * 0.45, 1.0 - squash, 1.0 - squash * 0.35) * vscale
 		model.rotation.x = -pitch_kick
 	for w in wheels:
 		if w.lost:
 			continue
 		var mi: MeshInstance3D = w.mesh
 		var y: float = w.base.y + SUSP - w.dist + w.r
-		mi.position.y = lerpf(mi.position.y, clampf(y, w.base.y - 0.25, w.base.y + WHEEL_UP), minf(1.0, dt * 25.0))
+		mi.position.y = lerpf(mi.position.y, clampf(y, w.base.y - 0.25, w.base.y + WHEEL_UP) / vscale, minf(1.0, dt * 25.0))
 		# giro visível: acima de ~3 voltas/s o olho vê o raio "parado" (efeito estroboscópico);
 		# o giro desenhado é limitado para os raios sempre parecerem girar para a frente
 		var wspin: float = (v_f + (35.0 if launch_t > 0.0 and not w.front else 0.0)) / maxf(0.2, w.r)

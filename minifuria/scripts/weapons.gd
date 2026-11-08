@@ -18,6 +18,12 @@ var oil_shader: Shader
 var numbers: Array = []
 var num_i := 0
 var acc := {}             # dano acumulado do jogador por alvo (para os números)
+var spikes: Array = []     # pregos no chão
+var barrels: Array = []    # barris rolando
+var rings: Array = []      # ondas de choque (efeito visual)
+var bolts: Array = []      # raios elétricos (efeito visual)
+var hazards: Array = []
+var uses := {}             # contagem de uso por arma (testes)    # perigos de chefes: {"kind", "pos", "r", "t", "dur", "owner", "node"}
 var reticle: MeshInstance3D
 var ret_pulse := 0.0
 var ret_t := 0.0
@@ -116,6 +122,11 @@ func clear() -> void:
 	rockets.clear()
 	mines.clear()
 	oils.clear()
+	for arr in [spikes, barrels, rings, bolts, hazards]:
+		for it in arr:
+			if it.has("node") and is_instance_valid(it.node):
+				(it.node as Node).queue_free()
+		arr.clear()
 	acc.clear()
 	for t in tracers:
 		t.t = -1.0
@@ -148,15 +159,29 @@ func update(dt: float) -> void:
 		if c.role == "rival" and not c.net_remote and not c.human:
 			_ai(c)
 		if c.ctrl.fire and c.fire_cd <= 0.0 and c.ammo_f > 0:
-			if c.front_type == "mg":
-				_fire_mg(c)
-			else:
-				_fire_rocket(c)
+			match c.front_type:
+				"mg":
+					_fire_mg(c)
+				"zap":
+					_fire_zap(c)
+				"flame":
+					_fire_flame(c)
+				"rocket":
+					_fire_rocket(c)
+		_flame_fx(c)
+		if c.shield_t > 0.0:
+			_shield_ram(c)
+		_shield_fx(c)
 		if c.ctrl.drop and c.drop_cd <= 0.0 and c.ammo_r > 0:
 			_drop(c)
 	_step_rockets(dt)
 	_step_mines(dt)
 	_step_oils(dt)
+	_step_spikes(dt)
+	_step_barrels(dt)
+	_step_rings(dt)
+	_step_bolts(dt)
+	_step_hazards(dt)
 	_step_tracers(dt)
 	for f in flashes:
 		if f.t > 0.0:
@@ -175,10 +200,28 @@ func _ai(c: Car) -> void:
 		return
 	# a IA atira em rajadas e com pausas (dá tempo de reagir)
 	var burst_on := fmod(game.time_g + c.seed_f * 3.1, 4.0) < 1.6
-	if c.front_type == "mg":
-		c.ctrl.fire = burst_on and _target(c, 36.0, 0.985) != null
-	else:
-		c.ctrl.fire = _target(c, 55.0, 0.97) != null and randf() < 0.02
+	match c.front_type:
+		"mg":
+			c.ctrl.fire = burst_on and _target(c, 36.0, 0.985) != null
+		"zap":
+			c.ctrl.fire = _target(c, 26.0, 0.9) != null and randf() < 0.06
+		"flame":
+			c.ctrl.fire = _target(c, 10.0, 0.85) != null
+		_:
+			c.ctrl.fire = _target(c, 55.0, 0.97) != null and randf() < 0.02
+	# especial do carro (a IA usa quando faz sentido)
+	if c.special_type != "" and c.nitro_ch > 0:
+		var near := 0
+		for o in game.cars:
+			if o != c and not o.wrecked and o.role != "traffic" and o.global_position.distance_to(c.global_position) < 9.0:
+				near += 1
+		match c.special_type:
+			"shock":
+				c.ctrl.nitro = near >= 1 and randf() < 0.03
+			"shield":
+				c.ctrl.nitro = (c.health < c.max_health * 0.55 and near >= 1 and randf() < 0.04) or (near >= 2 and randf() < 0.01)
+			"jump":
+				c.ctrl.nitro = randf() < 0.004 and c.on_ground and not c.on_feature
 	# mina/óleo quando alguém está colado atrás
 	var b := -c.global_transform.basis.z
 	for o in game.cars:
@@ -206,7 +249,12 @@ func _muzzle_flash(pos: Vector3, aim: Vector3, big := false) -> void:
 	cone.visible = true
 
 
+func _use(k: String) -> void:
+	uses[k] = int(uses.get(k, 0)) + 1
+
+
 func _fire_mg(c: Car) -> void:
+	_use("mg")
 	c.fire_cd = 0.085
 	c.ammo_f -= 1
 	c.recoil = 1.0
@@ -404,6 +452,7 @@ func _step_reticle(dt: float) -> void:
 
 
 func _fire_rocket(c: Car) -> void:
+	_use("rocket")
 	c.fire_cd = 0.55
 	c.ammo_f -= 1
 	var mz: Vector3 = c.global_transform * c.muzzle_local
@@ -543,6 +592,7 @@ func _explode(pos: Vector3, owner: Car, dmg: float, radius: float, style: String
 
 
 func _drop(c: Car) -> void:
+	_use(c.rear_type)
 	c.drop_cd = 0.7
 	c.ammo_r -= 1
 	var b := c.global_transform.basis
@@ -554,6 +604,12 @@ func _drop(c: Car) -> void:
 		p = res.position
 		n = res.normal
 	var basis := Basis(n.cross(b.z).normalized(), n, b.z.slide(n).normalized()).orthonormalized()
+	if c.rear_type == "spikes":
+		_drop_spikes(c, p, basis, n)
+		return
+	if c.rear_type == "barrel":
+		_drop_barrel(c, p, n)
+		return
 	if c.rear_type == "mine":
 		var node := lib.get_node("proj_mine").duplicate() as Node3D
 		add_child(node)
@@ -639,3 +695,504 @@ func _step_oils(dt: float) -> void:
 						game.oil_fx = 1.0
 				c.oil_t = 1.1
 				c.oily_t = 2.6
+
+
+# ================================================================== armas únicas dos carros
+func _add_mat(col: Color, energy := 3.0) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.albedo_color = Color(col.r * energy, col.g * energy, col.b * energy, 1.0)
+	m.vertex_color_use_as_albedo = true
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.no_depth_test = false
+	return m
+
+
+## raio elétrico (Vespa): acerta na hora o alvo no cone e salta para mais um carro perto dele
+func _fire_zap(c: Car) -> void:
+	_use("zap")
+	c.fire_cd = 0.55
+	c.ammo_f -= 1
+	c.recoil = 1.2
+	var mz: Vector3 = c.global_transform * c.muzzle_local
+	var tgt := _target(c, 28.0, 0.88)
+	if tgt == null:
+		_bolt(mz, mz + c.global_transform.basis.z * 9.0 + Vector3.UP * randf_range(-1, 1), 0.6)
+		sfx.play("zap", -10.0, randf_range(1.1, 1.3))
+		return
+	var hp: Vector3 = tgt.global_position + Vector3.UP * 0.8
+	_bolt(mz, hp, 1.0)
+	_zap_hit(c, tgt, 16.0)
+	# corrente: pula para o carro mais perto do alvo
+	var best: Car = null
+	var bd := 12.0
+	for o in game.cars:
+		if o == c or o == tgt or o.wrecked or o.role == "traffic":
+			continue
+		var d: float = o.global_position.distance_to(tgt.global_position)
+		if d < bd:
+			bd = d
+			best = o
+	if best:
+		_bolt(hp, best.global_position + Vector3.UP * 0.8, 0.7)
+		_zap_hit(c, best, 9.0)
+	sfx.play("zap", -4.0 if c == game.player else -9.0, randf_range(0.9, 1.1))
+	if c == game.player:
+		game._shake(0.06)
+
+
+func _zap_hit(c: Car, t: Car, dmg: float) -> void:
+	var killed := t.apply_damage(dmg, t.global_position + Vector3.UP, c, false)
+	t.stun = maxf(t.stun, 0.25)
+	if game._on_screen(t.global_position):
+		fx.sparks(t.global_position + Vector3.UP, Vector3.UP, 1.0)
+		fx.hit_light(t.global_position + Vector3.UP * 1.5, Color(0.4, 0.85, 1.0), 6.0, 9.0, 0.15)
+	if c == game.player:
+		_number(t.global_position + Vector3.UP * 2.2, str(int(dmg)), Color(0.5, 0.9, 1.0))
+		game.on_player_hit_enemy(t, killed)
+
+
+## desenha um raio em zigue-zague (fita voltada para a câmera)
+func _bolt(a: Vector3, b: Vector3, w: float) -> void:
+	var mi := MeshInstance3D.new()
+	var im := ImmediateMesh.new()
+	mi.mesh = im
+	mi.material_override = _add_mat(Color(0.45, 0.85, 1.0), 2.5)
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+	var pts: Array = [a]
+	var seg := 9
+	var dir := b - a
+	var side := dir.cross(Vector3.UP).normalized()
+	for i in range(1, seg):
+		var u := float(i) / seg
+		pts.append(a + dir * u + side * randf_range(-0.6, 0.6) * w + Vector3.UP * randf_range(-0.5, 0.5) * w)
+	pts.append(b)
+	var cam_f: Vector3 = -game.cam.global_basis.z
+	im.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	for k in 2:
+		var width := (0.32 if k == 0 else 0.1) * w
+		var col := Color(0.35, 0.7, 1.0, 0.7) if k == 0 else Color(1, 1, 1, 1)
+		for i in pts.size() - 1:
+			var p0: Vector3 = pts[i]
+			var p1: Vector3 = pts[i + 1]
+			var nrm := (p1 - p0).cross(cam_f).normalized() * width
+			for v in [p0 - nrm, p0 + nrm, p1 + nrm, p0 - nrm, p1 + nrm, p1 - nrm]:
+				im.surface_set_color(col)
+				im.surface_add_vertex(v)
+	im.surface_end()
+	bolts.append({"node": mi, "t": 0.0})
+
+
+func _step_bolts(dt: float) -> void:
+	for i in range(bolts.size() - 1, -1, -1):
+		var b: Dictionary = bolts[i]
+		b.t += dt
+		var mi: MeshInstance3D = b.node
+		mi.transparency = clampf(b.t / 0.16, 0.0, 1.0)
+		if b.t > 0.16:
+			mi.queue_free()
+			bolts.remove_at(i)
+
+
+## lança-chamas (Monstro): segurar o tiro solta um jato curto que queima quem estiver na frente
+func _fire_flame(c: Car) -> void:
+	_use("flame")
+	c.fire_cd = 0.05
+	c.ammo_f -= 1
+	c.firing_t = 0.15
+	if Engine.get_physics_frames() % 2 != 0:
+		return
+	var f := c.global_transform.basis.z
+	var mz: Vector3 = c.global_transform * c.muzzle_local
+	for o in game.cars:
+		var t: Car = o
+		if t == c or t.wrecked:
+			continue
+		var d: Vector3 = t.global_position + Vector3.UP * 0.6 - mz
+		if d.length() < 11.0 and d.normalized().dot(f) > 0.8:
+			var killed := t.apply_damage(3.0, t.global_position + Vector3.UP, c, false)
+			t.burn_t = maxf(t.burn_t, 1.6)
+			t.burn_by = c
+			if c == game.player:
+				game.on_player_hit_enemy(t, killed)
+	if game._on_screen(mz) and Engine.get_physics_frames() % 6 == 0:
+		sfx.play("flame", -12.0 if c != game.player else -6.0, randf_range(0.9, 1.1))
+
+
+func _flame_fx(c: Car) -> void:
+	if c.front_type != "flame":
+		return
+	var p: CPUParticles3D = c.get_meta("flame_p") if c.has_meta("flame_p") else null
+	if p == null:
+		p = CPUParticles3D.new()
+		p.amount = 70
+		p.lifetime = 0.45
+		p.local_coords = false
+		var q := QuadMesh.new()
+		q.size = Vector2(1, 1)
+		q.material = fx._bb_mat(fx.fire_tex, true)
+		p.mesh = q
+		p.direction = Vector3(0, 0.05, 1)
+		p.spread = 9.0
+		p.initial_velocity_min = 20.0
+		p.initial_velocity_max = 26.0
+		p.gravity = Vector3(0, 2, 0)
+		p.damping_min = 12.0
+		p.damping_max = 18.0
+		p.scale_amount_min = 0.5
+		p.scale_amount_max = 0.9
+		p.scale_amount_curve = fx._curve([Vector2(0, 0.5), Vector2(0.5, 1.6), Vector2(1, 2.4)])
+		p.color_ramp = fx._ramp([Color(4, 3.4, 2.2, 1), Color(3.0, 1.1, 0.25, 0.9), Color(0.5, 0.15, 0.05, 0.0)])
+		p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		c.add_child(p)
+		p.position = c.muzzle_local
+		c.set_meta("flame_p", p)
+	p.emitting = c.firing_t > 0.0 and c.ammo_f > 0 and not c.wrecked
+
+
+## pregos (Vespa): quem passa fura os pneus (mais lento por 2,5 s) e leva um pouco de dano
+func _drop_spikes(c: Car, p: Vector3, basis: Basis, n: Vector3) -> void:
+	var node := Node3D.new()
+	add_child(node)
+	node.global_transform = Transform3D(basis, p + n * 0.02)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.75, 0.77, 0.82)
+	mat.metallic = 1.0
+	mat.roughness = 0.25
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.0
+	cm.bottom_radius = 0.12
+	cm.height = 0.38
+	cm.radial_segments = 6
+	for i in 18:
+		var s := MeshInstance3D.new()
+		s.mesh = cm
+		s.material_override = mat
+		s.position = Vector3(randf_range(-2.0, 2.0), 0.15, randf_range(-1.6, 1.6))
+		s.rotation = Vector3(randf_range(-0.4, 0.4), randf() * TAU, randf_range(-0.4, 0.4))
+		node.add_child(s)
+	spikes.append({"node": node, "owner": c, "t": 0.0, "pos": p, "n": n, "hit": {}})
+	sfx.play("drop", -6.0, 1.3)
+	if c == game.player:
+		game.hud.popup("PREGOS!", Color("#ffcf33"))
+
+
+func _step_spikes(dt: float) -> void:
+	for i in range(spikes.size() - 1, -1, -1):
+		var s: Dictionary = spikes[i]
+		s.t += dt
+		if s.t > 16.0:
+			(s.node as Node).queue_free()
+			spikes.remove_at(i)
+			continue
+		for car in game.cars:
+			var c: Car = car
+			if c.wrecked or (c == s.owner and s.t < 1.5) or s.hit.has(c):
+				continue
+			var d: Vector3 = c.global_position - (s.pos as Vector3)
+			if d.slide(s.n).length() < 2.8 and absf(d.dot(s.n)) < 1.4:
+				s.hit[c] = true
+				c.flat_t = 2.5
+				var killed := c.apply_damage(8.0, c.global_position, s.owner, false)
+				if game._on_screen(c.global_position):
+					fx.sparks(c.global_position, -c.linear_velocity.normalized() + Vector3.UP, 1.2)
+					sfx.play("metal", -6.0, 1.4)
+				if c == game.player or c.local_idx >= 0:
+					game.pop_for(c, "PNEU FURADO!", Color("#ff7a7a"))
+				if s.owner == game.player and c != game.player:
+					game.on_player_hit_enemy(c, killed)
+
+
+## barril rolante (Monstro): rola para trás pela pista e explode em quem encostar
+func _drop_barrel(c: Car, p: Vector3, n: Vector3) -> void:
+	var node := lib.get_node("prop_barrel").duplicate() as Node3D
+	add_child(node)
+	node.global_position = p + n * 0.6
+	var back := -c.global_transform.basis.z
+	var v: Vector3 = c.linear_velocity * 0.35 + back * 9.0
+	barrels.append({"node": node, "owner": c, "t": 0.0, "vel": v.slide(n), "n": n, "spin": 0.0})
+	sfx.play("drop", -4.0, 0.8)
+	if c == game.player:
+		game.hud.popup("BARRIL!", Color("#ffcf33"))
+
+
+func launch_barrel(owner: Car, pos: Vector3, vel: Vector3, n: Vector3) -> void:
+	var node := lib.get_node("prop_barrel").duplicate() as Node3D
+	add_child(node)
+	node.global_position = pos
+	node.scale = Vector3.ONE * 1.4
+	barrels.append({"node": node, "owner": owner, "t": 0.0, "vel": vel, "n": n, "spin": 0.0, "big": true})
+
+
+func _step_barrels(dt: float) -> void:
+	var space := get_world_3d().direct_space_state
+	for i in range(barrels.size() - 1, -1, -1):
+		var b: Dictionary = barrels[i]
+		b.t += dt
+		var node: Node3D = b.node
+		var vel: Vector3 = b.vel
+		var p := node.global_position + vel * dt
+		# rola colado ao chão (raio para baixo)
+		var res := space.intersect_ray(PhysicsRayQueryParameters3D.create(p + (b.n as Vector3) * 1.5, p - (b.n as Vector3) * 3.0, 1))
+		if res:
+			p = res.position + res.normal * 0.55
+			b.n = res.normal
+		else:
+			vel += Vector3.DOWN * 20.0 * dt
+		b.vel = vel * (1.0 - 0.15 * dt)
+		node.global_position = p
+		b.spin += vel.length() * dt / 0.5
+		var fwd := vel.normalized() if vel.length() > 0.5 else Vector3.FORWARD
+		var nn: Vector3 = b.n
+		var side := fwd.cross(nn).normalized()
+		node.global_transform.basis = Basis(side, nn, fwd).orthonormalized().rotated(side, b.spin) * Basis(Vector3.RIGHT, PI / 2)
+		node.scale = Vector3.ONE * (1.4 if b.get("big", false) else 1.0)
+		var boom: bool = b.t > 5.0
+		if b.t > 0.5:
+			for car in game.cars:
+				var c: Car = car
+				if c.wrecked or (c == b.owner and b.t < 1.5):
+					continue
+				if c.global_position.distance_to(p) < (3.0 if b.get("big", false) else 2.4):
+					boom = true
+					break
+		if boom:
+			_explode(p, b.owner, 30.0 if b.get("big", false) else 26.0, 5.0, "rocket")
+			node.queue_free()
+			barrels.remove_at(i)
+
+
+# ------------------------------------------------------------------ especiais
+func can_special(c: Car) -> bool:
+	match c.special_type:
+		"jump":
+			return c.on_ground and not c.on_feature
+	return true
+
+
+func special(c: Car) -> void:
+	_use(c.special_type)
+	# online: avisa as outras máquinas (lá o efeito pega nos carros que elas controlam)
+	if game.online and game.online.racing and not c.net_remote:
+		game.online.send_special(c)
+	var vis: bool = game._on_screen(c.global_position)
+	match c.special_type:
+		"jump":
+			# salto: pula minas, pregos, óleo e até carros
+			var up: Vector3 = c.ground_n if c.on_ground else Vector3.UP
+			c.apply_central_impulse(up * c.mass * 10.5 + c.global_transform.basis.z * c.mass * 2.5)
+			c.juice_squash(1.4)
+			if vis:
+				fx.burst("dust", c.global_position)
+				sfx.play("whoosh", -3.0, 1.2)
+			game.pop_for(c, "SALTO!", Color("#2ee6ff"))
+		"shield":
+			c.shield_t = 3.0
+			c.invuln = maxf(c.invuln, 0.0)
+			if vis:
+				sfx.play("nitro", -4.0, 1.5)
+				fx.hit_light(c.global_position + Vector3.UP, Color(0.4, 0.8, 1.0), 6.0, 10.0, 0.3)
+			game.pop_for(c, "ESCUDO!", Color("#2ee6ff"))
+		"shock":
+			shock_wave(c, c.global_position, 12.0, 18.0, 1.0)
+			game.pop_for(c, "ONDA DE CHOQUE!", Color("#ff9a1a"))
+
+
+## onda de choque: empurra e levanta quem está perto (também usada pelo chefe BRUTUS)
+func shock_wave(owner: Car, pos: Vector3, radius: float, dmg: float, power: float) -> void:
+	ring_fx(pos, radius, Color(1.0, 0.6, 0.2))
+	if game._on_screen(pos):
+		sfx.play("boom", -2.0, 0.7)
+		fx.burst("dust", pos)
+		var dp: float = pos.distance_to(game.player.global_position)
+		game._shake(clampf(0.7 - dp * 0.02, 0.1, 0.7))
+	for car in game.cars:
+		var c: Car = car
+		if c == owner or c.wrecked:
+			continue
+		var d := c.global_position - pos
+		var dist := d.length()
+		if dist > radius:
+			continue
+		var k := 1.0 - dist / radius
+		var killed := c.apply_damage(dmg * k + 4.0, pos, owner)
+		var push := (Vector3(d.x, 0, d.z).normalized() * 1.0 + Vector3.UP * 0.9).normalized()
+		c.apply_central_impulse(push * c.mass * 11.0 * power * (0.4 + k))
+		c.stun = maxf(c.stun, 0.6 * k)
+		if owner == game.player:
+			game.on_player_hit_enemy(c, killed)
+
+
+func ring_fx(pos: Vector3, radius: float, col: Color) -> void:
+	var mi := MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = 0.82
+	tm.outer_radius = 1.0
+	tm.rings = 48
+	tm.ring_segments = 6
+	mi.mesh = tm
+	mi.material_override = _add_mat(col, 2.5)
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+	mi.global_position = pos + Vector3.UP * 0.4
+	mi.scale = Vector3(0.5, 0.3, 0.5)
+	rings.append({"node": mi, "t": 0.0, "r": radius})
+
+
+func _step_rings(dt: float) -> void:
+	for i in range(rings.size() - 1, -1, -1):
+		var r: Dictionary = rings[i]
+		r.t += dt
+		var mi: MeshInstance3D = r.node
+		var u := clampf(r.t / 0.4, 0.0, 1.0)
+		var s: float = lerpf(0.5, float(r.r), 1.0 - (1.0 - u) * (1.0 - u))
+		mi.scale = Vector3(s, 0.3 + (1.0 - u) * 0.6, s)
+		mi.transparency = u
+		if r.t > 0.4:
+			mi.queue_free()
+			rings.remove_at(i)
+
+
+## escudo: bolha azul; encostar em alguém com o escudo ligado causa dano de aríete
+func _shield_fx(c: Car) -> void:
+	var b: MeshInstance3D = c.get_meta("shield_b") if c.has_meta("shield_b") else null
+	if c.shield_t <= 0.0:
+		if b:
+			b.visible = false
+		return
+	if b == null:
+		b = MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = 1.0
+		sm.height = 2.0
+		b.mesh = sm
+		var m := ShaderMaterial.new()
+		m.shader = load("res://shaders/shield.gdshader")
+		b.material_override = m
+		b.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		c.add_child(b)
+		b.position = Vector3(0, c.sp.clr + c.sp.h * 0.5, 0)
+		b.scale = Vector3(c.sp.wid * 0.75, c.sp.h * 1.6 + 0.6, c.sp.len * 0.65)
+		c.set_meta("shield_b", b)
+	b.visible = true
+	(b.material_override as ShaderMaterial).set_shader_parameter("fade", clampf(c.shield_t / 0.4, 0.0, 1.0))
+
+
+func _shield_ram(c: Car) -> void:
+	for o in game.cars:
+		var t: Car = o
+		if t == c or t.wrecked or t.role == "traffic":
+			continue
+		if t.global_position.distance_to(c.global_position) < (c.sp.len + t.sp.len) * 0.45:
+			var key := "ram_%d" % t.get_instance_id()
+			if float(c.get_meta(key, -9.0)) > game.time_g - 0.6:
+				continue
+			c.set_meta(key, game.time_g)
+			var killed := t.apply_damage(22.0, t.global_position, c)
+			var d := (t.global_position - c.global_position)
+			t.apply_central_impulse((Vector3(d.x, 0, d.z).normalized() + Vector3.UP * 0.3) * t.mass * 8.0)
+			if game._on_screen(t.global_position):
+				fx.sparks(t.global_position + Vector3.UP, d.normalized(), 1.5)
+				sfx.play("metal", -3.0)
+			if c == game.player:
+				game.on_player_hit_enemy(t, killed)
+
+
+# ------------------------------------------------------------------ perigos (ataques dos chefes)
+## kinds: "quake" (anel avisado e depois choque), "meteor" (círculo avisado e depois explosão),
+## "fire" (chão em chamas por um tempo), "magnet" (puxa carros para o dono), "spikewall" (fileira de pregos)
+func hazard(kind: String, owner: Car, pos: Vector3, r: float, delay: float, dur: float, extra := {}) -> Dictionary:
+	_use("boss_" + kind)
+	var h := {"kind": kind, "owner": owner, "pos": pos, "r": r, "t": 0.0, "delay": delay, "dur": dur, "done": false}
+	h.merge(extra)
+	var mi := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(2, 2)
+	mi.mesh = pm
+	var m := ShaderMaterial.new()
+	m.shader = load("res://shaders/telegraph.gdshader")
+	m.set_shader_parameter("col", extra.get("col", Color(1.0, 0.2, 0.1)))
+	m.set_shader_parameter("mode", 1.0 if kind == "fire" else (2.0 if kind == "spikewall" else 0.0))
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+	var n: Vector3 = extra.get("n", Vector3.UP)
+	var fwd: Vector3 = extra.get("fwd", Vector3.FORWARD)
+	var x := fwd.cross(n).normalized()
+	mi.global_transform = Transform3D(Basis(x, n, n.cross(x)).scaled(Vector3(r, 1, float(extra.get("rz", r)))), pos + n * 0.12)
+	h.node = mi
+	hazards.append(h)
+	return h
+
+
+func _step_hazards(dt: float) -> void:
+	for i in range(hazards.size() - 1, -1, -1):
+		var h: Dictionary = hazards[i]
+		h.t += dt
+		var mi: MeshInstance3D = h.node
+		var m := mi.material_override as ShaderMaterial
+		var arm := clampf(float(h.t) / maxf(float(h.delay), 0.01), 0.0, 1.0)
+		m.set_shader_parameter("arm", arm)
+		m.set_shader_parameter("tt", h.t)
+		var pos: Vector3 = h.pos
+		if not h.done and h.t >= h.delay:
+			h.done = true
+			match String(h.kind):
+				"quake":
+					shock_wave(h.owner, pos, float(h.r), 26.0, 1.3)
+				"meteor":
+					_meteor_hit(h)
+				"spikewall":
+					sfx.play("metal", -4.0, 0.8)
+		if h.done:
+			match String(h.kind):
+				"fire":
+					for car in game.cars:
+						var c: Car = car
+						if c == h.owner or c.wrecked:
+							continue
+						var d: Vector3 = (c.global_position - pos)
+						if absf(d.dot(mi.global_basis.x.normalized())) < float(h.r) and absf(d.dot(mi.global_basis.z.normalized())) < float(h.get("rz", h.r)) and absf(d.y) < 2.5:
+							c.burn_t = maxf(c.burn_t, 1.2)
+							c.burn_by = h.owner
+				"spikewall":
+					for car in game.cars:
+						var c: Car = car
+						if c == h.owner or c.wrecked or c.flat_t > 0.0:
+							continue
+						var d: Vector3 = (c.global_position - pos)
+						var lx: float = d.dot(mi.global_basis.x.normalized())
+						var lz: float = d.dot(mi.global_basis.z.normalized())
+						var gap: float = float(h.get("gap", 0.0))
+						if absf(lz) < float(h.get("rz", 1.0)) + 0.8 and absf(lx) < float(h.r) and absf(lx - gap) > 2.6 and absf(d.y) < 2.5:
+							c.flat_t = 3.0
+							c.apply_damage(12.0, c.global_position, h.owner, false)
+							if c.local_idx >= 0:
+								game.pop_for(c, "PNEU FURADO! USE A BRECHA", Color("#ff7a7a"))
+		if h.t > float(h.delay) + float(h.dur):
+			mi.queue_free()
+			if h.has("deco") and is_instance_valid(h.deco):
+				(h.deco as Node).queue_free()
+			hazards.remove_at(i)
+
+
+func _meteor_hit(h: Dictionary) -> void:
+	var pos: Vector3 = h.pos
+	fx.explosion(pos, true, "fireball")
+	if game._on_screen(pos):
+		sfx.play("boom", 0.0, 0.8)
+		var dp: float = pos.distance_to(game.player.global_position)
+		game._shake(clampf(0.8 - dp * 0.03, 0.05, 0.8))
+	for car in game.cars:
+		var c: Car = car
+		if c == h.owner or c.wrecked:
+			continue
+		var d := c.global_position - pos
+		if d.length() < float(h.r) + 1.0:
+			c.apply_damage(30.0, pos, h.owner)
+			c.apply_central_impulse((d.normalized() + Vector3.UP).normalized() * c.mass * 8.0)
+			c.burn_t = maxf(c.burn_t, 1.5)
+			c.burn_by = h.owner

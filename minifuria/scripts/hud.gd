@@ -247,6 +247,14 @@ func _build_race_hud() -> void:
 	minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	minimap.draw.connect(_draw_minimap)
 	root.add_child(minimap)
+	boss_bar = Control.new()
+	boss_bar.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	boss_bar.position = Vector2(-300, -84)
+	boss_bar.size = Vector2(600, 60)
+	boss_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	boss_bar.visible = false
+	boss_bar.draw.connect(_draw_boss)
+	root.add_child(boss_bar)
 	feed = VBoxContainer.new()
 	feed.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	feed.position = Vector2(-330, 142)
@@ -343,6 +351,21 @@ func _process(dt: float) -> void:
 	if status.visible:
 		status.queue_redraw()
 		minimap.queue_redraw()
+
+
+## barra de vida do chefe (embaixo, no centro)
+func _draw_boss() -> void:
+	var b: Car = game.boss
+	if b == null:
+		return
+	var W := boss_bar.size.x
+	var u := clampf(b.health / b.max_health, 0.0, 1.0)
+	var sk := 14.0
+	boss_bar.draw_string_outline(UI.display_it, Vector2(sk, 20), b.display_name + ("  · DESTRUÍDO" if b.wrecked else ""), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, 6, UI.INK)
+	boss_bar.draw_string(UI.display_it, Vector2(sk, 20), b.display_name + ("  · DESTRUÍDO" if b.wrecked else ""), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, UI.BAD)
+	boss_bar.draw_colored_polygon(PackedVector2Array([Vector2(sk, 28), Vector2(W, 28), Vector2(W - sk, 50), Vector2(0, 50)]), Color(0, 0, 0, 0.6))
+	if u > 0.0:
+		boss_bar.draw_colored_polygon(PackedVector2Array([Vector2(sk + 3, 31), Vector2(sk + 3 + (W - sk - 6) * u, 31), Vector2((W - sk - 6) * u, 47), Vector2(3, 47)]), UI.BAD.lerp(UI.HOT, 1.0 - u))
 
 
 func _draw_status() -> void:
@@ -458,7 +481,8 @@ func _build_menu() -> void:
 	var sp := Control.new()
 	sp.custom_minimum_size = Vector2(0, 6)
 	v.add_child(sp)
-	var items := [["CORRER", true, func(): game.set_solo(); show_screen("tracks")],
+	var items := [["CARREIRA", true, func(): game.career.open()],
+		["CORRIDA RÁPIDA", false, func(): game.set_solo(); game.career.event = {}; show_screen("tracks")],
 		["MULTIJOGADOR LOCAL", false, func(): game.multi.open_join()],
 		["ONLINE", false, func(): game.online.open()],
 		["CONFIGURAÇÕES", false, func(): game.settings.open("menu")]]
@@ -544,7 +568,9 @@ func _refresh_tracks() -> void:
 
 
 # ------------------------------------------------------------------ garagem
-const UP_NAMES := {"engine": "MOTOR", "armor": "BLINDAGEM", "ammo": "MUNIÇÃO", "nitro": "NITRO +1", "tires": "PNEUS"}
+const UP_NAMES := {"engine": "MOTOR", "armor": "BLINDAGEM", "ammo": "ARMA DA FRENTE", "rear": "ARMA DE TRÁS", "nitro": "ESPECIAL +1", "tires": "PNEUS"}
+var g_weap: Label
+var boss_bar: Control
 
 
 func _build_garage() -> void:
@@ -560,18 +586,16 @@ func _build_garage() -> void:
 	cols.alignment = BoxContainer.ALIGNMENT_CENTER
 	cols.add_theme_constant_override("separation", 16)
 	v.add_child(cols)
-	var c1 := _panel(cols, "CARRO")
-	for k in ["faisca", "trovao", "vespa"]:
-		_choice(c1, "car", k, 64)
-	var c2 := _panel(cols, "EQUIPAMENTO")
-	for k in ["mg", "rocket"]:
-		_choice(c2, "front", k, 46)
-	for k in ["mine", "oil"]:
-		_choice(c2, "rear", k, 46)
-	for k in ["short", "long"]:
-		_choice(c2, "nitro", k, 46)
-	var c3 := _panel(cols, "UPGRADES")
-	for k in ["engine", "armor", "ammo", "nitro", "tires"]:
+	var c1 := _panel(cols, "CARROS")
+	for k in ["faisca", "vespa", "trovao", "monstro"]:
+		_choice(c1, "car", k, 62)
+	var c2 := _panel(cols, "ARMAS DO CARRO")
+	g_weap = UI.text(c2, "", 15, UI.TEXT)
+	g_weap.add_theme_font_override("font", UI.body_bold)
+	g_weap.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	g_weap.custom_minimum_size = Vector2(300, 0)
+	var c3 := _panel(cols, "UPGRADES DO CARRO")
+	for k in ["engine", "armor", "tires", "ammo", "rear", "nitro"]:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
 		c3.add_child(row)
@@ -660,7 +684,12 @@ func refresh_garage() -> void:
 		match slot:
 			"car":
 				var sp: Dictionary = Car.SPECS[k]
-				txt = "%s\nVEL %s  BLIND %s  CONTROLE %s" % [names[k], _bar((sp.vmax - 34.0) / 10.0), _bar(sp.hp / 150.0), _bar((sp.turn - 2.0) / 1.1)]
+				var shop: Dictionary = Career.SHOP[k]
+				var tag := ""
+				if not game.career.owned(k):
+					tag = "   [$%d]" % int(shop.price) if game.career.available(k) else "   [MUNDO %d]" % (int(shop.world) + 1)
+				txt = "%s%s\nVEL %s  BLIND %s  CONTROLE %s" % [shop.name, tag, _bar((sp.vmax - 34.0) / 10.0), _bar(sp.hp / 175.0), _bar((sp.turn - 2.0) / 1.1)]
+				b.disabled = not game.career.owned(k) and not game.career.available(k)
 			"front":
 				txt = "FRENTE: %s (%d por volta)" % [String(Car.FRONT[k].name).to_upper(), int(Car.FRONT[k].cap)]
 			"rear":
@@ -672,8 +701,16 @@ func refresh_garage() -> void:
 		b.add_theme_stylebox_override("normal", UI.box(col, Color.WHITE if on else UI.LINE, 2 if on else 1, 0.1, 3 if on else 0, UI.HOT_DARK, 6))
 		b.add_theme_color_override("font_color", UI.INK if on else UI.TEXT)
 		b.add_theme_color_override("font_hover_color", UI.TEXT)
+	var lo: Array = Car.LOADOUT[String(s.car)]
+	var sn: String = Car.SPECIAL[lo[2]].name if Car.SPECIAL.has(lo[2]) else "Nitro"
+	g_weap.text = "%s\n%s\n\nFRENTE · %s\n%s\n\nTRÁS · %s\n%s\n\nESPECIAL · %s\n%s" % [Career.SHOP[s.car].name, Career.SHOP[s.car].desc,
+		String(Car.FRONT[lo[0]].name).to_upper(), Career.WEAPON_DESC[lo[0]], String(Car.REAR[lo[1]].name).to_upper(), Career.WEAPON_DESC[lo[1]],
+		sn.to_upper(), Career.WEAPON_DESC[lo[2]]]
+	if game.career.active():
+		var ev: Dictionary = game.career.event
+		g_title.text = ("CHEFE · " if ev.boss else "MUNDO %d · " % (int(ev.world) + 1)) + String(d.name).to_upper()
 	for k in g_up:
-		var lvl: int = s.up[k]
+		var lvl: int = s.up.get(k, 0)
 		var row: Dictionary = g_up[k]
 		(row.label as Label).text = "%s  NV %d/3" % [UP_NAMES[k], lvl]
 		var b: Button = row.btn
