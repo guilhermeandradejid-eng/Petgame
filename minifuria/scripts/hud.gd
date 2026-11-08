@@ -539,17 +539,59 @@ func _build_menu() -> void:
 	menu.add_child(tr)
 	tr.add_child(Icon.make("coin", 30, UI.OK))
 	menu_cash = UI.title(tr, "", 30, UI.OK)
-	menu_car = UI.title(menu, "", 34, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
-	menu_car.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	menu_car.offset_left = -760
-	menu_car.offset_right = -40
-	menu_car.offset_top = -86
-	menu_car.offset_bottom = -40
-	menu_car.label_settings.font_color = Color(1, 1, 1, 0.9)
+	# embaixo do carro: nota, nome, classe e os medidores em miniatura
+	var info := VBoxContainer.new()
+	info.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	info.offset_left = -680
+	info.offset_right = -60
+	info.offset_top = -210
+	info.offset_bottom = -48
+	info.alignment = BoxContainer.ALIGNMENT_END
+	info.add_theme_constant_override("separation", 10)
+	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	menu.add_child(info)
+	var hr := HBoxContainer.new()
+	hr.alignment = BoxContainer.ALIGNMENT_CENTER
+	hr.add_theme_constant_override("separation", 14)
+	hr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info.add_child(hr)
+	menu_badge = Control.new()
+	menu_badge.custom_minimum_size = Vector2(62, 62)
+	menu_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	menu_badge.draw.connect(func(): Garage.draw_badge(menu_badge, float(menu_badge.get_meta("v", 0.0)), 0.0))
+	hr.add_child(menu_badge)
+	var nv := VBoxContainer.new()
+	nv.add_theme_constant_override("separation", -4)
+	nv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hr.add_child(nv)
+	menu_car = UI.title(nv, "", 34, UI.TEXT)
+	menu_class = UI.text(nv, "", 14, UI.INFO, true)
+	menu_class.add_theme_font_override("font", UI.body_bold)
+	var mr := HBoxContainer.new()
+	mr.alignment = BoxContainer.ALIGNMENT_CENTER
+	mr.add_theme_constant_override("separation", 16)
+	mr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info.add_child(mr)
+	for k in Car.STAT_KEYS:
+		var cv := VBoxContainer.new()
+		cv.add_theme_constant_override("separation", 4)
+		cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mr.add_child(cv)
+		var ic := Icon.make(Garage.STAT_ICON[k], 22, UI.TEXT)
+		ic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		cv.add_child(ic)
+		var bar := Garage.StatBar.new()
+		bar.custom_minimum_size = Vector2(84, 10)
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cv.add_child(bar)
+		menu_bars[k] = bar
 
 
 var menu_cash: Label
 var menu_car: Label
+var menu_class: Label
+var menu_badge: Control
+var menu_bars := {}
 
 
 # ------------------------------------------------------------------ seleção de pista
@@ -672,18 +714,31 @@ func _sync_showroom() -> void:
 	if not on:
 		return
 	if cur_screen == "garage":
-		show3d.frame_off = Vector2(0.0, -0.035)
+		show3d.frame_off = Vector2(0.0, -0.07)
+		show3d.size_k = 1.45
 		show3d.auto_spin = true
 		garage_ui.open()
 	else:
 		# menu: o seu carro girando à direita, sem painéis
-		show3d.frame_off = Vector2(0.17, -0.02)
+		show3d.frame_off = Vector2(0.19, -0.05)
+		show3d.size_k = 1.6
 		show3d.auto_spin = true
 		show3d.set_focus("")
 		var k := String(game.save.car)
 		menu_cash.text = garage_ui._money(int(game.save.cash))
 		menu_car.text = String(Career.SHOP[k].name)
+		menu_class.text = String(Career.SHOP[k].get("class", ""))
 		var kit: Array = game.career.loadout(k)
+		var base := Car.ratings(k, {}, String(Car.LOADOUT[k][0]))
+		var cur := Car.ratings(k, game.save.up, String(kit[0]))
+		for st in menu_bars:
+			var sb: Garage.StatBar = menu_bars[st]
+			sb.base = minf(float(base[st]), float(cur[st])) if String(kit[0]) != "none" or st != "atk" else 0.0
+			sb.cur = float(cur[st])
+			sb.prev = sb.cur
+			sb.queue_redraw()
+		menu_badge.set_meta("v", Car.overall(cur))
+		menu_badge.queue_redraw()
 		show3d.show_car(k, Color(String(game.save.get("color", game.PAINT_COLORS[0]))), kit[0], kit[1], kit[2], game.save.up, kit[3])
 
 

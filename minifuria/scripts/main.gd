@@ -442,7 +442,7 @@ func _ui_shots() -> void:
 		elif scr == "garage4":
 			hud.garage_ui._set_tab("arsenal")
 		elif scr == "garage5":
-			hud.garage_ui._set_tab("paint")
+			hud.garage_ui._set_tab("parts")
 			hud.garage_ui._car_view("nemesis")
 		elif scr == "results":
 			career_lines = ["+10 PONTOS", "MUNDO 1 · 24 / 24", "CHEFE LIBERADO!"]

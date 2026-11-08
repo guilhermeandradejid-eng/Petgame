@@ -1529,7 +1529,7 @@ func _kit_part(nm: String, pos: Vector3, scl := Vector3.ONE, rot := Vector3.ZERO
 
 ## kit visual: aerodinâmica pelo nível (soma dos upgrades) e uma peça por upgrade, que muda a cada nível:
 ## motor (tomada de ar -> compressor -> compressor grande), blindagem (quebra-mato -> chapas -> quebra-mato atrás),
-## mobilidade (1 a 3 garrafas de nitro), item de chão (lançador), munição (tambor), dano (colar) e cadência (respiros)
+## item de chão (lançador), munição (tambor), dano (colar) e cadência (respiros). A mobilidade não aparece no carro.
 func _build_kit(up: Dictionary) -> void:
 	for n in _kit:
 		if is_instance_valid(n):
@@ -1648,29 +1648,6 @@ func _build_kit(up: Dictionary) -> void:
 					_kit_part("kit_armor", Vector3(sx * (px + 0.005), py, 0.0), Vector3(1, hb * 0.44 / 0.255, Lm * 0.32 / 1.36), Vector3(0, 0.0 if sx > 0 else PI, 0), "armor")
 			"rear":
 				_kit_part("kit_bullbar", Vector3(0, clr - 0.04, rz - 0.03), Vector3(ks, 1, 1), Vector3(0, PI, 0), "armor")
-	var nit := int(up.get("nitro", 0))
-	if nit >= 1:
-		var xs: Array = [[0.0], [-0.2, 0.2], [-0.27, 0.0, 0.27]][mini(nit, 3) - 1]
-		var cz := -Lm * 0.5 + 0.66
-		# carro de traseira curta (hatch/SUV): garrafas deitadas de lado no teto, atrás da torre
-		var cab_rear := -INF
-		if parts.has("cabin"):
-			cab_rear = (parts.cabin.mesh as MeshInstance3D).get_aabb().position.z + (parts.cabin.base as Vector3).z
-		var deck_ok: bool = not parts.has("cabin") or cab_rear > cz + 0.3
-		for i in xs.size():
-			var x: float = xs[i]
-			if deck_ok:
-				var y := -INF
-				for dz: float in [-0.2, 0.0, 0.2]:
-					for dx: float in [-0.08, 0.08]:
-						var yy := _top_y(x + dx, cz + dz)
-						if not is_nan(yy):
-							y = maxf(y, yy)
-				_kit_part("kit_nos", Vector3(x, (y if y > -INF else clr + hb) - 0.01, cz), Vector3.ONE, Vector3.ZERO, "nitro")
-			else:
-				var rzz := maxf(mount_local.z / vscale - 0.48 - i * 0.24, cab_rear + 0.14)
-				var ry := _top_y(0.0, rzz)
-				_kit_part("kit_nos", Vector3(0, (ry if not is_nan(ry) else clr + hb + 0.5) - 0.01, rzz), Vector3(0.9, 0.9, 0.9), Vector3(0, PI / 2, 0), "nitro")
 	if int(up.get("rear", 0)) >= 1 and rear_type != "none":
 		var rl := int(up.get("rear", 0))
 		_kit_part("kit_dispenser", Vector3(0, clr + 0.1, rz - 0.04), Vector3(0.8 + 0.12 * rl, 1, 1), Vector3.ZERO, "rear")

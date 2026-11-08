@@ -10,8 +10,9 @@ uniform float glow = 0.35;
 void sky() {
 	vec3 d = EYEDIR;
 	float h = d.y;
-	vec3 c = mix(hor_col, top_col, smoothstep(0.0, 0.55, h));
-	c = mix(c, floor_col, smoothstep(0.0, -0.08, h));
+	// degradê simétrico em volta do horizonte: sem "linha" entre o chão (que some ao longe) e o fundo
+	vec3 c = mix(hor_col, top_col, smoothstep(0.0, 0.55, abs(h)));
+	c = mix(c, floor_col, step(h, 0.0) * 0.0);
 	// brilho quente atrás do carro (a câmera olha para -Z)
 	float back = max(dot(d, normalize(vec3(0.0, 0.12, -1.0))), 0.0);
 	c += accent * pow(back, 10.0) * glow * 0.35 + hor_col * pow(back, 3.0) * 0.6;

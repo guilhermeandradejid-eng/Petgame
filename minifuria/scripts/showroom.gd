@@ -11,13 +11,12 @@ const TABLE_R := 3.3
 ## câmera por peça em foco: giro da plataforma (yaw), inclinação, distância relativa e alvo (fração do carro)
 const FOCUS := {
 	"": {"yaw": -0.65, "pitch": 0.3, "dist": 1.0, "tgt": Vector3(0.0, 0.55, 0.0)},
-	"engine": {"yaw": -0.55, "pitch": 0.48, "dist": 0.8, "tgt": Vector3(0.0, 0.9, 0.4)},
-	"armor": {"yaw": -1.2, "pitch": 0.22, "dist": 0.82, "tgt": Vector3(0.5, 0.6, 0.15)},
-	"tires": {"yaw": -1.1, "pitch": 0.14, "dist": 0.66, "tgt": Vector3(0.7, 0.4, 0.5)},
-	"nitro": {"yaw": -2.55, "pitch": 0.55, "dist": 0.78, "tgt": Vector3(0.0, 0.95, -0.5)},
-	"rear": {"yaw": -2.9, "pitch": 0.2, "dist": 0.74, "tgt": Vector3(0.0, 0.55, -0.8)},
-	"wpn": {"yaw": -0.5, "pitch": 0.3, "dist": 0.72, "tgt": Vector3(0.0, 1.35, 0.0)},
-	"tier": {"yaw": -2.35, "pitch": 0.32, "dist": 0.85, "tgt": Vector3(0.0, 0.8, -0.3)},
+	"engine": {"yaw": -0.55, "pitch": 0.45, "dist": 0.9, "tgt": Vector3(0.0, 0.75, 0.25)},
+	"armor": {"yaw": -1.2, "pitch": 0.24, "dist": 0.92, "tgt": Vector3(0.3, 0.55, 0.1)},
+	"tires": {"yaw": -1.1, "pitch": 0.18, "dist": 0.86, "tgt": Vector3(0.45, 0.45, 0.35)},
+	"rear": {"yaw": -2.9, "pitch": 0.24, "dist": 0.9, "tgt": Vector3(0.0, 0.55, -0.45)},
+	"wpn": {"yaw": -0.5, "pitch": 0.32, "dist": 0.9, "tgt": Vector3(0.0, 0.95, 0.0)},
+	"tier": {"yaw": -2.35, "pitch": 0.32, "dist": 0.95, "tgt": Vector3(0.0, 0.7, -0.2)},
 }
 const THUMB_COLORS := {"faisca": "#e8352b", "vespa": "#2f6fd6", "zefiro": "#e8f0ff", "trovao": "#ffd23a", "jacare": "#5a7a32",
 	"escorpiao": "#d9822b", "monstro": "#33c46b", "nevasca": "#f2f5fa", "nemesis": "#7b2cff", "falcao": "#2ec4ff"}
@@ -40,6 +39,7 @@ var sub3d: Label3D
 var env: Environment
 var accent := Color("#ffb21a")
 var frame_off := Vector2.ZERO   # centro do carro na tela (fração da tela, + = direita/baixo)
+var size_k := 1.0               # > 1 = carro menor na tela (mais longe)
 var focus_key := ""
 var auto_spin := true
 var yaw := -0.65
@@ -355,7 +355,7 @@ func _process(dt: float) -> void:
 	if car:
 		L = float(car.sp.len) / car.vscale
 		W = float(car.sp.wid) / car.vscale
-	var base_d := L * 2.55 + 2.0
+	var base_d := (L * 2.55 + 2.0) * size_k
 	var k := minf(1.0, dt * 4.0)
 	_pitch = lerpf(_pitch, float(f.pitch), k)
 	_dist = lerpf(_dist, float(f.dist), k)
@@ -577,7 +577,7 @@ func prewarm() -> void:
 	var keys: Array = []
 	for k in Career.CAR_ORDER:
 		keys.append("car:" + k)
-	for p in ["kit_scoop", "kit_blower", "kit_blower3", "kit_bullbar", "kit_armor", "kit_nos", "kit_dispenser", "kit_drum"]:
+	for p in ["kit_scoop", "kit_blower", "kit_blower3", "kit_bullbar", "kit_armor", "kit_dispenser", "kit_drum"]:
 		keys.append("part:" + p)
 	for t in ["sport", "slick", "knobby"]:
 		keys.append("tire:" + t)

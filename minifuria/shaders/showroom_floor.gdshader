@@ -8,7 +8,7 @@ uniform vec3 far_col : source_color = vec3(0.055, 0.05, 0.1);
 uniform vec3 accent : source_color = vec3(1.0, 0.7, 0.1);
 uniform float table_r = 3.3;      // raio da plataforma
 uniform float table_ang = 0.0;    // rotação da plataforma (as marcas giram junto)
-uniform float refl = 0.24;        // quanto do carro espelhado aparece
+uniform float refl = 0.2;        // quanto do carro espelhado aparece
 uniform float pulse = 0.0;        // brilho extra (compra / troca de carro)
 
 void fragment() {
@@ -28,13 +28,13 @@ void fragment() {
 	vec3 emit = accent * ring * (0.9 * chase + 0.35 + pulse * 3.0);
 	// halo suave em volta do anel
 	emit += accent * smoothstep(0.9, 0.0, abs(r - table_r)) * 0.025 * (1.0 + pulse * 4.0);
-	// longe: some na cor do fundo
-	float fade = smoothstep(table_r + 1.0, 18.0, r);
-	ALBEDO = mix(col, vec3(0.0), fade);
-	EMISSION = emit * (1.0 - fade) + far_col * fade;
-	ROUGHNESS = mix(0.18, 0.6, fade);
+	// longe: o piso some (fica transparente) e o fundo do estúdio aparece sem emenda
+	float fade = smoothstep(table_r + 0.8, 13.0, r);
+	ALBEDO = col;
+	EMISSION = emit * (1.0 - fade);
+	ROUGHNESS = 0.18;
 	METALLIC = 0.2;
 	SPECULAR = 0.6;
 	// semitransparente perto do carro: o reflexo (carro espelhado) aparece por baixo
-	ALPHA = mix(1.0 - refl * (1.0 - smoothstep(0.0, table_r + 2.5, r)), 1.0, fade);
+	ALPHA = (1.0 - refl * (1.0 - smoothstep(0.0, table_r + 2.5, r))) * (1.0 - fade);
 }

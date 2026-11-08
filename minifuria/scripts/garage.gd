@@ -8,7 +8,7 @@ extends Control
 const UP_ORDER := ["engine", "armor", "tires", "nitro", "rear", "ammo", "dmg", "rate"]
 const WPN_UPS := ["ammo", "dmg", "rate"]
 const UP_NAME := {"engine": "MOTOR", "armor": "BLINDAGEM", "tires": "PNEUS", "ammo": "MUNIÇÃO", "dmg": "DANO", "rate": "CADÊNCIA"}
-const UP_FOCUS := {"engine": "engine", "armor": "armor", "tires": "tires", "nitro": "nitro", "rear": "rear", "ammo": "wpn", "dmg": "wpn", "rate": "wpn"}
+const UP_FOCUS := {"engine": "engine", "armor": "armor", "tires": "tires", "nitro": "", "rear": "rear", "ammo": "wpn", "dmg": "wpn", "rate": "wpn"}
 const STAT_ICON := {"spd": "spd", "acc": "acc", "han": "han", "arm": "arm", "atk": "atk"}
 const STAT_NAME := {"spd": "VELOCIDADE", "acc": "ACELERAÇÃO", "han": "CONTROLE", "arm": "BLINDAGEM", "atk": "ATAQUE"}
 const UP_STATS := {"engine": ["spd", "acc"], "armor": ["arm"], "tires": ["han"], "ammo": ["atk"], "dmg": ["atk"], "rate": ["atk"]}
@@ -35,6 +35,7 @@ var part_cards := {}
 var car_cards := {}
 var swatches: Array = []
 var action_b: Button
+var detail: PanelContainer
 var detail_name: Label
 var detail_fx: Label
 var detail_icon: Icon
@@ -141,12 +142,12 @@ func _build_top() -> void:
 func _build_left() -> void:
 	var pc := PanelContainer.new()
 	pc.add_theme_stylebox_override("panel", _panel_style(0.0))
-	pc.position = Vector2(14, 78)
-	pc.custom_minimum_size = Vector2(360, 0)
+	pc.position = Vector2(14, 74)
+	pc.custom_minimum_size = Vector2(384, 0)
 	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(pc)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 6)
+	v.add_theme_constant_override("separation", 7)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pc.add_child(v)
 	var row := HBoxContainer.new()
@@ -166,30 +167,30 @@ func _build_left() -> void:
 	class_l = UI.text(nv, "", 15, UI.INFO, true)
 	class_l.add_theme_font_override("font", UI.body_bold)
 	var sp := Control.new()
-	sp.custom_minimum_size = Vector2(0, 8)
+	sp.custom_minimum_size = Vector2(0, 6)
 	v.add_child(sp)
 	for k in Car.STAT_KEYS:
 		var r := HBoxContainer.new()
 		r.add_theme_constant_override("separation", 10)
 		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		v.add_child(r)
-		r.add_child(Icon.make(STAT_ICON[k], 26, UI.TEXT))
+		r.add_child(Icon.make(STAT_ICON[k], 28, UI.TEXT))
 		var col := VBoxContainer.new()
-		col.add_theme_constant_override("separation", 1)
+		col.add_theme_constant_override("separation", 2)
 		col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		r.add_child(col)
 		var nm := UI.text(col, STAT_NAME[k], 11, UI.MUTED)
 		nm.add_theme_font_override("font", UI.body_bold)
 		var bar := StatBar.new()
-		bar.custom_minimum_size = Vector2(250, 14)
+		bar.custom_minimum_size = Vector2(276, 16)
 		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		col.add_child(bar)
 		var dl := UI.text(r, "", 15, UI.OK)
 		dl.add_theme_font_override("font", UI.body_bold)
-		dl.custom_minimum_size = Vector2(40, 0)
+		dl.custom_minimum_size = Vector2(36, 0)
 		meters[k] = {"bar": bar, "delta": dl}
 	var sp2 := Control.new()
-	sp2.custom_minimum_size = Vector2(0, 10)
+	sp2.custom_minimum_size = Vector2(0, 6)
 	v.add_child(sp2)
 	# equipamento do carro em ícones: ataque, item de chão, mobilidade, especial
 	var lr := HBoxContainer.new()
@@ -217,8 +218,36 @@ func _build_left() -> void:
 		var l := UI.text(cv, "", 11, UI.TEXT)
 		l.add_theme_font_override("font", UI.display_it)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		l.custom_minimum_size = Vector2(66, 0)
+		l.custom_minimum_size = Vector2(72, 0)
 		load_icons.append({"icon": ic, "label": l, "panel": chip})
+	# pintura sempre à mão: 12 cores em duas fileiras
+	var pr := HBoxContainer.new()
+	pr.add_theme_constant_override("separation", 10)
+	pr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(pr)
+	var pic := Icon.make("paint", 26, UI.MUTED)
+	pic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pr.add_child(pic)
+	var g := GridContainer.new()
+	g.columns = 6
+	g.add_theme_constant_override("h_separation", 6)
+	g.add_theme_constant_override("v_separation", 6)
+	pr.add_child(g)
+	for hexc in game.PAINT_COLORS:
+		var sw := Button.new()
+		sw.custom_minimum_size = Vector2(46, 30)
+		sw.set_meta("col", hexc)
+		sw.pressed.connect(func():
+			game.save.color = hexc
+			game._write_save()
+			game.sfx.play("coin", -10.0, 1.4)
+			room.flash()
+			refresh())
+		g.add_child(sw)
+		var ck := Icon.make("check", 18, Color.WHITE)
+		ck.position = Vector2(14, 6)
+		sw.add_child(ck)
+		swatches.append({"btn": sw, "check": ck})
 
 
 func _build_right() -> void:
@@ -227,37 +256,34 @@ func _build_right() -> void:
 	pc.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	pc.offset_left = -414
 	pc.offset_right = -18
-	pc.offset_top = 78
+	pc.offset_top = 74
 	pc.offset_bottom = 578
 	add_child(pc)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
 	pc.add_child(v)
 	var tabs := HBoxContainer.new()
-	tabs.add_theme_constant_override("separation", 6)
+	tabs.add_theme_constant_override("separation", 8)
 	v.add_child(tabs)
-	for it in [["parts", "wrench", "PEÇAS"], ["arsenal", "atk", "ARSENAL"], ["paint", "paint", "PINTURA"]]:
+	for it in [["parts", "wrench", "PEÇAS"], ["arsenal", "atk", "ARSENAL"]]:
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(118, 40)
+		b.custom_minimum_size = Vector2(180, 42)
 		b.text = it[2]
 		b.add_theme_font_override("font", UI.display_it)
-		b.add_theme_font_size_override("font_size", 14)
-		b.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		var ic := Icon.make(it[1], 20, UI.TEXT)
-		ic.position = Vector2(8, 10)
+		b.add_theme_font_size_override("font_size", 16)
+		var ic := Icon.make(it[1], 22, UI.TEXT)
+		ic.position = Vector2(14, 10)
 		b.add_child(ic)
-		b.alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		b.pressed.connect(func(): _set_tab(it[0]))
 		b.focus_entered.connect(func(): _set_tab(it[0]))
 		tabs.add_child(b)
 		tab_btns[it[0]] = {"btn": b, "icon": ic}
 	var stack := Control.new()
-	stack.custom_minimum_size = Vector2(368, 420)
+	stack.custom_minimum_size = Vector2(368, 430)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(stack)
 	pages.parts = _build_parts(stack)
 	pages.arsenal = _build_arsenal(stack)
-	pages.paint = _build_paint(stack)
 
 
 func _card_style(on: bool, hot := false) -> StyleBoxFlat:
@@ -271,18 +297,15 @@ func _card_style(on: bool, hot := false) -> StyleBoxFlat:
 
 
 func _build_parts(stack: Control) -> Control:
-	var v := VBoxContainer.new()
-	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	v.add_theme_constant_override("separation", 8)
-	stack.add_child(v)
 	var grid := GridContainer.new()
+	grid.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 8)
 	grid.add_theme_constant_override("v_separation", 8)
-	v.add_child(grid)
+	stack.add_child(grid)
 	for k in UP_ORDER:
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(180, 78)
+		b.custom_minimum_size = Vector2(180, 100)
 		b.focus_mode = Control.FOCUS_ALL
 		for st in ["normal", "hover", "focus", "pressed", "disabled"]:
 			b.add_theme_stylebox_override(st, _card_style(st != "normal" and st != "disabled"))
@@ -292,58 +315,71 @@ func _build_parts(stack: Control) -> Control:
 		var th := TextureRect.new()
 		th.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		th.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		th.position = Vector2(2, 4)
-		th.size = Vector2(84, 54)
+		th.position = Vector2(2, 8)
+		th.size = Vector2(86, 62)
 		th.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		b.add_child(th)
-		var ic := Icon.make(k, 16, UI.HOT)
-		ic.position = Vector2(6, 58)
+		# sem peça no carro (mobilidade): ícone grande no lugar da miniatura
+		var big := Icon.make(k, 46, UI.INFO)
+		big.position = Vector2(22, 16)
+		big.visible = false
+		b.add_child(big)
+		var ic := Icon.make(k, 18, UI.HOT)
+		ic.position = Vector2(8, 74)
 		b.add_child(ic)
 		var nm := UI.text(b, "", 12, UI.TEXT)
 		nm.add_theme_font_override("font", UI.display_it)
-		nm.position = Vector2(88, 6)
-		nm.size = Vector2(90, 16)
+		nm.position = Vector2(88, 10)
+		nm.size = Vector2(90, 18)
 		nm.clip_text = true
 		var pips := Control.new()
-		pips.position = Vector2(90, 28)
-		pips.size = Vector2(84, 12)
+		pips.position = Vector2(90, 38)
+		pips.size = Vector2(80, 12)
 		pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		b.add_child(pips)
-		var pr := UI.text(b, "", 15, UI.OK)
+		var pr := UI.text(b, "", 16, UI.OK)
 		pr.add_theme_font_override("font", UI.display_it)
-		pr.position = Vector2(88, 48)
-		pr.size = Vector2(90, 22)
-		var card := {"btn": b, "thumb": th, "name": nm, "pips": pips, "price": pr, "icon": ic, "lvl": 0, "next": false}
+		pr.position = Vector2(88, 64)
+		pr.size = Vector2(84, 24)
+		var card := {"btn": b, "thumb": th, "big": big, "name": nm, "pips": pips, "price": pr, "icon": ic, "lvl": 0, "next": false}
 		pips.draw.connect(_draw_pips.bind(card))
 		part_cards[k] = card
-	# detalhe do upgrade selecionado: nome, efeito em uma linha e botão de compra
-	var det := PanelContainer.new()
-	var ds := UI.box(Color(0, 0, 0, 0.35), Color(1, 1, 1, 0.08), 1, 0.0, 0, Color(0, 0, 0, 0), 8)
-	ds.content_margin_left = 10
-	ds.content_margin_right = 8
-	ds.content_margin_top = 6
-	ds.content_margin_bottom = 6
-	det.add_theme_stylebox_override("panel", ds)
-	v.add_child(det)
+	# detalhe do upgrade escolhido: fica no centro, embaixo do carro (nome, efeito e o botão de compra)
+	detail = PanelContainer.new()
+	var ds := UI.box(Color(0.06, 0.055, 0.11, 0.86), Color(1, 1, 1, 0.12), 1, 0.08, 0, Color(0, 0, 0, 0), 10)
+	ds.content_margin_left = 14
+	ds.content_margin_right = 10
+	ds.content_margin_top = 8
+	ds.content_margin_bottom = 8
+	detail.add_theme_stylebox_override("panel", ds)
+	detail.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	detail.offset_left = -232
+	detail.offset_right = 232
+	detail.offset_top = -224
+	detail.offset_bottom = -152
+	detail.visible = false
+	add_child(detail)
 	var dh := HBoxContainer.new()
-	dh.add_theme_constant_override("separation", 8)
-	det.add_child(dh)
-	detail_icon = Icon.make("engine", 30, UI.HOT)
+	dh.add_theme_constant_override("separation", 12)
+	detail.add_child(dh)
+	detail_icon = Icon.make("engine", 36, UI.HOT)
+	detail_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	dh.add_child(detail_icon)
 	var dv := VBoxContainer.new()
 	dv.add_theme_constant_override("separation", -2)
 	dv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dv.alignment = BoxContainer.ALIGNMENT_CENTER
 	dh.add_child(dv)
-	detail_name = UI.text(dv, "", 14, UI.TEXT)
+	detail_name = UI.text(dv, "", 16, UI.TEXT)
 	detail_name.add_theme_font_override("font", UI.display_it)
-	detail_fx = UI.text(dv, "", 13, UI.OK)
+	detail_fx = UI.text(dv, "", 14, UI.OK)
 	detail_fx.add_theme_font_override("font", UI.body_bold)
 	buy_b = Button.new()
-	buy_b.custom_minimum_size = Vector2(120, 44)
+	buy_b.custom_minimum_size = Vector2(138, 50)
 	_style_buy(buy_b)
 	buy_b.pressed.connect(func(): _buy(sel_up))
 	dh.add_child(buy_b)
-	return v
+	return grid
 
 
 func _style_buy(b: Button) -> void:
@@ -454,35 +490,6 @@ func _build_arsenal(stack: Control) -> Control:
 	return v
 
 
-func _build_paint(stack: Control) -> Control:
-	var v := VBoxContainer.new()
-	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	v.add_theme_constant_override("separation", 12)
-	stack.add_child(v)
-	var g := GridContainer.new()
-	g.columns = 4
-	g.add_theme_constant_override("h_separation", 10)
-	g.add_theme_constant_override("v_separation", 10)
-	v.add_child(g)
-	for hexc in game.PAINT_COLORS:
-		var sw := Button.new()
-		sw.custom_minimum_size = Vector2(84, 64)
-		sw.set_meta("col", hexc)
-		sw.pressed.connect(func():
-			game.save.color = hexc
-			game._write_save()
-			game.sfx.play("coin", -10.0, 1.4)
-			room.flash()
-			refresh())
-		g.add_child(sw)
-		var ck := Icon.make("check", 26, Color.WHITE)
-		ck.position = Vector2(29, 19)
-		sw.add_child(ck)
-		swatches.append({"btn": sw, "check": ck})
-	v.visible = false
-	return v
-
-
 func _build_carousel() -> void:
 	var sc := ScrollContainer.new()
 	sc.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
@@ -494,11 +501,11 @@ func _build_carousel() -> void:
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	add_child(sc)
 	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 8)
+	h.add_theme_constant_override("separation", 5)
 	sc.add_child(h)
 	for k in Career.CAR_ORDER:
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(92, 112)
+		b.custom_minimum_size = Vector2(87, 112)
 		b.focus_mode = Control.FOCUS_ALL
 		b.pressed.connect(_car_pressed.bind(k))
 		b.focus_entered.connect(_car_view.bind(k))
@@ -507,19 +514,19 @@ func _build_carousel() -> void:
 		th.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		th.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		th.position = Vector2(0, 6)
-		th.size = Vector2(92, 58)
+		th.size = Vector2(87, 58)
 		th.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		b.add_child(th)
 		var nm := UI.text(b, String(Career.SHOP[k].name), 11, UI.TEXT)
 		nm.add_theme_font_override("font", UI.display_it)
 		nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		nm.position = Vector2(0, 66)
-		nm.size = Vector2(92, 16)
+		nm.size = Vector2(87, 16)
 		var tg := HBoxContainer.new()
 		tg.alignment = BoxContainer.ALIGNMENT_CENTER
 		tg.add_theme_constant_override("separation", 3)
 		tg.position = Vector2(0, 86)
-		tg.size = Vector2(92, 20)
+		tg.size = Vector2(87, 20)
 		tg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		b.add_child(tg)
 		var ti := Icon.make("coin", 15, UI.OK)
@@ -741,7 +748,7 @@ func _part_thumb(k: String, lvl: int, ck: String) -> String:
 		"tires":
 			return "tire:knobby" if mk in Car.OFFROAD else ["tire:sport", "tire:slick", "tire:slick", "tire:slick"][lvl]
 		"nitro":
-			return "part:kit_nos"
+			return ""   # mobilidade não aparece no carro: o cartão mostra o ícone
 		"rear":
 			return "part:kit_dispenser"
 		"ammo":
@@ -808,15 +815,18 @@ func _refresh_parts(k: String, mine: bool, up: Dictionary, lo: Array) -> void:
 			pr.add_theme_color_override("font_color", UI.OK if cash >= price else UI.BAD)
 		b.modulate = Color(1, 1, 1, 1.0 if ok else 0.5)
 		b.add_theme_stylebox_override("normal", _card_style(sel_up == uk, true))
-		room.thumb(_part_thumb(uk, mini(lvl, 3), k), card.thumb)
+		var tk := _part_thumb(uk, mini(lvl, 3), k)
+		(card.big as Icon).visible = tk == ""
+		(card.thumb as TextureRect).visible = tk != ""
+		(card.icon as Icon).visible = tk != ""
+		if tk == "":
+			(card.big as Icon).set_icon(String(lo[2]), UI.INFO)
+		else:
+			room.thumb(tk, card.thumb)
 		(card.pips as Control).queue_redraw()
-	# detalhe
-	if sel_up == "":
-		detail_icon.set_icon("wrench", UI.MUTED)
-		detail_name.text = "ESCOLHA UMA PEÇA" if mine else "CARRO DA LOJA"
-		detail_fx.text = "" if mine else "COMPRE PARA MELHORAR"
-		buy_b.text = "—"
-		buy_b.disabled = true
+	# detalhe (só com uma peça escolhida, na aba de peças)
+	detail.visible = sel_up != "" and tab == "parts" and mine
+	if not detail.visible:
 		return
 	var lvl2 := int(up.get(sel_up, 0))
 	detail_icon.set_icon(sel_up, UI.HOT)
@@ -952,25 +962,31 @@ func _refresh_action(k: String) -> void:
 
 
 func _draw_ovr() -> void:
-	var c := ovr.size * 0.5
-	var r := ovr.size.x * 0.47
+	draw_badge(ovr, ovr_v, float(ovr.get_meta("prev", ovr_v)))
+
+
+## selo hexagonal da NOTA geral (0-100), com o ganho da prévia em verde
+static func draw_badge(ci: Control, v: float, pv: float) -> void:
+	var c := ci.size * 0.5
+	var r := ci.size.x * 0.47
+	var k := ci.size.x / 70.0
 	var pts := PackedVector2Array()
 	for i in 6:
 		var a := PI / 6.0 + TAU * i / 6.0
 		pts.append(c + Vector2(cos(a), sin(a)) * r)
-	ovr.draw_colored_polygon(pts, UI.HOT)
+	ci.draw_colored_polygon(pts, UI.HOT)
 	var inner := PackedVector2Array()
 	for p in pts:
 		inner.append(c + (p - c) * 0.84)
-	ovr.draw_colored_polygon(inner, UI.INK)
-	var txt := "%d" % int(round(ovr_v * 10.0))
-	var fs := 28
+	ci.draw_colored_polygon(inner, UI.INK)
+	var txt := "%d" % int(round(v * 10.0))
+	var fs := int(28 * k)
 	var w := UI.display.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-	ovr.draw_string(UI.display, c + Vector2(-w * 0.5, 8), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, UI.TEXT)
-	var pv: float = ovr.get_meta("prev", ovr_v)
-	if pv > ovr_v + 0.01:
-		var t2 := "+%d" % int(round((pv - ovr_v) * 10.0))
-		ovr.draw_string(UI.display, c + Vector2(-12, 30), t2, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, UI.OK)
+	ci.draw_string(UI.display, c + Vector2(-w * 0.5, 8 * k), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, UI.TEXT)
+	if pv > v + 0.01:
+		var t2 := "+%d" % int(round((pv - v) * 10.0))
+		ci.draw_string(UI.display, c + Vector2(-12 * k, 30 * k), t2, HORIZONTAL_ALIGNMENT_LEFT, -1, int(12 * k), UI.OK)
 	var l := "NOTA"
-	var w2 := UI.body_bold.get_string_size(l, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
-	ovr.draw_string(UI.body_bold, c + Vector2(-w2 * 0.5, -14), l, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UI.MUTED)
+	var fs2 := int(10 * k)
+	var w2 := UI.body_bold.get_string_size(l, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2).x
+	ci.draw_string(UI.body_bold, c + Vector2(-w2 * 0.5, -14 * k), l, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, UI.MUTED)

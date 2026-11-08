@@ -1807,20 +1807,6 @@ def blower(name, big):
 blower("kit_blower", False)
 blower("kit_blower3", True)
 
-# MOBILIDADE: garrafa de nitro (deitada ao longo do carro) com válvula, rótulo e cintas
-nos = [cyl("kn_b", 0.1, 0.42, (0, 0, 0.1), M["nos"], verts=20, axis="Y"),
-       ico("kn_f", 0.1, (0, -0.21, 0.1), M["nos"], sub=2, scale=(1, 0.55, 1)),
-       ico("kn_r", 0.1, (0, 0.21, 0.1), M["nos"], sub=2, scale=(1, 0.55, 1)),
-       cyl("kn_l", 0.102, 0.14, (0, 0.02, 0.1), M["white"], verts=20, axis="Y"),
-       cyl("kn_n", 0.03, 0.06, (0, -0.27, 0.1), M["chrome"], verts=10, axis="Y"),
-       cyl("kn_v", 0.045, 0.03, (0, -0.31, 0.1), M["red"], verts=12, axis="Y"),
-       cyl("kn_g", 0.028, 0.02, (0, -0.12, 0.2), M["white"], verts=12, axis="Z"),
-       cyl("kn_gr", 0.032, 0.02, (0, -0.12, 0.195), M["chrome"], verts=12, axis="Z")]
-for i, y in enumerate((-0.11, 0.15)):
-    nos.append(cyl(f"kn_s{i}", 0.108, 0.03, (0, y, 0.1), M["trim"], verts=20, axis="Y"))
-    nos.append(box(f"kn_ft{i}", (0.24, 0.05, 0.02), (0, y, 0.01), M["trim"]))
-kprop("kit_nos", nos)
-
 # BLINDAGEM: chapa xadrez chanfrada com rebites (nv2+, nas portas)
 arm = [prism("ka_b", [(-0.64, -0.12), (0.64, -0.12), (0.68, -0.06), (0.68, 0.1), (0.62, 0.135), (-0.62, 0.135), (-0.68, 0.1), (-0.68, -0.06)],
              0.025, 0.025, 0, 0, M["deck"], bevel=0.008)]
