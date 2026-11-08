@@ -40,17 +40,24 @@ const SPECS := {
 const MODEL := {"monstro": "picape", "boss_brutus": "hyper", "boss_xerife": "policia", "boss_imperador": "trovao",
 	"boss_croc": "picape", "boss_avalanche": "vespa", "boss_blackout": "sedan"}
 const VSCALE := {"boss_brutus": 1.6, "boss_xerife": 1.6, "boss_imperador": 1.6, "boss_croc": 1.6, "boss_avalanche": 1.7, "boss_blackout": 1.6}
-## cada carro tem armas próprias (estilo Rock n' Roll Racing): [frente, trás, especial]
+## cada carro tem armas próprias (estilo Rock n' Roll Racing): [arma de ataque, item de chão, mobilidade]
+## a mobilidade fica no botão do NITRO; o ESPECIAL (escudo, choque, reparo) tem botão próprio e é comprado à parte
 const LOADOUT := {"faisca": ["mg", "oil", "short"], "vespa": ["zap", "spikes", "jump"],
-	"trovao": ["rocket", "mine", "shield"], "monstro": ["flame", "barrel", "shock"]}
-const SPECIAL := {"jump": {"name": "Salto", "cap": 3}, "shield": {"name": "Escudo", "cap": 2}, "shock": {"name": "Onda de choque", "cap": 2}}
+	"trovao": ["rocket", "mine", "long"], "monstro": ["flame", "barrel", "ram"]}
+const SPECIAL := {"shield": {"name": "Escudo", "cap": 2, "label": "ESCUDO"}, "shock": {"name": "Onda de choque", "cap": 2, "label": "CHOQUE"},
+	"repair": {"name": "Reparo", "cap": 1, "label": "REPARO"}}
+const SPECIAL_ORDER := ["shield", "shock", "repair"]
 
 ## equipamentos: valores base por volta (Rock n' Roll Racing: recarregam a cada volta)
 const FRONT := {"mg": {"name": "Metralhadora", "cap": 60, "up": 15}, "rocket": {"name": "Lança-foguetes", "cap": 4, "up": 1},
 	"zap": {"name": "Raio elétrico", "cap": 10, "up": 3}, "flame": {"name": "Lança-chamas", "cap": 60, "up": 15}, "none": {"name": "—", "cap": 0, "up": 0}}
 const REAR := {"mine": {"name": "Minas", "cap": 3, "up": 1}, "oil": {"name": "Óleo", "cap": 3, "up": 1},
 	"spikes": {"name": "Pregos", "cap": 3, "up": 1}, "barrel": {"name": "Barril rolante", "cap": 3, "up": 1}, "none": {"name": "—", "cap": 0, "up": 0}}
-const NITRO := {"short": {"name": "Nitro curto", "cap": 4, "dur": 1.0, "acc": 2.3}, "long": {"name": "Nitro longo", "cap": 2, "dur": 2.6, "acc": 1.7}}
+## mobilidade (botão do nitro): nitro curto, nitro longo, salto e investida (arrancada que atropela quem estiver na frente)
+const NITRO := {"short": {"name": "Nitro curto", "cap": 4, "dur": 1.0, "acc": 2.3, "label": "NITRO"},
+	"long": {"name": "Nitro longo", "cap": 3, "dur": 2.2, "acc": 1.8, "label": "NITRO"},
+	"jump": {"name": "Salto", "cap": 3, "dur": 0.0, "acc": 0.0, "label": "SALTO"},
+	"ram": {"name": "Investida", "cap": 3, "dur": 0.75, "acc": 3.4, "label": "INVESTIDA"}}
 
 var kind := ""
 var role := "traffic"       # player | rival | traffic
@@ -63,13 +70,17 @@ var net_buf: Array = []     # estados recebidos [t, xform, vel, ...] para interp
 var display_name := ""
 var sp: Dictionary
 var color := Color.RED
-var ctrl := {"steer": 0.0, "throttle": 0.0, "brake": 0.0, "drift": false, "nitro": false, "fire": false, "drop": false, "dir": null, "dir_mag": 0.0}
+var ctrl := {"steer": 0.0, "throttle": 0.0, "brake": 0.0, "drift": false, "nitro": false, "fire": false, "drop": false, "special": false, "dir": null, "dir_mag": 0.0}
 
 # equipamento e munição
 var front_type := "mg"
 var rear_type := "mine"
 var nitro_type := "short"
-var special_type := ""      # "" = nitro; senão jump | shield | shock
+var special_type := ""      # especial comprado (botão próprio): "" | shield | shock | repair
+var spec_cap := 0
+var spec_ch := 0
+var dmg_mult := 1.0         # upgrade DANO da arma de ataque
+var rate_mult := 1.0        # upgrade CADÊNCIA: atira mais rápido e o projétil voa mais rápido
 var mkind := ""             # modelo 3D usado
 var vscale := 1.0           # escala visual (chefes)
 var is_boss := false
@@ -107,6 +118,7 @@ const WHEEL_W := {"faisca": 0.5, "trovao": 0.52, "vespa": 0.55, "picape": 0.5}
 ## pneu por nível do upgrade: rua -> esportivo (perfil baixo) -> slick de corrida (nível 3: faixa na cor do kit)
 const TIRE_BY_LEVEL := ["street", "sport", "slick", "slick"]
 var _nitro_was := false
+var _spec_was := false
 var _drop_was := false
 
 var nitroing := false
@@ -325,14 +337,18 @@ func setup(lib: Node3D, kind_: String, role_: String, col: Color) -> void:
 
 
 ## arma visível no teto + capacidades por equipamento e upgrades
-func configure(lib: Node3D, front: String, rear: String, nitro: String, up: Dictionary) -> void:
-	front_type = front
-	rear_type = rear
+func configure(lib: Node3D, front: String, rear: String, nitro: String, up: Dictionary, special := "") -> void:
+	front_type = front if FRONT.has(front) else "none"
+	rear_type = rear if REAR.has(rear) else "none"
+	front = front_type
 	nitro_type = nitro if NITRO.has(nitro) else "short"
-	special_type = "" if NITRO.has(nitro) else nitro
+	special_type = special if SPECIAL.has(special) else ""
 	front_cap = int(FRONT[front].cap) + int(FRONT[front].up) * int(up.get("ammo", 0))
-	rear_cap = int(REAR[rear].cap) + int(REAR[rear].up) * int(up.get("rear", up.get("ammo", 0)))
-	nitro_cap = (int(NITRO[nitro].cap) if special_type == "" else int(SPECIAL[special_type].cap)) + int(up.get("nitro", 0))
+	rear_cap = int(REAR[rear_type].cap) + int(REAR[rear_type].up) * int(up.get("rear", up.get("ammo", 0)))
+	nitro_cap = int(NITRO[nitro_type].cap) + int(up.get("nitro", 0))
+	spec_cap = int(SPECIAL[special_type].cap) if special_type != "" else 0
+	dmg_mult = 1.0 + 0.25 * int(up.get("dmg", 0))
+	rate_mult = 1.0 + 0.22 * int(up.get("rate", 0))
 	engine_mult = 1.0 + 0.04 * int(up.get("engine", 0))
 	max_health = sp.hp * (1.0 + 0.2 * int(up.get("armor", 0)))
 	health = max_health
@@ -471,6 +487,7 @@ func refill() -> void:
 	ammo_f = front_cap
 	ammo_r = rear_cap
 	nitro_ch = nitro_cap
+	spec_ch = spec_cap
 
 
 func _car_mat(m: Material, cache: Dictionary) -> Material:
@@ -734,15 +751,24 @@ func _physics_process(dt: float) -> void:
 			apply_damage(2.2, global_position + Vector3.UP, burn_by, false)
 	shield_t = maxf(0.0, shield_t - dt)
 	flat_t = maxf(0.0, flat_t - dt)
-	if special_type != "":
-		# especial do carro (salto, escudo, onda de choque) no botão do nitro
-		if np and not _nitro_was and nitro_ch > 0 and special_cd <= 0.0 and emp_t <= 0.0 and game and game.weapons.can_special(self):
+	# especial comprado (escudo, onda de choque, reparo): botão próprio, cargas por volta
+	var spp: bool = ctrl.special
+	if special_type != "" and spp and not _spec_was and spec_ch > 0 and special_cd <= 0.0 and emp_t <= 0.0 and game and game.weapons.can_special(self, special_type):
+		spec_ch -= 1
+		special_cd = 0.8
+		game.weapons.special(self, special_type)
+	_spec_was = spp
+	# mobilidade no botão do nitro: salto é um impulso; nitro e investida são arrancadas
+	if nitro_type == "jump":
+		if np and not _nitro_was and nitro_ch > 0 and special_cd <= 0.0 and emp_t <= 0.0 and game and game.weapons.can_special(self, "jump"):
 			nitro_ch -= 1
-			special_cd = 0.8
-			game.weapons.special(self)
+			special_cd = 0.6
+			game.weapons.special(self, "jump")
 	elif np and not _nitro_was and nitro_ch > 0 and nitro_t <= 0.0 and emp_t <= 0.0:
 		nitro_ch -= 1
 		nitro_t = float(NITRO[nitro_type].dur)
+		if nitro_type == "ram" and game:
+			game.weapons.ram_start(self)
 	_nitro_was = np
 	nitroing = nitro_t > 0.0
 	var nacc: float = NITRO[nitro_type].acc
@@ -1244,6 +1270,17 @@ func _build_kit(up: Dictionary) -> void:
 		var chrome := _kit_mat(Color(0.85, 0.86, 0.9), 0.15, 1.0)
 		_kit_box(Vector3(0.42, 0.18, 0.4), Vector3(0, top + 0.02, Lc * 0.5 - 0.95), chrome)
 		_kit_box(Vector3(0.34, 0.14, 0.12), Vector3(0, top + 0.16, Lc * 0.5 - 0.82), carbon)
+	# arma de ataque melhorada: cano reforçado (dano) e carregador extra (cadência)
+	if weapon_node and front_type != "none":
+		var dl := int(up.get("dmg", 0))
+		var rl := int(up.get("rate", 0))
+		if dl >= 1:
+			var hot := _kit_mat(Color("#ff5a1f"), 0.3, 0.6, 0.8 * dl)
+			_kit_cyl(0.075 + 0.012 * dl, 0.34, Vector3(0, 0.32, 0.86), hot, Vector3(PI / 2, 0, 0), weapon_node)
+		if rl >= 1:
+			var cool := _kit_mat(Color("#2ee6ff"), 0.3, 0.5, 0.7 * rl)
+			for k in rl:
+				_kit_box(Vector3(0.05, 0.05, 0.5), Vector3(-0.3, 0.2 + k * 0.08, 0.1), cool, Vector3.ZERO, weapon_node)
 	if int(up.get("ammo", 0)) >= 2 and weapon_node:
 		_kit_cyl(0.16, 0.2, Vector3(0.36, 0.28, 0.05), _kit_mat(Color("#c8a43a"), 0.35, 0.8), Vector3(0, 0, PI / 2), weapon_node)
 

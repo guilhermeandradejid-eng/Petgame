@@ -253,14 +253,21 @@ Dentro de cada mundo, as pistas vão da mais simples para a mais difícil (das c
 - **Pontos por corrida**: 1º 10 · 2º 7 · 3º 5 · 4º 3 · 5º 2 · 6º 1. Somando a meta do mundo, o chefe é liberado; vencer o chefe (chegar na frente dele) paga um prêmio grande ($3.000 / $5.500 / $9.000), abre o próximo mundo e põe carros novos na loja. Os rivais ficam mais fortes a cada mundo.
 - **Dinheiro**: prêmio por colocação × multiplicador do mundo + bônus por destruição ($600 × multiplicador por destruir o chefe; ele volta depois de alguns segundos).
 
-**Carros únicos, cada um com armas próprias** (frente · trás · especial no botão do nitro), comprados na garagem, com **upgrades separados por carro**: motor, blindagem, pneus, arma da frente, arma de trás e especial.
+**Carros únicos**, cada um com **arma de ataque**, **item de chão** e **mobilidade** próprios, comprados na garagem, com **upgrades separados por carro**.
 
-| Carro | Preço / onde | Frente | Trás | Especial |
+| Carro | Preço / onde | Ataque (comprado) | Item de chão | Mobilidade (botão do nitro) |
 |---|---|---|---|---|
-| FAÍSCA | inicial | Metralhadora | Óleo (rodopia) | Nitro |
-| VESPA | $3.000 · mundo 1 | **Raio elétrico**: acerta na hora e salta para um 2º carro | **Pregos**: furam os pneus (lento por 2,5 s) | **Salto**: pula minas, óleo e carros |
-| TROVÃO | $6.500 · mundo 2 | Foguetes teleguiados | Minas | **Escudo**: 3 s invulnerável + dano de aríete |
-| MONSTRO (picape) | $11.000 · mundo 3 | **Lança-chamas**: jato curto que incendeia | **Barril rolante**: rola para trás e explode | **Onda de choque**: arremessa quem está perto |
+| FAÍSCA | inicial | Metralhadora · $1.200 | Óleo (rodopia) | **Nitro curto**: 4 arrancadas de 1 s |
+| VESPA | $3.000 · mundo 1 | **Raio elétrico**: acerta na hora e salta para um 2º carro · $1.500 | **Pregos**: furam os pneus (lento por 2,5 s) | **Salto**: pula minas, óleo e carros |
+| TROVÃO | $6.500 · mundo 3 | Foguetes teleguiados · $2.200 | Minas | **Nitro longo**: 3 arrancadas de 2,2 s |
+| MONSTRO (picape) | $11.000 · mundo 4 | **Lança-chamas**: jato curto que incendeia · $2.600 | **Barril rolante**: rola para trás e explode | **Investida**: arrancada que atropela e arremessa quem estiver na frente |
+
+**Equipamento no modo história**: o carro sai da loja **só com o item de chão** (e a mobilidade dele). A **arma de ataque** (uma fixa por carro) e o **ESPECIAL** são comprados na garagem entre as corridas. Na corrida rápida e no multijogador vem tudo liberado (o especial é escolhido na garagem).
+
+- **ESPECIAL** (botão próprio: `E`/`L` no teclado, **LB** no controle, botão verde na tela), comprado por carro, um equipado por vez, recarrega a cada volta: **Escudo** (3 s invulnerável + aríete, 2 por volta, $2.500), **Onda de choque** (arremessa e machuca quem está perto, 2 por volta, $3.000), **Reparo** (devolve 40% da blindagem e apaga fogo/pneu furado, 1 por volta, $1.800). Os preços dos especiais e dos upgrades sobem com o carro (Vespa 1,15x, Trovão 1,35x, Monstro 1,6x).
+- **Upgrades** (NV 0–3): motor, blindagem, pneus, mobilidade +1 carga, item de chão +1, e da arma de ataque: **munição**, **DANO** (+25% por nível) e **CADÊNCIA** (+22% de tiros por segundo; foguetes voam mais rápido e o lança-chamas alcança mais longe). Dano e cadência são caros ($1.500 / $3.000 / $5.000 × carro). Cano laranja (dano) e carregadores azuis (cadência) aparecem na arma.
+- Saves antigos com progresso na carreira mantêm a arma de ataque dos carros que já tinham (e o Trovão e a Monstro mantêm o escudo e a onda de choque como especial).
+- Rivais: no mundo 1 quase nenhum tem especial; a partir do mundo 2 todos têm, e nos mundos finais também têm dano e cadência melhorados.
 
 **Chefes**: carros gigantes (modelo 1,6–1,7x, vida 1.100–1.500, barra de vida na tela). Os ataques são diferentes das armas equipáveis e **sempre avisados no chão** antes de acertar:
 - **CROCODILO DO BREJO** (picape verde): **LAMA**, 3 poças que atolam (o carro perde embalo e a tela suja); **BOTE**, marca a sua faixa e dá um bote lateral nela.
@@ -309,7 +316,7 @@ Elementos:
 ### Local (até 4 na mesma tela)
 Menu → **LOCAL (ATÉ 4)**. Cada pessoa entra apertando **A ou START** no controle, **ESPAÇO** (teclado WASD) ou **ENTER** (teclado setas). No quadro de cada um, esquerda/direita troca o carro e B / Q / vírgula sai. START (ou o botão) escolhe a pista e a corrida começa direto.
 - **Tela dividida**: 2 jogadores lado a lado; 3–4 em 2×2 (com 3, o 4º quadro segue o líder). Cada quadro é um `SubViewport` que desenha o mesmo mundo com a câmera daquele jogador, com a mesma lógica da câmera do solo (loops, saca-rolhas, nitro). Cada quadro tem posição, volta, velocidade, vida, munição e os avisos daquele jogador.
-- **Teclados**: WASD + E tiro, Q mina, Shift nitro, Espaço freio · Setas + . tiro, , mina, / nitro, Enter freio. **Controles**: veja abaixo.
+- **Teclados**: WASD + E tiro, Q mina, Shift nitro, F especial, Espaço freio · Setas + . tiro, , mina, / nitro, L especial, Enter freio. **Controles**: veja abaixo.
 - No multijogador a câmera lenta e o "hitstop" ficam desligados (afetariam todo mundo).
 - Fim: quando todas as pessoas terminam, ou 30 s depois que a primeira termina. O resultado mostra a classificação de todos.
 
@@ -336,8 +343,8 @@ Protocolo: JSON para salas (`hello`, `list`, `create`, `join`, `leave`, `lock`, 
 
 - **Direção "TELA" (padrão)**: você aponta para onde quer ir **na tela** e o carro vira sozinho para lá. Não inverte quando o carro desce a tela. No celular/mouse é o analógico da esquerda; no teclado, as setas/WASD (↑ sobe a tela, ← vai para a esquerda da tela) e o carro acelera sozinho.
 - **Direção "CARRO" (clássica)**: ← → giram o carro em relação a ele mesmo, ↑ acelera, ↓ freia. Troca na garagem ou no menu de pausa.
-- Botões na tela: **TIRO**, **NITRO**, **MINA/ÓLEO**, **FREIO**. O **drift é automático**: numa curva forte em velocidade o carro entra num drift suave sozinho e sai quando a curva alivia. Teclado: `B`/`C` freio e ré, `Z`/`J` tiro, `X`/`K` mina, `Shift` nitro, `R` volta à pista, `P` pausa, `M` som.
-- **Controle (gamepad)**: analógico/direcional dirige (no modo TELA aponta na tela e acelera sozinho), **A/RT** acelera, **B/LT** freio e ré, **X** tiro, **Y** mina/óleo, **RB/LB** nitro, **START** pausa, **BACK** volta à pista, **L3** fala no chat de voz (modo "aperte para falar"). Nos menus o direcional navega e **A** confirma.
+- Botões na tela: **TIRO**, **NITRO** (mobilidade do carro: NITRO, SALTO ou INVESTIDA), **ESPECIAL** (aparece se o carro tiver um), **MINA/ÓLEO**, **FREIO**. O **drift é automático**: numa curva forte em velocidade o carro entra num drift suave sozinho e sai quando a curva alivia. Teclado: `B`/`C` freio e ré, `Z`/`J` tiro, `X`/`K` mina, `Shift` nitro, `E`/`L` especial, `R` volta à pista, `P` pausa, `M` som.
+- **Controle (gamepad)**: analógico/direcional dirige (no modo TELA aponta na tela e acelera sozinho), **A/RT** acelera, **B/LT** freio e ré, **X** tiro, **Y** mina/óleo, **RB** nitro, **LB** especial, **START** pausa, **BACK** volta à pista, **L3** fala no chat de voz (modo "aperte para falar"). Nos menus o direcional navega e **A** confirma.
 - Se o carro ficar no sentido errado aparece "SENTIDO ERRADO!" e, se continuar, o jogo te coloca de volta na direção certa.
 
 ## Como a pista 3D é feita

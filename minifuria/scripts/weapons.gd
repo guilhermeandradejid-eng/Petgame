@@ -161,6 +161,7 @@ func update(dt: float) -> void:
 		if c.emp_t > 0.0:
 			c.ctrl.fire = false
 			c.ctrl.drop = false
+			c.ctrl.special = false
 		if c.ctrl.fire and c.fire_cd <= 0.0 and c.ammo_f > 0:
 			match c.front_type:
 				"mg":
@@ -174,6 +175,8 @@ func update(dt: float) -> void:
 		_flame_fx(c)
 		if c.shield_t > 0.0:
 			_shield_ram(c)
+		if c.nitroing and c.nitro_type == "ram":
+			_ram_hit(c)
 		_shield_fx(c)
 		if c.ctrl.drop and c.drop_cd <= 0.0 and c.ammo_r > 0:
 			_drop(c)
@@ -199,6 +202,7 @@ func update(dt: float) -> void:
 func _ai(c: Car) -> void:
 	c.ctrl.fire = false
 	c.ctrl.drop = false
+	c.ctrl.special = false
 	if game.mode != "race":
 		return
 	# a IA atira em rajadas e com pausas (dá tempo de reagir)
@@ -212,19 +216,22 @@ func _ai(c: Car) -> void:
 			c.ctrl.fire = _target(c, 10.0, 0.85) != null
 		_:
 			c.ctrl.fire = _target(c, 55.0, 0.97) != null and randf() < 0.02
-	# especial do carro (a IA usa quando faz sentido)
-	if c.special_type != "" and c.nitro_ch > 0:
+	# especial comprado (a IA usa quando faz sentido)
+	if c.special_type != "" and c.spec_ch > 0:
 		var near := 0
 		for o in game.cars:
 			if o != c and not o.wrecked and o.role != "traffic" and o.global_position.distance_to(c.global_position) < 9.0:
 				near += 1
 		match c.special_type:
 			"shock":
-				c.ctrl.nitro = near >= 1 and randf() < 0.03
+				c.ctrl.special = near >= 1 and randf() < 0.03
 			"shield":
-				c.ctrl.nitro = (c.health < c.max_health * 0.55 and near >= 1 and randf() < 0.04) or (near >= 2 and randf() < 0.01)
-			"jump":
-				c.ctrl.nitro = randf() < 0.004 and c.on_ground and not c.on_feature
+				c.ctrl.special = (c.health < c.max_health * 0.55 and near >= 1 and randf() < 0.04) or (near >= 2 and randf() < 0.01)
+			"repair":
+				c.ctrl.special = c.health < c.max_health * 0.4 and randf() < 0.05
+	# mobilidade de salto: de vez em quando (o nitro comum fica com a IA de direção)
+	if c.nitro_type == "jump" and c.nitro_ch > 0:
+		c.ctrl.nitro = randf() < 0.004 and c.on_ground and not c.on_feature
 	# mina/óleo quando alguém está colado atrás
 	var b := -c.global_transform.basis.z
 	for o in game.cars:
@@ -258,7 +265,7 @@ func _use(k: String) -> void:
 
 func _fire_mg(c: Car) -> void:
 	_use("mg")
-	c.fire_cd = 0.085
+	c.fire_cd = 0.085 / c.rate_mult
 	c.ammo_f -= 1
 	c.recoil = 1.0
 	c.firing_t = 0.12
@@ -334,6 +341,8 @@ func _bullet_impact(tr: Dictionary) -> void:
 	if hc is Car:
 		var tc: Car = hc
 		var dmg := 1.9 if c.role == "player" else 1.1
+		if is_instance_valid(c):
+			dmg *= c.dmg_mult
 		var killed := tc.apply_damage(dmg, p, c if is_instance_valid(c) else null)
 		tc.apply_impulse(aim * 140.0, p - tc.global_position)
 		if vis:
@@ -456,7 +465,7 @@ func _step_reticle(dt: float) -> void:
 
 func _fire_rocket(c: Car) -> void:
 	_use("rocket")
-	c.fire_cd = 0.55
+	c.fire_cd = 0.55 / c.rate_mult
 	c.ammo_f -= 1
 	var mz: Vector3 = c.global_transform * c.muzzle_local
 	var f := c.global_transform.basis.z
@@ -529,7 +538,8 @@ func _step_rockets(dt: float) -> void:
 		var node: Node3D = r.node
 		var vel: Vector3 = r.vel
 		# acelera até 50 m/s: mais rápido que o carro na reta (40), mais lento que o nitro (~58)
-		var spd := move_toward(vel.length(), 50.0, 16.0 * dt)
+		var rm: float = (r.owner as Car).rate_mult if is_instance_valid(r.owner) else 1.0
+		var spd := move_toward(vel.length(), 50.0 * (1.0 + (rm - 1.0) * 0.7), 16.0 * rm * dt)
 		var tg = r.target
 		if tg != null and is_instance_valid(tg) and not tg.wrecked:
 			var want: Vector3 = ((tg as Car).global_position + Vector3.UP * 0.7 - node.global_position).normalized()
@@ -544,7 +554,7 @@ func _step_rockets(dt: float) -> void:
 		var res := space.intersect_ray(q)
 		if res or r.t > 4.0:
 			var at: Vector3 = res.position if res else p1
-			_explode(at, r.owner, 34.0, 6.0, "rocket")
+			_explode(at, r.owner, 34.0 * ((r.owner as Car).dmg_mult if is_instance_valid(r.owner) else 1.0), 6.0, "rocket")
 			var tr: CPUParticles3D = r.trail
 			tr.emitting = false
 			tr.reparent(self)
@@ -716,7 +726,7 @@ func _add_mat(col: Color, energy := 3.0) -> StandardMaterial3D:
 ## raio elétrico (Vespa): acerta na hora o alvo no cone e salta para mais um carro perto dele
 func _fire_zap(c: Car) -> void:
 	_use("zap")
-	c.fire_cd = 0.55
+	c.fire_cd = 0.55 / c.rate_mult
 	c.ammo_f -= 1
 	c.recoil = 1.2
 	var mz: Vector3 = c.global_transform * c.muzzle_local
@@ -727,7 +737,7 @@ func _fire_zap(c: Car) -> void:
 		return
 	var hp: Vector3 = tgt.global_position + Vector3.UP * 0.8
 	_bolt(mz, hp, 1.0)
-	_zap_hit(c, tgt, 16.0)
+	_zap_hit(c, tgt, 16.0 * c.dmg_mult)
 	# corrente: pula para o carro mais perto do alvo
 	var best: Car = null
 	var bd := 12.0
@@ -740,7 +750,7 @@ func _fire_zap(c: Car) -> void:
 			best = o
 	if best:
 		_bolt(hp, best.global_position + Vector3.UP * 0.8, 0.7)
-		_zap_hit(c, best, 9.0)
+		_zap_hit(c, best, 9.0 * c.dmg_mult)
 	sfx.play("zap", -4.0 if c == game.player else -9.0, randf_range(0.9, 1.1))
 	if c == game.player:
 		game._shake(0.06)
@@ -815,8 +825,8 @@ func _fire_flame(c: Car) -> void:
 		if t == c or t.wrecked:
 			continue
 		var d: Vector3 = t.global_position + Vector3.UP * 0.6 - mz
-		if d.length() < 11.0 and d.normalized().dot(f) > 0.8:
-			var killed := t.apply_damage(3.0, t.global_position + Vector3.UP, c, false)
+		if d.length() < 11.0 * (1.0 + (c.rate_mult - 1.0) * 0.5) and d.normalized().dot(f) > 0.8:
+			var killed := t.apply_damage(3.0 * c.dmg_mult * (1.0 + (c.rate_mult - 1.0) * 0.5), t.global_position + Vector3.UP, c, false)
 			t.burn_t = maxf(t.burn_t, 1.6)
 			t.burn_by = c
 			if c == game.player:
@@ -969,20 +979,22 @@ func _step_barrels(dt: float) -> void:
 
 
 # ------------------------------------------------------------------ especiais
-func can_special(c: Car) -> bool:
-	match c.special_type:
+func can_special(c: Car, kind: String) -> bool:
+	match kind:
 		"jump":
 			return c.on_ground and not c.on_feature
+		"repair":
+			return c.health < c.max_health - 1.0
 	return true
 
 
-func special(c: Car) -> void:
-	_use(c.special_type)
+func special(c: Car, kind: String) -> void:
+	_use(kind)
 	# online: avisa as outras máquinas (lá o efeito pega nos carros que elas controlam)
 	if game.online and game.online.racing and not c.net_remote:
-		game.online.send_special(c)
+		game.online.send_special(c, kind)
 	var vis: bool = game._on_screen(c.global_position)
-	match c.special_type:
+	match kind:
 		"jump":
 			# salto: pula minas, pregos, óleo e até carros
 			var up: Vector3 = c.ground_n if c.on_ground else Vector3.UP
@@ -1002,6 +1014,51 @@ func special(c: Car) -> void:
 		"shock":
 			shock_wave(c, c.global_position, 12.0, 18.0, 1.0)
 			game.pop_for(c, "ONDA DE CHOQUE!", Color("#ff9a1a"))
+		"repair":
+			# reparo de emergência: devolve 40% da blindagem e apaga fogo/pneu furado
+			if not c.net_remote:
+				c.health = minf(c.max_health, c.health + c.max_health * 0.4)
+			c.burn_t = 0.0
+			c.flat_t = 0.0
+			if vis:
+				fx.sparkle(c.global_position + Vector3.UP, Color(0.5, 1.5, 0.6))
+				fx.hit_light(c.global_position + Vector3.UP, Color(0.4, 1.0, 0.5), 6.0, 10.0, 0.4)
+				sfx.play("pickup", -4.0, 0.8)
+			game.pop_for(c, "REPARO!", Color("#5dff6a"))
+
+
+## investida (Monstro): arrancada curta com o para-choque pegando fogo — quem estiver na frente é atropelado
+func ram_start(c: Car) -> void:
+	_use("ram")
+	if game._on_screen(c.global_position):
+		sfx.play("nitro", -3.0, 0.7)
+		fx.burst("dust", c.global_position)
+		ring_fx(c.global_position + c.global_transform.basis.z * c.sp.len * 0.5, 3.0, Color(1.0, 0.45, 0.15))
+	game.pop_for(c, "INVESTIDA!", Color("#ff7a1a"))
+
+
+func _ram_hit(c: Car) -> void:
+	var f := c.global_transform.basis.z
+	for o in game.cars:
+		var t: Car = o
+		if t == c or t.wrecked:
+			continue
+		var d := t.global_position - c.global_position
+		if d.length() > (c.sp.len + t.sp.len) * 0.55 or d.normalized().dot(f) < 0.35:
+			continue
+		var key := "rmh_%d" % t.get_instance_id()
+		if float(c.get_meta(key, -9.0)) > game.time_g - 0.8:
+			continue
+		c.set_meta(key, game.time_g)
+		var killed := t.apply_damage(16.0 if t.role != "traffic" else 40.0, t.global_position, c)
+		t.apply_central_impulse((Vector3(d.x, 0, d.z).normalized() * 0.8 + f * 0.6 + Vector3.UP * 0.45).normalized() * t.mass * 10.0)
+		t.stun = maxf(t.stun, 0.5)
+		if game._on_screen(t.global_position):
+			fx.sparks(t.global_position + Vector3.UP, d.normalized(), 1.5)
+			sfx.play("metal", -2.0, 0.8)
+			game._shake(0.25 if c == game.player or t == game.player else 0.0)
+		if c == game.player:
+			game.on_player_hit_enemy(t, killed)
 
 
 ## onda de choque: empurra e levanta quem está perto (também usada pelo chefe BRUTUS)

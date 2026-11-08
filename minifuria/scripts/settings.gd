@@ -278,7 +278,8 @@ func _ctrl_table() -> void:
 		["Freio / ré", "B ou C", "B ou LT"],
 		["Tiro / foguete", "Z, J ou Ctrl", "X"],
 		["Mina / óleo", "X ou K", "Y"],
-		["Nitro", "Shift ou N", "RB ou LB"],
+		["Nitro / mobilidade", "Shift ou N", "RB"],
+		["Especial", "E ou L", "LB"],
 		["Voltar à pista", "R", "BACK / SELECT"],
 		["Pausa", "P ou Esc", "START"],
 		["Falar (voz)", "V", "L3 (aperte o analógico)"],
@@ -292,4 +293,4 @@ func _ctrl_table() -> void:
 		for j in 3:
 			var l := UI.text(g, rows[i][j], 17, UI.HOT if i == 0 else (UI.TEXT if j == 0 else UI.MUTED))
 			l.add_theme_font_override("font", UI.display_it if i == 0 else (UI.body_bold if j == 0 else UI.body))
-	_note("Multijogador local: teclado WASD (E tiro · Q mina · Shift nitro · Espaço freio), teclado setas (. tiro · , mina · / nitro · Enter freio) e um controle por pessoa. Celular: analógico na tela e botões grandes.")
+	_note("Multijogador local: teclado WASD (E tiro · Q mina · Shift nitro · F especial · Espaço freio), teclado setas (. tiro · , mina · / nitro · L especial · Enter freio) e um controle por pessoa. Celular: analógico na tela e botões grandes.")

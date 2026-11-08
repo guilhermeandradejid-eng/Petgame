@@ -350,6 +350,9 @@ func update(rdt: float) -> void:
 		var hp := clampf(car.health / car.max_health, 0.0, 1.0)
 		(ui.bar as ColorRect).size.x = 216.0 * hp
 		(ui.bar as ColorRect).color = Color("#7dff6a") if hp > 0.5 else (Color("#ffcf33") if hp > 0.25 else Color("#ff2d55"))
-		var fr := "TIRO" if car.front_type == "mg" else "FOGUETE"
-		var rr := "MINA" if car.rear_type == "mine" else "ÓLEO"
-		(ui.ammo as Label).text = "%s %d · %s %d · NITRO %d" % [fr, car.ammo_f, rr, car.ammo_r, car.nitro_ch]
+		var fr: String = {"mg": "TIRO", "rocket": "FOGUETE", "zap": "RAIO", "flame": "FOGO"}.get(car.front_type, "TIRO")
+		var rr: String = {"mine": "MINA", "oil": "ÓLEO", "spikes": "PREGOS", "barrel": "BARRIL"}.get(car.rear_type, "MINA")
+		var tx := "%s %d · %s %d · %s %d" % [fr, car.ammo_f, rr, car.ammo_r, String(Car.NITRO[car.nitro_type].label), car.nitro_ch]
+		if car.special_type != "":
+			tx += " · %s %d" % [String(Car.SPECIAL[car.special_type].label), car.spec_ch]
+		(ui.ammo as Label).text = tx

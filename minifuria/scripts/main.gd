@@ -246,6 +246,15 @@ func _ready() -> void:
 		if "--maxup" in args:
 			for u in save.up:
 				save.up[u] = 3
+		if "--maxup" in args or "--kit" in args:
+			# teste: arma de ataque e todos os especiais comprados (--spec=X escolhe o equipado)
+			var kt: Dictionary = save.garage.kit[String(save.car)]
+			kt.front = true
+			kt.spec = Car.SPECIAL_ORDER.duplicate()
+			kt.eq = String(Career.DEF_SPECIAL[String(save.car)])
+			for a in args:
+				if a.begins_with("--spec="):
+					kt.eq = a.substr(7)
 		var tr: int = Career.WORLDS[wi].boss_track if bs else int(Career.WORLDS[wi].tracks[0])
 		career.event = {"world": wi, "track": tr, "boss": bs}
 		track_idx = tr
@@ -402,8 +411,12 @@ func _ui_shots() -> void:
 			await get_tree().process_frame
 		get_viewport().get_texture().get_image().save_png("user://ui_loader.png")
 		loader.visible = false
-	for scr in ["menu", "tracks", "garage", "local", "online", "config", "config2", "pause", "career", "world"]:
-		if scr == "career":
+	for scr in ["menu", "tracks", "garage", "local", "online", "config", "config2", "pause", "career", "world", "garage2"]:
+		if scr == "garage2":
+			# garagem no modo história (carro novo: só o item de chão)
+			career.event = {"world": 0, "track": 0, "boss": false}
+			hud.show_screen("garage")
+		elif scr == "career":
 			career.open()
 		elif scr == "world":
 			save.career.points[0] = 22
@@ -435,6 +448,7 @@ func _setup_input() -> void:
 	var keys := {
 		"left": [KEY_LEFT, KEY_A], "right": [KEY_RIGHT, KEY_D], "up": [KEY_UP, KEY_W], "down": [KEY_DOWN, KEY_S],
 		"drift": [KEY_SPACE], "nitro": [KEY_SHIFT, KEY_N], "fire": [KEY_Z, KEY_J, KEY_CTRL], "drop": [KEY_X, KEY_K],
+		"special": [KEY_E, KEY_L],
 		"brake": [KEY_B, KEY_C],
 		"reset": [KEY_R], "pause": [KEY_P, KEY_ESCAPE], "mute": [KEY_M],
 	}
@@ -446,12 +460,12 @@ func _setup_input() -> void:
 			e.physical_keycode = k
 			InputMap.action_add_event(a, e)
 	# controles (qualquer um, no jogo solo): analógico/direcional, A/RT acelera, B/LT freio, X tiro,
-	# Y mina, RB/LB nitro, Start pausa, Back volta à pista
+	# Y mina, RB nitro (mobilidade), LB especial, Start pausa, Back volta à pista
 	var axes := {"left": [JOY_AXIS_LEFT_X, -1.0], "right": [JOY_AXIS_LEFT_X, 1.0], "up": [JOY_AXIS_LEFT_Y, -1.0], "down": [JOY_AXIS_LEFT_Y, 1.0],
 		"accel": [JOY_AXIS_TRIGGER_RIGHT, 1.0], "brake": [JOY_AXIS_TRIGGER_LEFT, 1.0]}
 	var btns := {"left": [JOY_BUTTON_DPAD_LEFT], "right": [JOY_BUTTON_DPAD_RIGHT], "up": [JOY_BUTTON_DPAD_UP], "down": [JOY_BUTTON_DPAD_DOWN],
 		"accel": [JOY_BUTTON_A], "brake": [JOY_BUTTON_B], "fire": [JOY_BUTTON_X], "drop": [JOY_BUTTON_Y],
-		"nitro": [JOY_BUTTON_RIGHT_SHOULDER, JOY_BUTTON_LEFT_SHOULDER], "pause": [JOY_BUTTON_START], "reset": [JOY_BUTTON_BACK]}
+		"nitro": [JOY_BUTTON_RIGHT_SHOULDER], "special": [JOY_BUTTON_LEFT_SHOULDER], "pause": [JOY_BUTTON_START], "reset": [JOY_BUTTON_BACK]}
 	if not InputMap.has_action("accel"):
 		InputMap.add_action("accel")
 	for a in axes:
@@ -479,7 +493,7 @@ func _load_save() -> void:
 		if d is Dictionary:
 			for k in d:
 				save[k] = d[k]
-	for k in ["engine", "armor", "ammo", "nitro", "tires"]:
+	for k in ["engine", "armor", "ammo", "nitro", "tires", "dmg", "rate"]:
 		save.up[k] = int(save.up.get(k, 0))
 
 
@@ -510,6 +524,13 @@ func buy_upgrade(k: String) -> void:
 
 
 func equip(slot: String, key: String) -> void:
+	if slot == "front" or slot == "special":
+		var m := career.buy_front() if slot == "front" else career.pick_special(key)
+		if m != "":
+			hud.popup(m, Color("#ff7a7a"))
+		sfx.play("drop", -6.0)
+		hud.refresh_garage()
+		return
 	if slot == "car":
 		var msg := career.pick_car(key)
 		if msg != "":
@@ -1175,9 +1196,15 @@ func _spawn_cars() -> void:
 			# carreira: rivais mais fortes a cada mundo (motor, blindagem e pneus)
 			lv = clampi(wlv + (i % 2), 0, 3)
 			c.cruise = 36.5 + wlv * 1.3 + i * 0.4
-		var rup := {"engine": lv / 2 + (1 if wlv >= 2 else 0), "armor": lv / 2, "ammo": 0, "nitro": 0, "tires": lv / 2, "_tier": lv, "_tire_vis": lv}
+		var rup := {"engine": lv / 2 + (1 if wlv >= 2 else 0), "armor": lv / 2, "ammo": 0, "nitro": 0, "tires": lv / 2, "_tier": lv, "_tire_vis": lv,
+			"dmg": maxi(0, wlv - 2) if wlv >= 0 else 0, "rate": maxi(0, wlv - 3) if wlv >= 0 else 0}
 		var lo: Array = Car.LOADOUT.get(String(r.kind), ["mg", "oil", "short"])
-		c.configure(lib, lo[0], lo[1], lo[2], rup)
+		# especial dos rivais: no modo história só a partir do 2º mundo
+		var rsp := ""
+		var give := i % 3 != 2 if wlv < 0 else (wlv >= 1 or i % 4 == 3)
+		if give:
+			rsp = String(Car.SPECIAL_ORDER[(i + int(r.kind.length())) % Car.SPECIAL_ORDER.size()])
+		c.configure(lib, lo[0], lo[1], lo[2], rup, rsp)
 		_add_xray(c)
 		c.slot = gi
 		_place(c, L + grid[gi][0], grid[gi][1], 0)
@@ -1197,7 +1224,10 @@ func _spawn_cars() -> void:
 		c.owner_id = int(pp.get("id", 0))
 		var up: Dictionary = pp.get("up", save.up) if not is_local or li == 0 else save.garage.up.get(ck, save.up)
 		var lo: Array = Car.LOADOUT[ck]
-		c.configure(lib, lo[0], lo[1], lo[2], up)
+		var kit: Array = [lo[0], lo[1], lo[2], String(pp.get("spec", Career.DEF_SPECIAL.get(ck, "shield")))]
+		if is_local and li == 0:
+			kit = career.loadout(ck)   # modo história: só o que foi comprado
+		c.configure(lib, kit[0], kit[1], kit[2], up, kit[3])
 		_add_xray(c)
 		c.turn_mult = 1.15
 		_place(c, L + grid[gi][0], grid[gi][1], 0)
@@ -1351,8 +1381,9 @@ func _start_race_now() -> void:
 	hud.show_screen("race")
 	hud.touch.release_all()
 	hud.touch.labels["drop"] = {"mine": "MINA", "oil": "ÓLEO", "spikes": "PREGOS", "barrel": "BARRIL"}.get(player.rear_type, "MINA")
-	hud.touch.labels["fire"] = {"mg": "TIRO", "rocket": "FOGUETE", "zap": "RAIO", "flame": "FOGO"}.get(player.front_type, "TIRO")
-	hud.touch.labels["nitro"] = {"jump": "SALTO", "shield": "ESCUDO", "shock": "CHOQUE"}.get(player.special_type, "NITRO")
+	hud.touch.labels["fire"] = {"mg": "TIRO", "rocket": "FOGUETE", "zap": "RAIO", "flame": "FOGO", "none": "—"}.get(player.front_type, "TIRO")
+	hud.touch.labels["nitro"] = String(Car.NITRO[player.nitro_type].label)
+	hud.touch.labels["special"] = String(Car.SPECIAL[player.special_type].label) if player.special_type != "" else ""
 	mode = "countdown"
 	if not auto_test:
 		music.play_track(track_idx, String(track.data.theme), boss != null)
@@ -1633,6 +1664,7 @@ func _physics_process(dt: float) -> void:
 			pc.ctrl.fire = false
 			pc.ctrl.drop = false
 			pc.ctrl.nitro = false
+			pc.ctrl.special = false
 			pc.ctrl.drift = false
 			pc.ctrl.brake = 0.0
 			pc.ctrl.dir = null
@@ -1645,6 +1677,7 @@ func _physics_process(dt: float) -> void:
 				pc.ai(track, self, dt)
 				pc.role = "player"
 				pc.ctrl.nitro = false
+				pc.ctrl.special = false
 				pc.ctrl.fire = false
 				pc.ctrl.drop = false
 	if mode in ["race", "finish"]:
@@ -1760,6 +1793,7 @@ func _player_input() -> void:
 	c.nitro = Input.is_action_pressed("nitro")
 	c.fire = Input.is_action_pressed("fire")
 	c.drop = Input.is_action_pressed("drop")
+	c.special = Input.is_action_pressed("special")
 	var tp := hud.touch
 	if tp.used:
 		if not tp.btn.brake and c.brake <= 0.0:
@@ -1771,6 +1805,7 @@ func _player_input() -> void:
 		c.nitro = c.nitro or tp.btn.nitro
 		c.fire = c.fire or tp.btn.fire
 		c.drop = c.drop or tp.btn.drop
+		c.special = c.special or tp.btn.special
 		if screen_mode and tp.stick_vec.length() > 0.22:
 			c.dir = (rr * tp.stick_vec.x - ff * tp.stick_vec.y).normalized()
 			c.dir_mag = minf(1.0, (tp.stick_vec.length() - 0.22) / 0.5)
@@ -1796,6 +1831,7 @@ func _player_input() -> void:
 			c.nitro = int(real * 2.0) % 2 == 0
 		c.fire = weapons._target(player, 50.0, 0.97) != null
 		c.drop = randf() < 0.01
+		c.special = randf() < 0.01
 
 
 func _pickups(dt: float) -> void:
@@ -2837,4 +2873,5 @@ func _hud() -> void:
 	tc.counts["fire"] = str(p.ammo_f)
 	tc.counts["drop"] = str(p.ammo_r)
 	tc.counts["nitro"] = str(p.nitro_ch)
+	tc.counts["special"] = str(p.spec_ch)
 	tc.nitro_on = p.nitroing

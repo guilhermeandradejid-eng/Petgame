@@ -1,16 +1,16 @@
 class_name TouchPad
 extends Control
-## Controles na tela (toque e mouse): analógico à esquerda; TIRO, NITRO, DRIFT, MINA/ÓLEO e FREIO à direita.
+## Controles na tela (toque e mouse): analógico à esquerda; TIRO, NITRO (mobilidade), ESPECIAL, MINA/ÓLEO e FREIO à direita.
 
 var stick_id := -1
 var stick_origin := Vector2.ZERO
 var stick_vec := Vector2.ZERO
-var btn := {"fire": false, "nitro": false, "drift": false, "drop": false, "brake": false}
+var btn := {"fire": false, "nitro": false, "drift": false, "drop": false, "brake": false, "special": false}
 var btn_ids := {}
 var active := true
 var used := false
-var counts := {"fire": "", "nitro": "", "drop": ""}
-var labels := {"fire": "TIRO", "nitro": "NITRO", "drift": "DRIFT", "drop": "MINA", "brake": "FREIO"}
+var counts := {"fire": "", "nitro": "", "drop": "", "special": ""}
+var labels := {"fire": "TIRO", "nitro": "NITRO", "drift": "DRIFT", "drop": "MINA", "brake": "FREIO", "special": ""}
 var nitro_on := false
 var font: Font
 const R := 70.0
@@ -25,12 +25,16 @@ func _btn_rects() -> Dictionary:
 	var s := size
 	var u := minf(s.y, s.x) / 720.0 * 1.12
 	var base := Vector2(s.x - 26 * u, s.y - 26 * u)
-	return {
+	var r := {
 		"fire": [base + Vector2(-86, -86) * u, 84.0 * u],
 		"nitro": [base + Vector2(-238, -60) * u, 58.0 * u],
 		"drop": [base + Vector2(-70, -248) * u, 52.0 * u],
 		"brake": [base + Vector2(-206, -196) * u, 42.0 * u],
 	}
+	# especial comprado: botão próprio ao lado do nitro (some se o carro não tiver)
+	if String(labels.get("special", "")) != "":
+		r["special"] = [base + Vector2(-350, -64) * u, 46.0 * u]
+	return r
 
 
 func _input(e: InputEvent) -> void:
@@ -113,7 +117,7 @@ func _draw() -> void:
 	if font == null:
 		font = get_theme_default_font()
 	var rects := _btn_rects()
-	var cols := {"fire": Color(1.0, 0.32, 0.22), "nitro": Color(0.2, 0.75, 1.0), "drift": Color(0.78, 0.49, 1.0), "drop": Color(1.0, 0.8, 0.2), "brake": Color(0.4, 0.4, 0.5)}
+	var cols := {"fire": Color(1.0, 0.32, 0.22), "nitro": Color(0.2, 0.75, 1.0), "drift": Color(0.78, 0.49, 1.0), "drop": Color(1.0, 0.8, 0.2), "brake": Color(0.4, 0.4, 0.5), "special": Color(0.36, 1.0, 0.5)}
 	for k in rects:
 		var c: Vector2 = rects[k][0]
 		var r: float = rects[k][1]

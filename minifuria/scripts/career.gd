@@ -30,19 +30,29 @@ const BOSS_PRIZE := [3000, 4500, 6000, 8000, 10000, 15000]
 ## carros à venda: preço e mundo em que aparecem na loja
 const SHOP := {
 	"faisca": {"price": 0, "world": 0, "name": "FAÍSCA", "desc": "Equilibrado e rápido no nitro."},
-	"vespa": {"price": 3000, "world": 0, "name": "VESPA", "desc": "Buggy leve: o mais ágil, pula obstáculos."},
-	"trovao": {"price": 6500, "world": 2, "name": "TROVÃO", "desc": "Muscle car blindado: foguetes e escudo."},
-	"monstro": {"price": 11000, "world": 3, "name": "MONSTRO", "desc": "Picape pesada: fogo, barris e choque."},
+	"vespa": {"price": 3000, "world": 0, "name": "VESPA", "desc": "Buggy leve: o mais ágil, salta obstáculos."},
+	"trovao": {"price": 6500, "world": 2, "name": "TROVÃO", "desc": "Muscle car blindado: foguetes e nitro longo."},
+	"monstro": {"price": 11000, "world": 3, "name": "MONSTRO", "desc": "Picape pesada: fogo, barris e investida."},
 }
 const CAR_ORDER := ["faisca", "vespa", "trovao", "monstro"]
+## modo história: o carro sai da loja só com o ITEM DE CHÃO e a MOBILIDADE dele; a arma de ataque (uma fixa por
+## carro) e o ESPECIAL são comprados entre as corridas. Na corrida rápida e no multijogador vem tudo liberado.
+const WEAPON_PRICE := {"mg": 1200, "zap": 1500, "rocket": 2200, "flame": 2600}
+const SPECIAL_PRICE := {"shield": 2500, "shock": 3000, "repair": 1800}
+const DEF_SPECIAL := {"faisca": "shield", "vespa": "shock", "trovao": "shield", "monstro": "shock"}
+## upgrades da arma de ataque: caros
+const WPN_UP_PRICE := [1500, 3000, 5000]
+const UP_KEYS := ["engine", "armor", "ammo", "rear", "nitro", "tires", "dmg", "rate"]
 const UP_MULT := {"faisca": 1.0, "vespa": 1.15, "trovao": 1.35, "monstro": 1.6}
 const WEAPON_DESC := {
 	"mg": "Rajada contínua de balas.", "rocket": "Foguete teleguiado no alvo da frente.",
 	"zap": "Raio instantâneo que salta para um 2º carro.", "flame": "Jato curto que incendeia (dano contínuo).",
 	"oil": "Mancha que faz rodopiar.", "mine": "Explode quando alguém passa.",
 	"spikes": "Furam os pneus: o carro fica lento.", "barrel": "Barril rola para trás e explode.",
-	"short": "Nitro: arrancada curta.", "jump": "Salto: pula minas, óleo e carros.",
-	"shield": "Escudo: 3 s invulnerável + aríete.", "shock": "Onda de choque: arremessa quem está perto.",
+	"short": "Arrancadas curtas e fortes (4 por volta).", "long": "Arrancadas longas (3 por volta).",
+	"jump": "Pula minas, óleo e carros (3 por volta).", "ram": "Arrancada que atropela e arremessa quem estiver na frente.",
+	"shield": "3 s invulnerável + aríete.", "shock": "Arremessa e machuca quem está perto.",
+	"repair": "Devolve 40% da blindagem e apaga o fogo.",
 }
 
 var game: Node
@@ -80,8 +90,22 @@ func _migrate() -> void:
 	for k in CAR_ORDER:
 		if not s.garage.up.has(k):
 			s.garage.up[k] = {}
-		for u in ["engine", "armor", "ammo", "rear", "nitro", "tires"]:
+		for u in UP_KEYS:
 			s.garage.up[k][u] = int(s.garage.up[k].get(u, 0))
+	if not s.garage.has("kit"):
+		# saves de antes da loja de armas: quem já tinha progresso mantém a arma de ataque e o especial antigo
+		var veteran := int(s.career.unlocked) > 0 or int(s.career.points[0]) > 0
+		s.garage.kit = {}
+		for k in CAR_ORDER:
+			var had: bool = veteran and k in s.garage.owned
+			s.garage.kit[k] = {"front": had, "spec": [], "eq": ""}
+			if had and k in ["trovao", "monstro"]:
+				var old := "shield" if k == "trovao" else "shock"
+				s.garage.kit[k].spec = [old]
+				s.garage.kit[k].eq = old
+	for k in CAR_ORDER:
+		if not s.garage.kit.has(k):
+			s.garage.kit[k] = {"front": false, "spec": [], "eq": ""}
 	if not String(s.car) in s.garage.owned:
 		s.car = s.garage.owned[0]
 	s.up = s.garage.up[s.car]
@@ -123,7 +147,85 @@ func pick_car(k: String) -> String:
 
 func up_price(k: String) -> int:
 	var lvl := int(game.save.up.get(k, 0))
-	return int(game.UP_PRICE[mini(lvl, 2)] * float(UP_MULT.get(String(game.save.car), 1.0)))
+	var table: Array = WPN_UP_PRICE if k in ["dmg", "rate"] else game.UP_PRICE
+	return int(table[mini(lvl, 2)] * float(UP_MULT.get(String(game.save.car), 1.0)))
+
+
+func kit(k: String) -> Dictionary:
+	return game.save.garage.kit.get(k, {"front": false, "spec": [], "eq": ""})
+
+
+## a arma de ataque está liberada? (fora do modo história, sempre)
+func has_front(k: String) -> bool:
+	return not active() or bool(kit(k).front)
+
+
+func owns_special(k: String, sp: String) -> bool:
+	return not active() or sp in kit(k).spec
+
+
+## especial que o carro leva para a corrida
+func cur_special(k: String) -> String:
+	if not active():
+		return quick_special(k)
+	var eq := String(kit(k).eq)
+	return eq if eq in kit(k).spec else ""
+
+
+## corrida rápida / multijogador: o especial escolhido na garagem (ou o padrão do carro)
+func quick_special(k: String) -> String:
+	var eq := String(kit(k).eq)
+	return eq if Car.SPECIAL.has(eq) else String(DEF_SPECIAL.get(k, "shield"))
+
+
+## kit completo para a corrida: [arma de ataque, item de chão, mobilidade, especial]
+func loadout(k: String) -> Array:
+	var lo: Array = Car.LOADOUT[k]
+	return [lo[0] if has_front(k) else "none", lo[1], lo[2], cur_special(k)]
+
+
+func weapon_price(k: String) -> int:
+	return int(WEAPON_PRICE.get(String(Car.LOADOUT[k][0]), 1500))
+
+
+func special_price(sp: String) -> int:
+	return int(float(SPECIAL_PRICE.get(sp, 2500)) * float(UP_MULT.get(String(game.save.car), 1.0)))
+
+
+func buy_front() -> String:
+	var s: Dictionary = game.save
+	var k := String(s.car)
+	if has_front(k):
+		return ""
+	var price := weapon_price(k)
+	if int(s.cash) < price:
+		return "Faltam $%d" % (price - int(s.cash))
+	s.cash = int(s.cash) - price
+	s.garage.kit[k].front = true
+	game.sfx.play("coin")
+	game._write_save()
+	return ""
+
+
+## escolhe o especial (compra no modo história se ainda não tiver); tocar no equipado desequipa
+func pick_special(sp: String) -> String:
+	var s: Dictionary = game.save
+	var k := String(s.car)
+	var kt: Dictionary = s.garage.kit[k]
+	if active() and not sp in kt.spec:
+		var price := special_price(sp)
+		if int(s.cash) < price:
+			return "Faltam $%d" % (price - int(s.cash))
+		s.cash = int(s.cash) - price
+		kt.spec.append(sp)
+		game.sfx.play("coin")
+	elif String(kt.eq) == sp and active():
+		kt.eq = ""
+		game._write_save()
+		return ""
+	kt.eq = sp
+	game._write_save()
+	return ""
 
 
 func world_open(i: int) -> bool:

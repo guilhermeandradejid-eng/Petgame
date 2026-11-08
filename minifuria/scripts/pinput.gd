@@ -2,17 +2,17 @@ class_name PInput
 extends RefCounted
 ## Entrada por dispositivo (multijogador local): cada jogador lê só o seu teclado ou o seu controle.
 ##   "solo"  -> tudo junto (teclado inteiro + qualquer controle + toque): jogo de 1 pessoa
-##   "kbA"   -> WASD dirige · E tiro · Q mina/óleo · Shift esq. nitro · Espaço freio
-##   "kbB"   -> setas dirigem · . (ponto) tiro · , (vírgula) mina/óleo · / nitro · Shift dir. freio
+##   "kbA"   -> WASD dirige · E tiro · Q mina/óleo · Shift esq. nitro · F especial · Espaço freio
+##   "kbB"   -> setas dirigem · . (ponto) tiro · , (vírgula) mina/óleo · / nitro · L especial · Enter freio
 ##   "joyN"  -> controle N (layout Xbox; PlayStation e Switch são mapeados pelo SDL do Godot):
 ##              analógico esq. dirige · A / RT acelera · B / LT freio-ré · X tiro · Y mina/óleo
-##              RB / LB nitro · Start pausa · Back/Select volta à pista
+##              RB nitro (mobilidade) · LB especial · Start pausa · Back/Select volta à pista
 
 const DEADZONE := 0.22
 
 const KB := {
-	"kbA": {"left": KEY_A, "right": KEY_D, "up": KEY_W, "down": KEY_S, "fire": KEY_E, "drop": KEY_Q, "nitro": KEY_SHIFT, "brake": KEY_SPACE, "join": KEY_SPACE},
-	"kbB": {"left": KEY_LEFT, "right": KEY_RIGHT, "up": KEY_UP, "down": KEY_DOWN, "fire": KEY_PERIOD, "drop": KEY_COMMA, "nitro": KEY_SLASH, "brake": KEY_ENTER, "join": KEY_ENTER},
+	"kbA": {"left": KEY_A, "right": KEY_D, "up": KEY_W, "down": KEY_S, "fire": KEY_E, "drop": KEY_Q, "nitro": KEY_SHIFT, "special": KEY_F, "brake": KEY_SPACE, "join": KEY_SPACE},
+	"kbB": {"left": KEY_LEFT, "right": KEY_RIGHT, "up": KEY_UP, "down": KEY_DOWN, "fire": KEY_PERIOD, "drop": KEY_COMMA, "nitro": KEY_SLASH, "special": KEY_L, "brake": KEY_ENTER, "join": KEY_ENTER},
 }
 
 
@@ -32,11 +32,11 @@ static func label(dev: String) -> String:
 
 static func help(dev: String) -> String:
 	if dev == "kbA":
-		return "WASD dirige · E tiro · Q mina · Shift nitro · Espaço freio"
+		return "WASD dirige · E tiro · Q mina · Shift nitro · F especial · Espaço freio"
 	if dev == "kbB":
-		return "Setas dirigem · . tiro · , mina · / nitro · Enter freio"
+		return "Setas dirigem · . tiro · , mina · / nitro · L especial · Enter freio"
 	if dev.begins_with("joy"):
-		return "Analógico dirige · A/RT acelera · B/LT freio · X tiro · Y mina · RB nitro"
+		return "Analógico dirige · A/RT acelera · B/LT freio · X tiro · Y mina · RB nitro · LB especial"
 	return ""
 
 
@@ -84,6 +84,7 @@ static func read(dev: String, c: Dictionary, screen_mode: bool, rr: Vector3, ff:
 		c.fire = _key(dev, "fire")
 		c.drop = _key(dev, "drop")
 		c.nitro = _key(dev, "nitro")
+		c.special = _key(dev, "special")
 		if screen_mode:
 			if absf(sx) + absf(sy) > 0.1:
 				c.dir = (rr * sx + ff * sy).normalized()
@@ -107,7 +108,8 @@ static func read(dev: String, c: Dictionary, screen_mode: bool, rr: Vector3, ff:
 		c.brake = maxf(lt, 1.0 if brk else 0.0)
 		c.fire = Input.is_joy_button_pressed(id, JOY_BUTTON_X)
 		c.drop = Input.is_joy_button_pressed(id, JOY_BUTTON_Y)
-		c.nitro = Input.is_joy_button_pressed(id, JOY_BUTTON_RIGHT_SHOULDER) or Input.is_joy_button_pressed(id, JOY_BUTTON_LEFT_SHOULDER)
+		c.nitro = Input.is_joy_button_pressed(id, JOY_BUTTON_RIGHT_SHOULDER)
+		c.special = Input.is_joy_button_pressed(id, JOY_BUTTON_LEFT_SHOULDER)
 		var mag := Vector2(sx, sy).length()
 		if screen_mode:
 			if mag > DEADZONE:

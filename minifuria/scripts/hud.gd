@@ -385,19 +385,29 @@ func _draw_status() -> void:
 	_text(status, "BLINDAGEM", Vector2(w * 0.5, 17), 13, true)
 	# nitro (cargas) + medidor de manobras
 	var y := 32.0
-	_text(status, {"jump": "SALTO", "shield": "ESCUDO", "shock": "CHOQUE"}.get(p.special_type, "NITRO"), Vector2(0, y + 15), 13, false)
+	_text(status, String(Car.NITRO[p.nitro_type].label), Vector2(0, y + 15), 13, false)
 	for i in p.nitro_cap:
-		var r := Rect2(62 + i * 30, y, 24, 18)
+		var r := Rect2(82 + i * 30, y, 24, 18)
 		var full := i < p.nitro_ch
 		var col := Color("#2ee6ff") if full else Color(0.1, 0.08, 0.2, 0.9)
 		if p.nitroing and i == p.nitro_ch:
 			col = Color.WHITE
 		status.draw_rect(r.grow(2), Color(1, 1, 1, 0.7), true)
 		status.draw_rect(r, col, true)
-	status.draw_rect(Rect2(62, y + 22, 30 * p.nitro_cap - 6, 4), Color(0.1, 0.08, 0.2, 0.9), true)
-	status.draw_rect(Rect2(62, y + 22, (30 * p.nitro_cap - 6) * p.nitro_meter, 4), Color("#b4f6ff"), true)
+	status.draw_rect(Rect2(82, y + 22, 30 * p.nitro_cap - 6, 4), Color(0.1, 0.08, 0.2, 0.9), true)
+	status.draw_rect(Rect2(82, y + 22, (30 * p.nitro_cap - 6) * p.nitro_meter, 4), Color("#b4f6ff"), true)
+	# especial comprado (botão próprio): cargas verdes
+	if p.special_type != "":
+		var sy := y + 32.0
+		_text(status, String(Car.SPECIAL[p.special_type].label), Vector2(0, sy + 13), 12, false, false, Color("#9dffb0"))
+		for i in p.spec_cap:
+			var r := Rect2(82 + i * 30, sy, 24, 14)
+			status.draw_rect(r.grow(2), Color(1, 1, 1, 0.7), true)
+			status.draw_rect(r, Color("#5dff6a") if i < p.spec_ch else Color(0.1, 0.08, 0.2, 0.9), true)
 	# armas
 	var fa := "%s %d" % [{"mg": "MG", "rocket": "FOGUETE x", "zap": "RAIO x", "flame": "FOGO"}.get(p.front_type, "MG"), p.ammo_f]
+	if p.front_type == "none":
+		fa = "SEM ARMA"
 	var ra := "%s x%d" % [{"mine": "MINA", "oil": "ÓLEO", "spikes": "PREGOS", "barrel": "BARRIL"}.get(p.rear_type, "MINA"), p.ammo_r]
 	_text(status, fa, Vector2(w - 4, y + 15), 15, false, true, Color("#ffb08a") if p.ammo_f > 0 else Color(1, 1, 1, 0.35))
 	_text(status, ra, Vector2(w - 4, y + 38), 13, false, true, Color("#ffe27a") if p.ammo_r > 0 else Color(1, 1, 1, 0.35))
@@ -568,7 +578,10 @@ func _refresh_tracks() -> void:
 
 
 # ------------------------------------------------------------------ garagem
-const UP_NAMES := {"engine": "MOTOR", "armor": "BLINDAGEM", "ammo": "ARMA DA FRENTE", "rear": "ARMA DE TRÁS", "nitro": "ESPECIAL +1", "tires": "PNEUS"}
+const UP_NAMES := {"engine": "MOTOR", "armor": "BLINDAGEM", "ammo": "ARMA · MUNIÇÃO", "rear": "ITEM DE CHÃO +1", "nitro": "MOBILIDADE +1",
+	"tires": "PNEUS", "dmg": "ARMA · DANO", "rate": "ARMA · CADÊNCIA"}
+const UP_ORDER := ["engine", "armor", "tires", "nitro", "rear", "ammo", "dmg", "rate"]
+const WPN_UPS := ["ammo", "dmg", "rate"]
 var g_weap: Label
 var g_swatches: Array = []
 var boss_bar: Control
@@ -609,13 +622,18 @@ func _build_garage() -> void:
 			refresh_garage())
 		cg.add_child(sw)
 		g_swatches.append(sw)
-	var c2 := _panel(cols, "ARMAS DO CARRO")
-	g_weap = UI.text(c2, "", 15, UI.TEXT)
+	var c2 := _panel(cols, "EQUIPAMENTO")
+	g_weap = UI.text(c2, "", 14, UI.TEXT)
 	g_weap.add_theme_font_override("font", UI.body_bold)
 	g_weap.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	g_weap.custom_minimum_size = Vector2(300, 0)
+	g_weap.custom_minimum_size = Vector2(310, 0)
+	_choice(c2, "front", "atk", 52)
+	var stl := UI.title(c2, "ESPECIAL · BOTÃO PRÓPRIO", 15, UI.INFO)
+	stl.label_settings.outline_size = 3
+	for spk in Car.SPECIAL_ORDER:
+		_choice(c2, "special", spk, 48)
 	var c3 := _panel(cols, "UPGRADES DO CARRO")
-	for k in ["engine", "armor", "tires", "ammo", "rear", "nitro"]:
+	for k in UP_ORDER:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
 		c3.add_child(row)
@@ -624,7 +642,7 @@ func _build_garage() -> void:
 		l.add_theme_font_size_override("font_size", 15)
 		row.add_child(l)
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(110, 48)
+		b.custom_minimum_size = Vector2(118, 40)
 		b.add_theme_font_size_override("font_size", 15)
 		b.add_theme_font_override("font", UI.display_it)
 		b.add_theme_stylebox_override("normal", UI.box(Color("#1f8a3a"), Color(0, 0, 0, 0), 0, UI.SKEW, 4, Color("#0d4a1c"), 4))
@@ -643,7 +661,7 @@ func _build_garage() -> void:
 	hint.add_theme_font_override("font", SystemFont.new())
 	hint.add_theme_font_size_override("font_size", 13)
 	hint.modulate = Color(1, 1, 1, 0.75)
-	hint.text = "Pneus: rua > esportivo > slick (+6% de aderência por nível). Munição e nitro recarregam a cada volta."
+	hint.text = "Dano: +25% por nível. Cadência: atira mais rápido e o projétil voa mais rápido. Munição, mobilidade e especial recarregam a cada volta."
 	c3.add_child(hint)
 	var bot := HBoxContainer.new()
 	bot.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -699,9 +717,23 @@ func refresh_garage() -> void:
 		var parts: PackedStringArray = key.split(":")
 		var slot := parts[0]
 		var k := parts[1]
-		var on: bool = s[slot] == k
+		var ck := String(s.car)
+		var hist: bool = game.career.active()
+		var on: bool = s.get(slot, "") == k
 		var txt := ""
 		match slot:
+			"front":
+				# arma de ataque fixa do carro: no modo história é comprada
+				var fk: String = Car.LOADOUT[ck][0]
+				on = game.career.has_front(ck)
+				var tag := "   ✓ COMPRADA" if on and hist else ("" if on else "   [COMPRAR $%d]" % game.career.weapon_price(ck))
+				txt = "ATAQUE · %s%s\n%s" % [String(Car.FRONT[fk].name).to_upper(), tag, Career.WEAPON_DESC[fk]]
+				b.disabled = false
+			"special":
+				var owned: bool = game.career.owns_special(ck, k)
+				on = game.career.cur_special(ck) == k
+				var tag2 := ("   EQUIPADO" if on else "") if owned else "   [$%d]" % game.career.special_price(k)
+				txt = "%s%s\n%s" % [String(Car.SPECIAL[k].name).to_upper(), tag2, Career.WEAPON_DESC[k]]
 			"car":
 				var sp: Dictionary = Car.SPECS[k]
 				var shop: Dictionary = Career.SHOP[k]
@@ -732,10 +764,10 @@ func refresh_garage() -> void:
 		sw.text = "✓" if on else ""
 		sw.add_theme_color_override("font_color", Color.BLACK if c.get_luminance() > 0.5 else Color.WHITE)
 	var lo: Array = Car.LOADOUT[String(s.car)]
-	var sn: String = Car.SPECIAL[lo[2]].name if Car.SPECIAL.has(lo[2]) else "Nitro"
-	g_weap.text = "%s\n%s\n\nFRENTE · %s\n%s\n\nTRÁS · %s\n%s\n\nESPECIAL · %s\n%s" % [Career.SHOP[s.car].name, Career.SHOP[s.car].desc,
-		String(Car.FRONT[lo[0]].name).to_upper(), Career.WEAPON_DESC[lo[0]], String(Car.REAR[lo[1]].name).to_upper(), Career.WEAPON_DESC[lo[1]],
-		sn.to_upper(), Career.WEAPON_DESC[lo[2]]]
+	g_weap.text = "%s · %s\n\nCHÃO · %s\n%s\n\nMOBILIDADE (NITRO) · %s\n%s" % [Career.SHOP[s.car].name, Career.SHOP[s.car].desc,
+		String(Car.REAR[lo[1]].name).to_upper(), Career.WEAPON_DESC[lo[1]], String(Car.NITRO[lo[2]].name).to_upper(), Career.WEAPON_DESC[lo[2]]]
+	if not game.career.active():
+		g_weap.text += "\n\nCorrida rápida: arma e especiais liberados."
 	if game.career.active():
 		var ev: Dictionary = game.career.event
 		g_title.text = ("CHEFE · " if ev.boss else "MUNDO %d · " % (int(ev.world) + 1)) + String(d.name).to_upper()
@@ -744,6 +776,10 @@ func refresh_garage() -> void:
 		var row: Dictionary = g_up[k]
 		(row.label as Label).text = "%s  NV %d/3" % [UP_NAMES[k], lvl]
 		var b: Button = row.btn
+		if k in WPN_UPS and not game.career.has_front(String(s.car)):
+			b.text = "SEM ARMA"
+			b.disabled = true
+			continue
 		if lvl >= 3:
 			b.text = "MÁX"
 			b.disabled = true
