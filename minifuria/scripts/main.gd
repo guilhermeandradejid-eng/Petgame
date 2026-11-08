@@ -893,12 +893,17 @@ func _spawn_cars() -> void:
 		c.cruise = 36.0 + i * 0.5 + track_idx * 0.25
 		c.ai_skill = randf_range(0.95, 1.03)
 		c.next_bash = 6.0 + i * 3.0
-		c.configure(lib, fronts[(i + track_idx) % 2], rears[(i / 2 + track_idx) % 2], nitros[i % 2], {})
+		var lv := clampi(track_idx / 3 + (i % 3), 0, 3)
+		# o kit mostra o nível; no desempenho o ganho é pequeno (no máximo +4% de motor)
+		var rup := {"engine": lv / 2, "armor": lv / 2, "ammo": 0, "nitro": 0, "_tier": lv}
+		c.configure(lib, fronts[(i + track_idx) % 2], rears[(i / 2 + track_idx) % 2], nitros[i % 2], rup)
+		_add_xray(c)
 		_place(c, L + grid[i][0], grid[i][1], 0)
 		rivals.append(c)
 	player = _make_car(save.car, "player", Color("#e8352b"))
 	player.display_name = "VOCÊ"
 	player.configure(lib, save.front, save.rear, save.nitro, save.up)
+	_add_xray(player)
 	player.turn_mult = 1.15
 	_place(player, L + grid[4][0], grid[4][1], 0)
 	var tc: int = track.data.traffic
@@ -1528,7 +1533,8 @@ func _add_headlights(c: Car) -> Array:
 	var sp := SpotLight3D.new()
 	sp.light_color = Color(1.0, 0.92, 0.78)
 	# luz suave: menos energia, cone mais aberto com borda esfumada e queda maior com a distância
-	sp.light_energy = 2.6 if c.role == "player" else 1.7
+	var dusk_only: bool = not bool(theme.night)
+	sp.light_energy = (2.6 if c.role == "player" else 1.7) * (0.45 if dusk_only else 1.0)
 	sp.spot_range = 24.0
 	sp.spot_angle = 46.0
 	sp.spot_angle_attenuation = 2.4
@@ -1552,7 +1558,7 @@ func _add_headlights(c: Car) -> Array:
 		mi.mesh = cm
 		var m := ShaderMaterial.new()
 		m.shader = bsh
-		m.set_shader_parameter("strength", 0.085 if c.role == "player" else 0.055)
+		m.set_shader_parameter("strength", (0.085 if c.role == "player" else 0.055) * (0.35 if dusk_only else 1.0))
 		mi.material_override = m
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		# cilindro "deitado": eixo apontando para a frente e um pouco para baixo
@@ -1591,10 +1597,13 @@ func _update_flares(rdt: float) -> void:
 		if night:
 			# faróis virados para a câmera brilham na lente
 			var facing := clampf(-f.dot(cam_f) * 1.6 + 0.25, 0.0, 1.0)
+			# no entardecer (céu ainda claro) o farol quase não "estoura" a lente; o do jogador é mais
+			# contido para nunca esconder o próprio carro no brilho
+			var dk: float = 1.0 if bool(theme.night) else 0.22
 			if facing > 0.05:
 				for sx: float in [-1.0, 1.0]:
 					var hp: Vector3 = cxf * Vector3(sx * c.sp.wid * 0.32, c.sp.clr + c.sp.h * 0.6, c.sp.len * 0.5 + 0.1)
-					cand.append([hp, Color(1.0, 0.9, 0.75), facing * (0.9 if c == player else 0.6), 1.0])
+					cand.append([hp, Color(1.0, 0.9, 0.75), facing * (0.38 if c == player else 0.55) * dk, 0.7 if c == player else 0.85])
 		if c.nitroing:
 			cand.append([cxf * c.exhaust_local, Color(0.45, 0.75, 1.0), 0.7, 1.2])
 	for i in range(flares_t.size() - 1, -1, -1):

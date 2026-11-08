@@ -296,14 +296,17 @@ def cut_wells(body, wells):
         bpy.data.objects.remove(c, do_unlink=True)
 
 
-def subdiv_box(name, size, loc, material, cuts=(4, 6, 2), bevel=0.0):
-    """Caixa com malha subdividida (para amassar no jogo) e chanfro."""
+def subdiv_box(name, size, loc, material, cuts=(4, 6, 2), bevel=0.0, wedge=0.0):
+    """Caixa com malha subdividida (para amassar no jogo) e chanfro.
+    wedge: quanto o topo desce até a ponta da frente (-Y) — perfil em cunha, mais aerodinâmico."""
     bm = bmesh.new()
     bmesh.ops.create_cube(bm, size=1.0)
     for v in bm.verts:
         v.co.x *= size[0]
         v.co.y *= size[1]
         v.co.z *= size[2]
+        if wedge > 0 and v.co.z > 0 and v.co.y < 0:
+            v.co.z -= wedge * (-v.co.y / (size[1] / 2))
     ob = new_obj(name, bm, [material])
     ob.location = loc
     if bevel > 0:
@@ -342,7 +345,8 @@ def build_car(key, spec):
     for n, (sd, y) in {"FL": (-1, -wb / 2), "FR": (1, -wb / 2), "RL": (-1, wb / 2), "RR": (1, wb / 2)}.items():
         rs = spec.get("rear_scale", 1.0) if n[0] == "R" else 1.0
         WH[n] = (sd, y, wr * rs, n[0] == "F")
-    body = subdiv_box(key + "_b", (W * 0.96, L, H), (0, 0, z0), M["paint"], bevel=spec.get("bev", 0.18))
+    wedge = spec.get("wedge", 0.0)
+    body = subdiv_box(key + "_b", (W * 0.96, L, H), (0, 0, z0), M["paint"], bevel=spec.get("bev", 0.18), wedge=wedge)
     # caixas de roda: furo cilíndrico um pouco maior que o pneu; na dianteira mais fundo (roda esterça)
     wells = []
     for n, (sd, y, r, fr) in WH.items():
@@ -365,14 +369,26 @@ def build_car(key, spec):
     # capô: painel fino entre os para-lamas
     hood_l = L * 0.32
     hood_w = min(W * 0.82, 2.0 * (tw - (ww + 0.16) / 2 + 0.02) - 0.08)
-    P["hood"].append(box(key + "_hd", (hood_w, hood_l, 0.08), (0, -L / 2 + hood_l / 2 + 0.12, clr + H + 0.02), M["paint"], bevel=0.03))
+    hood_y = -L / 2 + hood_l / 2 + 0.12
+    hood_drop = wedge * (-hood_y / (L / 2))
+    hood_ang = math.atan2(wedge, L / 2)
+    P["hood"].append(box(key + "_hd", (hood_w, hood_l, 0.08), (0, hood_y, clr + H + 0.02), M["paint"], bevel=0.03))
     # para-choques com faróis / lanternas
     P["bumperF"].append(box(key + "_bf", (W * 0.98, 0.3, H * 0.45), (0, -L / 2 - 0.04, clr + H * 0.25), M["trim"], bevel=0.08))
     P["bumperR"].append(box(key + "_br", (W * 0.98, 0.3, H * 0.45), (0, L / 2 + 0.04, clr + H * 0.25), M["trim"], bevel=0.08))
-    P["bumperF"].append(box(key + "_gr", (W * 0.4, 0.08, H * 0.28), (0, -L / 2 - 0.02, z0 + H * 0.05), M["trim"], bevel=0.02))
+    front_top = clr + H - wedge
+    P["bumperF"].append(box(key + "_gr", (W * 0.66, 0.08, H * 0.2), (0, -L / 2 - 0.17, clr + H * 0.14), M["trim"], bevel=0.02))
     for s in (-1, 1):
-        P["bumperF"].append(box(key + f"_hl{s}", (0.42, 0.12, 0.2), (s * W * 0.32, -L / 2 - 0.0, z0 + H * 0.12), M["head"], bevel=0.04))
-        P["bumperR"].append(box(key + f"_tl{s}", (0.46, 0.12, 0.18), (s * W * 0.32, L / 2 + 0.0, z0 + H * 0.15), M["tail"], bevel=0.03))
+        # farol de LED fino dentro de uma carcaça escura (rasgado, estilo atual)
+        hz = clr + (front_top - clr) * 0.66
+        P["bumperF"].append(box(key + f"_hh{s}", (0.6, 0.06, 0.16), (s * W * 0.31, -L / 2 - 0.0, hz), M["trim"], bevel=0.03))
+        P["bumperF"].append(box(key + f"_hl{s}", (0.52, 0.08, 0.075), (s * W * 0.31, -L / 2 - 0.03, hz + 0.01), M["head"], bevel=0.02))
+        P["bumperF"].append(box(key + f"_in{s}", (0.3, 0.06, H * 0.14), (s * W * 0.36, -L / 2 - 0.17, clr + H * 0.3), M["trim"], bevel=0.02))
+        P["bumperR"].append(box(key + f"_tl{s}", (0.34, 0.1, 0.13), (s * W * 0.34, L / 2 + 0.0, z0 + H * 0.18), M["tail"], bevel=0.03))
+    # barra de LED de ponta a ponta na traseira e difusor com aletas
+    P["bumperR"].append(box(key + "_tlb", (W * 0.62, 0.07, 0.05), (0, L / 2 + 0.01, z0 + H * 0.2), M["tail"]))
+    for k in range(3):
+        P["bumperR"].append(box(key + f"_df{k}", (0.04, 0.26, 0.15), ((k - 1) * W * 0.18, L / 2 + 0.08, clr + 0.05), M["trim"]))
     # portas: painéis laterais entre os para-lamas, saia lateral e retrovisor
     r_f = WH["FL"][2]
     r_r = WH["RL"][2]
@@ -394,7 +410,15 @@ def build_car(key, spec):
     # cabine
     cab_z = clr + H + ch / 2 - 0.02
     P["cabin"].append(box(key + "_c", (W * 0.86, cl, ch), (0, coff, cab_z), M["paint"], bevel=0.1, taper=(tx, ty, shift)))
-    P["cabin"].append(box(key + "_g", (W * 0.88, cl * 0.92, ch * 0.7), (0, coff, cab_z + 0.02), M["glass"], bevel=0.05, taper=(tx * 0.98, ty * 0.98, shift)))
+    glass = box(key + "_g", (W * 0.86 * 1.035, cl * 1.045, ch * 0.995), (0, coff, cab_z), M["glass"], bevel=0.1, taper=(tx, ty, shift))
+    slab = box(key + "_gs", (W * 3.0, cl * 3.0, ch * 0.56), (0, coff, cab_z + ch * 0.04), M["glass"])
+    mdb = glass.modifiers.new("win", "BOOLEAN")
+    mdb.operation = "INTERSECT"
+    mdb.object = slab
+    mdb.solver = "EXACT"
+    apply_mods(glass)
+    bpy.data.objects.remove(slab, do_unlink=True)
+    P["cabin"].append(glass)
     P["cabin"].append(box(key + "_rf", (W * 0.86 * tx * 0.96, cl * ty * 0.9, 0.1), (0, coff + shift, clr + H + ch - 0.06), M["paint"], bevel=0.04))
 
     for ex in spec.get("extras", []):
@@ -441,6 +465,9 @@ def build_car(key, spec):
             continue
         ob = join(f"{key}_{n}", objs)
         flat(ob)
+        if n == "hood" and wedge > 0:
+            ob.rotation_euler = (hood_ang, 0, 0)
+            ob.location.z -= hood_drop
         parent(ob, root)
 
     for n, (sd, y, r, fr) in WH.items():
@@ -454,18 +481,18 @@ def build_car(key, spec):
 
 CARS = {
     # carro do jogador: cupê esportivo gordinho, rodas grandes
-    "faisca": dict(L=3.7, W=2.0, H=0.62, clr=0.34, wr=0.5, wb=2.35, ww=0.5,
-                   cab=(1.75, 0.25, 0.62, 0.86, 0.62), cab_shift=0.12, bev=0.22,
+    "faisca": dict(L=3.7, W=2.0, H=0.62, clr=0.34, wr=0.5, wb=2.35, ww=0.5, wedge=0.22,
+                   cab=(1.8, 0.28, 0.54, 0.84, 0.52), cab_shift=0.2, bev=0.22,
                    rear_scale=1.08, extras=[("spoiler", 0.36), ("stripe",), ("hood_scoop",)]),
     # rival: muscle car comprido e baixo
-    "trovao": dict(L=4.1, W=2.1, H=0.6, clr=0.3, wr=0.5, wb=2.6, ww=0.52,
-                   cab=(1.7, 0.45, 0.58, 0.84, 0.58), cab_shift=0.15, bev=0.16,
+    "trovao": dict(L=4.1, W=2.1, H=0.6, clr=0.3, wr=0.5, wb=2.6, ww=0.52, wedge=0.16,
+                   cab=(1.75, 0.5, 0.52, 0.82, 0.5), cab_shift=0.24, bev=0.16,
                    rear_scale=1.1, extras=[("hood_scoop",), ("spoiler", 0.22)]),
     # rival: buggy esportivo aberto
     "vespa": dict(L=3.4, W=2.0, H=0.55, clr=0.45, wr=0.55, wb=2.2, ww=0.55, inset=0.0, fender_trim=True,
                   cab=(1.3, 0.2, 0.5, 0.8, 0.55), bev=0.2, extras=[("rollbar",), ("bullbar",)]),
     # tráfego
-    "sedan": dict(L=3.9, W=1.95, H=0.66, clr=0.3, wr=0.44, wb=2.4,
+    "sedan": dict(L=3.9, W=1.95, H=0.66, clr=0.3, wr=0.44, wb=2.4, wedge=0.06,
                   cab=(2.0, 0.1, 0.66, 0.9, 0.7), bev=0.2, extras=[]),
     "taxi": dict(L=3.9, W=1.95, H=0.66, clr=0.3, wr=0.44, wb=2.4,
                  cab=(2.0, 0.1, 0.66, 0.9, 0.7), bev=0.2, extras=[("taxi",)]),

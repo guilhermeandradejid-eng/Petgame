@@ -140,6 +140,10 @@ var kills := 0
 var model: Node3D
 var wheels: Array = []
 var parts: Dictionary = {}
+var tier := 0                 # nível visual (0 = de fábrica .. 3 = elite), pela soma dos upgrades
+var _kit: Array = []
+const TIER_ACCENT := [Color("#d8dbe2"), Color("#ffffff"), Color("#ffcf33"), Color("#2ee6ff")]
+const TIER_RIM := [Color("#c9ccd4"), Color("#202227"), Color("#b0703a"), Color("#f2c230")]
 var paint: StandardMaterial3D
 var tail_mat: StandardMaterial3D
 var sirens: Array = []
@@ -280,6 +284,7 @@ func configure(lib: Node3D, front: String, rear: String, nitro: String, up: Dict
 			c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	model.add_child(weapon_node)
 	muzzle_local = weapon_base + (Vector3(0, 0.32, 1.1) if front == "mg" else Vector3(0, 0.3, 0.55))
+	_build_kit(up)
 
 
 func refill() -> void:
@@ -877,6 +882,124 @@ func place(xform: Transform3D, speed: float) -> void:
 	v_f = speed
 
 
+## ------------------------------------------------------------------ kit visual por nível
+## Dá para reconhecer de longe o nível de cada carro:
+##   nível 1: splitter dianteiro, faixa lateral e aro preto
+##   nível 2: + asa traseira com pilares, canards e aro bronze (o aerofólio de fábrica sai)
+##   nível 3: + asa grande com placas coloridas, neon embaixo do carro e aro dourado
+## e cada upgrade aparece: blindagem (placas nas portas), nitro (cilindros atrás), motor (blower no capô),
+## munição (tambor extra na arma).
+func _kit_mat(col: Color, rough := 0.4, metal := 0.3, emit := 0.0) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = col
+	m.roughness = rough
+	m.metallic = metal
+	if emit > 0.0:
+		m.emission_enabled = true
+		m.emission = col
+		m.emission_energy_multiplier = emit
+	return m
+
+
+func _kit_box(size: Vector3, pos: Vector3, mat: Material, rot := Vector3.ZERO, parent: Node3D = null) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = size
+	mi.mesh = bm
+	mi.material_override = mat
+	mi.position = pos
+	mi.rotation = rot
+	(parent if parent else model).add_child(mi)
+	_kit.append(mi)
+	return mi
+
+
+func _kit_cyl(r: float, h: float, pos: Vector3, mat: Material, rot := Vector3.ZERO, parent: Node3D = null) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = r
+	cm.bottom_radius = r
+	cm.height = h
+	cm.radial_segments = 12
+	cm.rings = 1
+	mi.mesh = cm
+	mi.material_override = mat
+	mi.position = pos
+	mi.rotation = rot
+	(parent if parent else model).add_child(mi)
+	_kit.append(mi)
+	return mi
+
+
+func _build_kit(up: Dictionary) -> void:
+	for n in _kit:
+		if is_instance_valid(n):
+			n.queue_free()
+	_kit.clear()
+	var total := int(up.get("engine", 0)) + int(up.get("armor", 0)) + int(up.get("ammo", 0)) + int(up.get("nitro", 0))
+	tier = 0 if total < 3 else (1 if total < 6 else (2 if total < 9 else 3))
+	if up.has("_tier"):
+		tier = int(up["_tier"])
+	if role == "traffic" or model == null:
+		return
+	var Lc: float = sp.len
+	var Wc: float = sp.wid
+	var top: float = sp.clr + sp.h
+	var carbon := _kit_mat(Color(0.07, 0.075, 0.085), 0.3, 0.35)
+	var accent := _kit_mat(TIER_ACCENT[tier], 0.3, 0.2, 0.6 if tier == 3 else 0.0)
+	# cor do aro por nível (o material "Rim" das rodas)
+	var rim := _kit_mat(TIER_RIM[tier], 0.2, 1.0)
+	for w in wheels:
+		var mi: MeshInstance3D = w.mesh
+		for si in mi.mesh.get_surface_count():
+			var sm := mi.mesh.surface_get_material(si)
+			if sm and sm.resource_name == "Rim":
+				mi.set_surface_override_material(si, rim)
+	if tier >= 1:
+		_kit_box(Vector3(Wc * 1.02, 0.04, 0.34), Vector3(0, sp.clr - 0.03, Lc * 0.5 + 0.14), carbon)
+		for sx: float in [-1.0, 1.0]:
+			_kit_box(Vector3(0.02, 0.07, Lc * 0.5), Vector3(sx * (Wc * 0.49 + 0.075), sp.clr + sp.h * 0.5, -0.05), accent)
+	if tier >= 2:
+		var stock: Dictionary = parts.get("spoiler", {})
+		if not stock.is_empty():
+			(stock.mesh as MeshInstance3D).visible = false
+		var wy := top + (0.55 if tier == 3 else 0.42)
+		var wz := -Lc * 0.5 + 0.3
+		for sx: float in [-1.0, 1.0]:
+			_kit_box(Vector3(0.06, wy - top, 0.14), Vector3(sx * Wc * 0.28, top + (wy - top) * 0.5, wz), carbon)
+			# canards (aletinhas) nos cantos do para-choque
+			_kit_box(Vector3(0.26, 0.025, 0.16), Vector3(sx * Wc * 0.42, sp.clr + 0.22, Lc * 0.5 + 0.06), carbon, Vector3(0, 0, sx * 0.25))
+		var ww := Wc * (1.08 if tier == 3 else 0.96)
+		_kit_box(Vector3(ww, 0.05, 0.46), Vector3(0, wy, wz), carbon, Vector3(-0.14, 0, 0))
+		for sx: float in [-1.0, 1.0]:
+			_kit_box(Vector3(0.035, 0.26, 0.52), Vector3(sx * ww * 0.5, wy - 0.04, wz), accent)
+	if tier >= 3:
+		# neon embaixo do carro (cor do carro, brilha no chão)
+		var neon := _kit_mat(color.lightened(0.2), 1.0, 0.0, 3.0)
+		neon.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_kit_box(Vector3(Wc * 0.84, 0.02, Lc * 0.8), Vector3(0, sp.clr - 0.05, 0), neon)
+	# upgrades individuais
+	var armor := int(up.get("armor", 0))
+	if armor >= 2:
+		var plate := _kit_mat(Color(0.32, 0.34, 0.37), 0.45, 0.8)
+		for sx: float in [-1.0, 1.0]:
+			_kit_box(Vector3(0.06, sp.h * 0.48, Lc * 0.34), Vector3(sx * (Wc * 0.5 + 0.1), sp.clr + sp.h * 0.42, 0.0), plate)
+			for k in 3:
+				_kit_cyl(0.035, 0.03, Vector3(sx * (Wc * 0.5 + 0.14), sp.clr + sp.h * 0.42, (k - 1) * Lc * 0.12), _kit_mat(Color(0.75, 0.75, 0.78), 0.2, 1.0), Vector3(0, 0, PI / 2))
+	var nit := int(up.get("nitro", 0))
+	if nit >= 2:
+		var blue := _kit_mat(Color("#2f7dff"), 0.25, 0.6, 0.4)
+		for sx: float in [-1.0, 1.0]:
+			_kit_cyl(0.1, 0.45, Vector3(sx * 0.24, top + 0.1, -Lc * 0.5 + 0.45), blue, Vector3(PI / 2, 0, 0))
+	var eng := int(up.get("engine", 0))
+	if eng >= 2:
+		var chrome := _kit_mat(Color(0.85, 0.86, 0.9), 0.15, 1.0)
+		_kit_box(Vector3(0.42, 0.18, 0.4), Vector3(0, top + 0.02, Lc * 0.5 - 0.95), chrome)
+		_kit_box(Vector3(0.34, 0.14, 0.12), Vector3(0, top + 0.16, Lc * 0.5 - 0.82), carbon)
+	if int(up.get("ammo", 0)) >= 2 and weapon_node:
+		_kit_cyl(0.16, 0.2, Vector3(0.36, 0.28, 0.05), _kit_mat(Color("#c8a43a"), 0.35, 0.8), Vector3(0, 0, PI / 2), weapon_node)
+
+
 ## encostado na mureta: o carro não "sobe" nela nem é lançado para fora (tira a velocidade para cima
 ## e o giro de capotagem), e devolve parte da velocidade ao longo da pista
 func _wall_hold() -> void:
@@ -932,6 +1055,8 @@ func _jump_assist() -> void:
 	var vh := Vector2(v.x, v.z).length()
 	var hd := Vector3(to.x, 0, to.z).normalized()
 	var newh := clampf(maxf(vh, need), 0.0, maxf(vh, 8.0) * 1.5 + 6.0)
+	# rápido demais (nitro + placa): segura um pouco no ar para pousar na rampa, não voar para fora na curva
+	newh = minf(newh, need * 1.4 + 5.0)
 	if OS.get_cmdline_user_args().has("--debugjump"):
 		print("JUMP %s s=%d k=%d D=%.1f dy=%.1f vy=%.1f tf=%.2f vh=%.1f need=%.1f new=%.1f ang=%.0f" % [display_name, int(s_track), k, D, to.y, v.y, tf, vh, need, newh, rad_to_deg(Vector2(v.x, v.z).angle_to(Vector2(to.x, to.z)))])
 	linear_velocity = hd * newh + Vector3.UP * vy

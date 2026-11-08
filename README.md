@@ -144,6 +144,16 @@ Referências: [Coasterpedia: Heartline roll](https://coasterpedia.net/wiki/Heart
 - **Saltos**: a assistência dispara no primeiro instante no ar perto do vão (não depende mais de estar subindo), garante um arco de verdade (pelo menos 5,5 m/s para cima), mira mais longe na rampa de pouso e tira a cambalhota.
 - **Câmera**: no saca-rolhas ela segue o eixo fixo da espiral (não balança junto com a pista); no looping fica em 3/4, de lado e um pouco de frente, alta o bastante para ver o asfalto por dentro; dois loopings seguidos mantêm a mesma câmera; as trocas de câmera são mais macias. Ao destruir um rival a câmera não sai mais do seu carro.
 
+## Carros modernos e nível visível
+
+- **Formas**: carroceria em cunha (a frente desce até 22 cm e o capô acompanha a inclinação), cabine mais baixa e para-brisa mais deitado, faróis de LED finos em carcaça escura, entrada de ar larga, barra de LED de ponta a ponta na traseira e difusor com aletas.
+- **Vidros**: uma faixa de vidro envolve a cabine inteira (para-brisa, laterais e vidro traseiro). Ela é feita de uma cópia levemente maior da cabine, cortada na altura das janelas, então nunca fica escondida pela lataria.
+- **Kit por nível** (soma dos upgrades da garagem; os rivais ganham nível conforme a pista):
+  - nível 1: splitter dianteiro, faixa lateral e aro preto;
+  - nível 2: asa traseira com pilares, canards e aro bronze (o aerofólio de fábrica sai);
+  - nível 3: asa grande com placas coloridas, neon embaixo do carro e aro dourado.
+- **Cada upgrade aparece no carro**: blindagem nível 2+ coloca placas parafusadas nas portas, nitro 2+ põe cilindros azuis atrás, motor 2+ põe um blower cromado no capô e munição 2+ põe um tambor extra na arma.
+
 ## Rodas e materiais
 
 - Pneus com banda de rodagem em blocos e flanco, aro escuro com 5 raios metálicos e cubo cromado. O giro desenhado é limitado (~3 voltas/s) para não haver efeito estroboscópico.
@@ -178,7 +188,7 @@ Sobre as músicas do Rock n' Roll Racing ("Bad to the Bone", "Paranoid", "Born t
 
 - **Sombras de verdade**: a câmera ortográfica foi para 70 m (antes 120 m, mais que o alcance das sombras do sol). Agora a sombra cobre a tela toda, mais nítida e densa.
 - **Color grade**: exposição e luz ambiente mais baixas, contraste maior e saturação controlada. As noites (Cidade, Vulcão, Lua) ficam bem mais escuras e o Pântano ganhou clima de entardecer.
-- **Faróis noturnos**: cada carro tem um farol spot suave (cone aberto com borda esfumada e queda com a distância) que ilumina o asfalto à frente, mais dois fachos de luz bem discretos.
+- **Faróis noturnos**: cada carro tem um farol spot suave (cone aberto com borda esfumada e queda com a distância) que ilumina o asfalto à frente, mais dois fachos de luz bem discretos. No entardecer (Pântano) o farol e o flare ficam bem mais fracos. O flare do farol do seu carro é contido e o halo é menor, para o carro nunca sumir no brilho.
 - **Luz indireta à noite**: parte da luz ambiente vem de uma cor de luar azulada, então a cena não fica escura demais e o clima noturno continua.
 - **Lens flare**: halo, risco anamórfico e "fantasmas" refletidos pelo centro da lente para faróis virados para a câmera, chamas do nitro, explosões e placas de turbo; de dia, um brilho do sol entra pela borda.
 - **Carro visível embaixo de pista**: quando um viaduto, espiral ou looping fica na frente do carro, ele aparece como silhueta colorida ("raio-X", com teste de profundidade invertido). O seu carro aparece em amarelo e os rivais na cor deles.

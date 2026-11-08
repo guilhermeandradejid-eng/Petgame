@@ -63,10 +63,10 @@ void fragment() {
 		vec2 dd = uv - p;
 		dd.x *= aspect;
 		float r = length(dd);
-		float halo = exp(-r / (0.018 * sz)) * 0.9 + exp(-r / (0.07 * sz)) * 0.18;
-		float streak = exp(-abs(dd.y) / (0.0025 * sz)) * exp(-abs(dd.x) / (0.22 * sz));
+		float halo = exp(-r / (0.013 * sz)) * 0.8 + exp(-r / (0.05 * sz)) * 0.12;
+		float streak = exp(-abs(dd.y) / (0.0022 * sz)) * exp(-abs(dd.x) / (0.2 * sz));
 		vec3 fc = fl_col[i].rgb;
-		col += fc * halo * k + mix(fc, vec3(0.55, 0.75, 1.0), 0.6) * streak * k * 0.55;
+		col += fc * halo * k + mix(fc, vec3(0.55, 0.75, 1.0), 0.6) * streak * k * 0.4;
 		for (int g = 0; g < 3; g++) {
 			float gk = (g == 0) ? 0.45 : ((g == 1) ? 0.85 : 1.35);
 			vec2 gp = c0 + (c0 - p) * gk;
