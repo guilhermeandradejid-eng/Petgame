@@ -27,8 +27,8 @@ var _fade_tw: Tween
 var car_tex: Texture2D = preload("res://ui/load_car.png")
 var wheel_tex: Texture2D = preload("res://ui/load_wheel.png")
 ## posição das rodas no sprite (px do sprite 900x420) e tamanho da roda — gerado por tools/render_sprites.gd
-const WHEELS := [Vector2(620.2, 217.2), Vector2(279.8, 211.4)]
-const WHEEL_PX := 152.1
+const WHEELS := [Vector2(616.6, 237.5), Vector2(283.4, 234.6)]
+const WHEEL_PX := 109.5
 
 
 func _ready() -> void:

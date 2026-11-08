@@ -35,7 +35,7 @@ func _init() -> void:
 	floor_.material_override = fm
 	root3.add_child(floor_)
 	var lib: Node3D = (load("res://assets/minicars.glb") as PackedScene).instantiate()
-	var kinds := ["faisca", "trovao", "vespa", "sedan", "picape", "van"]
+	var kinds := ["faisca", "trovao", "vespa", "policia", "picape", "van"]
 	var weps := ["wpn_gun", "wpn_pod", "wpn_gun", "", "", ""]
 	for i in kinds.size():
 		var car: Node3D = lib.get_node("car_" + kinds[i]).duplicate()

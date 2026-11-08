@@ -54,7 +54,7 @@ LOADER = """<style>
 <div id="mf"><div class="lines"></div>
 <div class="ttl">MINI <b>FÚRIA</b></div><div class="chk"></div>
 <div class="road"><div class="dash"></div><div class="car"><span class="puff"></span><span class="puff"></span><span class="puff"></span>
-<div class="cimg"><img src="load_car.png" width="200" height="93"><img class="whl" src="load_wheel.png" style="left:120.9px;top:31.4px;width:33.8px;height:33.8px"><img class="whl" src="load_wheel.png" style="left:45.3px;top:30.1px;width:33.8px;height:33.8px"></div></div></div>
+<div class="cimg"><img src="load_car.png" width="200" height="93"><img class="whl" src="load_wheel.png" style="left:124.8px;top:40.6px;width:24.3px;height:24.3px"><img class="whl" src="load_wheel.png" style="left:50.1px;top:39.3px;width:25.7px;height:25.7px"></div></div></div>
 <div class="lbl" id="mf-lbl">BAIXANDO A PISTA 0%</div><div class="bar"><div id="mf-bar"></div></div>
 <div class="tip" id="mf-tip"></div><div class="err" id="mf-err"></div></div>
 <script>

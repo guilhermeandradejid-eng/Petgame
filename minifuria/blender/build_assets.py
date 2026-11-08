@@ -617,9 +617,307 @@ CARS = {
                 cab=(1.0, -1.2, 0.7, 0.9, 0.7), cab_shift=-0.1, bev=0.18, extras=[("cargo", 3.1, 1.3)]),
 }
 
+
+# ================================================================== carros v2 (remodelados)
+# Método: carroceria INTEIRIÇA a partir do perfil lateral (silhueta) extrudado na largura e chanfrado;
+# para-lamas retos fundidos ao corpo e caixas de roda recortadas; rodas EMBUTIDAS (face externa rente à
+# lateral); cabine em "estufa" (vidro inclinado para dentro, colunas e teto); portas = vincos na lataria.
+from mathutils import Vector, Matrix
+
+
+def prism(name, prof, hb, ht, zb, zt, material, bevel=0.0, segs=3, angle=35.0):
+    """Extruda o perfil (y, z) na largura. Meia-largura varia linear com z de hb (em zb) até ht (em zt):
+    lateral inclinada para dentro e tampas planas."""
+    bm = bmesh.new()
+    def hw(z):
+        if zt == zb:
+            return hb
+        u = min(1.0, max(0.0, (z - zb) / (zt - zb)))
+        return hb + (ht - hb) * u
+    L_ = [bm.verts.new((-hw(z), y, z)) for (y, z) in prof]
+    R_ = [bm.verts.new((hw(z), y, z)) for (y, z) in prof]
+    n = len(prof)
+    for i in range(n):
+        j = (i + 1) % n
+        bm.faces.new((L_[i], L_[j], R_[j], R_[i]))
+    bm.faces.new(R_)
+    bm.faces.new(list(reversed(L_)))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    ob = new_obj(name, bm, [material])
+    if bevel > 0:
+        md = ob.modifiers.new("bevel", "BEVEL")
+        md.width = bevel
+        md.segments = segs
+        md.limit_method = "ANGLE"
+        md.angle_limit = math.radians(angle)
+    return ob
+
+
+def beam(name, p0, p1, w, h, material, bevel=0.0):
+    """Barra retangular de p0 a p1 (colunas, tubos de gaiola, suportes)."""
+    a, b = Vector(p0), Vector(p1)
+    d = b - a
+    ob = box(name, (w, d.length, h), tuple((a + b) / 2), material, bevel=bevel)
+    q = Vector((0, 1, 0)).rotation_difference(d.normalized())
+    ob.rotation_mode = "QUATERNION"
+    ob.rotation_quaternion = q
+    return ob
+
+
+def boolean(ob, other, op):
+    md = ob.modifiers.new("b_" + other.name, "BOOLEAN")
+    md.operation = op
+    md.object = other
+    md.solver = "EXACT"
+    try:
+        md.material_mode = "TRANSFER"
+    except Exception:
+        pass
+    apply_mods(ob)
+    bpy.data.objects.remove(other, do_unlink=True)
+
+
+def build_car2(key, s):
+    L, W, clr = s["L"], s["W"], s["clr"]
+    wr, wrr, wb, ww = s["wr"], s.get("wrr", s["wr"]), s["wb"], s["ww"]
+    zb, nose, tail = s["zb"], s["nose"], s["tail"]
+    yF, yR = -L / 2, L / 2
+    cowl, deck = s["cowl"], s["deck"]
+    root = empty("car_" + key)
+    P = {n: [] for n in ("body", "hood", "bumperF", "bumperR", "doorL", "doorR", "cabin", "spoiler", "cargo")}
+    paint = M["paint"]
+    # ---- rodas (posição) — face externa rente à lateral do carro
+    wx = W / 2 - ww / 2 - 0.03
+    oy = s.get("axle_off", 0.0)
+    WH = {"FL": (-1, -wb / 2 + oy, wr, True), "FR": (1, -wb / 2 + oy, wr, True),
+          "RL": (-1, wb / 2 + oy, wrr, False), "RR": (1, wb / 2 + oy, wrr, False)}
+    # ---- corpo: perfil lateral (frente = -Y)
+    prof = [(yF + 0.2, clr), (yF + 0.03, clr + 0.12), (yF, nose - 0.1), (yF + 0.16, nose), (cowl, zb),
+            (deck, zb), (yR - 0.12, tail), (yR, tail - 0.12), (yR, clr + 0.14), (yR - 0.2, clr)]
+    if s.get("flat_hood"):
+        prof[4] = (cowl, nose + 0.02)
+        prof.insert(5, (cowl + 0.05, zb))
+    body = prism(key + "_b", prof, W / 2, W / 2, 0, 0, paint, bevel=s.get("bev", 0.1))
+    apply_mods(body)
+    # para-lamas retos, fundidos à carroceria (cobrem o pneu que passa da linha de cintura)
+    for n, (sd, y, r, fr) in WH.items():
+        top = 2 * r + 0.1
+        if 2 * r + 0.08 > zb:
+            fw = ww + 0.18
+            z0_ = zb - 0.2
+            f = box(f"{key}_fl{n}", (fw, 2 * r + 0.6, top - z0_), (sd * (W / 2 - fw / 2 + 0.035), y, (top + z0_) / 2), paint, bevel=0.09)
+            apply_mods(f)
+            boolean(body, f, "UNION")
+    # caixas de roda (frente mais funda: a roda esterça)
+    for n, (sd, y, r, fr) in WH.items():
+        inner = W / 2 - ww - (0.3 if fr else 0.14)
+        c = cyl(f"{key}_cut{n}", r + 0.075, (W / 2 + 0.5) - inner, (sd * (inner + (W / 2 + 0.5)) / 2, y, r), M["well"], verts=32, axis="X")
+        boolean(body, c, "DIFFERENCE")
+    # interior escuro da caixa de roda (some o "vazio" atrás do pneu)
+    for n, (sd, y, r, fr) in WH.items():
+        P["body"].append(cyl(f"{key}_wl{n}", r + 0.06, 0.04, (sd * (W / 2 - ww - (0.28 if fr else 0.12)), y, r), M["well"], verts=24))
+    P["body"].append(body)
+    # assoalho/saia escura, friso cromado na linha de cintura e saia lateral (quebram a lateral chapada)
+    P["body"].append(box(key + "_fl", (W * 0.94, wb + 0.4, 0.08), (0, oy, clr + 0.02), M["trim"]))
+    for sd in (-1, 1):
+        fy0 = WH["FL"][1] + WH["FL"][2] + 0.12
+        fy1 = WH["RL"][1] - WH["RL"][2] - 0.12
+        if fy1 > fy0:
+            P["body"].append(box(f"{key}_sk{sd}", (0.05, fy1 - fy0, 0.12), (sd * (W / 2 + 0.01), (fy0 + fy1) / 2, clr + 0.08), M["trim"], bevel=0.02))
+        P["body"].append(box(f"{key}_bl{sd}", (0.015, deck - cowl + 0.3, 0.025), (sd * (W / 2 + 0.004), (cowl + deck) / 2, zb - 0.1), M["chrome"]))
+    # ---- capô (painel levemente saliente, destacável)
+    if not s.get("no_hood"):
+        hy0, hz0 = yF + 0.3, nose + 0.012
+        hy1, hz1 = cowl - 0.12, zb + 0.012 if not s.get("flat_hood") else nose + 0.02
+        P["hood"].append(beam(key + "_hd", (0, hy0, hz0), (0, hy1, hz1), W * 0.72, 0.035, paint, bevel=0.012))
+        for ex in s.get("extras", []):
+            if ex[0] == "scoop":
+                P["hood"].append(box(key + "_hs", (0.55, 0.55, 0.16), (0, (hy0 + hy1) / 2 + 0.1, (hz0 + hz1) / 2 + 0.07), M["trim"], bevel=0.04, taper=(0.8, 0.6)))
+            if ex[0] == "blower":
+                P["hood"].append(box(key + "_bw", (0.5, 0.6, 0.32), (0, (hy0 + hy1) / 2, (hz0 + hz1) / 2 + 0.16), M["chrome"], bevel=0.05))
+                P["hood"].append(box(key + "_bwt", (0.6, 0.22, 0.18), (0, (hy0 + hy1) / 2 - 0.1, (hz0 + hz1) / 2 + 0.38), M["trim"], bevel=0.03))
+            if ex[0] == "vents":
+                for k in range(3):
+                    P["hood"].append(box(f"{key}_hv{k}", (0.5, 0.06, 0.03), (0, hy1 - 0.18 - k * 0.12, hz1 - 0.01 + 0.02 * k), M["well"]))
+    # ---- frente: para-choque, grade e faróis rasgados
+    P["bumperF"].append(box(key + "_bf", (W * 0.97, 0.26, 0.22), (0, yF + 0.08, clr + 0.11), M["trim"], bevel=0.06))
+    P["bumperF"].append(box(key + "_gr", (W * 0.5, 0.06, max(0.08, nose - clr - 0.38)), (0, yF - 0.005, (nose + clr) / 2 + 0.02), M["well"], bevel=0.02))
+    for sd in (-1, 1):
+        hl = box(f"{key}_hl{sd}", (W * 0.24, 0.07, 0.07), (sd * W * 0.32, yF + 0.07, nose - 0.06), M["head"], bevel=0.02)
+        hl.rotation_euler = (math.atan2(nose - (nose - 0.1), 0.16) * 0.6, 0, 0)
+        P["bumperF"].append(hl)
+        P["bumperF"].append(box(f"{key}_hh{sd}", (W * 0.27, 0.06, 0.11), (sd * W * 0.32, yF + 0.09, nose - 0.07), M["trim"], bevel=0.02))
+    # ---- traseira: para-choque, lanternas, escapamento
+    P["bumperR"].append(box(key + "_br", (W * 0.97, 0.26, 0.22), (0, yR - 0.08, clr + 0.11), M["trim"], bevel=0.06))
+    P["bumperR"].append(box(key + "_tlb", (W * 0.7, 0.05, 0.06), (0, yR + 0.005, tail - 0.18), M["tail"]))
+    for sd in (-1, 1):
+        P["bumperR"].append(box(f"{key}_tl{sd}", (W * 0.2, 0.06, 0.12), (sd * W * 0.36, yR + 0.004, tail - 0.18), M["tail"], bevel=0.02))
+        P["bumperR"].append(cyl(f"{key}_ex{sd}", 0.07, 0.3, (sd * W * 0.25, yR + 0.05, clr + 0.02), M["exhaust"], verts=12, axis="Y"))
+        P["bumperR"].append(cyl(f"{key}_ext{sd}", 0.085, 0.08, (sd * W * 0.25, yR + 0.2, clr + 0.02), M["chrome"], verts=12, axis="Y"))
+        ex = empty(key + ("_exR" if sd > 0 else "_exL"), (sd * W * 0.25, yR + 0.26, clr + 0.02))
+        parent(ex, root)
+    # ---- cabine em estufa: vidro inclinado, teto e colunas (cor do carro)
+    cab = s.get("cab")
+    mount_z = zb + 0.05
+    mount_y = (cowl + deck) / 2
+    if cab:
+        y0, y1, y2, y3, zt, bw, tw = cab
+        hb, ht = W / 2 * bw, W / 2 * tw
+        gl = prism(key + "_g", [(y0, zb - 0.03), (y1, zt), (y2, zt), (y3, zb - 0.03)], hb, ht, zb - 0.03, zt, M["glass"], bevel=0.04)
+        P["cabin"].append(gl)
+        P["cabin"].append(prism(key + "_rf", [(y1 - 0.02, zt - 0.03), (y1 + 0.08, zt + 0.05), (y2 - 0.08, zt + 0.05), (y2 + 0.02, zt - 0.03)],
+                                ht + 0.03, ht + 0.03, 0, 0, paint, bevel=0.03))
+        for sd in (-1, 1):
+            # colunas A e C (e B se a cabine for longa), seguindo a inclinação do vidro
+            P["cabin"].append(beam(f"{key}_pa{sd}", (sd * (hb + 0.01), y0 + 0.02, zb), (sd * (ht + 0.02), y1 + 0.02, zt), 0.09, 0.09, paint))
+            P["cabin"].append(beam(f"{key}_pc{sd}", (sd * (hb + 0.01), y3 - 0.02, zb), (sd * (ht + 0.02), y2 - 0.02, zt), 0.11, 0.1, paint))
+            if y3 - y0 > 1.4:
+                ym = (y1 + y2) / 2
+                P["cabin"].append(beam(f"{key}_pb{sd}", (sd * (hb + 0.01), ym, zb), (sd * (ht + 0.02), ym, zt), 0.08, 0.08, paint))
+            # retrovisor
+            P["doorL" if sd < 0 else "doorR"].append(box(f"{key}_ms{sd}", (0.14, 0.05, 0.05), (sd * (hb + 0.07), y0 + 0.22, zb + 0.06), M["trim"]))
+            P["doorL" if sd < 0 else "doorR"].append(box(f"{key}_mh{sd}", (0.1, 0.15, 0.11), (sd * (hb + 0.16), y0 + 0.22, zb + 0.09), paint, bevel=0.02))
+        mount_z = zt + 0.04
+        mount_y = (y1 + y2) / 2
+    # ---- portas: vincos gravados na lataria + maçaneta (nada colado por fora)
+    if not s.get("no_doors"):
+        d0 = s.get("door", (cowl - 0.05, cowl + 1.05))
+        for sd, n in ((-1, "doorL"), (1, "doorR")):
+            x = sd * (W / 2 + 0.003)
+            for yy in d0:
+                P[n].append(box(f"{key}_ds{sd}{yy:.2f}", (0.012, 0.025, zb - clr - 0.2), (x, yy, (zb + clr) / 2 + 0.03), M["well"]))
+            P[n].append(box(f"{key}_dh{sd}", (0.02, 0.2, 0.045), (sd * (W / 2 + 0.008), d0[1] - 0.25, zb - 0.15), M["chrome"]))
+    # ---- extras de cada tipo
+    for ex in s.get("extras", []):
+        k = ex[0]
+        if k == "wing":
+            h = ex[1]
+            P["spoiler"].append(box(key + "_wg", (W * 0.94, 0.38, 0.06), (0, yR - 0.22, tail + h), M["trim"], bevel=0.02))
+            for sd in (-1, 1):
+                P["spoiler"].append(box(f"{key}_we{sd}", (0.04, 0.42, 0.22), (sd * W * 0.47, yR - 0.22, tail + h - 0.04), M["trim"]))
+                P["spoiler"].append(beam(f"{key}_ws{sd}", (sd * W * 0.3, yR - 0.3, tail - 0.02), (sd * W * 0.3, yR - 0.2, tail + h), 0.06, 0.12, M["trim"]))
+        elif k == "ducktail":
+            P["spoiler"].append(box(key + "_dt", (W * 0.9, 0.3, 0.1), (0, yR - 0.12, tail + 0.04), paint, bevel=0.03, taper=(1.0, 0.6, 0.06)))
+        elif k == "intakes":
+            for sd in (-1, 1):
+                P["body"].append(box(f"{key}_it{sd}", (0.03, 0.42, 0.2), (sd * (W / 2 + 0.002), deck - 0.35, clr + 0.32), M["well"]))
+        elif k == "stripe":
+            P["hood"].append(beam(key + "_st", (0, yF + 0.32, nose + 0.035), (0, cowl - 0.14, zb + 0.035), 0.3, 0.02, M["paint2"]))
+        elif k == "cage":
+            # santo-antônio tubular por cima da cabine aberta (buggy / trophy truck)
+            y0, y1, zt = ex[1], ex[2], ex[3]
+            for sd in (-1, 1):
+                P["cabin"].append(beam(f"{key}_cg{sd}a", (sd * W * 0.36, y0, zb), (sd * W * 0.3, y0 + 0.35, zt), 0.07, 0.07, M["chrome"]))
+                P["cabin"].append(beam(f"{key}_cg{sd}b", (sd * W * 0.3, y0 + 0.35, zt), (sd * W * 0.3, y1 - 0.2, zt), 0.07, 0.07, M["chrome"]))
+                P["cabin"].append(beam(f"{key}_cg{sd}c", (sd * W * 0.3, y1 - 0.2, zt), (sd * W * 0.36, y1, zb), 0.07, 0.07, M["chrome"]))
+            P["cabin"].append(beam(key + "_cgx0", (-W * 0.3, y0 + 0.35, zt), (W * 0.3, y0 + 0.35, zt), 0.07, 0.07, M["chrome"]))
+            P["cabin"].append(beam(key + "_cgx1", (-W * 0.3, y1 - 0.2, zt), (W * 0.3, y1 - 0.2, zt), 0.07, 0.07, M["chrome"]))
+            P["cabin"].append(box(key + "_seat", (W * 0.5, 0.45, 0.42), (0, (y0 + y1) / 2 + 0.1, zb + 0.18), M["seat"], bevel=0.06))
+            P["cabin"].append(box(key + "_ws", (W * 0.62, 0.05, 0.28), (0, y0 + 0.15, zb + 0.18), M["glass"], bevel=0.02))
+            mount_z = zt + 0.05
+            mount_y = (y0 + y1) / 2
+        elif k == "lightbar":
+            y, z = ex[1], ex[2]
+            P["cabin"].append(box(key + "_lb", (W * 0.6, 0.12, 0.1), (0, y, z), M["trim"], bevel=0.02))
+            for i in range(4):
+                P["cabin"].append(box(f"{key}_lbl{i}", (0.14, 0.04, 0.07), ((i - 1.5) * W * 0.14, y - 0.07, z), M["head"]))
+        elif k == "spare":
+            P["cargo"].append(cyl(key + "_sp", 0.42, 0.26, (0, yR - 0.45, zb + 0.25), M["tire"], verts=20, axis="Z"))
+            P["cargo"].append(cyl(key + "_spr", 0.26, 0.28, (0, yR - 0.45, zb + 0.25), M["rim_dark"], verts=12, axis="Z"))
+        elif k == "skid":
+            P["bumperF"].append(beam(key + "_sk", (0, yF + 0.05, clr + 0.02), (0, yF - 0.18, clr + 0.32), W * 0.75, 0.06, M["chrome"]))
+        elif k == "bullbar":
+            P["bumperF"].append(box(key + "_bb", (W * 0.86, 0.1, 0.1), (0, yF - 0.14, clr + 0.4), M["chrome"], bevel=0.02))
+            P["bumperF"].append(box(key + "_bb2", (W * 0.86, 0.1, 0.1), (0, yF - 0.14, clr + 0.18), M["chrome"], bevel=0.02))
+            for sd in (-1, 1):
+                P["bumperF"].append(box(f"{key}_bbv{sd}", (0.1, 0.1, 0.36), (sd * W * 0.28, yF - 0.14, clr + 0.29), M["chrome"]))
+        elif k == "armor":
+            # placas de blindagem rentes à lateral, com rebites
+            for sd in (-1, 1):
+                pl = box(f"{key}_ar{sd}", (0.04, ex[1], zb - clr - 0.32), (sd * (W / 2 + 0.02), (cowl + deck) / 2, (zb + clr) / 2 + 0.02), M["gunmetal"] if "gunmetal" in M else M["trim"], bevel=0.015)
+                P["doorL" if sd < 0 else "doorR"].append(pl)
+                for i in range(4):
+                    P["doorL" if sd < 0 else "doorR"].append(cyl(f"{key}_rv{sd}{i}", 0.03, 0.03, (sd * (W / 2 + 0.045), (cowl + deck) / 2 + (i - 1.5) * ex[1] * 0.28, zb - 0.12), M["chrome"], verts=6))
+        elif k == "slits":
+            # janelas estreitas blindadas (tiras de chapa por cima do vidro)
+            y0, y1, y2, y3, zt, bw, tw = cab
+            P["cabin"].append(prism(key + "_sl", [(y0 - 0.01, zb - 0.02), (y0 + (y1 - y0) * 0.5, (zb + zt) / 2 + 0.02), (y3 - (y3 - y2) * 0.5, (zb + zt) / 2 + 0.02), (y3 + 0.01, zb - 0.02)],
+                                    W / 2 * bw + 0.015, W / 2 * (bw + tw) / 2 + 0.015, zb - 0.02, (zb + zt) / 2 + 0.02, paint, bevel=0.02))
+        elif k == "bed":
+            # caçamba: paredes rentes ao corpo, assoalho escuro
+            y0, y1, h = ex[1], ex[2], ex[3]
+            P["cargo"].append(box(key + "_bd", (W * 0.86, y1 - y0, 0.06), (0, (y0 + y1) / 2, zb + 0.02), M["well"]))
+            for sd in (-1, 1):
+                P["cargo"].append(box(f"{key}_bw{sd}", (0.1, y1 - y0, h), (sd * (W / 2 - 0.05), (y0 + y1) / 2, zb + h / 2), paint, bevel=0.03))
+            P["cargo"].append(box(key + "_bt", (W, 0.1, h), (0, y1 - 0.05, zb + h / 2), paint, bevel=0.03))
+            P["cargo"].append(beam(key + "_brl", (-W * 0.42, y0 + 0.1, zb + h + 0.35), (W * 0.42, y0 + 0.1, zb + h + 0.35), 0.08, 0.08, M["chrome"]))
+            for sd in (-1, 1):
+                P["cargo"].append(beam(f"{key}_brs{sd}", (sd * W * 0.42, y0 + 0.1, zb + h), (sd * W * 0.42, y0 + 0.1, zb + h + 0.35), 0.08, 0.08, M["chrome"]))
+        elif k == "stacks":
+            for sd in (-1, 1):
+                P["cargo"].append(cyl(f"{key}_sk{sd}", 0.08, 0.9, (sd * W * 0.42, ex[1], zb + 0.45), M["chrome"], verts=10, axis="Z"))
+        elif k == "box":
+            # baú (van): caixa alta atrás da cabine
+            y0, y1, zt = ex[1], ex[2], ex[3]
+            P["cargo"].append(prism(key + "_bx", [(y0, zb - 0.02), (y0 + 0.05, zt), (y1, zt), (y1, zb - 0.02)], W / 2 + 0.005, W / 2 - 0.03, zb, zt, M["paint2"], bevel=0.06))
+            P["cargo"].append(box(key + "_bxs", (W + 0.03, (y1 - y0) * 0.7, 0.18), (0, (y0 + y1) / 2 + 0.1, zb + (zt - zb) * 0.55), paint))
+            mount_z = zt + 0.02
+            mount_y = (y0 + y1) / 2
+        elif k == "siren":
+            P["cabin"].append(box(key + "_srb", (0.95, 0.26, 0.08), (0, mount_y, mount_z + 0.03), M["trim"]))
+            P["cabin"].append(box(key + "_sr", (0.4, 0.24, 0.16), (-0.24, mount_y, mount_z + 0.12), M["siren_r"], bevel=0.04))
+            P["cabin"].append(box(key + "_sb", (0.4, 0.24, 0.16), (0.24, mount_y, mount_z + 0.12), M["siren_b"], bevel=0.04))
+            mount_y += 0.5
+        elif k == "taxi":
+            P["cabin"].append(box(key + "_tx", (0.7, 0.3, 0.22), (0, mount_y, mount_z + 0.1), M["taxi"], bevel=0.05))
+            mount_y += 0.5
+    for n, objs in P.items():
+        if not objs:
+            continue
+        ob = join(f"{key}_{n}", objs)
+        flat(ob)
+        parent(ob, root)
+    for n, (sd, y, r, fr) in WH.items():
+        w = cyl(f"{key}_w{n}", r, ww, (sd * wx, y, r), M["tire"], verts=12)
+        parent(w, root)
+    mnt = empty(key + "_mount", (0, mount_y, mount_z))
+    parent(mnt, root)
+    return root
+
+
+# medidas: L/W como antes (colisão do jogo); zb = linha de cintura; cab = (y para-brisa, y teto frente, y teto trás,
+# y vidro traseiro, z teto, largura base, largura topo)
+CARS2 = {
+    # esportivo de combate (Marauder): cunha baixa, capô longo, cabine recuada, asa alta
+    "faisca": dict(L=3.7, W=2.0, clr=0.24, wr=0.36, wrr=0.38, wb=2.3, ww=0.5, zb=0.88, nose=0.6, tail=0.9,
+                   cowl=-0.3, deck=0.95, cab=(-0.3, 0.22, 0.7, 1.02, 1.3, 0.84, 0.62), door=(-0.28, 0.75),
+                   extras=[("wing", 0.42), ("intakes",), ("stripe",), ("vents",)]),
+    # trophy truck (Dirt Devil): alto, rodas enormes dentro dos para-lamas, gaiola, sem teto
+    "vespa": dict(L=3.4, W=2.0, clr=0.48, wr=0.5, wb=2.15, ww=0.55, zb=1.14, nose=0.98, tail=1.1, bev=0.08,
+                  cowl=-0.5, deck=1.05, no_doors=True, extras=[("cage", -0.45, 0.85, 1.85), ("lightbar", -0.2, 1.9), ("spare",), ("skid",)]),
+    # muscle blindado (Havac): comprido, capô plano com blower, janelas em fresta, chapas laterais
+    "trovao": dict(L=4.1, W=2.1, clr=0.26, wr=0.38, wrr=0.4, wb=2.55, ww=0.52, zb=0.93, nose=0.82, tail=0.94, flat_hood=True,
+                   cowl=-0.1, deck=1.25, cab=(-0.1, 0.35, 0.9, 1.3, 1.4, 0.86, 0.66), door=(-0.05, 1.0),
+                   extras=[("blower",), ("armor", 1.4), ("slits",), ("ducktail",), ("bullbar",)]),
+    # picape monstro (Battle Trak): alta, larga, cabine dupla curta, caçamba com santo-antônio, para-choque de impulsão
+    "picape": dict(L=4.3, W=2.1, clr=0.48, wr=0.5, wb=2.65, ww=0.5, zb=1.14, nose=1.0, tail=1.1, flat_hood=True,
+                   cowl=-0.75, deck=0.55, cab=(-0.75, -0.42, 0.25, 0.55, 1.85, 0.9, 0.78), door=(-0.7, 0.45),
+                   extras=[("bed", 0.6, 2.1, 0.32), ("bullbar",), ("stacks", 0.7), ("lightbar", -0.3, 1.97)]),
+    "sedan": dict(L=3.9, W=1.95, clr=0.26, wr=0.36, wb=2.4, ww=0.42, zb=0.86, nose=0.68, tail=0.86,
+                  cowl=-0.55, deck=0.95, cab=(-0.55, -0.05, 0.6, 1.0, 1.36, 0.86, 0.68), door=(-0.5, 0.9), extras=[]),
+    "taxi": dict(L=3.9, W=1.95, clr=0.26, wr=0.36, wb=2.4, ww=0.42, zb=0.86, nose=0.68, tail=0.86,
+                 cowl=-0.55, deck=0.95, cab=(-0.55, -0.05, 0.6, 1.0, 1.36, 0.86, 0.68), door=(-0.5, 0.9), extras=[("taxi",)]),
+    "policia": dict(L=3.9, W=1.95, clr=0.26, wr=0.36, wb=2.4, ww=0.42, zb=0.86, nose=0.68, tail=0.86,
+                    cowl=-0.55, deck=0.95, cab=(-0.55, -0.05, 0.6, 1.0, 1.36, 0.86, 0.68), door=(-0.5, 0.9),
+                    extras=[("siren",), ("bullbar",)]),
+    "van": dict(L=4.4, W=2.1, clr=0.3, wr=0.4, wb=2.8, ww=0.46, zb=1.0, nose=0.82, tail=1.0, flat_hood=True,
+                cowl=-1.45, deck=2.1, cab=(-1.45, -1.05, -0.62, -0.5, 1.95, 0.9, 0.82), door=(-1.4, -0.6),
+                extras=[("box", -0.55, 2.2, 2.05)]),
+}
+
 car_roots = {}
-for i, (k, s) in enumerate(CARS.items()):
-    car_roots[k] = build_car(k, s)
+for i, (k, s_) in enumerate(CARS2.items()):
+    car_roots[k] = build_car2(k, s_)
 
 # variantes de pneu (o jogo troca a malha das rodas conforme o upgrade PNEUS)
 tire_models = {}
