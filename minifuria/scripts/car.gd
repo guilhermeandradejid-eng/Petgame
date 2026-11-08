@@ -58,6 +58,14 @@ var max_health := 100.0
 var health := 100.0
 var grav_factor := 1.0
 var grip_factor := 1.0
+var tire_grip := 1.0      # upgrade PNEUS: +6% de aderência por nível
+var tire_kind := ""
+var _mat_cache := {}
+static var _tire_cache := {}
+static var refl_metal: Material = null   # passada de reflexo do metal (criada pelo main.gd)
+const WHEEL_W := {"faisca": 0.5, "trovao": 0.52, "vespa": 0.55, "picape": 0.5}
+## pneu por nível do upgrade: rua -> esportivo (perfil baixo) -> slick de corrida (nível 3: faixa na cor do kit)
+const TIRE_BY_LEVEL := ["street", "sport", "slick", "slick"]
 var _nitro_was := false
 var _drop_was := false
 
@@ -96,6 +104,9 @@ var h_surf := 0.0
 var road_half := 9.0
 var track_ref: Track = null
 var guided_spd := 0.0
+var guided_now := false
+var _gs := 0.0   # distância ao longo da pista integrada no trecho guiado (sem saltos de reprojeção)
+var exit_assist := 0.0   # logo após loop/saca-rolhas: a direção se alinha à pista (sem guinada na saída)
 var _susp_forces := true
 var jump_cd := 0.0
 var _jump_armed := true
@@ -206,7 +217,7 @@ func setup(lib: Node3D, kind_: String, role_: String, col: Color) -> void:
 	model = lib.get_node("car_" + kind).duplicate()
 	model.transform = Transform3D.IDENTITY
 	add_child(model)
-	var mat_cache := {}
+	var mat_cache := _mat_cache
 	for ch in model.get_children():
 		if not (ch is MeshInstance3D):
 			continue
@@ -226,6 +237,7 @@ func setup(lib: Node3D, kind_: String, role_: String, col: Color) -> void:
 				arrays.append(mi.mesh.surface_get_arrays(s))
 			parts[part_name] = {"mesh": mi, "orig": mi.mesh, "arrays": arrays, "mats": mats, "hp": 100.0, "off": false,
 				"center": mi.transform * mi.mesh.get_aabb().get_center()}
+	_apply_tires(lib, {})
 	var Lc: float = sp.len
 	var Wc: float = sp.wid
 	exhaust_local = Vector3(Wc * 0.26, sp.clr - 0.03, -(Lc * 0.5 + 0.38))
@@ -284,7 +296,61 @@ func configure(lib: Node3D, front: String, rear: String, nitro: String, up: Dict
 			c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	model.add_child(weapon_node)
 	muzzle_local = weapon_base + (Vector3(0, 0.32, 1.1) if front == "mg" else Vector3(0, 0.3, 0.55))
+	_apply_tires(lib, up)
 	_build_kit(up)
+
+
+## troca a malha das rodas pela variante de pneu (modelo padrão do Blender, ajustado ao tamanho de cada roda)
+func _apply_tires(lib: Node3D, up: Dictionary) -> void:
+	var lvl := int(up.get("tires", 0))
+	tire_grip = 1.0 + 0.06 * lvl
+	var vis := int(up.get("_tire_vis", lvl))
+	var k: String = "knobby" if kind in ["vespa", "picape"] else String(TIRE_BY_LEVEL[clampi(vis, 0, 3)])
+	if k == tire_kind:
+		return
+	var src := lib.get_node_or_null("tire_" + k) as MeshInstance3D
+	if src == null:
+		return
+	tire_kind = k
+	var ww: float = WHEEL_W.get(kind, 0.42)
+	for w in wheels:
+		var mi: MeshInstance3D = w.mesh
+		var side := 1.0 if (w.base as Vector3).x >= 0.0 else -1.0
+		mi.mesh = _tire_mesh(src.mesh, k, float(w.r), ww, side)
+		for si in mi.mesh.get_surface_count():
+			mi.set_surface_override_material(si, _car_mat(mi.mesh.surface_get_material(si), _mat_cache))
+
+
+static func _tire_mesh(src: Mesh, k: String, r: float, ww: float, side: float) -> ArrayMesh:
+	var key := "%s_%.3f_%.3f_%d" % [k, r, ww, int(side)]
+	if _tire_cache.has(key):
+		return _tire_cache[key]
+	var sx := ww / 0.5 * side
+	var sr := r / 0.5
+	var out := ArrayMesh.new()
+	for si in src.get_surface_count():
+		var arr := src.surface_get_arrays(si)
+		var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+		var nr: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+		for i in v.size():
+			v[i] = Vector3(v[i].x * sx, v[i].y * sr, v[i].z * sr)
+		for i in nr.size():
+			nr[i] = Vector3(nr[i].x / sx, nr[i].y / sr, nr[i].z / sr).normalized()
+		arr[Mesh.ARRAY_VERTEX] = v
+		arr[Mesh.ARRAY_NORMAL] = nr
+		arr[Mesh.ARRAY_TANGENT] = null   # materiais usam mapeamento triplanar (não precisam de tangente)
+		if side < 0.0 and arr[Mesh.ARRAY_INDEX] != null:
+			# espelhado: inverte a ordem dos triângulos para as faces continuarem viradas para fora
+			var idx: PackedInt32Array = arr[Mesh.ARRAY_INDEX]
+			for t in range(0, idx.size() - 2, 3):
+				var tmp := idx[t + 1]
+				idx[t + 1] = idx[t + 2]
+				idx[t + 2] = tmp
+			arr[Mesh.ARRAY_INDEX] = idx
+		out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		out.surface_set_material(si, src.surface_get_material(si))
+	_tire_cache[key] = out
+	return out
 
 
 func refill() -> void:
@@ -360,6 +426,7 @@ func _physics_process(dt: float) -> void:
 	_wall_hold()
 	var guided := on_feature and (in_loop or feat_type == "cork") and h_surf < 3.0 and h_surf > -1.5 and track_ref != null
 	_susp_forces = not guided
+	guided_now = guided
 	var grounded := _suspension(false)
 	_susp_forces = true
 	var was_ground := on_ground
@@ -408,7 +475,14 @@ func _physics_process(dt: float) -> void:
 		# (s + v·dt, faixa e altura suavizadas), então não sobra erro para acumular entre quadros
 		var lat_next := clampf(lat + clampf(lat_target, -8.0, 8.0) * dt, -road_half + 1.2, road_half - 1.2)
 		var h_next := lerpf(h_surf, 0.0, 0.3)
-		var nx := track_ref.at(s_track + spd * dt, lat_next)
+		var L := track_ref.length
+		if exit_assist < 0.6 or absf(wrapf(_gs - s_track, -L * 0.5, L * 0.5)) > 4.0:
+			_gs = s_track
+		else:
+			# segue a distância integrada, puxando de leve para a medida (sem acumular erro)
+			_gs += wrapf(s_track - _gs, -L * 0.5, L * 0.5) * 0.08
+		_gs = fposmod(_gs + spd * dt, L)
+		var nx := track_ref.at(_gs, lat_next)
 		var target: Vector3 = nx.pos + (nx.up as Vector3) * h_next
 		var lv := (target - global_position) / dt
 		if lv.length() > spd * 1.6 + 6.0:
@@ -423,11 +497,20 @@ func _physics_process(dt: float) -> void:
 		angular_velocity = ax.normalized() * ang * 12.0 if ax.length() > 0.001 else Vector3.ZERO
 		v_f = spd
 		nitroing = nitro_t > 0.0
+		exit_assist = 0.6
 		_applied = Vector3.ZERO
 		_prev_v = linear_velocity
 		on_ground = true
 		air_t = 0.0
 		return
+	if exit_assist >= 0.6:
+		# saída limpa do trecho guiado: sem giro herdado e sem deriva lateral, só a velocidade ao longo da pista
+		var vt := linear_velocity.dot(track_tan)
+		var vu := clampf(linear_velocity.dot(track_up), -2.0, 2.0)
+		linear_velocity = track_tan * vt + track_up * vu
+		angular_velocity = Vector3.ZERO
+		_prev_v = linear_velocity
+	exit_assist = maxf(0.0, exit_assist - dt)
 	guided_spd = maxf(0.0, linear_velocity.dot(track_tan))
 	if magnet and feat_type == "cork":
 		# no saca-rolhas a pista gira em volta do eixo: puxa o carro para o centro
@@ -465,8 +548,18 @@ func _physics_process(dt: float) -> void:
 	v_s = v.dot(left_g)
 
 	var steer: float = ctrl.steer
+	var ea := clampf(exit_assist / 0.6, 0.0, 1.0)
 	if ctrl.dir != null:
-		var d: Vector3 = b.inverse() * (ctrl.dir as Vector3)
+		var dw: Vector3 = ctrl.dir
+		if ea > 0.0 and role == "player":
+			# na saída de loop/saca-rolhas o analógico vale só como "um pouco para o lado" da pista
+			var tg := Vector3(track_tan.x, 0, track_tan.z)
+			if tg.length() > 0.2:
+				tg = tg.normalized()
+				var ang := tg.signed_angle_to(Vector3(dw.x, 0, dw.z), Vector3.UP)
+				var lim := lerpf(PI, 0.18, ea)
+				dw = tg.rotated(Vector3.UP, clampf(ang, -lim, lim))
+		var d: Vector3 = b.inverse() * dw
 		var dh := atan2(d.x, d.z)
 		# meia-volta: com o alvo quase atrás, continua girando para o mesmo lado (sem ficar indeciso)
 		if absf(dh) > 2.4:
@@ -482,6 +575,8 @@ func _physics_process(dt: float) -> void:
 			steer = -steer
 	else:
 		_uturn = 0.0
+		if ea > 0.0 and role == "player":
+			steer *= lerpf(1.0, 0.3, ea)
 	steer_s = lerpf(steer_s, steer, minf(1.0, dt * 14.0))
 	var vmax: float = sp.vmax * engine_mult
 	var spd01 := minf(1.0, absf(v_f) / vmax)
@@ -563,7 +658,7 @@ func _physics_process(dt: float) -> void:
 				a -= 16.0
 		if drifting:
 			a -= v_f * 0.1
-		var grip: float = (sp.drift_grip if drifting else sp.grip) * grip_factor
+		var grip: float = (sp.drift_grip if drifting else sp.grip) * grip_factor * tire_grip
 		if stun > 0.0:
 			grip *= 0.25
 		if oil_t > 0.0:
@@ -894,6 +989,9 @@ func _kit_mat(col: Color, rough := 0.4, metal := 0.3, emit := 0.0) -> StandardMa
 	m.albedo_color = col
 	m.roughness = rough
 	m.metallic = metal
+	if metal >= 0.8 and refl_metal:
+		m.metallic = 0.8
+		m.next_pass = refl_metal
 	if emit > 0.0:
 		m.emission_enabled = true
 		m.emission = col
@@ -936,8 +1034,8 @@ func _build_kit(up: Dictionary) -> void:
 		if is_instance_valid(n):
 			n.queue_free()
 	_kit.clear()
-	var total := int(up.get("engine", 0)) + int(up.get("armor", 0)) + int(up.get("ammo", 0)) + int(up.get("nitro", 0))
-	tier = 0 if total < 3 else (1 if total < 6 else (2 if total < 9 else 3))
+	var total := int(up.get("engine", 0)) + int(up.get("armor", 0)) + int(up.get("ammo", 0)) + int(up.get("nitro", 0)) + int(up.get("tires", 0))
+	tier = 0 if total < 4 else (1 if total < 8 else (2 if total < 12 else 3))
 	if up.has("_tier"):
 		tier = int(up["_tier"])
 	if role == "traffic" or model == null:
@@ -955,6 +1053,8 @@ func _build_kit(up: Dictionary) -> void:
 			var sm := mi.mesh.surface_get_material(si)
 			if sm and sm.resource_name == "Rim":
 				mi.set_surface_override_material(si, rim)
+			elif sm and sm.resource_name == "TireStripe" and tier >= 2:
+				mi.set_surface_override_material(si, accent)
 	if tier >= 1:
 		_kit_box(Vector3(Wc * 1.02, 0.04, 0.34), Vector3(0, sp.clr - 0.03, Lc * 0.5 + 0.14), carbon)
 		for sx: float in [-1.0, 1.0]:

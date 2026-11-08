@@ -97,6 +97,7 @@ var cam_pitch := CAM_PITCH
 var cam_mode := ""
 var cam_mode_t := 0.0
 var cam_loop := {}
+var cam_loop_u := 1.0   # 0 = câmera de loop completa, 1 = câmera normal
 var cam_kick := Vector3.ZERO
 var oil_fx := 0.0
 var nitro_zoom := 0.0
@@ -192,6 +193,8 @@ func _ready() -> void:
 		music.play_menu()
 	if "--overview" in args:
 		_overview_shots()
+	elif "--showroom" in args:
+		_showroom()
 	elif "--steertest" in args:
 		_steer_test()
 	elif "--uishot" in args:
@@ -230,6 +233,54 @@ func _steer_test() -> void:
 
 
 ## fotos de inspeção: pista inteira vista de cima + closes nos elementos especiais e na decoração
+## vitrine (teste): carros parados lado a lado com pneus/nível 0..3, câmera bem perto
+func _showroom() -> void:
+	start_race()
+	for f in 10:
+		await get_tree().physics_frame
+	var specs := [["faisca", 0], ["faisca", 1], ["faisca", 2], ["faisca", 3], ["trovao", 2], ["vespa", 3]]
+	var a0 := track.at(30.0)
+	var used := 0
+	for c in cars:
+		if used >= specs.size():
+			c.visible = false
+			c.freeze = true
+			continue
+		var sp: Array = specs[used]
+		var lv: int = sp[1]
+		if c.kind != String(sp[0]):
+			c.visible = false
+			c.freeze = true
+			continue
+		used += 1
+	# monta carros novos (sem física) para a foto
+	for c in cars:
+		c.visible = false
+		c.freeze = true
+	var k := 0
+	for sp in specs:
+		var c := Car.new()
+		add_child(c)
+		c.setup(lib, String(sp[0]), "rival", [Color("#e8352b"), Color("#2f6fd6"), Color("#ffd23a"), Color("#33c46b"), Color("#9b4dff"), Color("#ff7a1a")][k])
+		var lv: int = sp[1]
+		c.configure(lib, "mg" if k % 2 == 0 else "rocket", "mine", "short", {"engine": lv, "armor": lv, "ammo": lv, "nitro": lv, "tires": lv})
+		c.freeze = true
+		var p := (a0.pos as Vector3) + (a0.left as Vector3) * (float(k % 3) - 1.0) * 5.5 - (a0.tan as Vector3) * float(k / 3) * 7.0
+		c.global_transform = Transform3D((a0.basis as Basis).rotated(a0.up, 0.6), p + (a0.up as Vector3) * 0.05)
+		k += 1
+	mode = "shots"
+	hud.show_screen("none")
+	hud.big_l.visible = false
+	for k2 in 6:
+		var p2 := (a0.pos as Vector3) + (a0.left as Vector3) * (float(k2 % 3) - 1.0) * 5.5 - (a0.tan as Vector3) * float(k2 / 3) * 7.0
+		cam_pos = p2 + Vector3.UP * 0.5
+		view_h = 5.5
+		for f in 6:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("user://showroom_t%d_%d.png" % [track_idx, k2])
+	get_tree().quit()
+
+
 func _overview_shots() -> void:
 	var only := -1
 	for a in OS.get_cmdline_user_args():
@@ -296,14 +347,14 @@ func _setup_input() -> void:
 # ------------------------------------------------------------------ save
 func _load_save() -> void:
 	save = {"cash": 800, "car": "faisca", "front": "mg", "rear": "mine", "nitro": "short", "steer": "tela",
-		"up": {"engine": 0, "armor": 0, "ammo": 0, "nitro": 0}, "best": {}}
+		"up": {"engine": 0, "armor": 0, "ammo": 0, "nitro": 0, "tires": 0}, "best": {}}
 	if FileAccess.file_exists(SAVE_PATH):
 		var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
 		var d = JSON.parse_string(f.get_as_text())
 		if d is Dictionary:
 			for k in d:
 				save[k] = d[k]
-	for k in ["engine", "armor", "ammo", "nitro"]:
+	for k in ["engine", "armor", "ammo", "nitro", "tires"]:
 		save.up[k] = int(save.up.get(k, 0))
 
 
@@ -342,6 +393,53 @@ func equip(slot: String, key: String) -> void:
 ## textura de detalhe procedural (normal map por ruído, em coordenadas do objeto): borracha, metal escovado
 ## e flocos de pintura — dá "material" às peças sem precisar de UV nos modelos low-poly
 var _detail_tex := {}
+## reflexos (verniz da pintura, vidro, metal): passadas extras somadas por cima — ver shaders/reflect.gdshader
+var refl := {}
+
+
+func _refl(kind: String) -> ShaderMaterial:
+	if not refl.has(kind):
+		var m := ShaderMaterial.new()
+		m.shader = preload("res://shaders/reflect.gdshader")
+		m.render_priority = 1
+		match kind:
+			"paint":
+				m.set_shader_parameter("strength", 1.0)
+				m.set_shader_parameter("f0", 0.11)
+				m.set_shader_parameter("glint", 1.0)
+				m.set_shader_parameter("streaks", 0.22)
+				m.set_shader_parameter("streak_freq", 0.22)
+				m.set_shader_parameter("streak_w", 0.3)
+			"glass":
+				m.set_shader_parameter("strength", 1.0)
+				m.set_shader_parameter("f0", 0.16)
+				m.set_shader_parameter("glint", 1.3)
+				m.set_shader_parameter("streaks", 1.5)
+				m.set_shader_parameter("streak_freq", 0.6)
+				m.set_shader_parameter("streak_w", 0.16)
+			"chrome":
+				m.set_shader_parameter("strength", 0.55)
+				m.set_shader_parameter("f0", 0.55)
+				m.set_shader_parameter("glint", 0.9)
+				m.set_shader_parameter("tint_amt", 0.4)
+				m.set_shader_parameter("tint", Color(0.85, 0.87, 0.92))
+		refl[kind] = m
+	return refl[kind]
+
+
+func _refl_theme() -> void:
+	Car.refl_metal = _refl("chrome")
+	var night := bool(theme.night)
+	var dusk := bool(theme.get("dusk", false))
+	var k := 0.45 if night else (0.75 if dusk else 1.0)
+	for kind in ["paint", "glass", "chrome"]:
+		var m := _refl(kind)
+		m.set_shader_parameter("sky_top", Color(theme.sky_top) * k)
+		m.set_shader_parameter("sky_hor", Color(theme.sky_hor) * k)
+		m.set_shader_parameter("ground_col", Color(theme.ga).darkened(0.55).lerp(Color(0.22, 0.22, 0.24), 0.7) * k)
+		m.set_shader_parameter("sun_col", Color(theme.sun))
+		m.set_shader_parameter("sun_dir", sun.transform.basis.z.normalized())
+		m.set_shader_parameter("night", 1.0 if night else (0.4 if dusk else 0.0))
 
 
 func _detail(m: StandardMaterial3D, kind: String, depth: float) -> void:
@@ -397,6 +495,7 @@ func _prep_materials(n: Node, done: Dictionary) -> void:
 					m.rim = 0.25
 					m.rim_tint = 0.6
 					_detail(m, "flake", 0.12)   # pintura metálica: "flocos" finos no reflexo
+					m.next_pass = _refl("paint")   # verniz: reflexo do céu e brilho do sol
 				"Tire", "Sidewall":
 					m.roughness = 0.92
 					m.metallic_specular = 0.3
@@ -411,10 +510,12 @@ func _prep_materials(n: Node, done: Dictionary) -> void:
 					m.roughness = 0.03
 					m.metallic = 0.7
 					m.metallic_specular = 1.0
-				"Chrome", "Rim":
+					m.next_pass = _refl("glass")
+				"Chrome", "Rim", "LugNut":
 					m.roughness = 0.16
 					m.metallic = 1.0
 					_detail(m, "brushed", 0.25)   # metal escovado
+					m.next_pass = _refl("chrome")
 				"SignYellow", "SignBlack", "Metal":
 					m.cull_mode = BaseMaterial3D.CULL_DISABLED
 				"Headlight", "Taillight", "LampGlow", "Window", "Billboard", "Billboard2", "CrystalC", "CrystalM", "RedLight", "NitroBlue":
@@ -500,6 +601,7 @@ func _apply_theme() -> void:
 	sun.light_color = Color(theme.sun)
 	sun.light_energy = float(theme.sun_e) * (0.7 if night else (0.8 if dusk else 1.05))
 	sun.rotation = Vector3(deg_to_rad(theme.sun_rot[0]), deg_to_rad(theme.sun_rot[1]), 0)
+	_refl_theme()
 	env.glow_intensity = 0.8 if night else 0.55
 
 
@@ -895,7 +997,7 @@ func _spawn_cars() -> void:
 		c.next_bash = 6.0 + i * 3.0
 		var lv := clampi(track_idx / 3 + (i % 3), 0, 3)
 		# o kit mostra o nível; no desempenho o ganho é pequeno (no máximo +4% de motor)
-		var rup := {"engine": lv / 2, "armor": lv / 2, "ammo": 0, "nitro": 0, "_tier": lv}
+		var rup := {"engine": lv / 2, "armor": lv / 2, "ammo": 0, "nitro": 0, "tires": lv / 2, "_tier": lv, "_tire_vis": lv}
 		c.configure(lib, fronts[(i + track_idx) % 2], rears[(i / 2 + track_idx) % 2], nitros[i % 2], rup)
 		_add_xray(c)
 		_place(c, L + grid[i][0], grid[i][1], 0)
@@ -958,6 +1060,8 @@ func start_race() -> void:
 	mode = "countdown"
 	if not auto_test:
 		music.play_track(track_idx, String(track.data.theme))
+		if music.now_text != "":
+			hud.killfeed("♪ " + music.now_text, Color(1.0, 0.85, 0.45))
 	countdown = 4.2   # ~1 s mostrando o nome da pista, depois 3, 2, 1, VAI!
 	# compila os shaders dos efeitos agora, escondidos sob a largada (evita tranco na 1ª explosão/nitro)
 	var a0 := track.at(6.0)
@@ -1283,6 +1387,12 @@ func _player_input() -> void:
 		player.role = "rival"
 		player.ai(track, self, 1.0 / 60.0)
 		player.role = "player"
+		if OS.get_cmdline_user_args().has("--nosteer_cork"):
+			for kb in range(0, int(60.0 / track.ds)):
+				if track.ftype[track.idx(player.ti - kb)] == "cork":
+					c.steer = 0.0
+					c.dir = null
+					break
 		if test_lane != 0.0:
 			var a := track.at(player.s_track + 12.0, test_lane)
 			c.dir = ((a.pos as Vector3) - player.global_position).normalized()
@@ -1881,6 +1991,26 @@ func _process(_delta: float) -> void:
 	if auto_test and OS.get_cmdline_user_args().has("--debugfall") and int(real * 60.0) % (20 if (player.s_track > 400 and player.s_track < 560) else 600) == 0:
 		var p := player
 		print("P t=%d s=%d lat=%.1f h=%.1f v=%.1f vf=%.1f gnd=%s road=%s up=%s n=%s feat=%d loop=%d thr=%.1f br=%.1f" % [int(real), int(p.s_track), p.lat, p.h_track, p.linear_velocity.length(), p.v_f, p.on_ground, p.on_road, str(p.global_transform.basis.y.snapped(Vector3.ONE * 0.01)), str(p.ground_n.snapped(Vector3.ONE * 0.01)), track.feat[p.ti], track.loopf[p.ti], p.ctrl.throttle, p.ctrl.brake])
+	if auto_test and OS.get_cmdline_user_args().has("--debugcam") and int(real * 60.0) % 6 == 0:
+		var pq := player.get_global_transform_interpolated().origin
+		var lb2 := -1
+		for kb in range(0, int(60.0 / track.ds)):
+			if track.loopf[track.idx(player.ti - kb)] == 1:
+				lb2 = kb
+				break
+		if lb2 >= 0:
+			print("CAM t=%.2f after=%dm mode=%s u=%.2f off=%.1f" % [real, int(lb2 * track.ds), cam_mode, cam_loop_u, Vector2(cam_pos.x - pq.x, cam_pos.z - pq.z).length()])
+	if auto_test and OS.get_cmdline_user_args().has("--debugcork"):
+		var pc := player
+		var near := false
+		for kb in range(0, int(50.0 / track.ds)):
+			var jb := track.idx(pc.ti - kb)
+			if track.ftype[jb] == "cork" and track.feat[jb] == 1:
+				near = true
+				break
+		if near and int(real * 60.0) % 3 == 0:
+			var vl := pc.linear_velocity
+			print("CK t=%.2f s=%d ti=%d feat=%d ft=%s cork=%d guided=%s lat=%.2f h=%.2f vT=%.1f vL=%.2f vU=%.2f wT=%.2f wU=%.2f wL=%.2f gnd=%s wheels=%d upU=%.2f" % [real, int(pc.s_track), pc.ti, track.feat[pc.ti], track.ftype[pc.ti], track.corkf[pc.ti], pc.guided_now, pc.lat, pc.h_surf, vl.dot(track.T[pc.ti]), vl.dot(track.L[pc.ti]), vl.dot(track.U[pc.ti]), pc.angular_velocity.dot(track.T[pc.ti]), pc.angular_velocity.dot(track.U[pc.ti]), pc.angular_velocity.dot(track.L[pc.ti]), pc.on_ground, pc.wheels.filter(func(w): return w.contact).size(), pc.global_transform.basis.y.dot(track.U[pc.ti])])
 	if auto_test and real > 240.0:
 		print("TIMEOUT ", JSON.stringify({"track": track_idx, "lap": player.lap, "dist": player.dist, "stats": stats}))
 		get_tree().quit()
@@ -2002,34 +2132,50 @@ func _cam_mode(rdt: float) -> String:
 	if p.wrecked:
 		return ""
 	var want := ""
-	# já num loop? olha mais longe: dois loops seguidos ficam na mesma câmera (sem ir e voltar)
-	var reach := 80.0 if cam_mode == "loop" else 30.0
-	var steps := int(reach / track.ds)
-	for k in range(-2, steps):
-		var j := track.idx(p.ti + k)
-		if track.loopf[j] == 1:
-			if k <= int(30.0 / track.ds) or cam_mode == "loop":
-				want = "loop"
-				# troca de looping só quando o carro já saiu do anterior
-				if cam_mode != "loop" or track.loopf[p.ti] == 1 or k < int(18.0 / track.ds):
-					cam_loop = track.loop_info(j)
-			break
-		if track.feat[j] == 1 and track.ftype[j] == "cork" and k <= int(30.0 / track.ds):
-			want = "twist"
-			for k2 in range(maxi(k, 0), steps):
-				var j2 := track.idx(p.ti + k2)
-				if track.corkf[j2] == 1:
-					cam_loop = track.loop_info(j2)
-					break
-			break
-		if track.feat[j] == 1 and track.ftype[j] == "helix" and k < 6:
-			want = "helix"
-			break
+	cam_loop_u = 1.0
+	# looping: distância (em amostras) até o loop à frente e ao que acabou de passar.
+	# A câmera de loop entra aos poucos na chegada e devolve a visão ao carro logo depois da saída.
+	var la := -1
+	var lb := -1
+	if track.loopf[p.ti] == 1:
+		la = 0
+	else:
+		for k in range(1, int(30.0 / track.ds)):
+			if track.loopf[track.idx(p.ti + k)] == 1:
+				la = k
+				break
+		for k in range(1, int(20.0 / track.ds)):
+			if track.loopf[track.idx(p.ti - k)] == 1:
+				lb = k
+				break
+	if la >= 0 or lb >= 0:
+		want = "loop"
+		var use_ahead := la >= 0 and (lb < 0 or la * 2 <= lb * 3)
+		cam_loop = track.loop_info(track.idx(p.ti + la) if use_ahead else track.idx(p.ti - lb))
+		var ua := 1.0 if la < 0 else clampf((la * track.ds - 5.0) / 20.0, 0.0, 1.0)
+		var ub := 1.0 if lb < 0 else clampf((lb * track.ds - 2.0) / 13.0, 0.0, 1.0)
+		cam_loop_u = minf(ua, ub)
+		cam_loop_u = cam_loop_u * cam_loop_u * (3.0 - 2.0 * cam_loop_u)
+	else:
+		var steps := int(30.0 / track.ds)
+		for k in range(-2, steps):
+			var j := track.idx(p.ti + k)
+			if track.feat[j] == 1 and track.ftype[j] == "cork":
+				want = "twist"
+				for k2 in range(maxi(k, 0), steps):
+					var j2 := track.idx(p.ti + k2)
+					if track.corkf[j2] == 1:
+						cam_loop = track.loop_info(j2)
+						break
+				break
+			if track.feat[j] == 1 and track.ftype[j] == "helix" and k < 6:
+				want = "helix"
+				break
 	if want == "" and not p.on_ground and p.air_t > 0.3:
 		want = "air"
 	if want != "":
 		cam_mode = want
-		cam_mode_t = 0.7
+		cam_mode_t = 0.4
 	else:
 		cam_mode_t -= rdt
 		if cam_mode_t <= 0.0:
@@ -2060,6 +2206,7 @@ func _camera(rdt: float) -> void:
 	var follow := 3.0 if p.wrecked else 4.5
 	var extra := 0.0
 	var size_fix := -1.0
+	var size_u := 0.0
 	match cm:
 		"loop":
 			# vista 3/4: de lado e um pouco de frente, alta o bastante para ver o asfalto por dentro
@@ -2070,20 +2217,22 @@ func _camera(rdt: float) -> void:
 			var y2 := atan2(-axh.x, -axh.z)
 			var ys := y1 if absf(angle_difference(CAM_YAW, y1)) <= absf(angle_difference(CAM_YAW, y2)) else y2
 			# gira 38° para o lado de onde a câmera normal vem (continua familiar para o jogador)
-			want_yaw = ys + signf(angle_difference(ys, CAM_YAW)) * deg_to_rad(38.0)
-			want_pitch = 0.42
+			var u := cam_loop_u
+			want_yaw = lerp_angle(ys + signf(angle_difference(ys, CAM_YAW)) * deg_to_rad(38.0), CAM_YAW, u)
+			want_pitch = lerpf(0.42, CAM_PITCH, u)
 			var along := (pp - lc).dot(ax)
 			var mid := lc + ax * along
-			target = mid.lerp(pp, 0.3)
+			target = mid.lerp(pp, 0.3).lerp(target, u)
 			size_fix = float(cam_loop.r) * 2.0 + 20.0
-			follow = 3.2
+			size_u = u
+			follow = lerpf(3.2, 5.0, u)
 		"twist":
 			# saca-rolhas: a câmera segue o EIXO da espiral (reto e fixo), não a pista que gira em volta dele
 			var ax2: Vector3 = cam_loop.get("axis", track.T[p.ti])
 			var c0: Vector3 = cam_loop.get("center", pp)
 			var th := Vector3(ax2.x, 0, ax2.z).normalized()
 			var yb := atan2(-th.x, -th.z)
-			want_yaw = lerp_angle(CAM_YAW, yb, 0.7)
+			want_yaw = lerp_angle(CAM_YAW, yb, 0.35)   # gira pouco: o analógico continua batendo com a tela
 			want_pitch = 0.5
 			var on_axis := c0 + ax2 * (pp - c0).dot(ax2)
 			target = on_axis + th * 6.0
@@ -2111,7 +2260,7 @@ func _camera(rdt: float) -> void:
 	var sp := v.length()
 	var want := base + clampf(sp / 55.0, 0.0, 1.0) * 8.0 + nz * base * 0.34 + focus_h + (-8.0 if p.wrecked else 0.0) + extra
 	if size_fix > 0.0:
-		want = maxf(size_fix, base) / clampf(aspect, 0.6, 1.0)
+		want = lerpf(maxf(size_fix, base) / clampf(aspect, 0.6, 1.0), want, size_u)
 	if mode == "menu":
 		want = 40.0
 	if test_zoom > 0.0 and mode != "menu":

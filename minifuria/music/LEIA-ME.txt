@@ -1,7 +1,24 @@
 Músicas do Mini Fúria
 =====================
 
-Coloque aqui arquivos .ogg (recomendado), .mp3 ou .wav. O jogo toca em loop:
+Trilha incluída (rock/metal instrumental, todas CC0 — domínio público, uso comercial livre,
+crédito não obrigatório mas dado por cortesia; fonte: Free Music Archive e FreePD.com,
+via acervo SoundSafari/CC0-1.0-Music):
+
+  pista1.ogg  Circuito do Parque   "Hit n Smash"              — FreePD.com (CC0)
+  pista2.ogg  Cidade Neon          "SUPER METAL"              — Loyalty Freak Music (CC0)
+  pista3.ogg  Cânion do Deserto    "50 Over The Speed Limit"  — HoliznaCC0 (CC0)
+  pista4.ogg  Pico Nevado          "Snowboard Rock"           — Loyalty Freak Music (CC0)
+  pista5.ogg  Docas do Porto       "Punk"                     — HoliznaCC0 (CC0)
+  pista6.ogg  Boca do Vulcão       "GIGA METAL"               — Loyalty Freak Music (CC0)
+  pista7.ogg  Loop Mania           "Nitro"                    — Monplaisir (CC0)
+  pista8.ogg  Espiral do Céu       "MAXI METAL"               — Loyalty Freak Music (CC0)
+  pista9.ogg  Pântano Sombrio      "Ghost Surf Rock"          — Loyalty Freak Music (CC0)
+  menu.ogg    Menu                 "Rock n' Roll"             — HoliznaCC0 (CC0)
+
+Os arquivos foram cortados (máx. ~2:45), normalizados (-15 LUFS) e convertidos para OGG Vorbis.
+
+Para trocar, coloque aqui arquivos .ogg (recomendado), .mp3 ou .wav com estes nomes:
 
   pista1.ogg ... pista9.ogg   -> só naquela pista (1 = Circuito do Parque ... 9 = Pântano Sombrio)
   park.ogg, city.ogg, desert.ogg, snow.ogg, port.ogg, volcano.ogg, toy.ogg, sky.ogg, swamp.ogg
@@ -10,6 +27,7 @@ Coloque aqui arquivos .ogg (recomendado), .mp3 ou .wav. O jogo toca em loop:
   menu.ogg                    -> menu
 
 Sem nenhum arquivo, o jogo compõe e toca um rock instrumental original (sintetizado no próprio jogo).
+Se trocar as faixas, atualize também CREDITS em scripts/music.gd.
 
-Use só músicas que você tem direito de usar: compostas por você, encomendadas, de bancos com licença
-para jogos, geradas por IA num plano com uso comercial, ou arranjos próprios de obras em domínio público.
+Use só músicas que você tem direito de usar: CC0/domínio público, CC-BY (com crédito), compostas por
+você, encomendadas, de bancos com licença para jogos ou geradas por IA num plano com uso comercial.

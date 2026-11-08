@@ -507,7 +507,7 @@ func _refresh_tracks() -> void:
 
 
 # ------------------------------------------------------------------ garagem
-const UP_NAMES := {"engine": "MOTOR", "armor": "BLINDAGEM", "ammo": "MUNIÇÃO", "nitro": "NITRO +1"}
+const UP_NAMES := {"engine": "MOTOR", "armor": "BLINDAGEM", "ammo": "MUNIÇÃO", "nitro": "NITRO +1", "tires": "PNEUS"}
 
 
 func _build_garage() -> void:
@@ -534,7 +534,7 @@ func _build_garage() -> void:
 	for k in ["short", "long"]:
 		_choice(c2, "nitro", k, 46)
 	var c3 := _panel(cols, "UPGRADES")
-	for k in ["engine", "armor", "ammo", "nitro"]:
+	for k in ["engine", "armor", "ammo", "nitro", "tires"]:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
 		c3.add_child(row)
@@ -558,7 +558,7 @@ func _build_garage() -> void:
 	hint.add_theme_font_override("font", SystemFont.new())
 	hint.add_theme_font_size_override("font_size", 13)
 	hint.modulate = Color(1, 1, 1, 0.75)
-	hint.text = "Munição e nitro recarregam a cada volta. Ganhe dinheiro com a colocação e destruindo rivais."
+	hint.text = "Pneus: rua > esportivo > slick (+6% de aderência por nível). Munição e nitro recarregam a cada volta."
 	c3.add_child(hint)
 	var bot := HBoxContainer.new()
 	bot.alignment = BoxContainer.ALIGNMENT_CENTER

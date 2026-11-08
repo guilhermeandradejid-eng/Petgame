@@ -1,7 +1,8 @@
 """
 Empacota o export Web do Godot para hospedagens com limite de tamanho por arquivo (ex.: 15 MB).
 
-O .wasm do motor (~40 MB) é dividido em pedaços de 4 MB (eNN.wasm) e o .pck vira pack.wasm.
+O .wasm do motor (~40 MB) é dividido em pedaços de 4 MB (eNN.wasm) e o .pck (jogo + músicas) em
+pedaços de 8 MB (packNN.wasm).
 Um pequeno script no HTML intercepta o fetch do Godot, baixa os pedaços em sequência (com novas
 tentativas) e remonta os arquivos no navegador. Erros aparecem na tela.
 
@@ -14,11 +15,13 @@ import re
 import sys
 
 CHUNK = 4_000_000
+PCK_CHUNK = 8_000_000
 
 SHIM = """<script>
-// O motor (.wasm) vem em pedaços e o .pck como pack.wasm; aqui eles são remontados.
+// O motor (.wasm) e o .pck vêm em pedaços (eNN.wasm / packNN.wasm); aqui eles são remontados.
 (function () {
   const parts = %s;
+  const packs = %s;
   const origFetch = window.fetch.bind(window);
   function report(msg) {
     console.error(msg);
@@ -49,7 +52,7 @@ SHIM = """<script>
     const url = typeof input === 'string' ? input : (input && input.url) || '';
     const path = url.split('?')[0];
     if (path.endsWith('index.wasm')) return joined(parts, 'application/wasm').catch((e) => { report(e.message); throw e; });
-    if (path.endsWith('index.pck')) return joined(['pack.wasm'], 'application/octet-stream').catch((e) => { report(e.message); throw e; });
+    if (path.endsWith('index.pck')) return joined(packs, 'application/octet-stream').catch((e) => { report(e.message); throw e; });
     return origFetch(input, init);
   };
   window.addEventListener('error', (e) => report('Erro: ' + (e.message || e)));
@@ -61,7 +64,7 @@ SHIM = """<script>
 def main(src: str, dst: str) -> None:
     os.makedirs(dst, exist_ok=True)
     for f in os.listdir(dst):
-        if re.fullmatch(r"e\d\d\.wasm", f):
+        if re.fullmatch(r"e\d\d\.wasm", f) or re.fullmatch(r"pack(\d\d)?\.wasm", f):
             os.remove(os.path.join(dst, f))
     wasm = open(os.path.join(src, "index.wasm"), "rb").read()
     parts = []
@@ -69,21 +72,26 @@ def main(src: str, dst: str) -> None:
         name = "e%02d.wasm" % (i // CHUNK)
         open(os.path.join(dst, name), "wb").write(wasm[i:i + CHUNK])
         parts.append(name)
-    open(os.path.join(dst, "pack.wasm"), "wb").write(open(os.path.join(src, "index.pck"), "rb").read())
+    pck = open(os.path.join(src, "index.pck"), "rb").read()
+    packs = []
+    for i in range(0, len(pck), PCK_CHUNK):
+        name = "pack%02d.wasm" % (i // PCK_CHUNK)
+        open(os.path.join(dst, name), "wb").write(pck[i:i + PCK_CHUNK])
+        packs.append(name)
     for f in ("index.js", "index.audio.worklet.js", "index.audio.position.worklet.js", "index.png"):
         open(os.path.join(dst, f), "wb").write(open(os.path.join(src, f), "rb").read())
     html = open(os.path.join(src, "index.html"), encoding="utf-8").read()
     style = re.search(r"<style>(.*?)</style>", html, re.S).group(1)
     body = re.search(r"<body>(.*)</body>", html, re.S).group(1)
     page = ("<title>Mini Fúria</title>\n<style>:root{color-scheme:dark}html,body{height:100%%;background:#1b1530}%s</style>\n%s\n%s"
-            % (style, SHIM % str(parts), body))
+            % (style, SHIM % (str(parts), str(packs)), body))
     # versão "fragmento" (para hosts que montam o <html>) e versão completa (GitHub Pages, itch.io)
     open(os.path.join(dst, "fragment.html"), "w", encoding="utf-8").write(page)
     full = ('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover"></head><body>'
             + page + "</body></html>")
     open(os.path.join(dst, "index.html"), "w", encoding="utf-8").write(full)
-    print("ok:", len(parts), "pedaços em", dst)
+    print("ok:", len(parts), "pedaços do motor e", len(packs), "do pck em", dst)
 
 
 if __name__ == "__main__":

@@ -107,8 +107,10 @@ Menu → **escolha da pista** (10) → **garagem** → corrida de 3 voltas contr
 - **Looping**: a câmera gira para a vista lateral, olhando ao longo do eixo do looping, e abre o zoom para o círculo inteiro caber na tela.
 - **Saca-rolhas**: a câmera vai para trás e um pouco acima do carro, para dar para ver a pista girando em volta dele.
 - **Espiral**: a câmera sobe quase para a vista de cima e abre o zoom. **No ar** (saltos): sobe um pouco e abre.
-- As transições são suaves (yaw/pitch interpolados) e a câmera segura o modo por 0,45 s depois do elemento, sem trancos. Os controles continuam presos ao ângulo base da câmera, então girar a câmera nunca inverte a direção.
+- **Volta rápida ao carro**: a câmera de looping é uma mistura contínua pela distância até o loop (entra nos 25 m antes e devolve a visão ao carro uns 15 m depois da saída). Antes, em pistas com vários loops (Loop Mania), ela continuava mirando o centro do loop anterior por até 80 m.
+- As transições são suaves (yaw/pitch interpolados) e a câmera segura o modo por 0,4 s depois do elemento, sem trancos. Os controles continuam presos ao ângulo base da câmera, então girar a câmera nunca inverte a direção.
 - **Sem emendas mal encaixadas**: o deslocamento lateral do looping segue uma curva suave (smoothstep), então a entrada e a saída são retas e paralelas à pista original, sem a dobra horizontal que espremia os triângulos do colisor. As espirais têm 10–11 m de desnível por volta, para a volta de baixo não raspar na de cima.
+- **Saída limpa do saca-rolhas e do looping**: no fim do trecho guiado o carro sai só com a velocidade ao longo da pista (sem giro herdado nem deriva lateral). Por 0,6 s o analógico vale apenas como "um pouco para o lado", e o volante clássico fica mais suave, então a direção segurada durante o elemento não joga mais o carro para o lado. A câmera do saca-rolhas gira menos (35%), para a tela continuar batendo com o analógico. Dentro do trecho guiado a distância percorrida é integrada (sem saltos de reprojeção), o que acaba com os picos de velocidade e as tremidas na entrada.
 - **Sem travar**: no looping e na torção o carro é guiado pelo referencial da pista, interpolado entre as amostras (sem "degraus" de 2 m), e a carroceria não colide com o asfalto nesse trecho (as rodas continuam lendo a pista). A IA mantém sua faixa nesses elementos em vez de todos irem para o meio e engavetarem.
 
 ## Acabamento visual e "game juice"
@@ -154,9 +156,16 @@ Referências: [Coasterpedia: Heartline roll](https://coasterpedia.net/wiki/Heart
   - nível 3: asa grande com placas coloridas, neon embaixo do carro e aro dourado.
 - **Cada upgrade aparece no carro**: blindagem nível 2+ coloca placas parafusadas nas portas, nitro 2+ põe cilindros azuis atrás, motor 2+ põe um blower cromado no capô e munição 2+ põe um tambor extra na arma.
 
-## Rodas e materiais
+## Pneus (upgrade PNEUS) e materiais
 
-- Pneus com banda de rodagem em blocos e flanco, aro escuro com 5 raios metálicos e cubo cromado. O giro desenhado é limitado (~3 voltas/s) para não haver efeito estroboscópico.
+- **4 modelos de pneu** (`tire_street`, `tire_sport`, `tire_slick`, `tire_knobby` no `minicars.glb`), feitos num tamanho padrão e ajustados no jogo à roda de cada carro (a malha é escalada e espelhada para o lado esquerdo, com cache):
+  - **Rua** (nível 0): banda em V baixinha, nervura central, aro de 6 raios com porcas.
+  - **Esportivo** (nível 1): perfil baixo, aro grande de 10 raios finos e faixa no flanco.
+  - **Slick** (níveis 2–3): pneu de corrida liso, faixa colorida e "letreiro" no flanco, aro de 5 raios com porca central. No nível 3 a faixa pega a cor do kit.
+  - **Cravos** (buggy Vespa e picape): o pneu fora-de-estrada de antes, agora só onde faz sentido.
+- **Upgrade PNEUS** na garagem (NV 0–3, mesmo preço dos outros): +6% de aderência por nível, em curva e no drift. Saves antigos ganham o campo com nível 0. Os rivais usam pneus conforme o nível deles.
+- O giro desenhado é limitado (~3 voltas/s) para não haver efeito estroboscópico.
+- **Reflexos** (`shaders/reflect.gdshader`): uma passada extra, somada por cima, dá verniz à pintura, reflexo ao vidro e brilho ao metal. O renderizador leve não reflete o ambiente nas peças pequenas, então o reflexo é montado com o céu do tema (horizonte → topo), o chão, a linha do horizonte e o brilho do sol (Fresnel). No vidro e, bem de leve, na pintura, faixas de luz presas ao mundo deslizam pela lataria quando o carro anda. À noite e no entardecer tudo fica mais fraco.
 - Detalhe de material procedural (normal map por ruído, triplanar): borracha granulada nos pneus, metal escovado nos aros e cromados e flocos finos na pintura metálica.
 
 ## Fluidez (sem "travadinhas")
@@ -174,6 +183,23 @@ Referências: [Coasterpedia: Heartline roll](https://coasterpedia.net/wiki/Heart
 - **Arco de chegada**: sempre de pé e alinhado com a linha. Ele não herda mais a inclinação nem a rampa da pista, e os pés ficam na borda mais baixa.
 
 ## Música
+
+**Trilha incluída: rock/metal instrumental com licença CC0** (domínio público, uso comercial livre, crédito não obrigatório e dado por cortesia). Vem do Free Music Archive e do FreePD.com, pelo acervo [SoundSafari/CC0-1.0-Music](https://github.com/SoundSafari/CC0-1.0-Music):
+
+| Pista | Faixa | Artista |
+|---|---|---|
+| Circuito do Parque | Hit n Smash | FreePD.com |
+| Cidade Neon | SUPER METAL | Loyalty Freak Music |
+| Cânion do Deserto | 50 Over The Speed Limit | HoliznaCC0 |
+| Pico Nevado | Snowboard Rock | Loyalty Freak Music |
+| Docas do Porto | Punk | HoliznaCC0 |
+| Boca do Vulcão | GIGA METAL | Loyalty Freak Music |
+| Loop Mania | Nitro | Monplaisir |
+| Espiral do Céu | MAXI METAL | Loyalty Freak Music |
+| Pântano Sombrio | Ghost Surf Rock | Loyalty Freak Music |
+| Menu | Rock n' Roll | HoliznaCC0 |
+
+As faixas foram cortadas (máx. ~2:45), normalizadas (-15 LUFS) e convertidas para OGG Vorbis (~13 MB no total). Na largada, o nome da faixa aparece no canto da tela.
 
 `scripts/music.gd` toca em loop o que estiver em `minifuria/music/` (veja `music/LEIA-ME.txt`): `pista1..9`, o nome do tema (`park`, `city`, ...), `corrida1..8` ou `menu`, em `.ogg`, `.mp3` ou `.wav`. Sem arquivos, o jogo **compõe e sintetiza um rock instrumental original** para cada pista, com bateria, baixo, guitarra distorcida (power chords com palhetada abafada) e solo, em 16 compassos (~26 s). A síntese é feita em fatias por quadro, para não travar. Na Boca do Vulcão o solo é "Na Gruta do Rei da Montanha", de Edvard Grieg (1875), melodia em domínio público arranjada como rock.
 
@@ -240,4 +266,4 @@ O Godot exige um caminho de Android SDK nas Editor Settings mesmo exportando sem
 
 ## Exportar para a web
 
-Com os templates do Godot 4.7 instalados, dentro de `minifuria/`: `godot --headless --export-release "Web" build/web/index.html` e, se o host limitar o tamanho por arquivo, `python3 tools/pack_web.py build/web build/web_split`.
+Com os templates do Godot 4.7 instalados, dentro de `minifuria/`: `godot --headless --export-release "Web" build/web/index.html` e, se o host limitar o tamanho por arquivo, `python3 tools/pack_web.py build/web build/web_split`. O motor vai em pedaços de 4 MB (`eNN.wasm`) e o `.pck` (jogo + músicas) em pedaços de 8 MB (`packNN.wasm`).

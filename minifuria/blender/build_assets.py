@@ -106,6 +106,9 @@ M = {
     "balloon_b": mat("BalloonB", "#ffd23a", 0.6),
     "balloon_c": mat("BalloonC", "#4db8ff", 0.6),
     "wicker": mat("Wicker", "#a0703c", 0.9),
+    "groove": mat("Groove", "#0c0c0f", 0.95),
+    "tire_stripe": mat("TireStripe", "#ffd23a", 0.55),
+    "lug": mat("LugNut", "#d7dae0", 0.2, 1.0),
 }
 
 
@@ -229,7 +232,7 @@ def wheel(name, r, w, loc, side):
         th = 2 * math.pi * k / n
         radial = (0, -math.sin(th), math.cos(th))
         blk = box(f"{name}_tr{k}", (w * 0.84, 2 * math.pi * r / n * 0.52, 0.07),
-                  (0, radial[1] * (r * 0.965 + 0.015), radial[2] * (r * 0.965 + 0.015)), M["tire"], bevel=0.012)
+                  (0, radial[1] * (r * 0.965 + 0.015), radial[2] * (r * 0.965 + 0.015)), M["tire"])
         blk.rotation_euler = (th, 0, 0)
         parts.append(blk)
     # flanco (anel um pouco mais claro) e aro
@@ -246,6 +249,115 @@ def wheel(name, r, w, loc, side):
     ob = join(name, parts)
     flat(ob)
     ob.location = loc
+    return ob
+
+
+# ---------------------------------------------------------------- pneus (variantes / upgrade "PNEUS")
+def _tilted(name, size, rr, th, tilt, x, material, bevel=0.0):
+    """Bloco na banda de rodagem: inclinado 'tilt' sobre o próprio eixo radial e girado 'th' em volta do eixo da roda."""
+    b = box(name, size, (x, -math.sin(th) * rr, math.cos(th) * rr), material, bevel=bevel)
+    b.rotation_mode = "ZYX"            # aplica Z (inclinação na banda) e depois X (posição na volta)
+    b.rotation_euler = (th, 0, tilt)
+    return b
+
+
+def _smooth_round(ob):
+    """Banda e ombros lisos (sombreamento suave), tampas e raios chapados."""
+    for p in ob.data.polygons:
+        p.use_smooth = abs(p.normal.x) < 0.6
+
+
+def _rim(name, r, w, kind):
+    """Aros: rua = 6 raios; esportivo = 10 raios finos (aro grande); slick = 5 raios largos + porca central."""
+    parts = []
+    s = 1
+    if kind == "sport":
+        rr = r * 0.72
+    elif kind == "slick":
+        rr = r * 0.64
+    else:
+        rr = r * 0.6
+    parts.append(cyl(name + "_barrel", rr, w * 0.14, (s * w * 0.47, 0, 0), M["rim_dark"], verts=28))
+    parts.append(cyl(name + "_lip", rr * 1.04, w * 0.05, (s * w * 0.53, 0, 0), M["rim"], verts=28))
+    if kind == "street":
+        for k in range(6):
+            th = 2 * math.pi * k / 6
+            sp = box(f"{name}_sp{k}", (w * 0.07, 0.07, rr * 0.86), (s * w * 0.55, -math.sin(th) * rr * 0.5, math.cos(th) * rr * 0.5), M["rim"], bevel=0.012)
+            sp.rotation_euler = (th, 0, 0)
+            parts.append(sp)
+        parts.append(cyl(name + "_hub", r * 0.16, w * 0.14, (s * w * 0.57, 0, 0), M["chrome"], verts=12))
+        for k in range(5):
+            th = 2 * math.pi * (k + 0.5) / 5
+            parts.append(cyl(f"{name}_lug{k}", r * 0.025, w * 0.06, (s * w * 0.62, -math.sin(th) * r * 0.1, math.cos(th) * r * 0.1), M["lug"], verts=6))
+    elif kind == "sport":
+        for k in range(10):
+            th = 2 * math.pi * (k // 2) / 5 + (0.17 if k % 2 else -0.17)
+            sp = box(f"{name}_sp{k}", (w * 0.05, 0.035, rr * 0.86), (s * w * 0.55, -math.sin(th) * rr * 0.5, math.cos(th) * rr * 0.5), M["rim"], bevel=0.008)
+            sp.rotation_euler = (th, 0, 0)
+            parts.append(sp)
+        parts.append(cyl(name + "_hub", r * 0.15, w * 0.14, (s * w * 0.57, 0, 0), M["rim"], verts=10))
+        parts.append(cyl(name + "_cap", r * 0.08, w * 0.06, (s * w * 0.63, 0, 0), M["chrome"], verts=10))
+    else:   # slick: 5 raios largos e porca central (corrida)
+        for k in range(5):
+            th = 2 * math.pi * k / 5
+            sp = box(f"{name}_sp{k}", (w * 0.09, 0.13, rr * 0.84), (s * w * 0.55, -math.sin(th) * rr * 0.5, math.cos(th) * rr * 0.5), M["rim"], bevel=0.02)
+            sp.rotation_euler = (th, 0, 0)
+            parts.append(sp)
+        parts.append(cyl(name + "_hub", r * 0.2, w * 0.16, (s * w * 0.57, 0, 0), M["rim"], verts=12))
+        parts.append(cyl(name + "_nut", r * 0.1, w * 0.1, (s * w * 0.66, 0, 0), M["chrome"], verts=6))
+        parts.append(cyl(name + "_pin", r * 0.035, w * 0.06, (s * w * 0.72, 0, 0), M["tail"], verts=8))
+    return parts
+
+
+def tire_model(name, kind):
+    """Roda padrão (r = 0,5, largura = 0,5, aro para +X). O jogo ajusta ao tamanho de cada carro e espelha a esquerda.
+    street = pneu de rua (banda em V baixinha); sport = perfil baixo, aro grande; slick = corrida liso com faixa
+    colorida no flanco; knobby = cravos fora-de-estrada (buggy)."""
+    r, w = 0.5, 0.5
+    if kind == "knobby":
+        ob = wheel(name, r, w, (0, 0, 0), 1)
+        return ob
+    parts = []
+    base_r = r * (0.955 if kind != "slick" else 0.985)
+    tire = cyl(name + "_t", base_r, w * 0.94, (0, 0, 0), M["tire"], verts=32)
+    md = tire.modifiers.new("bevel", "BEVEL")
+    md.width = r * (0.15 if kind == "street" else 0.1)
+    md.segments = 3
+    md.limit_method = "ANGLE"
+    parts.append(tire)
+    if kind in ("street", "sport"):
+        n = 26 if kind == "street" else 30
+        tilt = 0.32 if kind == "street" else 0.5
+        arc = 2 * math.pi * r / n
+        for k in range(n):
+            th = 2 * math.pi * k / n
+            for side, x in ((1, w * 0.2), (-1, -w * 0.2)):
+                th2 = th + (math.pi / n if side < 0 else 0.0)
+                parts.append(_tilted(f"{name}_b{k}{'l' if side < 0 else 'r'}",
+                                     (w * 0.3, arc * (0.62 if kind == "street" else 0.74), 0.05),
+                                     base_r + 0.003, th2, tilt * side, x, M["tire"]))
+        # nervura central contínua
+        parts.append(cyl(name + "_rib", base_r + 0.026, w * (0.08 if kind == "street" else 0.06), (0, 0, 0), M["tire"], verts=32))
+    else:
+        # slick: faixas de "desgaste" quase invisíveis para o giro aparecer no asfalto
+        for k in range(6):
+            th = 2 * math.pi * k / 6
+            parts.append(_tilted(f"{name}_wear{k}", (w * 0.7, 0.05, 0.004), base_r + 0.001, th, 0.0, 0.0, M["groove"]))
+    # flanco: mais fino no esportivo (perfil baixo); faixa colorida no slick (marca de corrida)
+    sw_r = {"street": 0.86, "sport": 0.9, "slick": 0.9}[kind]
+    parts.append(cyl(name + "_sw", r * sw_r, w * 0.05, (w * 0.47, 0, 0), M["sidewall"], verts=36))
+    if kind == "slick":
+        parts.append(cyl(name + "_st", r * 0.8, w * 0.04, (w * 0.485, 0, 0), M["tire_stripe"], verts=36))
+        parts.append(cyl(name + "_st2", r * 0.74, w * 0.045, (w * 0.49, 0, 0), M["sidewall"], verts=36))
+        for k in range(3):   # "letreiro" no flanco: mostra o giro
+            th = 2 * math.pi * k / 3
+            parts.append(_tilted(f"{name}_logo{k}", (w * 0.03, 0.14, 0.03), r * 0.86, th, 0.0, w * 0.49, M["tire_stripe"]))
+    elif kind == "sport":
+        parts.append(cyl(name + "_st", r * 0.84, w * 0.04, (w * 0.485, 0, 0), M["tire_stripe"], verts=36))
+        parts.append(cyl(name + "_st2", r * 0.81, w * 0.045, (w * 0.49, 0, 0), M["sidewall"], verts=36))
+    parts += _rim(name, r, w, kind)
+    ob = join(name, parts)
+    _smooth_round(ob)
     return ob
 
 
@@ -471,7 +583,8 @@ def build_car(key, spec):
         parent(ob, root)
 
     for n, (sd, y, r, fr) in WH.items():
-        w = wheel(f"{key}_w{n}", r, ww, (sd * tw, y, r), sd)
+        # marcador da roda (posição, raio, largura): o jogo troca pela variante de pneu (tire_*)
+        w = cyl(f"{key}_w{n}", r, ww, (sd * tw, y, r), M["tire"], verts=12)
         parent(w, root)
     # ponto de montagem da arma: em cima do teto, no centro (o jogo lê este "empty")
     mnt = empty(key + "_mount", (0, coff + shift, clr + H + ch - 0.01))
@@ -507,6 +620,11 @@ CARS = {
 car_roots = {}
 for i, (k, s) in enumerate(CARS.items()):
     car_roots[k] = build_car(k, s)
+
+# variantes de pneu (o jogo troca a malha das rodas conforme o upgrade PNEUS)
+tire_models = {}
+for tk in ("street", "sport", "slick", "knobby"):
+    tire_models[tk] = tire_model("tire_" + tk, tk)
 
 # ---------------------------------------------------------------- props
 props = {}
@@ -845,7 +963,7 @@ for k, p in props.items():
 # ---------------------------------------------------------------- oclusão ambiente "assada" nos vértices
 # Dá o acabamento de render (cantos e frestas escurecidos) mesmo no renderizador leve do jogo/web.
 def bake_ao():
-    roots = list(car_roots.values()) + list(props.values())
+    roots = list(car_roots.values()) + list(props.values()) + list(tire_models.values())
     saved = {r: r.location.copy() for r in roots}
     for i, r in enumerate(roots):  # afasta tudo para um objeto não sombrear o outro
         r.location = ((i % 10) * 40.0, (i // 10) * 40.0, 0)

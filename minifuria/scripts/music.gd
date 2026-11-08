@@ -26,6 +26,21 @@ var _want_key := ""
 var _cache := {}
 var _cur_key := ""
 var volume_db := -9.0
+var now_text := ""   # "♪ faixa — artista" da música de arquivo que está tocando (crédito na tela)
+
+## Créditos das faixas incluídas (todas CC0 / domínio público — uso comercial livre; crédito por cortesia)
+const CREDITS := {
+	"pista1": "Hit n Smash — FreePD.com",
+	"pista2": "SUPER METAL — Loyalty Freak Music",
+	"pista3": "50 Over The Speed Limit — HoliznaCC0",
+	"pista4": "Snowboard Rock — Loyalty Freak Music",
+	"pista5": "Punk — HoliznaCC0",
+	"pista6": "GIGA METAL — Loyalty Freak Music",
+	"pista7": "Nitro — Monplaisir",
+	"pista8": "MAXI METAL — Loyalty Freak Music",
+	"pista9": "Ghost Surf Rock — Loyalty Freak Music",
+	"menu": "Rock n' Roll — HoliznaCC0",
+}
 
 
 func _ready() -> void:
@@ -54,6 +69,7 @@ func play_menu() -> void:
 
 func play_track(idx: int, theme_key: String) -> void:
 	_ensure()
+	now_text = ""
 	var names := ["pista%d" % (idx + 1), theme_key]
 	if _try_file(names, "t%d" % idx):
 		return
@@ -75,6 +91,7 @@ func _try_file(names: Array, key: String) -> bool:
 		for ext in ["ogg", "mp3", "wav"]:
 			var p := "res://music/%s.%s" % [nm, ext]
 			if ResourceLoader.exists(p):
+				now_text = String(CREDITS.get(nm, ""))
 				_play_stream(load(p), key)
 				return true
 	return false
