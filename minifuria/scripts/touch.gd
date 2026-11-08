@@ -28,7 +28,6 @@ func _btn_rects() -> Dictionary:
 	return {
 		"fire": [base + Vector2(-86, -86) * u, 84.0 * u],
 		"nitro": [base + Vector2(-238, -60) * u, 58.0 * u],
-		"drift": [base + Vector2(-372, -48) * u, 48.0 * u],
 		"drop": [base + Vector2(-70, -248) * u, 52.0 * u],
 		"brake": [base + Vector2(-206, -196) * u, 42.0 * u],
 	}

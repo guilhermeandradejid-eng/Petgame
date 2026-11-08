@@ -427,7 +427,7 @@ func _build_menu() -> void:
 	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_btn("CORRER", v).pressed.connect(func(): show_screen("tracks"))
 	var info := Label.new()
-	info.text = "Cada volta recarrega munição e nitro. Destrua rivais para ganhar dinheiro e melhorar o carro.\nSetas/WASD apontam para onde ir na tela · B freio/ré · Z tiro · X mina · SHIFT nitro · ESPAÇO drift · R volta à pista\n(na garagem dá para trocar para direção clássica: setas giram o carro)"
+	info.text = "Cada volta recarrega munição e nitro. Destrua rivais para ganhar dinheiro e melhorar o carro.\nSetas/WASD apontam para onde ir na tela (o drift é automático nas curvas fortes) · B freio/ré · Z tiro · X mina · SHIFT nitro · R volta à pista\n(na garagem dá para trocar para direção clássica: setas giram o carro)"
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info.add_theme_font_override("font", SystemFont.new())
 	info.add_theme_font_size_override("font_size", 15)

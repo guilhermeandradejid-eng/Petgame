@@ -28,7 +28,7 @@ func setup(game_: Node, fx_: Fx, sfx_: Sfx, lib_: Node3D) -> void:
 	fx = fx_
 	sfx = sfx_
 	lib = lib_
-	oil_shader = load("res://shaders/ground_fx.gdshader")
+	oil_shader = load("res://shaders/oil.gdshader")
 	# balas traçantes: fitas que viajam do cano até o impacto
 	var tmat := StandardMaterial3D.new()
 	tmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -411,6 +411,29 @@ func _fire_rocket(c: Car) -> void:
 	var node := lib.get_node("proj_rocket").duplicate() as Node3D
 	add_child(node)
 	node.global_position = mz
+	node.scale = Vector3.ONE * 1.45
+	# chama do motor: núcleo de fogo contínuo saindo pela cauda
+	var fire := CPUParticles3D.new()
+	fire.amount = 36
+	fire.lifetime = 0.22
+	fire.local_coords = false
+	fire.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var fq := QuadMesh.new()
+	fq.size = Vector2(1, 1)
+	fq.material = fx._bb_mat(fx.fire_tex, true)
+	fire.mesh = fq
+	fire.direction = Vector3(0, 0, -1)
+	fire.spread = 8
+	fire.initial_velocity_min = 4
+	fire.initial_velocity_max = 8
+	fire.gravity = Vector3.ZERO
+	fire.scale_amount_min = 0.45
+	fire.scale_amount_max = 0.75
+	fire.scale_amount_curve = fx._curve([Vector2(0, 1.0), Vector2(1, 0.1)])
+	fire.color_ramp = fx._ramp([Color(4, 3.6, 2.4, 1), Color(3.2, 1.3, 0.3, 0.9), Color(0.8, 0.2, 0.05, 0)])
+	fire.position = Vector3(0, 0, -0.5)
+	node.add_child(fire)
+	fire.emitting = true
 	var trail := fx.make_damage_smoke(true)
 	trail.amount = 40
 	trail.lifetime = 1.1
@@ -428,10 +451,11 @@ func _fire_rocket(c: Car) -> void:
 	node.add_child(glow)
 	var fl := MeshInstance3D.new()
 	var qm := QuadMesh.new()
-	qm.size = Vector2(0.9, 0.9)
+	qm.size = Vector2(1.1, 1.1)
 	qm.material = fx._bb_mat(fx.fire_tex, true)
 	fl.mesh = qm
-	fl.position = Vector3(0, 0, -0.6)
+	fl.position = Vector3(0, 0, -0.62)
+	fl.name = "Glow"
 	node.add_child(fl)
 	var tgt := _target(c, 75.0, 0.93)
 	rockets.append({"node": node, "vel": c.linear_velocity + f * 46.0, "owner": c, "t": 0.0, "target": tgt, "trail": trail})
@@ -477,6 +501,12 @@ func _step_rockets(dt: float) -> void:
 		node.global_position = p1
 		node.look_at(p1 + vel, Vector3.UP if absf(vel.normalized().y) < 0.95 else Vector3.RIGHT)
 		node.rotate_object_local(Vector3.UP, PI)
+		node.rotate_object_local(Vector3(0, 0, 1), r.t * 15.0)   # gira em torno do próprio eixo
+		node.scale = Vector3.ONE * 1.45
+		var gl := node.get_node_or_null("Glow") as Node3D
+		if gl:
+			var w := randf_range(0.8, 1.25)
+			gl.scale = Vector3(w, w, w)
 
 
 func _explode(pos: Vector3, owner: Car, dmg: float, radius: float, style: String) -> void:
@@ -540,8 +570,9 @@ func _drop(c: Car) -> void:
 		mi.mesh = pm
 		var m := ShaderMaterial.new()
 		m.shader = oil_shader
-		m.set_shader_parameter("mode", 3)
 		m.set_shader_parameter("strength", 1.0)
+		m.set_shader_parameter("spread", 0.15)
+		m.set_shader_parameter("seed", randf() * 50.0)
 		mi.material_override = m
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(mi)
@@ -578,6 +609,9 @@ func _step_oils(dt: float) -> void:
 		var o: Dictionary = oils[i]
 		o.t += dt
 		var mi: MeshInstance3D = o.node
+		var spread := minf(1.0, 0.15 + o.t * 1.8)   # a mancha se espalha ao cair
+		if o.t < 0.6:
+			(mi.material_override as ShaderMaterial).set_shader_parameter("spread", spread)
 		if o.t > 12.0:
 			(mi.material_override as ShaderMaterial).set_shader_parameter("strength", maxf(0.0, 1.0 - (o.t - 12.0)))
 		if o.t > 13.0:
@@ -589,7 +623,17 @@ func _step_oils(dt: float) -> void:
 			if c.wrecked or (c == o.owner and o.t < 1.5):
 				continue
 			var d: Vector3 = c.global_position - (o.pos as Vector3)
-			if d.slide(o.n).length() < 3.3 and absf(d.dot(o.n)) < 1.5:
-				if c.oil_t <= 0.0 and c == game.player:
-					game.hud.popup("ESCORREGOU!", Color("#8a8aff"))
-				c.oil_t = 0.9
+			if d.slide(o.n).length() < 3.3 * spread and absf(d.dot(o.n)) < 1.5:
+				if c.oil_t <= 0.0:
+					# entrou na graxa: rodopia para um lado, espirra e suja os pneus
+					var up := c.global_transform.basis.y
+					c.angular_velocity += up * (1.5 if randf() < 0.5 else -1.5) * clampf(c.linear_velocity.length() / 25.0, 0.4, 1.3)
+					if game._on_screen(c.global_position):
+						fx.burst("oil", c.global_position + up * 0.2, -c.linear_velocity.normalized())
+						sfx.play("splat", -6.0, randf_range(0.9, 1.2))
+					if c == game.player:
+						game.hud.popup("ESCORREGOU!", Color("#8a8aff"))
+						game._shake(0.18)
+						game.oil_fx = 1.0
+				c.oil_t = 1.1
+				c.oily_t = 2.6

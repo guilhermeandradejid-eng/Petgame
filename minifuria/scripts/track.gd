@@ -133,11 +133,28 @@ func _expand() -> Array:
 				cps.append({"p": c0, "feat": true, "kind": "jump"})
 				cps.append({"p": c0 + d * 8.0, "feat": true, "kind": "jump"})
 			"cork":
-				# torção: a pista deita 75° para um lado e depois para o outro (parede para os dois lados)
-				# o ângulo sai de uma função suave do avanço u (0..1), não de degraus entre pontos de controle
+				# saca-rolhas (espiral de 360°), estilo montanha-russa: a pista gira em volta de um eixo
+				# R metros acima dela ("heartline"), com taxa de giro constante no meio e rampas suaves
+				# (smoothstep) na entrada e na saída — começa e termina sem tranco.
 				var sg := signf(f[1])
-				for k in 13:
-					cps.append({"p": p.lerp(nxt, 0.08 + k * 0.07), "cu": float(k) / 12.0, "csg": sg, "feat": true, "kind": "cork"})
+				var R := 6.5
+				var N := 32
+				var A0 := p.lerp(nxt, 0.1)
+				var A1 := p.lerp(nxt, 0.9)
+				var dd := (A1 - A0).normalized()
+				var up0 := (Vector3.UP - dd * dd.y).normalized()
+				var racc := [0.0]
+				for k in N:
+					var um := (float(k) + 0.5) / N
+					var rate := smoothstep(0.0, 0.24, um) * smoothstep(1.0, 0.76, um)
+					racc.append(float(racc[k]) + rate)
+				for k in N + 1:
+					var u := float(k) / N
+					var roll := deg_to_rad(360.0 * float(racc[k]) / float(racc[N])) * sg
+					var A := A0.lerp(A1, u)
+					var Ur := up0.rotated(dd, -roll)
+					var q := A + (up0 - Ur) * R
+					cps.append({"p": q, "feat": true, "kind": "cork", "ckc": A0 + up0 * R, "ckd": dd})
 	return cps
 
 
@@ -157,6 +174,7 @@ static func _cr(p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, t: float) ->
 
 var _bank := PackedFloat32Array()
 var fcore := PackedByteArray()
+var corkf := PackedByteArray()
 var _lc := PackedVector3Array()
 var _la := PackedVector3Array()
 var _lr := PackedFloat32Array()
@@ -200,18 +218,20 @@ func _sample(cps: Array) -> void:
 		gap.append(1 if a.get("gap", false) else 0)
 		var in_loop: bool = a.get("loop", false) and b.get("loop", false)
 		loopf.append(1 if in_loop else 0)
-		_lc.append(a.get("lc", Vector3.ZERO))
-		_la.append(a.get("la", Vector3.RIGHT))
+		var in_cork: bool = a.has("ckc") and b.has("ckc")
+		corkf.append(1 if in_cork else 0)
+		if in_cork:
+			_lc.append(a.ckc)
+			_la.append(a.ckd)
+		else:
+			_lc.append(a.get("lc", Vector3.ZERO))
+			_la.append(a.get("la", Vector3.RIGHT))
 		_lr.append(float(a.get("lr", b.get("lr", 0.0))))
 		feat.append(1 if (a.get("feat", false) or b.get("feat", false)) else 0)
 		ftype.append(String(a.get("kind", b.get("kind", ""))))
 		# miolo do elemento: os dois pontos de controle do trecho são do mesmo elemento
 		fcore.append(1 if (a.has("kind") and String(a.get("kind")) == String(b.get("kind", "")) and not b.get("lead", false) and not a.get("lead", false)) else 0)
-		var t: float = clampf(dt[k2] + f / SUB, 0.0, 1.0)
-		if a.has("cu") and b.has("cu"):
-			_bank.append(float(a.csg) * _cork_bank(lerpf(float(a.cu), float(b.cu), t)))
-		else:
-			_bank.append(0.0)
+		_bank.append(0.0)
 
 
 ## arredonda quinas: fora de loopings, espirais e saltos, nenhuma curva fica mais fechada que RMIN
@@ -226,7 +246,7 @@ func _fair() -> void:
 		var lk := ftype[i] == "helix" and fcore[i] == 1
 		for k in range(-6, 7):
 			var j := idx(i + k)
-			if loopf[j] == 1 or (gap[j] == 1 and absi(k) <= 4):
+			if loopf[j] == 1 or corkf[j] == 1 or (gap[j] == 1 and absi(k) <= 4):
 				lk = true
 		lock[i] = 1 if lk else 0
 	var amax := ds / RMIN
@@ -250,15 +270,6 @@ func _fair() -> void:
 			break
 
 
-## torção: deita para um lado e depois para o outro, com começo e fim sem tranco (derivada zero)
-const CORK_BANK := 62.0
-
-
-static func _cork_bank(u: float) -> float:
-	# sen(2πu)·sen(πu): pico ±1 em u≈0,3 e 0,7, giro máximo menor que o de um degrau linear e derivada zero nas pontas
-	return CORK_BANK * sin(u * TAU) * sin(u * PI) / 0.7698
-
-
 func _frames() -> void:
 	T.resize(n)
 	U.resize(n)
@@ -273,14 +284,14 @@ func _frames() -> void:
 		var a := Vector2(T[i].x, T[i].z).normalized()
 		var b := Vector2(T[(i + 1) % n].x, T[(i + 1) % n].z).normalized()
 		var c := (a.x * b.y - a.y * b.x) / ds
-		curv[i] = c if loopf[i] == 0 else 0.0
+		curv[i] = c if (loopf[i] == 0 and corkf[i] == 0) else 0.0
 		kl[i] = -curv[i] if ftype[i] != "cork" else 0.0
 	var base := PackedVector3Array()
 	base.resize(n)
 	for i in n:
 		var t := T[i]
-		if loopf[i] == 1:
-			# no looping o "para cima" aponta para o eixo do looping (o asfalto fica por dentro do círculo)
+		if loopf[i] == 1 or corkf[i] == 1:
+			# no looping e no saca-rolhas o "para cima" aponta para o eixo (o asfalto fica por dentro)
 			var c := _lc[i] + _la[i] * (P[i] - _lc[i]).dot(_la[i])
 			var up := c - P[i]
 			up = up - t * t.dot(up)
@@ -297,9 +308,9 @@ func _frames() -> void:
 			if loopf[j] == 0:
 				acc += kl[j]
 				cnt += 1
-		var auto := clampf((acc / maxi(cnt, 1)) * 420.0, -16.0, 16.0) if loopf[i] == 0 else 0.0
+		var auto := clampf((acc / maxi(cnt, 1)) * 420.0, -16.0, 16.0) if (loopf[i] == 0 and corkf[i] == 0) else 0.0
 		var bdeg := auto + _bank[i]
-		if loopf[i] == 0:
+		if loopf[i] == 0 and corkf[i] == 0:
 			# perto do chão a inclinação é limitada: a borda baixa do asfalto nunca desce abaixo do terreno
 			var elev := P[i].y - float(theme.gy)
 			var maxb := rad_to_deg(asin(clampf((elev - 0.15) / (WALL + 0.5), 0.0, 1.0)))

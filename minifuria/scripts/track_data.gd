@@ -71,7 +71,7 @@ const THEMES := {
 		"label": "Pântano", "sky_top": "#5d7d6a", "sky_hor": "#b9c9a8", "bg": "#a4b693", "sun": "#f2f0c8", "sun_e": 1.2, "sun_rot": [-50, 10],
 		"amb": 0.9, "fog": "#9fb090", "ground": 3, "ga": "#2b3a22", "gb": "#4c5e30", "gy": -1.5, "road": 0, "tint": "#c8c0a8",
 		"curb": ["#6b8f2a", "#e8e0c0"], "rail": ["#7a5a3a", "#a8c050"], "shoulder": "#6a5a40",
-		"props": [["prop_palm", 3], ["prop_tree", 2]], "density": 160, "bldg": 0, "night": false,
+		"props": [["prop_palm", 3], ["prop_tree", 2]], "density": 160, "bldg": 0, "night": false, "dusk": true,
 		"grav": 1.0, "grip": 0.95, "pillars": true,
 	},
 	"moon": {
@@ -85,14 +85,14 @@ const THEMES := {
 
 const TRACKS := [
 	{
-		"name": "Circuito do Parque", "theme": "park", "w": 22.0, "traffic": 3,
+		"name": "Circuito do Parque", "theme": "park", "w": 22.0, "traffic": 0,
 		"desc": "Morros, chicane e grampo. Tráfego nos dois sentidos.",
 		"pts": [[-91, 68, 0.6], [-26, 78, 0.6], [39, 75, 1.5], [101, 65, 4], [135, 31, 7], [135, -16, 7], [109, -52, 3], [73, -60, 0.6],
 			[42, -36, 0.6], [8, -23, 0.6], [-23, -47, 0.6], [-47, -81, 1], [-96, -86, 1.5], [-135, -52, 1], [-140, 3, 0.6], [-127, 44, 0.6]],
 		"feat": {},
 	},
 	{
-		"name": "Cidade Neon", "theme": "city", "w": 20.0, "traffic": 4,
+		"name": "Cidade Neon", "theme": "city", "w": 20.0, "traffic": 0,
 		"desc": "Oito à noite com viaduto por cima do cruzamento.",
 		"pts": [[-60, -40, 0.6], [0, 0, 0.6], [60, 40, 0.6], [100, 70, 1], [150, 60, 2], [175, 20, 4], [165, -30, 6], [130, -60, 8], [90, -55, 9],
 			[60, -40, 9], [0, 0, 9], [-60, 40, 9], [-100, 65, 8], [-150, 60, 6], [-178, 20, 4], [-165, -30, 2], [-130, -60, 1], [-90, -55, 0.6]],

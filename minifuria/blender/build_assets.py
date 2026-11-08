@@ -692,10 +692,15 @@ pod = [box("wp_box", (0.62, 0.9, 0.42), (0, 0, 0.3), M["gunmetal"], bevel=0.05),
 for i, (x, z) in enumerate([(-0.15, 0.2), (0.15, 0.2), (-0.15, 0.4), (0.15, 0.4)]):
     pod.append(cyl(f"wp_t{i}", 0.09, 0.08, (x, -0.46, z), M["rocket"], verts=8, axis="Y"))
 prop("wpn_pod", pod)
-rk = [cyl("rk_b", 0.11, 0.8, (0, 0, 0), M["rocket_w"], verts=10, axis="Y"),
-      cyl("rk_n", 0.11, 0.3, (0, -0.55, 0), M["rocket"], verts=10, axis="Y", r2=0.0)]
-for k in range(4):
-    f = box(f"rk_f{k}", (0.03, 0.22, 0.2), (0, 0.32, 0), M["rocket"])
+# foguete: corpo branco com faixas, ogiva em dois estágios, bocal de motor e aletas em cruz
+rk = [cyl("rk_b", 0.13, 0.8, (0, 0, 0), M["rocket_w"], verts=14, axis="Y"),
+      cyl("rk_bd", 0.137, 0.1, (0, -0.27, 0), M["rocket"], verts=14, axis="Y"),
+      cyl("rk_bd2", 0.137, 0.07, (0, 0.27, 0), M["mine_y"], verts=14, axis="Y"),
+      cyl("rk_n", 0.13, 0.2, (0, -0.5, 0), M["rocket"], verts=14, axis="Y", r2=0.075),
+      cyl("rk_n2", 0.075, 0.16, (0, -0.68, 0), M["rocket"], verts=14, axis="Y", r2=0.0),
+      cyl("rk_nz", 0.085, 0.14, (0, 0.47, 0), M["gunmetal"], verts=12, axis="Y", r2=0.115)]
+for k in range(2):
+    f = box(f"rk_f{k}", (0.035, 0.3, 0.5), (0, 0.27, 0), M["rocket"], bevel=0.01)
     f.rotation_euler = (0, k * math.pi / 2, 0)
     rk.append(f)
 prop("proj_rocket", rk)

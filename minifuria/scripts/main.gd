@@ -8,7 +8,7 @@ const KILL_BONUS := 150
 const UP_PRICE := [400, 900, 1600]
 const CAM_YAW := PI / 4.0
 const CAM_PITCH := 0.62
-const CAM_DIST := 120.0
+const CAM_DIST := 70.0   # câmera ortográfica: mais perto = sombras do sol cobrindo a tela toda
 const SAVE_PATH := "user://minifuria.json"
 
 const RIVALS := [
@@ -96,6 +96,7 @@ var cam_mode := ""
 var cam_mode_t := 0.0
 var cam_loop := {}
 var cam_kick := Vector3.ZERO
+var oil_fx := 0.0
 
 
 func _ready() -> void:
@@ -125,7 +126,8 @@ func _ready() -> void:
 	env.ambient_light_sky_contribution = 1.0
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	env.tonemap_mode = Environment.TONE_MAPPER_AGX
-	env.tonemap_exposure = 1.15
+	env.tonemap_exposure = 1.0
+	env.tonemap_white = 6.0
 	env.glow_enabled = true
 	env.glow_intensity = 0.6
 	env.glow_hdr_threshold = 1.2
@@ -134,8 +136,9 @@ func _ready() -> void:
 	env.set_glow_level(3, 1.0)
 	env.set_glow_level(5, 0.6)
 	env.adjustment_enabled = true
-	env.adjustment_saturation = 1.22
-	env.adjustment_contrast = 1.04
+	env.adjustment_saturation = 1.1
+	env.adjustment_contrast = 1.14
+	env.adjustment_brightness = 0.97
 	env.fog_density = 0.0025
 	env.fog_sky_affect = 0.0
 	var we := WorldEnvironment.new()
@@ -144,11 +147,11 @@ func _ready() -> void:
 	sun = DirectionalLight3D.new()
 	sun.shadow_enabled = true
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-	sun.directional_shadow_max_distance = 80.0
-	sun.shadow_bias = 0.04
-	sun.shadow_normal_bias = 1.2
-	sun.shadow_blur = 1.6
-	sun.shadow_opacity = 0.85
+	sun.directional_shadow_max_distance = 140.0
+	sun.shadow_bias = 0.03
+	sun.shadow_normal_bias = 1.0
+	sun.shadow_blur = 1.1
+	sun.shadow_opacity = 0.92
 	add_child(sun)
 	cam = Camera3D.new()
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -422,15 +425,21 @@ func _apply_theme() -> void:
 	sky_mat.ground_horizon_color = Color(theme.sky_hor)
 	sky_mat.ground_bottom_color = Color(theme.ga).darkened(0.3)
 	env.background_color = Color(theme.bg)
-	env.ambient_light_energy = float(theme.amb)
+	# color grade: ambiente mais baixo (sombras mais densas) e noites bem mais escuras
+	var night := bool(theme.night)
+	var dusk := bool(theme.get("dusk", false))
+	env.ambient_light_energy = float(theme.amb) * (0.5 if night else (0.6 if dusk else 0.72))
+	env.tonemap_exposure = 0.92 if night else (0.95 if dusk else 1.0)
+	env.adjustment_saturation = 1.18 if night else 1.1
+	env.adjustment_contrast = 1.2 if night else 1.14
 	env.fog_enabled = String(theme.fog) != ""
 	if env.fog_enabled:
 		env.fog_light_color = Color(theme.fog)
 		env.fog_density = float(theme.get("fog_d", 0.0011))
 	sun.light_color = Color(theme.sun)
-	sun.light_energy = float(theme.sun_e)
+	sun.light_energy = float(theme.sun_e) * (0.55 if night else (0.75 if dusk else 1.05))
 	sun.rotation = Vector3(deg_to_rad(theme.sun_rot[0]), deg_to_rad(theme.sun_rot[1]), 0)
-	env.glow_intensity = 0.7 if theme.night else 0.6
+	env.glow_intensity = 0.8 if night else 0.55
 
 
 func _build_scenery() -> void:
@@ -673,6 +682,9 @@ func _make_car(kind: String, role: String, col: Color) -> Car:
 		e.dust = [fx.make_dust(), fx.make_dust()]
 		for s in e.smoke + e.dust:
 			world.add_child(s)
+		_add_xray(c)
+		if bool(theme.night) or bool(theme.get("dusk", false)):
+			e.lights = _add_headlights(c)
 		e.flame = fx.make_nitro_flame()
 		c.add_child(e.flame)
 		e.flame.position = c.exhaust_local
@@ -848,14 +860,16 @@ func _on_hit(c: Car, other: Object, point: Vector3, dv: float) -> void:
 func _on_died(c: Car, killer: Car) -> void:
 	var big := c.role != "traffic"
 	var from: Vector3 = killer.global_position if killer else c.global_position - c.global_transform.basis.z
-	c.wreck(28.0, (c.global_position - from).normalized())
+	var fell: bool = c.get_meta("fell", false)
+	c.set_meta("fell", false)
+	c.wreck(28.0, (c.global_position - from).normalized(), not fell)
 	if _on_screen(c.global_position):
 		fx.explosion(c.global_position, big)
 		sfx.play("crash", 0.0 if big else -5.0)
 		_shake(0.6 if big else 0.25)
 	if c == player:
 		stats.deaths += 1
-		hud.big("DESTRUÍDO!", Color("#ffe14d"), Color("#ff5a1a"))
+		hud.big("CAIU!" if fell else "DESTRUÍDO!", Color("#ffe14d"), Color("#ff5a1a"))
 		hud.killfeed("%s destruiu VOCÊ" % (killer.display_name if killer else "A PISTA"), Color("#ff7a7a"))
 		_flash(Color(1, 1, 1), 0.6)
 		hitstop = 0.1
@@ -901,6 +915,7 @@ func on_player_got_hit(amount: float) -> void:
 
 
 func _on_part_off(c: Car, mesh: MeshInstance3D, xform: Transform3D, vel: Vector3, is_wheel: bool) -> void:
+	mesh.material_overlay = null
 	var rb := fx.spawn_debris(mesh, xform, vel, is_wheel)
 	if not _on_screen(xform.origin):
 		return
@@ -1038,7 +1053,7 @@ func _feature_stats(_dt: float) -> void:
 			stats[key] = int(stats.get(key, 0)) + 1
 			var k2 := "st_" + track.ftype[c.ti] + ("_l" if track.loopf[c.ti] == 1 else "")
 			stats[k2] = int(stats.get(k2, 0)) + 1
-			if c == player and OS.get_cmdline_user_args().has("--debugstall"):
+			if (c == player or OS.get_cmdline_user_args().has("--debugstall_ai")) and OS.get_cmdline_user_args().has("--debugstall"):
 				print("STALL %s s=%d lat=%.1f h=%.1f v=%.1f onf=%s inloop=%s ft=%s gnd=%s wheels=%d up·U=%.2f inv=%.1f" % [k2, int(c.s_track), c.lat, c.h_surf, c.linear_velocity.length(), c.on_feature, c.in_loop, c.feat_type, c.on_ground, c.wheels.filter(func(w): return w.contact).size(), c.global_transform.basis.y.dot(track.U[c.ti]), c.invuln])
 				for ct in c._contacts:
 					var ob: Object = ct[0]
@@ -1286,6 +1301,18 @@ func _respawns(dt: float) -> void:
 			continue
 		var below: bool = c.h_track < -4.0
 		var away: bool = absf(c.lat) > track.WALL + 3.0
+		# caiu para fora da pista: explode ao bater no chão/água (ou depois de cair um tempo, no céu)
+		var falling: bool = below or (away and c.h_track < -1.5 and c.linear_velocity.y < -2.0)
+		var water_now: bool = c.global_position.y < float(theme.gy) + 0.6 and track.P[c.ti].y > float(theme.gy) + 2.5
+		if falling or water_now:
+			c.fall_t = float(c.get("fall_t")) + dt
+			var hit_ground: bool = c.global_position.y < float(theme.gy) + 1.4
+			if water_now or hit_ground or c.fall_t > 1.3:
+				c.fall_t = 0.0
+				_fall_wreck(c, water_now)
+				continue
+		else:
+			c.fall_t = 0.0
 		var upside: bool = c.global_transform.basis.y.dot(track.U[c.ti]) < -0.2 and c.linear_velocity.length() < 5.0
 		var in_water: bool = c.global_position.y < float(theme.gy) + 0.6 and track.P[c.ti].y > float(theme.gy) + 2.5
 		if below or away or upside or in_water:
@@ -1318,6 +1345,168 @@ func _respawns(dt: float) -> void:
 		if crash_t > 2.2:
 			crash_t = -1.0
 			_respawn(player, false)
+
+
+## faróis acesos à noite: uma luz spot (ilumina a pista) + dois fachos aditivos
+func _add_headlights(c: Car) -> Array:
+	var out := []
+	var y: float = c.sp.clr + c.sp.h * 0.6
+	var z: float = c.sp.len * 0.5 + 0.15
+	var sp := SpotLight3D.new()
+	sp.light_color = Color(1.0, 0.92, 0.78)
+	sp.light_energy = 5.0 if c.role == "player" else 3.2
+	sp.spot_range = 26.0
+	sp.spot_angle = 36.0
+	sp.spot_attenuation = 0.7
+	sp.shadow_enabled = false
+	sp.light_specular = 0.5
+	sp.transform = Transform3D(Basis.looking_at(Vector3(0, -0.2, 1.0), Vector3.UP), Vector3(0, y + 0.2, z))
+	c.add_child(sp)
+	out.append(sp)
+	var bsh := load("res://shaders/beam.gdshader") as Shader
+	for sx: float in [-1.0, 1.0]:
+		var mi := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.18
+		cm.bottom_radius = 2.4
+		cm.height = 11.0
+		cm.radial_segments = 14
+		cm.rings = 1
+		cm.cap_top = false
+		cm.cap_bottom = false
+		mi.mesh = cm
+		var m := ShaderMaterial.new()
+		m.shader = bsh
+		m.set_shader_parameter("strength", 0.16 if c.role == "player" else 0.1)
+		mi.material_override = m
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# cilindro "deitado": eixo apontando para a frente e um pouco para baixo
+		var dirv := Vector3(0, -0.12, 1.0).normalized()
+		# eixo Y do cilindro aponta para trás (topo estreito no farol, base larga lá na frente)
+		var yb := -dirv
+		var zb := Vector3.RIGHT.cross(yb).normalized()
+		var xb := yb.cross(zb).normalized()
+		mi.transform = Transform3D(Basis(xb, yb, zb), Vector3(sx * c.sp.wid * 0.32, y, z) + dirv * 5.5)
+		c.add_child(mi)
+		out.append(mi)
+	return out
+
+
+## lens flare: fontes de luz rápidas (explosões, turbo, nitro) registradas pelos efeitos
+var flares_t: Array = []
+
+
+func add_flare(pos: Vector3, col: Color, k: float, dur: float) -> void:
+	flares_t.append({"pos": pos, "col": col, "k": k, "t": 0.0, "dur": dur})
+	if flares_t.size() > 16:
+		flares_t.pop_front()
+
+
+func _update_flares(rdt: float) -> void:
+	var m := hud.post_mat
+	var vs := get_viewport().get_visible_rect().size
+	var cand: Array = []
+	var cam_f := -cam.global_basis.z
+	var night := bool(theme.night) or bool(theme.get("dusk", false))
+	for c in cars:
+		if c.wrecked or not _on_screen(c.global_position):
+			continue
+		var f: Vector3 = c.global_transform.basis.z
+		if night:
+			# faróis virados para a câmera brilham na lente
+			var facing := clampf(-f.dot(cam_f) * 1.6 + 0.25, 0.0, 1.0)
+			if facing > 0.05:
+				for sx: float in [-1.0, 1.0]:
+					var hp: Vector3 = c.global_transform * Vector3(sx * c.sp.wid * 0.32, c.sp.clr + c.sp.h * 0.6, c.sp.len * 0.5 + 0.1)
+					cand.append([hp, Color(1.0, 0.9, 0.75), facing * (0.9 if c == player else 0.6), 1.0])
+		if c.nitroing:
+			cand.append([c.global_transform * c.exhaust_local, Color(0.45, 0.75, 1.0), 0.7, 1.2])
+	for i in range(flares_t.size() - 1, -1, -1):
+		var ft: Dictionary = flares_t[i]
+		ft.t += rdt
+		if ft.t > ft.dur:
+			flares_t.remove_at(i)
+			continue
+		cand.append([ft.pos, ft.col, float(ft.k) * (1.0 - float(ft.t) / float(ft.dur)), 1.6])
+	cand.sort_custom(func(a, b): return a[2] > b[2])
+	var pos_a: Array = []
+	var col_a: Array = []
+	for cd in cand:
+		if pos_a.size() >= 12:
+			break
+		var wp: Vector3 = cd[0]
+		if cam.is_position_behind(wp):
+			continue
+		var sp: Vector2 = cam.unproject_position(wp) / vs
+		if sp.x < -0.1 or sp.x > 1.1 or sp.y < -0.1 or sp.y > 1.1:
+			continue
+		pos_a.append(Vector4(sp.x, sp.y, float(cd[2]), float(cd[3])))
+		col_a.append(Vector4((cd[1] as Color).r, (cd[1] as Color).g, (cd[1] as Color).b, 1.0))
+	while pos_a.size() < 12:
+		pos_a.append(Vector4.ZERO)
+		col_a.append(Vector4.ZERO)
+	var nfl := 0
+	for p4 in pos_a:
+		if (p4 as Vector4).z > 0.0:
+			nfl += 1
+	m.set_shader_parameter("fl_pos", pos_a)
+	m.set_shader_parameter("fl_col", col_a)
+	m.set_shader_parameter("fl_n", nfl)
+	# sol (dia): brilho entrando pela borda do lado do sol
+	if not night and mode != "menu":
+		var sd: Vector3 = sun.global_basis.z
+		var cf := Vector2(cam_f.x, cam_f.z).normalized()
+		var sh := Vector2(sd.x, sd.z).normalized()
+		var toward := cf.dot(sh)   # sol na frente da câmera = mais brilho
+		var r := cam.global_basis.x
+		var sx: float = Vector2(r.x, r.z).normalized().dot(sh)
+		var su := Vector2(0.5 + sx * 0.62, -0.08 - maxf(0.0, toward) * 0.05)
+		m.set_shader_parameter("sun_uv", su)
+		m.set_shader_parameter("sun_k", clampf(0.35 + toward * 0.65, 0.0, 1.0) * 0.9)
+		m.set_shader_parameter("sun_col", Color(theme.sun))
+	else:
+		m.set_shader_parameter("sun_k", 0.0)
+
+
+## silhueta "raio-X": o carro aparece mesmo embaixo de outro trecho de pista
+func _add_xray(c: Car) -> void:
+	var m := ShaderMaterial.new()
+	m.shader = load("res://shaders/xray.gdshader")
+	var me: bool = c.role == "player"
+	var col: Color = c.color if not me else Color("#ffd23a")
+	m.set_shader_parameter("col", col.lightened(0.25))
+	m.set_shader_parameter("strength", 1.0 if me else 0.6)
+	var stack: Array = [c.model]
+	while stack.size() > 0:
+		var nd: Node = stack.pop_back()
+		if nd is MeshInstance3D:
+			(nd as MeshInstance3D).material_overlay = m
+		for ch in nd.get_children():
+			stack.append(ch)
+
+
+func _fall_wreck(c: Car, water: bool) -> void:
+	if auto_test and OS.get_cmdline_user_args().has("--debugfall"):
+		print("FALL %s s=%d lat=%.1f h=%.1f v=%.1f water=%s feat=%d gap=%d loop=%d" % [c.display_name, int(c.s_track), c.lat, c.h_track, c.linear_velocity.length(), water, track.feat[c.ti], track.gap[c.ti], track.loopf[c.ti]])
+	if c == player:
+		stats.falls += 1
+	elif mode == "race":
+		stats["ai_falls"] = int(stats.get("ai_falls", 0)) + 1
+	var pos := c.global_position
+	if _on_screen(pos):
+		if water and int(theme.ground) == 4:
+			fx.explosion(pos, true, "fireball")
+		elif water:
+			fx.burst("smoke", pos)
+			fx.burst("smoke", pos + Vector3.UP)
+			sfx.play("splash", 0.0)
+		else:
+			fx.scorch(pos, 3.0)
+	# quem derrubou leva o crédito (batida/tiro recente)
+	var killer: Car = c.last_hit_by if c.last_hit_by and c.game_time - c.last_hit_t < 4.0 else null
+	c.set_meta("fell", true)
+	c.invuln = 0.0
+	c.apply_damage(c.health + 9999.0, pos, killer, false)
 
 
 func _respawn(c: Car, fell: bool) -> void:
@@ -1453,6 +1642,7 @@ func _process(_delta: float) -> void:
 			zoom_kick += 4.0
 			for c in [player] + rivals:
 				c.freeze = false
+				c.launch_t = 0.85   # pneus cantando na largada
 			if Input.is_action_pressed("up") or hud.touch.used or auto_test:
 				player.linear_velocity = player.global_transform.basis.z * 14.0
 				hud.popup("LARGADA PERFEITA!", Color("#ff9a1a"))
@@ -1471,12 +1661,13 @@ func _process(_delta: float) -> void:
 		trauma = maxf(trauma, 0.16)   # ronco: leve tremor contínuo durante o nitro
 	was_nitro = player.nitroing
 	var sp01: float = player.linear_velocity.length() / player.sp.vmax
-	var slip: float = 1.0 if player.drifting else clampf((absf(player.v_s) - 3.0) / 8.0, 0.0, 1.0)
+	var slip: float = 1.0 if (player.drifting or player.launch_t > 0.15) else clampf((absf(player.v_s) - 3.0) / 8.0, 0.0, 1.0)
 	if player.ctrl.brake > 0.0 and player.v_f > 10.0:
 		slip += 0.5
 	sfx.drive(clampf(sp01, 0.0, 1.3), player.ctrl.throttle, slip, player.nitroing, ts < 0.6, mode in ["race", "countdown", "finish"] and not player.wrecked)
 	_camera(rdt)
 	_post(rdt)
+	_update_flares(rdt)
 	_hud()
 	# onda de luz das placas de turbo depois que alguém passa
 	for pd in track.pads:
@@ -1539,17 +1730,22 @@ func _car_fx(dt: float) -> void:
 		var vis: bool = _on_screen(c.global_position)
 		var slip: float = absf(c.v_s)
 		var braking: bool = c.ctrl.brake > 0.0 and c.v_f > 10.0
-		var skidding: bool = vis and not c.wrecked and c.on_ground and (c.drifting or slip > 3.5 or braking)
+		var launching: bool = c.launch_t > 0.0 and c.on_ground
+		var skidding: bool = vis and not c.wrecked and c.on_ground and (c.drifting or slip > 3.5 or braking or launching)
 		var wi := 0
 		for w in c.wheels:
 			if w.lost:
 				wi += 1
 				continue
 			var wp: Vector3 = c.global_transform * Vector3(w.base.x, 0.0, w.base.z)
-			if skidding and w.contact and (not w.front or braking):
+			var oily: bool = c.oily_t > 0.0 and vis and c.on_ground and w.contact and not c.wrecked
+			if (skidding and w.contact and (not w.front or braking)) or oily:
 				var last = e.skid[wi]
 				if last != null:
-					fx.skid(last, wp, 0.38, 0.4 if c.drifting else 0.28, c.ground_n)
+					var al: float = 0.5 if (c.drifting or launching) else 0.28
+					if oily:
+						al = maxf(al, 0.75 * clampf(c.oily_t / 1.2, 0.0, 1.0))
+					fx.skid(last, wp, 0.44 if oily else 0.38, al, c.ground_n)
 				e.skid[wi] = wp
 			else:
 				e.skid[wi] = null
@@ -1563,7 +1759,7 @@ func _car_fx(dt: float) -> void:
 					var wpos: Vector3 = c.global_transform * Vector3(rear[i].base.x, 0.2, rear[i].base.z)
 					s.global_position = wpos
 					du.global_position = wpos
-				s.emitting = skidding and (c.drifting or slip > 5.0 or braking)
+				s.emitting = skidding and (c.drifting or slip > 5.0 or braking or launching)
 				du.emitting = vis and not c.wrecked and c.on_ground and absf(c.lat) > track.HALF + 0.4 and c.linear_velocity.length() > 8.0
 			var flame: Node3D = e.flame
 			if c.nitroing and not e.get("was_n", false) and c != player and vis:
@@ -1736,7 +1932,8 @@ func _post(rdt: float) -> void:
 	var slow := ts < 0.6
 	var bt := (0.6 if p.nitroing else 0.0) + clampf((sp - 38.0) / 30.0, 0.0, 0.2) + (0.4 if slow else 0.0)
 	post_blur = lerpf(post_blur, bt, minf(1.0, rdt * 6.0))
-	post_aberr = lerpf(post_aberr, (0.8 if p.nitroing else 0.0) + trauma * 1.5 + (0.8 if slow else 0.0), minf(1.0, rdt * 8.0))
+	oil_fx = maxf(0.0, oil_fx - rdt * 1.2)
+	post_aberr = lerpf(post_aberr, (0.8 if p.nitroing else 0.0) + trauma * 1.5 + (0.8 if slow else 0.0) + oil_fx * 2.2, minf(1.0, rdt * 8.0))
 	post_lines = lerpf(post_lines, (1.0 if p.nitroing else 0.0) + clampf((sp - 42.0) / 15.0, 0.0, 0.6), minf(1.0, rdt * 6.0))
 	flash.a *= exp(-rdt * 7.0)
 	var m := hud.post_mat

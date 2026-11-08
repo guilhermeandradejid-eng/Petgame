@@ -77,6 +77,7 @@ func _ready() -> void:
 	_pool("dust", 10, func(): return _puff(Color(0.82, 0.73, 0.56, 0.85), 14, 1.3, 1.2, 3.4, false))
 	_pool("fire", 5, _fireball)
 	_pool("backfire", 4, _backfire)
+	_pool("oil", 4, _oil_splash)
 	_pool("embers", 5, _embers)
 	_pool("darksmoke", 5, func(): return _puff(Color(0.17, 0.16, 0.18, 0.9), 22, 3.2, 2.2, 7.0, true))
 	_pool("glass", 5, _glass)
@@ -397,6 +398,32 @@ func _fireball() -> CPUParticles3D:
 	return p
 
 
+## respingo de graxa: gotas escuras e brilhantes que caem rápido
+func _oil_splash() -> CPUParticles3D:
+	var p := _base(26, 0.7)
+	var q := SphereMesh.new()
+	q.radius = 0.09
+	q.height = 0.16
+	q.radial_segments = 6
+	q.rings = 3
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.03, 0.025, 0.02)
+	m.roughness = 0.05
+	m.metallic = 0.3
+	q.material = m
+	p.mesh = q
+	p.direction = Vector3(0, 1, 0)
+	p.spread = 70
+	p.initial_velocity_min = 3
+	p.initial_velocity_max = 8
+	p.gravity = Vector3(0, -22, 0)
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.6
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 0.8
+	return p
+
+
 ## estouro curto no escape (início do nitro / placa de turbo): bolinha de fogo para trás
 func _backfire() -> CPUParticles3D:
 	var p := _base(12, 0.28)
@@ -470,28 +497,49 @@ func _glass() -> CPUParticles3D:
 
 
 func _confetti() -> CPUParticles3D:
-	var p := _base(90, 2.4)
+	var p := _base(170, 3.4)
 	var m := QuadMesh.new()
-	m.size = Vector2(0.32, 0.2)
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.vertex_color_use_as_albedo = true
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.size = Vector2(0.46, 0.3)
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/confetti.gdshader")
 	m.material = mat
 	p.mesh = m
 	p.direction = Vector3(0, 1, 0)
-	p.spread = 45
-	p.initial_velocity_min = 9
-	p.initial_velocity_max = 18
-	p.gravity = Vector3(0, -12, 0)
-	p.damping_min = 1.5
-	p.damping_max = 2.5
+	p.spread = 55
+	p.initial_velocity_min = 10
+	p.initial_velocity_max = 22
+	p.gravity = Vector3(0, -7, 0)
+	p.damping_min = 2.5
+	p.damping_max = 3.6
 	p.angle_min = 0
 	p.angle_max = 360
-	p.angular_velocity_min = -500
-	p.angular_velocity_max = 500
-	p.particle_flag_rotate_y = true
-	p.color_initial_ramp = _ramp([Color("#ff4d6d"), Color("#ffd23a"), Color("#4dd2ff"), Color("#7dff6a"), Color("#c77dff")])
+	p.angular_velocity_min = -360
+	p.angular_velocity_max = 360
+	p.scale_amount_min = 0.8
+	p.scale_amount_max = 1.3
+	p.color_initial_ramp = _ramp([Color("#ff4d6d"), Color("#ffd23a"), Color("#4dd2ff"), Color("#7dff6a"), Color("#c77dff"), Color("#ffffff")])
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 1.2
+	# serpentinas: fitas compridas que caem devagar girando
+	var st := _base(22, 3.8)
+	var sm := QuadMesh.new()
+	sm.size = Vector2(0.12, 1.4)
+	sm.material = mat
+	st.mesh = sm
+	st.direction = Vector3(0, 1, 0)
+	st.spread = 40
+	st.initial_velocity_min = 9
+	st.initial_velocity_max = 16
+	st.gravity = Vector3(0, -5, 0)
+	st.damping_min = 2.0
+	st.damping_max = 3.0
+	st.angle_min = 0
+	st.angle_max = 360
+	st.angular_velocity_min = -200
+	st.angular_velocity_max = 200
+	st.color_initial_ramp = p.color_initial_ramp
+	st.name = "Streamers"
+	p.add_child(st)
 	return p
 
 
@@ -525,6 +573,10 @@ func burst(kind: String, pos: Vector3, dir := Vector3.UP, _scale := 1.0) -> void
 		p.direction = (dir.normalized() + Vector3.UP * 0.6).normalized()
 	p.restart()
 	p.emitting = true
+	var sub := p.get_node_or_null("Streamers") as CPUParticles3D
+	if sub:
+		sub.restart()
+		sub.emitting = true
 
 
 func sparks(pos: Vector3, dir: Vector3, power: float) -> void:
@@ -570,6 +622,8 @@ func scorch(pos: Vector3, size: float) -> void:
 
 
 func hit_light(pos: Vector3, col: Color, energy: float, rng: float, dur: float) -> void:
+	if get_parent() and get_parent().has_method("add_flare"):
+		get_parent().add_flare(pos, col, clampf(energy / 6.0, 0.2, 1.2), maxf(dur, 0.25))
 	var l := OmniLight3D.new()
 	l.light_color = col
 	l.light_energy = energy

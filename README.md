@@ -65,7 +65,7 @@ Teclado: `J` liga o pulo, espaço freia ou usa a habilidade, `Esc` pausa.
 
 Corrida isométrica de **combate** com mini carros, feita em **Godot 4.7** (renderizador Compatibility, roda no navegador e no celular). Projeto em [`minifuria/`](minifuria/): abra o `project.godot` no Godot.
 
-Referências de game design: **Rock n' Roll Racing** (armas e nitro limitados que recarregam a cada volta, dinheiro por colocação e por rival destruído, upgrades na garagem), **Hot Wheels Unleashed / Trackmania** (loopings, espirais, rampas, boosters antes dos elementos) e **Burnout** (tráfego, takedowns, quase-batidas).
+Referências de game design: **Rock n' Roll Racing** (armas e nitro limitados que recarregam a cada volta, dinheiro por colocação e por rival destruído, upgrades na garagem), **Hot Wheels Unleashed / Trackmania** (loopings, espirais, rampas, boosters antes dos elementos) e **Burnout** (takedowns, batidas e destruição). Só os carros da corrida ficam na pista (sem trânsito).
 
 ![carros e props modelados no Blender](minifuria/assets/preview.png)
 
@@ -85,14 +85,14 @@ Menu → **escolha da pista** (10) → **garagem** → corrida de 3 voltas contr
 
 | # | Pista | Tema | Destaques |
 |---|---|---|---|
-| 1 | Circuito do Parque | parque, dia | morros, chicane, pouco tráfego |
-| 2 | Cidade Neon | cidade à noite | oito com viaduto sobre o cruzamento, pouco tráfego |
+| 1 | Circuito do Parque | parque, dia | morros e chicane |
+| 2 | Cidade Neon | cidade à noite | oito com viaduto sobre o cruzamento |
 | 3 | Cânion do Deserto | pôr do sol, cactos | dois saltos sobre o vale |
 | 4 | Pico Nevado | neve, gelo escorregadio | espiral de descida com 2 voltas |
 | 5 | Docas do Porto | mar e contêineres | píeres e saltos sobre a água |
 | 6 | Boca do Vulcão | lava e cristais | looping sobre a lava e salto |
-| 7 | Loop Mania | pista de brinquedo laranja | 2 loopings, espiral, torção, salto |
-| 8 | Espiral do Céu | nas nuvens | espirais de subida e descida, torção, salto |
+| 7 | Loop Mania | pista de brinquedo laranja | 2 loopings, espiral, saca-rolhas, salto |
+| 8 | Espiral do Céu | nas nuvens | espirais de subida e descida, saca-rolhas, salto |
 | 9 | Pântano Sombrio | brejo e palmeiras | oito com ponte alta, saltos |
 | 10 | Estação Lunar | lua, gravidade baixa | saltos enormes e looping |
 
@@ -106,7 +106,7 @@ Menu → **escolha da pista** (10) → **garagem** → corrida de 3 voltas contr
 ## Câmeras dinâmicas e fluidez nos elementos
 
 - **Looping**: a câmera gira para a vista lateral, olhando ao longo do eixo do looping, e abre o zoom para o círculo inteiro caber na tela.
-- **Torção (saca-rolhas)**: a câmera vai para trás e um pouco acima do carro, para dar para ver a pista girando.
+- **Saca-rolhas**: a câmera vai para trás e um pouco acima do carro, para dar para ver a pista girando em volta dele.
 - **Espiral**: a câmera sobe quase para a vista de cima e abre o zoom. **No ar** (saltos): sobe um pouco e abre.
 - As transições são suaves (yaw/pitch interpolados) e a câmera segura o modo por 0,45 s depois do elemento, sem trancos. Os controles continuam presos ao ângulo base da câmera, então girar a câmera nunca inverte a direção.
 - **Sem emendas mal encaixadas**: o deslocamento lateral do looping segue uma curva suave (smoothstep), então a entrada e a saída são retas e paralelas à pista original, sem a dobra horizontal que espremia os triângulos do colisor. As espirais têm 10–11 m de desnível por volta, para a volta de baixo não raspar na de cima.
@@ -119,6 +119,32 @@ Menu → **escolha da pista** (10) → **garagem** → corrida de 3 voltas contr
 - **Placas de turbo**: malha que acompanha a pista (curvas, rampas e inclinação), chapa escura com moldura zebrada, setas de luz correndo para a frente e LEDs laterais. Ao passar, uma onda de luz varre a placa, com faíscas, luz e um "tranco" de câmera. São laranja, ou ciano onde o chão ou a pista já são laranja.
 - **Nitro**: ar quente saindo dos dois escapamentos (distorção da imagem que sobe e se desfaz, e fica meio segundo depois do nitro), estouro de fogo e luz ao acionar, câmera que "fica para trás" e alcança o carro, e um tremor leve durante o nitro.
 - **Carros "vivos"**: amassam ao pousar (proporcional ao impacto), esticam e empinam o nariz no nitro e nas placas de turbo (mola só no modelo, sem afetar a física).
+
+## Saca-rolhas (espiral de 360°) com geometria de montanha-russa
+
+O antigo elemento "torção" (deitava para um lado e para o outro) virou um **saca-rolhas**: a pista dá uma volta inteira de 360° em espiral. A geometria segue os princípios de montanha-russa:
+- **Heartline roll**: a rotação é feita em torno de um eixo acima da pista (raio de 6,5 m), e não em volta do próprio trilho. O asfalto descreve uma hélice em volta desse eixo e o carro fica de cabeça para baixo no topo, a 13 m de altura. É um looping "esticado" ao longo do caminho.
+- **Taxa de giro controlada**: constante no meio, com rampas suaves (smoothstep) na entrada e na saída. O giro começa e termina sem tranco (pico de ~5°/m, ou 10,5° por amostra de 2 m).
+- O "para cima" da pista aponta para o eixo, como no looping. O carro é guiado e a IA chega embalada (a curvatura da hélice vista de cima não conta como curva).
+
+Referências: [Coasterpedia: Heartline roll](https://coasterpedia.net/wiki/Heartline_roll), [CoasterForce: Inversions](https://coasterforce.com/inversions), [Coaster Crazy: taxa de giro em graus por segundo × graus por metro](https://www.coastercrazy.com:443/forums/post295593.html).
+
+## Sensação de pilotagem, graxa e quedas
+
+- **Descidas embalam**: no asfalto comum a gravidade de verdade age ao longo da rampa (1,7× na descida, 0,55× na subida), e a velocidade máxima sobe na descida.
+- **Largada**: os pneus traseiros cantam, giram em falso e soltam fumaça por quase um segundo, com marcas no asfalto.
+- **Graxa/óleo**: mancha escura que se espalha ao cair, com película iridescente, reflexo molhado e gotas em volta. Ao entrar, o carro rodopia e rabeia, espirram gotas, a tela "tonteia" um instante e **os pneus saem sujos**, deixando rastro escuro na pista por uns 2,5 s.
+- **Cair da pista destrói o carro**: ao bater no chão, na água ou na lava (ou depois de cair um tempo, no céu) o carro é destruído ("CAIU!"). Quem derrubou com batida ou tiro nos últimos 4 s leva o crédito.
+- **Foguetes**: modelo novo (ogiva em dois estágios, faixas, bocal e aletas), 45% maiores, girando no próprio eixo, com núcleo de fogo contínuo e chama tremulando, além da fumaça.
+- **Confete**: pedaços maiores de papel que viram no ar (frente colorida, verso mais escuro), mais serpentinas compridas caindo devagar.
+
+## Iluminação, sombras e lens flare
+
+- **Sombras de verdade**: a câmera ortográfica foi para 70 m (antes 120 m, mais que o alcance das sombras do sol). Agora a sombra cobre a tela toda, mais nítida e densa.
+- **Color grade**: exposição e luz ambiente mais baixas, contraste maior e saturação controlada. As noites (Cidade, Vulcão, Lua) ficam bem mais escuras e o Pântano ganhou clima de entardecer.
+- **Faróis noturnos**: cada carro tem um farol spot que ilumina o asfalto à frente, mais dois fachos aditivos de luz.
+- **Lens flare**: halo, risco anamórfico e "fantasmas" refletidos pelo centro da lente para faróis virados para a câmera, chamas do nitro, explosões e placas de turbo; de dia, um brilho do sol entra pela borda.
+- **Carro visível embaixo de pista**: quando um viaduto, espiral ou looping fica na frente do carro, ele aparece como silhueta colorida ("raio-X", com teste de profundidade invertido). O seu carro aparece em amarelo e os rivais na cor deles.
 
 ## Carros: montagem e acabamento
 
@@ -133,7 +159,7 @@ Menu → **escolha da pista** (10) → **garagem** → corrida de 3 voltas contr
 
 - **Direção "TELA" (padrão)**: você aponta para onde quer ir **na tela** e o carro vira sozinho para lá. Não inverte quando o carro desce a tela. No celular/mouse é o analógico da esquerda; no teclado, as setas/WASD (↑ sobe a tela, ← vai para a esquerda da tela) e o carro acelera sozinho.
 - **Direção "CARRO" (clássica)**: ← → giram o carro em relação a ele mesmo, ↑ acelera, ↓ freia. Troca na garagem ou no menu de pausa.
-- Botões na tela: **TIRO**, **NITRO**, **DRIFT**, **MINA/ÓLEO**, **FREIO**. Teclado: `B`/`C` freio e ré, `Z`/`J` tiro, `X`/`K` mina, `Shift` nitro, `Espaço` drift, `R` volta à pista, `P` pausa, `M` som.
+- Botões na tela: **TIRO**, **NITRO**, **MINA/ÓLEO**, **FREIO**. O **drift é automático**: numa curva forte em velocidade o carro entra num drift suave sozinho e sai quando a curva alivia. Teclado: `B`/`C` freio e ré, `Z`/`J` tiro, `X`/`K` mina, `Shift` nitro, `R` volta à pista, `P` pausa, `M` som.
 - Se o carro ficar no sentido errado aparece "SENTIDO ERRADO!" e, se continuar, o jogo te coloca de volta na direção certa.
 
 ## Como a pista 3D é feita

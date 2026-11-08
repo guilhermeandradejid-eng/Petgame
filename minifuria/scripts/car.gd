@@ -98,6 +98,11 @@ var track_ref: Track = null
 var guided_spd := 0.0
 var _susp_forces := true
 var jump_cd := 0.0
+var launch_t := 0.0     # largada: pneus cantando e fumaça
+var fall_t := 0.0
+var oily_t := 0.0      # pneus sujos de graxa: deixam rastro escuro por um tempo
+var _hard_t := 0.0      # tempo de curva forte (auto-drift)
+var _dh := 0.0
 # "game juice" visual: amassa ao pousar, estica e empina no nitro (mola amortecida, só no modelo)
 var squash := 0.0
 var squash_v := 0.0
@@ -460,6 +465,7 @@ func _physics_process(dt: float) -> void:
 		else:
 			_uturn = 0.0
 		steer = clampf(dh * 2.4, -1.0, 1.0) * float(ctrl.dir_mag)
+		_dh = dh
 		# só inverte quando o jogador está dando ré de propósito (segurando o freio)
 		if v_f < -2.0 and ctrl.brake > 0.0:
 			steer = -steer
@@ -469,16 +475,22 @@ func _physics_process(dt: float) -> void:
 	var vmax: float = sp.vmax * engine_mult
 	var spd01 := minf(1.0, absf(v_f) / vmax)
 
-	# drift
-	if not drifting and on_ground and ctrl.drift and v_f > 11.0 and absf(steer_s) > 0.2:
+	# auto-drift: curva forte em velocidade entra sozinha num drift suave (sem botão)
+	var demand: float = (absf(_dh) / 0.8) if ctrl.dir != null else (absf(ctrl.steer) / 0.9)
+	if on_ground and v_f > 19.0 and demand >= 1.0:
+		_hard_t += dt
+	else:
+		_hard_t = maxf(0.0, _hard_t - dt * 2.0)
+	var want_drift: bool = ctrl.drift or _hard_t > 0.14
+	if not drifting and on_ground and want_drift and v_f > 15.0 and absf(steer_s) > 0.3:
 		drifting = true
 		drift_dir = signf(steer_s)
 		drift_t = 0.0
-		angular_velocity += up * drift_dir * 1.1
+		angular_velocity += up * drift_dir * 0.55
 	if drifting:
 		drift_t += dt
 		drift_slip = absf(atan2(v_s, maxf(1.0, v_f)))
-		var holding: bool = ctrl.drift or steer_s * drift_dir > 0.25
+		var holding: bool = ctrl.drift or (steer_s * drift_dir > 0.35 and demand > 0.55)
 		if v_f < 7.0 or not on_ground or (drift_t > 0.35 and drift_slip < 0.1 and not holding) or (drift_t > 0.2 and drift_slip < 0.05):
 			drifting = false
 	else:
@@ -494,20 +506,31 @@ func _physics_process(dt: float) -> void:
 	nitroing = nitro_t > 0.0
 	var nacc: float = NITRO[nitro_type].acc
 	var vmax_now: float = (sp.nitro * engine_mult) if nitroing else vmax
+	# descidas embalam (e subidas freiam menos): a gravidade "de verdade" ao longo da rampa
+	var slope_a := 0.0
+	if on_ground and not magnet and not on_feature:
+		var gw := Vector3.DOWN * GRAV * grav_factor
+		var gt := gw - n * gw.dot(n)
+		var along := gt.dot(fwd_g)
+		slope_a = along * (1.7 if along > 0.0 else 0.55)
+		vmax_now += maxf(0.0, slope_a) * 0.9
+	launch_t = maxf(0.0, launch_t - dt)
+	oily_t = maxf(0.0, oily_t - dt)
 
 	var wy := angular_velocity.dot(up)
 	var inertia: float = mass * (sp.len * sp.len + sp.wid * sp.wid) / 12.0
 	if on_ground:
 		var target := 0.0
 		if drifting:
-			target = (steer_s * 1.25 + drift_dir * 0.55) * sp.turn * 0.95
+			target = (steer_s * 1.15 + drift_dir * 0.4) * sp.turn * 0.95
 		else:
 			var rate: float = sp.turn * turn_mult * minf(1.0, absf(v_f) / 5.0) * (1.0 - 0.28 * spd01)
 			target = steer_s * rate * (1.0 if v_f >= 0.0 else -1.0)
 		var auth := 0.25 if stun > 0.0 else 1.0
 		if oil_t > 0.0:
+			# perda de controle: rabeia de um lado para o outro, mais forte logo ao entrar
 			auth = 0.15
-			target += sin(game_time * 9.0) * 2.5
+			target += sin(game_time * 7.5) * 2.8 * clampf(oil_t / 1.1, 0.3, 1.0)
 		var k := (5.0 if drifting else 9.0) * auth
 		apply_torque(up * (target - wy) * inertia * k)
 		var a := 0.0
@@ -521,6 +544,7 @@ func _physics_process(dt: float) -> void:
 			a -= signf(v_f) * minf(absf(v_f) / dt, 4.0) + v_f * 0.08
 		if nitroing and v_f < vmax_now:
 			a += 6.0
+		a += slope_a
 		if ctrl.brake > 0.0:
 			if v_f > 0.5:
 				a -= 8.0 if drifting else 32.0
@@ -777,7 +801,7 @@ func detach_wheel(w: Dictionary) -> void:
 	part_off.emit(self, copy, xf, vel, true)
 
 
-func wreck(power: float, from_dir: Vector3) -> void:
+func wreck(power: float, from_dir: Vector3, pop := true) -> void:
 	if wrecked:
 		return
 	wrecked = true
@@ -790,7 +814,8 @@ func wreck(power: float, from_dir: Vector3) -> void:
 	var fwd := global_transform.basis.z
 	var side := global_transform.basis.x
 	var up := global_transform.basis.y
-	apply_central_impulse((up * (5.0 + 5.0 * pw) + from_dir * 4.0) * mass)
+	if pop:
+		apply_central_impulse((up * (5.0 + 5.0 * pw) + from_dir * 4.0) * mass)
 	var tq := fwd * randf_range(-1, 1) * 8.0 * pw + side * randf_range(-4, 4) * pw + up * randf_range(-5, 5)
 	apply_torque_impulse(tq * mass * 2.0)
 	var names := parts.keys().filter(func(k): return k != "body" and not parts[k].off)
@@ -904,7 +929,7 @@ func ai(track: Track, game: Node, dt: float) -> void:
 		for k in range(2, 26, 2):
 			var j := track.idx(pr.i + k)
 			max_c = maxf(max_c, absf(track.curv[j]))
-			if track.feat[j] == 1 and (track.ftype[j] == "loop" or track.ftype[j] == "jump"):
+			if track.feat[j] == 1 and (track.ftype[j] == "loop" or track.ftype[j] == "jump" or track.ftype[j] == "cork"):
 				special = true
 		var lim := sqrt(30.0 / maxf(max_c, 1e-4))
 		want = minf(cruise * rubber * ai_skill, lim)
@@ -973,7 +998,7 @@ func _process(dt: float) -> void:
 		var mi: MeshInstance3D = w.mesh
 		var y: float = w.base.y + SUSP - w.dist + w.r
 		mi.position.y = lerpf(mi.position.y, clampf(y, w.base.y - 0.25, w.base.y + WHEEL_UP), minf(1.0, dt * 25.0))
-		w.spin += v_f / maxf(0.2, w.r) * dt
+		w.spin += (v_f + (35.0 if launch_t > 0.0 and not w.front else 0.0)) / maxf(0.2, w.r) * dt
 		var st := 0.0
 		if w.front:
 			st = (-drift_dir * 0.28 + steer_s * 0.14) if drifting else steer_s * 0.32
