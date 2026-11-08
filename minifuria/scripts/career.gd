@@ -5,24 +5,34 @@ extends Node
 ## Dinheiro compra carros únicos (cada um com armas próprias) e upgrades por carro.
 
 const WORLDS := [
-	{"name": "TERRA FIRME", "tracks": [0, 1, 4], "boss_track": 1, "need": 20, "boss": "boss_brutus", "boss_name": "BRUTUS, O ROLO",
+	{"name": "PARQUE", "theme": "park", "tracks": [0, 1, 2, 3], "boss_track": 1, "need": 24, "boss": "boss_brutus", "boss_name": "BRUTUS, O ROLO",
 		"boss_desc": "Van blindada gigante. TREMOR: marca um círculo onde você vai passar e explode o chão. BARRIS: rola barris gigantes para trás.",
 		"boss_col": "#4a4652", "mult": 1.0, "lv": 0, "col": "#7dff6a"},
-	{"name": "FORNALHA", "tracks": [2, 8, 5], "boss_track": 2, "need": 26, "boss": "boss_xerife", "boss_name": "XERIFE DE AÇO",
+	{"name": "PÂNTANO", "theme": "swamp", "tracks": [4, 5, 6, 7], "boss_track": 6, "need": 28, "boss": "boss_croc", "boss_name": "CROCODILO DO BREJO",
+		"boss_desc": "Picape-crocodilo gigante. LAMA: cospe poças que atolam o carro e sujam a tela. BOTE: marca uma faixa da pista e dá um bote lateral nela.",
+		"boss_col": "#3f6b2a", "mult": 1.4, "lv": 0, "col": "#a3d977"},
+	{"name": "DESERTO", "theme": "desert", "tracks": [8, 9, 10, 11], "boss_track": 9, "need": 30, "boss": "boss_xerife", "boss_name": "XERIFE DE AÇO",
 		"boss_desc": "Viatura colossal. ÍMÃ: um raio te puxa para perto e segura sua velocidade. BLOQUEIO: fileira de pregos na pista com uma brecha.",
-		"boss_col": "#1c1f2a", "mult": 1.6, "lv": 1, "col": "#ff7a1a"},
-	{"name": "ALTITUDE", "tracks": [3, 6, 7], "boss_track": 3, "need": 32, "boss": "boss_imperador", "boss_name": "O IMPERADOR",
+		"boss_col": "#1c1f2a", "mult": 1.8, "lv": 1, "col": "#ffb21a"},
+	{"name": "NEVE", "theme": "snow", "tracks": [12, 13, 14, 15], "boss_track": 13, "need": 32, "boss": "boss_avalanche", "boss_name": "AVALANCHE",
+		"boss_desc": "Trophy truck da neve. BOLAS DE NEVE: rola bolas gigantes pela pista contra você (faixas avisadas). GELO: transforma um trecho em gelo liso.",
+		"boss_col": "#dfe9f7", "mult": 2.2, "lv": 1, "col": "#bfe6ff"},
+	{"name": "CIDADE NEON", "theme": "city", "tracks": [16, 17, 18, 19], "boss_track": 16, "need": 34, "boss": "boss_blackout", "boss_name": "BLACKOUT",
+		"boss_desc": "Sedã hacker. PULSO EMP: anel que desliga suas armas e o especial por 3 s. PORTÕES LASER: barreiras que ligam e desligam na pista.",
+		"boss_col": "#14141e", "mult": 2.7, "lv": 2, "col": "#c04de0"},
+	{"name": "CÉU", "theme": "sky", "tracks": [20, 21, 22, 23], "boss_track": 20, "need": 36, "boss": "boss_imperador", "boss_name": "O IMPERADOR",
 		"boss_desc": "Muscle car dourado. METEOROS: círculos vermelhos caem do céu à sua frente. MURO DE FOGO: deixa a pista em chamas atrás de si.",
-		"boss_col": "#d4a017", "mult": 2.4, "lv": 2, "col": "#2ee6ff"},
+		"boss_col": "#d4a017", "mult": 3.2, "lv": 3, "col": "#2ee6ff"},
 ]
 const POINTS := [10, 7, 5, 3, 2, 1, 0, 0]
-const BOSS_PRIZE := [3000, 5500, 9000]
+const EXTRA_TRACKS := [24, 25]   # Porto e Loop Mania: corrida rápida e multijogador
+const BOSS_PRIZE := [3000, 4500, 6000, 8000, 10000, 15000]
 ## carros à venda: preço e mundo em que aparecem na loja
 const SHOP := {
 	"faisca": {"price": 0, "world": 0, "name": "FAÍSCA", "desc": "Equilibrado e rápido no nitro."},
 	"vespa": {"price": 3000, "world": 0, "name": "VESPA", "desc": "Buggy leve: o mais ágil, pula obstáculos."},
-	"trovao": {"price": 6500, "world": 1, "name": "TROVÃO", "desc": "Muscle car blindado: foguetes e escudo."},
-	"monstro": {"price": 11000, "world": 2, "name": "MONSTRO", "desc": "Picape pesada: fogo, barris e choque."},
+	"trovao": {"price": 6500, "world": 2, "name": "TROVÃO", "desc": "Muscle car blindado: foguetes e escudo."},
+	"monstro": {"price": 11000, "world": 3, "name": "MONSTRO", "desc": "Picape pesada: fogo, barris e choque."},
 }
 const CAR_ORDER := ["faisca", "vespa", "trovao", "monstro"]
 const UP_MULT := {"faisca": 1.0, "vespa": 1.15, "trovao": 1.35, "monstro": 1.6}
@@ -40,7 +50,7 @@ var hud: Hud
 var event := {}            # corrida atual da carreira: {"world", "track", "boss"}
 var scr_map: Control
 var scr_world: Control
-var map_box: HBoxContainer
+var map_box: GridContainer
 var world_box: VBoxContainer
 var cur_world := 0
 
@@ -57,7 +67,12 @@ func setup(g: Node, h: Hud) -> void:
 func _migrate() -> void:
 	var s: Dictionary = game.save
 	if not s.has("career"):
-		s.career = {"unlocked": 0, "points": [0, 0, 0], "beaten": [false, false, false], "best": {}}
+		s.career = {"unlocked": 0, "points": [0, 0, 0, 0, 0, 0], "beaten": [false, false, false, false, false, false], "best": {}}
+	# saves de quando havia 3 mundos: completa até 6
+	while s.career.points.size() < WORLDS.size():
+		s.career.points.append(0)
+	while s.career.beaten.size() < WORLDS.size():
+		s.career.beaten.append(false)
 	if not s.has("garage"):
 		var start: String = s.get("car", "faisca") if String(s.get("car", "faisca")) in SHOP else "faisca"
 		s.garage = {"owned": [start], "up": {}}
@@ -135,8 +150,10 @@ func _build_map() -> void:
 	UI.title(v, "CARREIRA", 50)
 	UI.checker(v, 300, 10)
 	UI.text(v, "Cada corrida dá dinheiro e pontos (1º 10 · 2º 7 · 3º 5 · 4º 3 · 5º 2). Some os pontos do mundo para enfrentar o chefe; vença o chefe para abrir o próximo mundo.", 16, UI.MUTED, true)
-	map_box = HBoxContainer.new()
-	map_box.add_theme_constant_override("separation", 22)
+	map_box = GridContainer.new()
+	map_box.columns = 3
+	map_box.add_theme_constant_override("h_separation", 18)
+	map_box.add_theme_constant_override("v_separation", 16)
 	map_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(map_box)
 	var bot := HBoxContainer.new()
@@ -158,7 +175,7 @@ func open() -> void:
 		var w: Dictionary = WORLDS[i]
 		var open_ := world_open(i)
 		var pc := Button.new()
-		pc.custom_minimum_size = Vector2(360, 380)
+		pc.custom_minimum_size = Vector2(370, 196)
 		pc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		pc.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		pc.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
@@ -173,15 +190,15 @@ func open() -> void:
 		pc.add_theme_stylebox_override("pressed", hov)
 		pc.add_theme_stylebox_override("disabled", base)
 		pc.add_theme_font_override("font", UI.display_it)
-		pc.add_theme_font_size_override("font_size", 17)
+		pc.add_theme_font_size_override("font_size", 15)
 		for k in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color", "font_disabled_color"]:
 			pc.add_theme_color_override(k, UI.TEXT if open_ else Color(1, 1, 1, 0.35))
 		var tracks: Array = []
 		for t in w.tracks:
 			tracks.append("· " + String(TrackData.TRACKS[t].name).to_upper())
 		var pts: int = s.career.points[i]
-		var state := "BLOQUEADO\nvença o chefe do mundo %d" % i if not open_ else ("CHEFE DERROTADO ★" if bool(s.career.beaten[i]) else ("CHEFE LIBERADO!" if boss_open(i) else "%d / %d PONTOS" % [pts, int(w.need)]))
-		pc.text = "MUNDO %d\n%s\n\n%s\n\nCHEFE: %s\n\n%s\nprêmios x%.1f" % [i + 1, w.name, "\n".join(tracks), w.boss_name, state, float(w.mult)]
+		var state := "BLOQUEADO · vença o chefe do mundo %d" % i if not open_ else ("CHEFE DERROTADO ★" if bool(s.career.beaten[i]) else ("CHEFE LIBERADO!" if boss_open(i) else "%d / %d PONTOS" % [pts, int(w.need)]))
+		pc.text = "MUNDO %d · %s\n4 pistas · prêmios x%.1f\nCHEFE: %s\n\n%s" % [i + 1, w.name, float(w.mult), w.boss_name, state]
 		pc.disabled = not open_
 		var wi := i
 		pc.pressed.connect(func(): open_world(wi))
@@ -229,13 +246,14 @@ func open_world(i: int) -> void:
 		bar.draw_string(UI.display_it, Vector2(0, 34), "%d / %d PONTOS PARA ENFRENTAR O CHEFE" % [pts, need], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, UI.TEXT))
 	world_box.add_child(bar)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
+	row.add_theme_constant_override("separation", 12)
 	world_box.add_child(row)
 	for t in w.tracks:
 		var d: Dictionary = TrackData.TRACKS[t]
 		var best: Dictionary = s.career.best.get(str(t), {})
-		var b := hud._btn("%s\n%s" % [String(d.name).to_upper(), ("melhor: %dº" % int(best.place)) if best.has("place") else "ainda não correu"], row, false, 300, 92)
-		b.add_theme_font_size_override("font_size", 16)
+		var b := hud._btn("%s\n%s" % [String(d.name).to_upper(), ("melhor: %dº" % int(best.place)) if best.has("place") else "ainda não correu"], row, false, 262, 92)
+		b.add_theme_font_size_override("font_size", 14)
+		b.tooltip_text = String(d.desc)
 		var ti: int = t
 		b.pressed.connect(func(): choose(i, ti, false))
 	var bp := PanelContainer.new()

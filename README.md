@@ -81,19 +81,16 @@ Menu → **escolha da pista** (10) → **garagem** → corrida de 3 voltas contr
 - Na pista: caixas de **munição**, **reparo** e **nitro**; boost pads; barris e pneus destrutíveis.
 - Cair da pista (vãos, água, lava, nuvens) ou ser destruído faz você voltar um pouco atrás, piscando.
 
-## As 9 pistas
+## Pistas
 
-| # | Pista | Tema | Destaques |
-|---|---|---|---|
-| 1 | Circuito do Parque | parque, dia | morros e chicane |
-| 2 | Cidade Neon | cidade à noite | oito com viaduto sobre o cruzamento |
-| 3 | Cânion do Deserto | pôr do sol, cactos | dois saltos sobre o vale |
-| 4 | Pico Nevado | neve, gelo escorregadio | espiral de descida com 2 voltas |
-| 5 | Docas do Porto | mar e contêineres | píeres e saltos sobre a água |
-| 6 | Boca do Vulcão | lava e cristais | looping sobre a lava e salto |
-| 7 | Loop Mania | pista de brinquedo laranja | 2 loopings, espiral, saca-rolhas, salto |
-| 8 | Espiral do Céu | mar de nuvens, ilhas flutuantes e balões | espirais de subida e descida, saca-rolhas, salto |
-| 9 | Pântano Sombrio | brejo ao entardecer, taboas e vaga-lumes | oito com ponte alta, saltos |
+São 26 pistas: 24 nos 6 mundos da carreira (4 por tema; veja **Carreira** abaixo) mais 2 extras (Docas do Porto e Loop Mania) na corrida rápida e no multijogador. Temas:
+- **Parque**: dia e morros.
+- **Pântano**: entardecer, taboas e vaga-lumes.
+- **Deserto**: pôr do sol e cactos.
+- **Neve**: gelo escorregadio.
+- **Cidade Neon**: noite e viadutos.
+- **Céu**: nuvens, ilhas flutuantes e balões.
+- **Porto** e **Loop Mania** (pista de brinquedo), nas extras.
 
 ## Metralhadora, nitro e acabamento
 
@@ -155,6 +152,15 @@ Referências: [Coasterpedia: Heartline roll](https://coasterpedia.net/wiki/Heart
   - nível 2: asa traseira com pilares, canards e aro bronze (o aerofólio de fábrica sai);
   - nível 3: asa grande com placas coloridas, neon embaixo do carro e aro dourado.
 - **Cada upgrade aparece no carro**: blindagem nível 2+ coloca placas parafusadas nas portas, nitro 2+ põe cilindros azuis atrás, motor 2+ põe um blower cromado no capô e munição 2+ põe um tambor extra na arma.
+
+## Carros remodelados
+
+Os carros foram refeitos do zero (`build_car2` em `blender/build_assets.py`):
+- **Carroceria inteiriça**: o perfil lateral (silhueta) é extrudado na largura e chanfrado, sem caixas coladas.
+- **Rodas embutidas**: a face do pneu fica rente à lateral, as caixas de roda são recortadas na lataria e a linha de cintura passa acima da roda (sem para-lama "de Fusca").
+- **Cabine em estufa**: vidro inclinado para dentro, colunas e teto na cor do carro.
+- **Portas**: só vincos gravados na lataria, maçaneta e retrovisor; friso cromado e saia lateral.
+- **Silhuetas de combate distintas**: Faísca esportivo em cunha com asa; Vespa trophy truck com gaiola e estepe; Trovão muscle blindado com blower, janelas em fresta e chapas rebitadas; Monstro picape alta com caçamba, chaminés e para-choque de impulsão; e mais sedã, táxi, viatura e van.
 
 ## Pneus (upgrade PNEUS) e materiais
 
@@ -230,13 +236,18 @@ Sobre as músicas do Rock n' Roll Racing ("Bad to the Bone", "Paranoid", "Born t
 
 ## Carreira: mundos, chefes, carros únicos
 
-Inspirada no Rock n' Roll Racing (menu **CARREIRA**). Módulos: `career.gd` (regras e telas) e `boss.gd` (chefes).
+Inspirada no Rock n' Roll Racing (menu **CARREIRA**). Módulos: `career.gd` (regras e telas) e `boss.gd` (chefes). **6 mundos temáticos com 4 pistas cada** (24 pistas na carreira) e um chefe por mundo. O Vulcão saiu do jogo; **Docas do Porto** e **Loop Mania** ficaram como pistas extras (corrida rápida e multijogador).
 
-| Mundo | Pistas | Pontos para o chefe | Chefe (pista) | Prêmios |
+| Mundo | Pistas | Pontos p/ chefe | Chefe (pista) | Prêmios |
 |---|---|---|---|---|
-| 1 · TERRA FIRME | Parque, Cidade Neon, Docas | 20 | BRUTUS, O ROLO (Cidade Neon) | x1,0 |
-| 2 · FORNALHA | Cânion, Pântano, Vulcão | 26 | XERIFE DE AÇO (Cânion) | x1,6 |
-| 3 · ALTITUDE | Pico Nevado, Loop Mania, Espiral do Céu | 32 | O IMPERADOR (Pico Nevado) | x2,4 |
+| 1 · PARQUE | Lago Azul, Circuito do Parque, Trilha do Bosque, Colina dos Ventos | 24 | BRUTUS (Circuito do Parque) | x1,0 |
+| 2 · PÂNTANO | Brejo das Garças, Raízes Retorcidas, Pântano Sombrio, Ponte Podre | 28 | CROCODILO DO BREJO (Pântano Sombrio) | x1,4 |
+| 3 · DESERTO | Dunas Altas, Cânion do Deserto, Mesa Vermelha, Desfiladeiro | 30 | XERIFE DE AÇO (Cânion) | x1,8 |
+| 4 · NEVE | Lago Congelado, Pico Nevado, Trilha do Yeti, Avalanche | 32 | AVALANCHE (Pico Nevado) | x2,2 |
+| 5 · CIDADE NEON | Cidade Neon, Viaduto, Centro Financeiro, Túnel de Neon | 34 | BLACKOUT (Cidade Neon) | x2,7 |
+| 6 · CÉU | Estratosfera, Nuvem Nove, Arco-íris, Espiral do Céu | 36 | O IMPERADOR (Estratosfera) | x3,2 |
+
+Dentro de cada mundo, as pistas vão da mais simples para a mais difícil (das curvas e morros até saltos, espirais, loopings e saca-rolhas). As 18 pistas novas passaram no validador de geometria (`tools/validate_tracks.gd`: sem sobreposição, sem trecho enterrado, sem conflito de cruzamento). A música é por tema (`music/park.ogg`, `swamp.ogg`, ...), e as corridas de chefe têm música própria (`boss.ogg`).
 
 - **Pontos por corrida**: 1º 10 · 2º 7 · 3º 5 · 4º 3 · 5º 2 · 6º 1. Somando a meta do mundo, o chefe é liberado; vencer o chefe (chegar na frente dele) paga um prêmio grande ($3.000 / $5.500 / $9.000), abre o próximo mundo e põe carros novos na loja. Os rivais ficam mais fortes a cada mundo.
 - **Dinheiro**: prêmio por colocação × multiplicador do mundo + bônus por destruição ($600 × multiplicador por destruir o chefe; ele volta depois de alguns segundos).
@@ -250,7 +261,10 @@ Inspirada no Rock n' Roll Racing (menu **CARREIRA**). Módulos: `career.gd` (reg
 | TROVÃO | $6.500 · mundo 2 | Foguetes teleguiados | Minas | **Escudo**: 3 s invulnerável + dano de aríete |
 | MONSTRO (picape) | $11.000 · mundo 3 | **Lança-chamas**: jato curto que incendeia | **Barril rolante**: rola para trás e explode | **Onda de choque**: arremessa quem está perto |
 
-**Chefes**: carros gigantes (modelo 1,6x, vida 1.100–1.500, barra de vida na tela). Os ataques são diferentes das armas equipáveis e **sempre avisados no chão** antes de acertar:
+**Chefes**: carros gigantes (modelo 1,6–1,7x, vida 1.100–1.500, barra de vida na tela). Os ataques são diferentes das armas equipáveis e **sempre avisados no chão** antes de acertar:
+- **CROCODILO DO BREJO** (picape verde): **LAMA**, 3 poças que atolam (o carro perde embalo e a tela suja); **BOTE**, marca a sua faixa e dá um bote lateral nela.
+- **AVALANCHE** (trophy truck da neve): **BOLAS DE NEVE** gigantes rolando pela pista contra você, deixando sempre uma faixa livre (avisada); **GELO**, um trecho vira gelo liso (quase sem aderência).
+- **BLACKOUT** (sedã hacker): **PULSO EMP**, anel que desliga suas armas e o especial por 3 s; **PORTÕES LASER**, barreiras que ligam e desligam a cada 1,2 s.
 - **BRUTUS** (van blindada): **TREMOR**, um círculo onde você vai passar daqui a 1 s, depois o chão explode e arremessa; **BARRIS GIGANTES** rolando para trás quando você está atrás dele.
 - **XERIFE DE AÇO** (viatura): **ÍMÃ**, um raio que te puxa e segura a velocidade (escape com salto, escudo ou distância); **BLOQUEIO**, uma fileira de pregos atravessando a pista com uma única brecha marcada por cones.
 - **O IMPERADOR** (muscle car dourado): **METEOROS**, 4 círculos à sua frente com impacto 1,3 s depois; **MURO DE FOGO** deixado na pista atrás dele.

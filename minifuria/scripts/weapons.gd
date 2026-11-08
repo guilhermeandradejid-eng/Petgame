@@ -158,6 +158,9 @@ func update(dt: float) -> void:
 			continue
 		if c.role == "rival" and not c.net_remote and not c.human:
 			_ai(c)
+		if c.emp_t > 0.0:
+			c.ctrl.fire = false
+			c.ctrl.drop = false
 		if c.ctrl.fire and c.fire_cd <= 0.0 and c.ammo_f > 0:
 			match c.front_type:
 				"mg":
@@ -1115,7 +1118,7 @@ func hazard(kind: String, owner: Car, pos: Vector3, r: float, delay: float, dur:
 	var m := ShaderMaterial.new()
 	m.shader = load("res://shaders/telegraph.gdshader")
 	m.set_shader_parameter("col", extra.get("col", Color(1.0, 0.2, 0.1)))
-	m.set_shader_parameter("mode", 1.0 if kind == "fire" else (2.0 if kind == "spikewall" else 0.0))
+	m.set_shader_parameter("mode", {"fire": 1.0, "spikewall": 2.0, "lane": 2.0, "laser": 2.0, "mud": 3.0, "ice": 4.0}.get(kind, 0.0))
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
@@ -1147,6 +1150,26 @@ func _step_hazards(dt: float) -> void:
 					_meteor_hit(h)
 				"spikewall":
 					sfx.play("metal", -4.0, 0.8)
+				"lane":
+					if is_instance_valid(h.owner) and not (h.owner as Car).wrecked:
+						var o: Car = h.owner
+						var to: Vector3 = (pos - o.global_position)
+						o.apply_central_impulse((Vector3(to.x, 0, to.z).normalized() * 16.0 + o.global_transform.basis.z * 6.0) * o.mass)
+						o.shield_t = 1.0   # o bote derruba quem estiver na faixa (aríete)
+						sfx.play("whoosh", 0.0, 0.6)
+				"emp":
+					ring_fx(pos, float(h.r), Color(0.4, 0.8, 1.0))
+					sfx.play("zap", 0.0, 0.5)
+					for car in game.cars:
+						var c: Car = car
+						if c == h.owner or c.wrecked:
+							continue
+						if c.global_position.distance_to((h.owner as Car).global_position if is_instance_valid(h.owner) else pos) < float(h.r):
+							c.emp_t = 3.0
+							c.stun = maxf(c.stun, 0.3)
+							if c.local_idx >= 0:
+								game.pop_for(c, "EMP! ARMAS DESLIGADAS", Color("#7fd8ff"))
+								game._flash(Color(0.5, 0.8, 1.0), 0.3)
 		if h.done:
 			match String(h.kind):
 				"fire":
@@ -1158,6 +1181,41 @@ func _step_hazards(dt: float) -> void:
 						if absf(d.dot(mi.global_basis.x.normalized())) < float(h.r) and absf(d.dot(mi.global_basis.z.normalized())) < float(h.get("rz", h.r)) and absf(d.y) < 2.5:
 							c.burn_t = maxf(c.burn_t, 1.2)
 							c.burn_by = h.owner
+				"mud", "ice":
+					for car in game.cars:
+						var c: Car = car
+						if c == h.owner or c.wrecked:
+							continue
+						var d: Vector3 = (c.global_position - pos)
+						if absf(d.dot(mi.global_basis.x.normalized())) < float(h.r) and absf(d.dot(mi.global_basis.z.normalized())) < float(h.get("rz", h.r)) and absf(d.y) < 2.5:
+							if h.kind == "mud":
+								if c.mud_t <= 0.0 and c.local_idx >= 0:
+									game.pop_for(c, "ATOLOU!", Color("#c8a060"))
+									if c == game.player:
+										game.oil_fx = 1.0
+								c.mud_t = 0.4
+							else:
+								if c.ice_t <= 0.0 and c.local_idx >= 0:
+									game.pop_for(c, "GELO!", Color("#bfe6ff"))
+								c.ice_t = 0.35
+				"laser":
+					# portão: liga e desliga a cada 1,2 s; ligado, queima e atordoa quem passa
+					var on := fmod(float(h.t) - float(h.delay), 2.4) < 1.2
+					if h.has("beam"):
+						(h.beam as Node3D).visible = on
+					if on:
+						for car in game.cars:
+							var c: Car = car
+							if c == h.owner or c.wrecked or float(c.get_meta("laser_t", -9.0)) > game.time_g - 1.0:
+								continue
+							var d: Vector3 = (c.global_position - pos)
+							if absf(d.dot(mi.global_basis.z.normalized())) < 1.2 and absf(d.dot(mi.global_basis.x.normalized())) < float(h.r) and absf(d.y) < 3.0:
+								c.set_meta("laser_t", game.time_g)
+								c.apply_damage(18.0, c.global_position + Vector3.UP, h.owner, false)
+								c.stun = maxf(c.stun, 0.5)
+								fx.sparks(c.global_position + Vector3.UP, Vector3.UP, 1.4)
+								if c.local_idx >= 0:
+									game.pop_for(c, "LASER!", Color("#ff3355"))
 				"spikewall":
 					for car in game.cars:
 						var c: Car = car
@@ -1176,6 +1234,8 @@ func _step_hazards(dt: float) -> void:
 			mi.queue_free()
 			if h.has("deco") and is_instance_valid(h.deco):
 				(h.deco as Node).queue_free()
+			if h.has("beam") and is_instance_valid(h.beam):
+				(h.beam as Node).queue_free()
 			hazards.remove_at(i)
 
 

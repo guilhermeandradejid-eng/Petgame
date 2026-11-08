@@ -476,7 +476,7 @@ func _build_menu() -> void:
 	var logo2 := UI.title(v, "FÚRIA", 92, UI.HOT)
 	logo.add_theme_constant_override("line_spacing", -14)
 	UI.checker(v, 330, 12)
-	var tag := UI.text(v, "9 PISTAS  ·  ARMAS  ·  LOOPINGS  ·  ATÉ 8 ONLINE", 16, UI.INFO, true)
+	var tag := UI.text(v, "6 MUNDOS  ·  26 PISTAS  ·  6 CHEFES  ·  ATÉ 8 ONLINE", 16, UI.INFO, true)
 	tag.add_theme_font_override("font", UI.body_bold)
 	var sp := Control.new()
 	sp.custom_minimum_size = Vector2(0, 6)
@@ -512,7 +512,7 @@ func _build_tracks() -> void:
 	tl.label_settings.font_color = UI.HOT
 	tl.label_settings.outline_color = UI.INK
 	var grid := GridContainer.new()
-	grid.columns = 5
+	grid.columns = 7
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 12)
 	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -522,11 +522,11 @@ func _build_tracks() -> void:
 		var d: Dictionary = TrackData.TRACKS[i]
 		var th: Dictionary = TrackData.THEMES[d.theme]
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(230, 150)
+		b.custom_minimum_size = Vector2(168, 96)
 		b.clip_text = true
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-		b.add_theme_font_size_override("font_size", 13)
+		b.add_theme_font_size_override("font_size", 11)
 		b.add_theme_font_override("font", UI.display_it)
 		var c1 := Color(th.sky_hor).darkened(0.45).lerp(UI.INK2, 0.35)
 		var sb := UI.box(c1, Color(th.curb[0]), 3, 0.12, 6, Color(0, 0, 0, 0.5), 8)
@@ -564,7 +564,7 @@ func _refresh_tracks() -> void:
 		var medal := ""
 		if best.has("place"):
 			medal = "  [%dº]" % int(best.place)
-		b.text = "%02d  %s\n%s%s\n%s" % [i + 1, String(d.name).to_upper(), th.label.to_upper(), medal, " · ".join(feats) if feats.size() > 0 else "CIRCUITO"]
+		b.text = "%s\n%s%s\n%s" % [String(d.name).to_upper(), th.label.to_upper() + (" · EXTRA" if i >= 24 else ""), medal, " · ".join(feats) if feats.size() > 0 else "CIRCUITO"]
 
 
 # ------------------------------------------------------------------ garagem

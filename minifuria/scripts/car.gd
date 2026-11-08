@@ -30,11 +30,15 @@ const SPECS := {
 	# chefes (modelos ampliados 1,6x; vida alta, pesados)
 	"boss_brutus": {"len": 7.0, "wid": 3.4, "h": 1.36, "clr": 0.56, "mass": 4.0, "vmax": 41.0, "nitro": 50.0, "accel": 24.0, "grip": 10.0, "drift_grip": 2.4, "turn": 2.2, "hp": 1100.0},
 	"boss_xerife": {"len": 6.2, "wid": 3.1, "h": 1.05, "clr": 0.48, "mass": 3.2, "vmax": 42.0, "nitro": 54.0, "accel": 26.0, "grip": 10.5, "drift_grip": 2.2, "turn": 2.4, "hp": 1300.0},
+	"boss_croc": {"len": 6.9, "wid": 3.4, "h": 1.3, "clr": 0.77, "mass": 3.8, "vmax": 41.5, "nitro": 52.0, "accel": 24.0, "grip": 10.5, "drift_grip": 2.2, "turn": 2.3, "hp": 1250.0},
+	"boss_avalanche": {"len": 5.8, "wid": 3.4, "h": 1.0, "clr": 0.82, "mass": 3.2, "vmax": 42.5, "nitro": 54.0, "accel": 26.0, "grip": 10.5, "drift_grip": 2.2, "turn": 2.5, "hp": 1350.0},
+	"boss_blackout": {"len": 6.2, "wid": 3.1, "h": 1.05, "clr": 0.42, "mass": 3.0, "vmax": 43.5, "nitro": 56.0, "accel": 27.0, "grip": 11.0, "drift_grip": 2.2, "turn": 2.6, "hp": 1450.0},
 	"boss_imperador": {"len": 6.6, "wid": 3.4, "h": 0.96, "clr": 0.48, "mass": 3.6, "vmax": 43.0, "nitro": 56.0, "accel": 28.0, "grip": 11.0, "drift_grip": 2.2, "turn": 2.5, "hp": 1500.0},
 }
 ## modelo 3D de cada tipo (os chefes e a Monstro reaproveitam modelos, ampliados ou não)
-const MODEL := {"monstro": "picape", "boss_brutus": "van", "boss_xerife": "policia", "boss_imperador": "trovao"}
-const VSCALE := {"boss_brutus": 1.6, "boss_xerife": 1.6, "boss_imperador": 1.6}
+const MODEL := {"monstro": "picape", "boss_brutus": "van", "boss_xerife": "policia", "boss_imperador": "trovao",
+	"boss_croc": "picape", "boss_avalanche": "vespa", "boss_blackout": "sedan"}
+const VSCALE := {"boss_brutus": 1.6, "boss_xerife": 1.6, "boss_imperador": 1.6, "boss_croc": 1.6, "boss_avalanche": 1.7, "boss_blackout": 1.6}
 ## cada carro tem armas próprias (estilo Rock n' Roll Racing): [frente, trás, especial]
 const LOADOUT := {"faisca": ["mg", "oil", "short"], "vespa": ["zap", "spikes", "jump"],
 	"trovao": ["rocket", "mine", "shield"], "monstro": ["flame", "barrel", "shock"]}
@@ -72,6 +76,9 @@ var shield_t := 0.0
 var flat_t := 0.0           # pneus furados (pregos): mais lento e escorregando
 var burn_t := 0.0           # pegando fogo (lança-chamas / muro de fogo)
 var burn_by: Car = null
+var ice_t := 0.0            # no gelo (chefe AVALANCHE): quase sem aderência
+var emp_t := 0.0            # pulso EMP (chefe BLACKOUT): armas e especial desligados
+var mud_t := 0.0            # atolado na lama (chefe CROCODILO)
 var special_cd := 0.0
 var game: Node = null
 var _burn_acc := 0.0
@@ -712,6 +719,11 @@ func _physics_process(dt: float) -> void:
 	nitro_t = maxf(0.0, nitro_t - dt)
 	var np: bool = ctrl.nitro
 	special_cd = maxf(0.0, special_cd - dt)
+	ice_t = maxf(0.0, ice_t - dt)
+	emp_t = maxf(0.0, emp_t - dt)
+	mud_t = maxf(0.0, mud_t - dt)
+	if mud_t > 0.0 and on_ground:
+		linear_velocity *= 1.0 - 1.6 * dt   # lama: o carro afunda e perde embalo
 	if burn_t > 0.0:
 		# queimando: dano contínuo (crédito para quem pôs fogo)
 		burn_t -= dt
@@ -723,11 +735,11 @@ func _physics_process(dt: float) -> void:
 	flat_t = maxf(0.0, flat_t - dt)
 	if special_type != "":
 		# especial do carro (salto, escudo, onda de choque) no botão do nitro
-		if np and not _nitro_was and nitro_ch > 0 and special_cd <= 0.0 and game and game.weapons.can_special(self):
+		if np and not _nitro_was and nitro_ch > 0 and special_cd <= 0.0 and emp_t <= 0.0 and game and game.weapons.can_special(self):
 			nitro_ch -= 1
 			special_cd = 0.8
 			game.weapons.special(self)
-	elif np and not _nitro_was and nitro_ch > 0 and nitro_t <= 0.0:
+	elif np and not _nitro_was and nitro_ch > 0 and nitro_t <= 0.0 and emp_t <= 0.0:
 		nitro_ch -= 1
 		nitro_t = float(NITRO[nitro_type].dur)
 	_nitro_was = np
@@ -780,7 +792,7 @@ func _physics_process(dt: float) -> void:
 				a -= 16.0
 		if drifting:
 			a -= v_f * 0.1
-		var grip: float = (sp.drift_grip if drifting else sp.grip) * grip_factor * tire_grip
+		var grip: float = (sp.drift_grip if drifting else sp.grip) * grip_factor * tire_grip * (0.3 if ice_t > 0.0 else 1.0)
 		if stun > 0.0:
 			grip *= 0.25
 		if oil_t > 0.0:

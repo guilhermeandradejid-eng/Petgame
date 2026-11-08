@@ -30,15 +30,15 @@ var now_text := ""   # "♪ faixa — artista" da música de arquivo que está t
 
 ## Créditos das faixas incluídas (todas CC0 / domínio público — uso comercial livre; crédito por cortesia)
 const CREDITS := {
-	"pista1": "Hit n Smash — FreePD.com",
-	"pista2": "SUPER METAL — Loyalty Freak Music",
-	"pista3": "50 Over The Speed Limit — HoliznaCC0",
-	"pista4": "Snowboard Rock — Loyalty Freak Music",
-	"pista5": "Punk — HoliznaCC0",
-	"pista6": "GIGA METAL — Loyalty Freak Music",
-	"pista7": "Nitro — Monplaisir",
-	"pista8": "MAXI METAL — Loyalty Freak Music",
-	"pista9": "Ghost Surf Rock — Loyalty Freak Music",
+	"park": "Hit n Smash — FreePD.com",
+	"city": "SUPER METAL — Loyalty Freak Music",
+	"desert": "50 Over The Speed Limit — HoliznaCC0",
+	"snow": "Snowboard Rock — Loyalty Freak Music",
+	"port": "Punk — HoliznaCC0",
+	"boss": "GIGA METAL — Loyalty Freak Music",
+	"toy": "Nitro — Monplaisir",
+	"sky": "MAXI METAL — Loyalty Freak Music",
+	"swamp": "Ghost Surf Rock — Loyalty Freak Music",
 	"menu": "Rock n' Roll — HoliznaCC0",
 }
 
@@ -68,10 +68,12 @@ func play_menu() -> void:
 	_start_song("menu", 99)
 
 
-func play_track(idx: int, theme_key: String) -> void:
+func play_track(idx: int, theme_key: String, boss := false) -> void:
 	_ensure()
 	now_text = ""
 	var names := ["pista%d" % (idx + 1), theme_key]
+	if boss:
+		names.push_front("boss")   # corrida de chefe tem música própria
 	if _try_file(names, "t%d" % idx):
 		return
 	# músicas genéricas do usuário (corrida1..8), sorteadas por pista

@@ -5,15 +5,15 @@ Trilha incluída (rock/metal instrumental, todas CC0 — domínio público, uso 
 crédito não obrigatório mas dado por cortesia; fonte: Free Music Archive e FreePD.com,
 via acervo SoundSafari/CC0-1.0-Music):
 
-  pista1.ogg  Circuito do Parque   "Hit n Smash"              — FreePD.com (CC0)
-  pista2.ogg  Cidade Neon          "SUPER METAL"              — Loyalty Freak Music (CC0)
-  pista3.ogg  Cânion do Deserto    "50 Over The Speed Limit"  — HoliznaCC0 (CC0)
-  pista4.ogg  Pico Nevado          "Snowboard Rock"           — Loyalty Freak Music (CC0)
-  pista5.ogg  Docas do Porto       "Punk"                     — HoliznaCC0 (CC0)
-  pista6.ogg  Boca do Vulcão       "GIGA METAL"               — Loyalty Freak Music (CC0)
-  pista7.ogg  Loop Mania           "Nitro"                    — Monplaisir (CC0)
-  pista8.ogg  Espiral do Céu       "MAXI METAL"               — Loyalty Freak Music (CC0)
-  pista9.ogg  Pântano Sombrio      "Ghost Surf Rock"          — Loyalty Freak Music (CC0)
+  park.ogg    mundo Parque         "Hit n Smash"              — FreePD.com (CC0)
+  swamp.ogg   mundo Pântano        "Ghost Surf Rock"          — Loyalty Freak Music (CC0)
+  desert.ogg  mundo Deserto        "50 Over The Speed Limit"  — HoliznaCC0 (CC0)
+  snow.ogg    mundo Neve           "Snowboard Rock"           — Loyalty Freak Music (CC0)
+  city.ogg    mundo Cidade Neon    "SUPER METAL"              — Loyalty Freak Music (CC0)
+  sky.ogg     mundo Céu            "MAXI METAL"               — Loyalty Freak Music (CC0)
+  port.ogg    extra Docas do Porto "Punk"                     — HoliznaCC0 (CC0)
+  toy.ogg     extra Loop Mania     "Nitro"                    — Monplaisir (CC0)
+  boss.ogg    corridas de chefe    "GIGA METAL"               — Loyalty Freak Music (CC0)
   menu.ogg    Menu                 "Rock n' Roll"             — HoliznaCC0 (CC0)
 
 Os arquivos foram cortados (máx. ~2:45), normalizados (-15 LUFS) e convertidos para OGG Vorbis.

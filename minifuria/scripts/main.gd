@@ -1354,7 +1354,7 @@ func _start_race_now() -> void:
 	hud.touch.labels["nitro"] = {"jump": "SALTO", "shield": "ESCUDO", "shock": "CHOQUE"}.get(player.special_type, "NITRO")
 	mode = "countdown"
 	if not auto_test:
-		music.play_track(track_idx, String(track.data.theme))
+		music.play_track(track_idx, String(track.data.theme), boss != null)
 		if music.now_text != "":
 			hud.killfeed("♪ " + music.now_text, Color(1.0, 0.85, 0.45))
 	countdown = 4.2   # ~1 s mostrando o nome da pista, depois 3, 2, 1, VAI!

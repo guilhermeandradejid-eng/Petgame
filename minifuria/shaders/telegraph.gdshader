@@ -8,7 +8,17 @@ uniform float mode = 0.0;
 void fragment() {
 	vec2 p = UV * 2.0 - 1.0;
 	float r = length(p);
-	if (mode > 1.5) {
+	if (mode > 3.5) {
+		// gelo liso: azul claro com brilho correndo
+		float edge = smoothstep(1.0, 0.8, max(abs(p.x), abs(p.y)));
+		float shine = smoothstep(0.1, 0.0, abs(fract(p.x * 0.5 + p.y * 0.3 + tt * 0.6) - 0.5));
+		ALBEDO = (vec3(0.55, 0.85, 1.0) * 0.6 + vec3(1.0) * shine * 0.6) * edge * (arm < 0.999 ? 0.35 + 0.3 * sin(tt * 16.0) : 0.9);
+	} else if (mode > 2.5) {
+		// lama: manchas marrons borbulhando
+		float n = sin(p.x * 7.0 + tt * 2.0) * sin(p.y * 6.0 - tt * 1.7);
+		float edge = smoothstep(1.0, 0.7, length(p));
+		ALBEDO = vec3(0.45, 0.3, 0.12) * edge * (0.6 + 0.4 * n) * (arm < 0.999 ? 0.4 + 0.3 * sin(tt * 14.0) : 1.0);
+	} else if (mode > 1.5) {
 		// faixa de bloqueio: retângulo piscando (a brecha é marcada com cones)
 		float edge = smoothstep(1.0, 0.85, abs(p.y)) * step(abs(p.x), 1.0);
 		float blink = 0.55 + 0.45 * sin(tt * (10.0 + arm * 18.0));
