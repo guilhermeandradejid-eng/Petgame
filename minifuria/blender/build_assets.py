@@ -109,6 +109,12 @@ M = {
     "groove": mat("Groove", "#0c0c0f", 0.95),
     "tire_stripe": mat("TireStripe", "#ffd23a", 0.55),
     "lug": mat("LugNut", "#d7dae0", 0.2, 1.0),
+    "gunmetal": mat("Gunmetal", "#3a3f4a", 0.35, 0.8),
+    "brass": mat("Brass", "#d9a94a", 0.3, 1.0),
+    "red_light": mat("RedLight", "#ff2030", 0.3, 0.0, "#ff2030", 4.0),
+    "board2": mat("Billboard2", "#2ee6ff", 0.4, 0.0, "#2ee6ff", 1.6),
+    "mine_y": mat("MineYellow", "#ffc61f", 0.5),
+    "rocket": mat("RocketRed", "#e8372f", 0.4, 0.2),
 }
 
 
@@ -709,7 +715,7 @@ def build_car2(key, s):
     if s.get("flat_hood"):
         prof[4] = (cowl, nose + 0.02)
         prof.insert(5, (cowl + 0.05, zb))
-    body = prism(key + "_b", prof, W / 2, W / 2, 0, 0, paint, bevel=s.get("bev", 0.1))
+    body = prism(key + "_b", prof, W / 2, W / 2, 0, 0, paint, bevel=s.get("bev", 0.1) * 1.35, segs=4)
     apply_mods(body)
     top_pts = [p for p in prof[2:-2]]
 
@@ -792,27 +798,39 @@ def build_car2(key, s):
     for i_ in range(3):
         P["bumperF"].append(box(f"{key}_gs{i_}", (W * 0.46, 0.02, 0.014), (0, yF - 0.035, gz - gh * 0.3 + i_ * gh * 0.3), M["chrome"]))
     tilt = math.atan2(0.1, 0.16) * 0.6
+    hw_ = W * (0.22 if s.get("offroad") else 0.27)
     for sd in (-1, 1):
-        # farol: carcaça escura embutida, dois projetores e filete de LED por cima
+        # farol: carcaça arredondada embutida, dois projetores com aro cromado e refletor, DRL em "L" curvo
         hx, hy, hz = sd * W * (0.25 if s.get("offroad") else 0.32), yF + 0.08, nose - 0.065
-        bz = box(f"{key}_hh{sd}", (W * (0.22 if s.get("offroad") else 0.27), 0.07, 0.12), (hx, hy, hz), M["well"], bevel=0.025)
+        bz = box(f"{key}_hh{sd}", (hw_, 0.08, 0.13), (hx, hy, hz), M["well"], bevel=0.045, segs=3)
         bz.rotation_euler = (tilt, 0, 0)
         P["bumperF"].append(bz)
+        P["bumperF"].append(box(f"{key}_hbz{sd}", (hw_ + 0.03, 0.06, 0.15), (hx, hy + 0.012, hz), M["chrome"], bevel=0.05, segs=3))
         for j in (-1, 1):
-            pj = cyl(f"{key}_hp{sd}{j}", 0.038, 0.05, (hx + j * W * 0.06, hy - 0.035, hz - 0.012), M["head"], verts=12, axis="Y")
-            pj.rotation_euler = (tilt, 0, 0)
-            P["bumperF"].append(pj)
-        led = box(f"{key}_hl{sd}", (W * (0.19 if s.get("offroad") else 0.24), 0.05, 0.018), (hx, hy - 0.02, hz + 0.038), M["head"])
-        led.rotation_euler = (tilt, 0, 0)
-        P["bumperF"].append(led)
+            px = hx + j * hw_ * 0.22
+            for nm_, rr, dy, mt in (("hr", 0.05, -0.03, "chrome"), ("hf", 0.043, -0.036, "rim"), ("hp", 0.032, -0.045, "head")):
+                pj = cyl(f"{key}_{nm_}{sd}{j}", rr, 0.03, (px, hy + dy, hz - 0.012), M[mt], verts=16, axis="Y")
+                pj.rotation_euler = (tilt, 0, 0)
+                P["bumperF"].append(pj)
+        # DRL: filete de LED por cima que desce pela quina externa (curva em 3 trechos)
+        ox = hx + sd * hw_ * 0.5
+        pts = [(hx - sd * hw_ * 0.42, hz + 0.05), (ox - sd * 0.04, hz + 0.05), (ox, hz + 0.02), (ox, hz - 0.05)]
+        for q in range(3):
+            (xa, za), (xb, zb2) = pts[q], pts[q + 1]
+            P["bumperF"].append(beam(f"{key}_drl{sd}{q}", (xa, hy - 0.045, za), (xb, hy - 0.045, zb2), 0.022, 0.02, M["head"]))
     # ---- traseira: para-choque, lanternas, escapamento
     P["bumperR"].append(box(key + "_br", (W * 0.97, 0.26, 0.22), (0, yR - 0.08, clr + 0.11), M["trim"], bevel=0.06))
     P["bumperR"].append(box(key + "_tlb", (W * 0.7, 0.05, 0.06), (0, yR + 0.005, tail - 0.18), M["tail"]))
     for sd in (-1, 1):
-        # lanterna: moldura escura, lente vermelha e luz de ré branca no canto interno
-        P["bumperR"].append(box(f"{key}_th{sd}", (W * 0.24, 0.05, 0.15), (sd * W * 0.36, yR - 0.002, tail - 0.18), M["well"], bevel=0.02))
-        P["bumperR"].append(box(f"{key}_tl{sd}", (W * 0.18, 0.06, 0.1), (sd * W * 0.37, yR + 0.006, tail - 0.18), M["tail"], bevel=0.015))
-        P["bumperR"].append(box(f"{key}_rv{sd}", (W * 0.04, 0.062, 0.06), (sd * W * 0.26, yR + 0.006, tail - 0.18), M["head"]))
+        # lanterna envolvente: moldura arredondada que dobra a quina, lente vermelha com 3 filetes de LED,
+        # pedaço lateral e luz de ré branca no canto interno
+        tz = tail - 0.18
+        P["bumperR"].append(box(f"{key}_th{sd}", (W * 0.26, 0.06, 0.16), (sd * W * 0.36, yR - 0.004, tz), M["well"], bevel=0.04, segs=3))
+        P["bumperR"].append(box(f"{key}_tl{sd}", (W * 0.2, 0.06, 0.11), (sd * W * 0.37, yR + 0.008, tz), M["tail"], bevel=0.03, segs=3))
+        for q in range(3):
+            P["bumperR"].append(box(f"{key}_tls{sd}{q}", (W * 0.16, 0.064, 0.012), (sd * W * 0.38, yR + 0.009, tz - 0.03 + q * 0.03), M["red_light"] if "red_light" in M else M["tail"]))
+        P["bumperR"].append(box(f"{key}_tw{sd}", (0.05, 0.3, 0.1), (sd * (W / 2 - 0.005), yR - 0.12, tz), M["tail"], bevel=0.02))
+        P["bumperR"].append(box(f"{key}_rv{sd}", (W * 0.045, 0.064, 0.07), (sd * W * 0.245, yR + 0.008, tz), M["head"], bevel=0.01))
         # escapamento embutido no para-choque (antes ficava pendurado por baixo)
         ez = clr + 0.08
         P["bumperR"].append(box(f"{key}_exh{sd}", (0.22, 0.03, 0.16), (sd * W * 0.25, yR + 0.05, ez), M["well"], bevel=0.02))
@@ -954,6 +972,117 @@ def build_car2(key, s):
         elif k == "taxi":
             P["cabin"].append(box(key + "_tx", (0.7, 0.3, 0.22), (0, mount_y, mount_z + 0.1), M["taxi"], bevel=0.05))
             mount_y += 0.5
+        elif k == "roofwing":
+            # asa de rally na borda do teto (hatch): perfil inclinado com placas laterais
+            y2_, zt_ = cab[2], cab[4]
+            wg = box(key + "_rw", (W * 0.78, 0.36, 0.05), (0, y2_ + 0.12, zt_ + 0.12), paint, bevel=0.02)
+            wg.rotation_euler = (-0.25, 0, 0)
+            P["spoiler"].append(wg)
+            for sd in (-1, 1):
+                P["spoiler"].append(box(f"{key}_rwe{sd}", (0.04, 0.4, 0.2), (sd * W * 0.39, y2_ + 0.12, zt_ + 0.08), M["trim"], bevel=0.015))
+                P["spoiler"].append(beam(f"{key}_rws{sd}", (sd * W * 0.22, y2_ - 0.05, zt_ + 0.02), (sd * W * 0.22, y2_ + 0.1, zt_ + 0.12), 0.05, 0.08, M["trim"]))
+        elif k == "rallylights":
+            # 4 faróis auxiliares redondos numa barra sobre o para-choque
+            P["bumperF"].append(box(key + "_rlb", (W * 0.7, 0.06, 0.05), (0, yF - 0.02, nose + 0.06), M["trim"], bevel=0.015))
+            for i_ in range(4):
+                x_ = (i_ - 1.5) * W * 0.18
+                P["bumperF"].append(cyl(f"{key}_rlh{i_}", 0.085, 0.08, (x_, yF - 0.05, nose + 0.13), M["gunmetal"] if "gunmetal" in M else M["trim"], verts=16, axis="Y"))
+                P["bumperF"].append(cyl(f"{key}_rlr{i_}", 0.075, 0.02, (x_, yF - 0.095, nose + 0.13), M["chrome"], verts=16, axis="Y"))
+                P["bumperF"].append(cyl(f"{key}_rll{i_}", 0.06, 0.02, (x_, yF - 0.1, nose + 0.13), M["head"], verts=16, axis="Y"))
+        elif k == "boxflares":
+            # para-lamas alargados na cor do carro (carro de rally), com rebites
+            for n_, (sd, y, r, fr) in WH.items():
+                fl = box(f"{key}_bxf{n_}", (0.16, 2 * r + 0.5, 0.42), (sd * (W / 2 + 0.03), y, 2 * r - 0.06), paint, bevel=0.06, segs=3)
+                P["body"].append(fl)
+                for q in range(3):
+                    P["body"].append(cyl(f"{key}_bxr{n_}{q}", 0.022, 0.02, (sd * (W / 2 + 0.115), y + (q - 1) * (r + 0.1), 2 * r + 0.08), M["chrome"], verts=6, axis="X"))
+        elif k == "mudflaps":
+            for n_, (sd, y, r, fr) in WH.items():
+                P["body"].append(box(f"{key}_mf{n_}", (ww * 0.8, 0.03, r * 0.9), (sd * (W / 2 - ww / 2), y + r + 0.12, clr + r * 0.25), M["paint2"], bevel=0.01))
+        elif k == "roofscoop":
+            y1_, y2_, zt_ = cab[1], cab[2], cab[4]
+            P["cabin"].append(box(key + "_rsc", (0.36, 0.4, 0.12), (0, (y1_ + y2_) / 2 - 0.25, zt_ + 0.1), M["trim"], bevel=0.04, taper=(0.9, 0.7)))
+            P["cabin"].append(box(key + "_rscm", (0.3, 0.02, 0.07), (0, (y1_ + y2_) / 2 - 0.46, zt_ + 0.1), M["well"]))
+            mount_y += 0.25
+        elif k == "towhook":
+            P["bumperR"].append(box(key + "_tow", (0.08, 0.16, 0.05), (W * 0.2, yR + 0.08, clr + 0.18), M["rocket"] if "rocket" in M else M["tail"], bevel=0.015))
+        elif k == "snorkel":
+            # snorkel de travessia: sobe pela coluna A e termina numa boca virada para frente
+            sd = 1
+            P["cabin"].append(beam(key + "_snk", (sd * (W / 2 + 0.06), cowl + 0.1, zb - 0.1), (sd * (W / 2 + 0.06), cowl + 0.1, cab[4] + 0.1), 0.1, 0.1, M["trim"], bevel=0.02))
+            P["cabin"].append(box(key + "_snh", (0.14, 0.2, 0.14), (sd * (W / 2 + 0.06), cowl + 0.02, cab[4] + 0.16), M["trim"], bevel=0.04))
+        elif k == "pontoons":
+            # flutuadores laterais de anfíbio entre as rodas
+            fy0 = WH["FL"][1] + WH["FL"][2] + 0.1
+            fy1 = WH["RL"][1] - WH["RL"][2] - 0.1
+            for sd in (-1, 1):
+                P["body"].append(cyl(f"{key}_pt{sd}", 0.16, fy1 - fy0, (sd * (W / 2 + 0.1), (fy0 + fy1) / 2, clr + 0.18), M["paint2"], verts=16, axis="Y"))
+                for yy in (fy0 + 0.05, fy1 - 0.05):
+                    P["body"].append(cyl(f"{key}_ptc{sd}{yy:.1f}", 0.165, 0.04, (sd * (W / 2 + 0.1), yy, clr + 0.18), M["trim"], verts=16, axis="Y"))
+        elif k == "propeller":
+            P["bumperR"].append(cyl(key + "_prh", 0.2, 0.12, (0, yR + 0.12, clr + 0.2), M["trim"], verts=20, axis="Y"))
+            for i_ in range(3):
+                bl = box(f"{key}_prb{i_}", (0.05, 0.03, 0.34), (0, yR + 0.2, clr + 0.2), M["brass"] if "brass" in M else M["chrome"], bevel=0.01)
+                bl.rotation_euler = (0, i_ * 2 * math.pi / 3, 0)
+                P["bumperR"].append(bl)
+            P["bumperR"].append(cyl(key + "_prr", 0.24, 0.03, (0, yR + 0.24, clr + 0.2), M["chrome"], verts=24, axis="Y"))
+        elif k == "roofrack":
+            y1_, y2_, zt_ = cab[1], cab[2], cab[4]
+            for sd in (-1, 1):
+                P["cabin"].append(beam(f"{key}_rr{sd}", (sd * W * 0.32, y1_ + 0.05, zt_ + 0.08), (sd * W * 0.32, y2_ - 0.05, zt_ + 0.08), 0.04, 0.04, M["chrome"]))
+            for q in range(3):
+                yy = y1_ + 0.1 + q * (y2_ - y1_ - 0.2) / 2
+                P["cabin"].append(beam(f"{key}_rrx{q}", (-W * 0.32, yy, zt_ + 0.08), (W * 0.32, yy, zt_ + 0.08), 0.035, 0.035, M["chrome"]))
+        elif k == "spares":
+            # dois estepes em pé na traseira aberta (trophy truck)
+            for sd in (-1, 1):
+                P["cargo"].append(cyl(f"{key}_spt{sd}", 0.4, 0.26, (sd * 0.3, ex[1], zb + 0.4), M["tire"], verts=20, axis="X"))
+                P["cargo"].append(cyl(f"{key}_spr{sd}", 0.24, 0.28, (sd * 0.3, ex[1], zb + 0.4), M["rim"], verts=12, axis="X"))
+            for sd in (-1, 1):
+                P["cargo"].append(beam(f"{key}_spc{sd}", (sd * W * 0.4, deck, zb), (sd * W * 0.4, yR - 0.3, zb + 0.7), 0.06, 0.06, M["trim"]))
+            P["cargo"].append(beam(key + "_spx", (-W * 0.4, yR - 0.3, zb + 0.7), (W * 0.4, yR - 0.3, zb + 0.7), 0.06, 0.06, M["trim"]))
+        elif k == "plow":
+            # lâmina de neve em cunha na frente
+            pl = box(key + "_plw", (W * 1.02, 0.08, 0.36), (0, yF - 0.22, clr + 0.18), M["mine_y"] if "mine_y" in M else M["paint2"], bevel=0.03)
+            pl.rotation_euler = (0.35, 0, 0)
+            P["bumperF"].append(pl)
+            for sd in (-1, 1):
+                P["bumperF"].append(beam(f"{key}_plb{sd}", (sd * W * 0.25, yF - 0.18, clr + 0.18), (sd * W * 0.25, yF + 0.1, clr + 0.2), 0.06, 0.06, M["trim"]))
+            for q in range(4):
+                P["bumperF"].append(box(f"{key}_pls{q}", (0.1, 0.085, 0.37), ((q - 1.5) * W * 0.26, yF - 0.225, clr + 0.18), M["trim"]))
+        elif k == "roofbox":
+            y1_, y2_, zt_ = cab[1], cab[2], cab[4]
+            P["cabin"].append(box(key + "_rbx", (W * 0.5, (y2_ - y1_) * 0.75, 0.16), (0, (y1_ + y2_) / 2 + 0.1, zt_ + 0.13), M["paint2"], bevel=0.06, segs=3))
+            mount_y -= 0.3
+        elif k == "fins":
+            for sd in (-1, 1):
+                fn = box(f"{key}_fn{sd}", (0.04, 0.5, 0.32), (sd * W * 0.36, yR - 0.25, tail + 0.14), paint, bevel=0.015, taper=(1.0, 0.4, 0.15))
+                P["spoiler"].append(fn)
+                P["spoiler"].append(box(f"{key}_fnl{sd}", (0.045, 0.3, 0.02), (sd * W * 0.36, yR - 0.22, tail + 0.18), M["head"]))
+        elif k == "underglow":
+            P["body"].append(box(key + "_ugl", (W * 0.8, L * 0.6, 0.02), (0, 0, clr - 0.01), M["board2"] if "board2" in M else M["head"]))
+        elif k == "wings":
+            # asinhas laterais de aerocarro com ponta luminosa
+            for sd in (-1, 1):
+                # asa curta e enflechada na altura da saia, nascendo da lateral (atrás da porta)
+                wg = box(f"{key}_wgs{sd}", (0.36, 0.75, 0.06), (sd * (W / 2 + 0.14), deck - 0.15, clr + 0.32), paint, bevel=0.025, segs=3, taper=(0.55, 0.55, 0.18))
+                wg.rotation_euler = (0, sd * 0.08, 0)
+                P["body"].append(wg)
+                P["body"].append(box(f"{key}_wgt{sd}", (0.04, 0.3, 0.07), (sd * (W / 2 + 0.31), deck + 0.02, clr + 0.33), M["head"], bevel=0.015))
+        elif k == "twinfins":
+            for sd in (-1, 1):
+                fn = box(f"{key}_tf{sd}", (0.05, 0.55, 0.42), (sd * W * 0.22, yR - 0.3, tail + 0.18), paint, bevel=0.02, taper=(1.0, 0.45, 0.18))
+                fn.rotation_euler = (0, sd * 0.18, 0)
+                P["spoiler"].append(fn)
+        elif k == "jet":
+            # bocal de jato no centro da traseira com anel brilhante
+            P["bumperR"].append(cyl(key + "_jt", 0.2, 0.3, (0, yR + 0.05, tail - 0.3), M["gunmetal"] if "gunmetal" in M else M["trim"], verts=20, axis="Y", r2=0.16))
+            P["bumperR"].append(cyl(key + "_jtg", 0.14, 0.04, (0, yR + 0.21, tail - 0.3), M["board2"] if "board2" in M else M["head"], verts=20, axis="Y"))
+        elif k == "blades":
+            # lâminas aerodinâmicas laterais (GT elétrico)
+            for sd in (-1, 1):
+                P["body"].append(box(f"{key}_bl{sd}", (0.04, deck - cowl - 0.2, 0.1), (sd * (W / 2 + 0.02), (cowl + deck) / 2, clr + 0.28), M["trim"], bevel=0.02, taper=(1.0, 1.0)))
+                P["body"].append(box(f"{key}_bll{sd}", (0.045, deck - cowl - 0.3, 0.015), (sd * (W / 2 + 0.03), (cowl + deck) / 2, clr + 0.34), M["head"]))
     for n, objs in P.items():
         if not objs:
             continue
@@ -975,9 +1104,10 @@ CARS2 = {
     "faisca": dict(L=3.7, W=2.0, clr=0.24, wr=0.36, wrr=0.38, wb=2.3, ww=0.5, zb=0.88, nose=0.6, tail=0.9,
                    cowl=-0.3, deck=0.95, cab=(-0.3, 0.22, 0.7, 1.02, 1.3, 0.84, 0.62), door=(-0.28, 0.75),
                    extras=[("wing", 0.42), ("intakes",), ("stripe",), ("vents",)]),
-    # trophy truck (Dirt Devil): alto, rodas enormes dentro dos para-lamas, gaiola, sem teto
-    "vespa": dict(offroad=True, L=3.4, W=2.0, clr=0.48, wr=0.5, wb=2.15, ww=0.55, zb=1.14, nose=0.98, tail=1.1, bev=0.08,
-                  cowl=-0.5, deck=1.05, no_doors=True, extras=[("cage", -0.45, 0.85, 1.85), ("lightbar", -0.2, 1.9), ("spare",), ("skid",)]),
+    # hatch de rally moderno (WRC): compacto, alto, para-lamas alargados, asa no teto, faróis auxiliares
+    "vespa": dict(L=3.6, W=2.0, clr=0.32, wr=0.4, wb=2.3, ww=0.5, zb=0.9, nose=0.7, tail=0.98, bev=0.12,
+                  cowl=-0.55, deck=1.45, cab=(-0.55, -0.02, 1.15, 1.5, 1.48, 0.86, 0.74), door=(-0.5, 0.6),
+                  extras=[("boxflares",), ("roofwing",), ("rallylights",), ("roofscoop",), ("mudflaps",), ("towhook",), ("intakes",)]),
     # muscle blindado (Havac): comprido, capô plano com blower, janelas em fresta, chapas laterais
     "trovao": dict(L=4.1, W=2.1, clr=0.26, wr=0.38, wrr=0.4, wb=2.55, ww=0.52, zb=0.93, nose=0.82, tail=0.94, flat_hood=True,
                    cowl=-0.1, deck=1.25, cab=(-0.1, 0.35, 0.9, 1.3, 1.4, 0.86, 0.66), door=(-0.05, 1.0),
@@ -993,6 +1123,31 @@ CARS2 = {
     "policia": dict(L=3.9, W=1.95, clr=0.26, wr=0.36, wb=2.4, ww=0.42, zb=0.86, nose=0.68, tail=0.86,
                     cowl=-0.55, deck=0.95, cab=(-0.55, -0.05, 0.6, 1.0, 1.36, 0.86, 0.68), door=(-0.5, 0.9),
                     extras=[("siren",), ("bullbar",)]),
+    # ---- carros dos mundos (modernos, um por tema)
+    # PARQUE: GT elétrico compacto (fastback liso, LEDs de ponta a ponta, lâminas laterais)
+    "zefiro": dict(L=3.9, W=2.05, clr=0.2, wr=0.34, wrr=0.35, wb=2.45, ww=0.48, zb=0.84, nose=0.56, tail=0.86, bev=0.13,
+                   cowl=-0.35, deck=1.4, cab=(-0.35, 0.15, 0.75, 1.45, 1.22, 0.82, 0.6), door=(-0.3, 0.75),
+                   extras=[("ledfront",), ("blades",), ("diffuser",)]),
+    # PÂNTANO: SUV anfíbio (snorkel, flutuadores, hélice, bagageiro)
+    "jacare": dict(offroad=True, L=4.2, W=2.15, clr=0.5, wr=0.5, wb=2.6, ww=0.5, zb=1.18, nose=1.02, tail=1.12, flat_hood=True, bev=0.12,
+                   cowl=-0.55, deck=1.55, cab=(-0.55, -0.22, 1.35, 1.55, 1.95, 0.9, 0.8), door=(-0.5, 0.5),
+                   extras=[("snorkel",), ("pontoons",), ("propeller",), ("roofrack",), ("bullbar",)]),
+    # DESERTO: trophy truck moderno (traseira aberta com estepes e treliça, barra de LED)
+    "escorpiao": dict(offroad=True, L=4.5, W=2.25, clr=0.52, wr=0.55, wb=2.9, ww=0.55, zb=1.15, nose=0.98, tail=1.05, bev=0.12,
+                      cowl=-0.75, deck=0.55, cab=(-0.75, -0.4, 0.3, 0.55, 1.82, 0.88, 0.76), door=(-0.7, 0.45),
+                      extras=[("spares", 1.3), ("lightbar", -0.3, 1.94), ("skid",), ("intakes",)]),
+    # NEVE: SUV de neve (lâmina em cunha, bagageiro fechado, pneus com cravos)
+    "nevasca": dict(offroad=True, L=3.95, W=2.1, clr=0.42, wr=0.46, wb=2.45, ww=0.5, zb=1.06, nose=0.9, tail=1.02, flat_hood=True, bev=0.13,
+                    cowl=-0.5, deck=1.45, cab=(-0.5, -0.15, 1.2, 1.45, 1.8, 0.9, 0.8), door=(-0.45, 0.55),
+                    extras=[("plow",), ("roofbox",), ("lightbar", -0.1, 1.86)]),
+    # CIDADE: hipercarro cyberpunk (cunha baixíssima, aletas, neon por baixo)
+    "nemesis": dict(L=4.3, W=2.2, clr=0.16, wr=0.33, wrr=0.35, wb=2.65, ww=0.52, zb=0.8, nose=0.46, tail=0.84, bev=0.1,
+                    cowl=-0.2, deck=1.4, cab=(-0.2, 0.3, 0.75, 1.3, 1.08, 0.74, 0.5), door=(-0.15, 0.85),
+                    extras=[("ledfront",), ("fins",), ("underglow",), ("diffuser",), ("vents",)]),
+    # CÉU: aerocarro (asinhas, deriva dupla, bocal de jato)
+    "falcao": dict(L=4.2, W=1.95, clr=0.24, wr=0.34, wrr=0.35, wb=2.5, ww=0.48, zb=0.84, nose=0.54, tail=0.88, bev=0.14,
+                   cowl=-0.3, deck=1.45, cab=(-0.3, 0.25, 0.8, 1.4, 1.2, 0.72, 0.5), door=(-0.25, 0.8),
+                   extras=[("ledfront",), ("wings",), ("twinfins",), ("jet",)]),
     # hipercarro elétrico (chefe BRUTUS): baixíssimo, largo, cunha afiada, bolha de vidro, LEDs de ponta a ponta
     "hyper": dict(L=4.1, W=2.15, clr=0.18, wr=0.34, wrr=0.36, wb=2.55, ww=0.5, zb=0.84, nose=0.46, tail=0.88, bev=0.12, front_fenders=True,
                   cowl=-0.25, deck=1.25, cab=(-0.25, 0.25, 0.72, 1.2, 1.2, 0.78, 0.5), door=(-0.22, 0.85),
@@ -1329,6 +1484,222 @@ prop("pickup_nitro", [
     cyl("pn_b", 0.35, 1.0, (0, 0, 0.5), M["nitro_b"], verts=12, axis="Z"),
     cyl("pn_t", 0.2, 0.2, (0, 0, 1.1), M["chrome"], verts=10, axis="Z"),
 ])
+
+
+# ---------------------------------------------------------------- armas montadas (torres articuladas)
+# Cada arma vira 4 peças com o pivô na origem: base parafusada no teto (wb_), anel giratório com berço (wy_),
+# corpo da arma que mira e recua (wg_) e parte que gira (ws_: canos rotativos, anel de plasma...).
+# O jogo monta: base no ponto de montagem; yaw em y=0.2; corpo em +0.26 acima do yaw; spin no ponto WPN.spin.
+M.update({
+    "zapglow": mat("ZapGlow", "#7fe9ff", 0.2, 0, "#55d8ff", 3.0),
+    "laserglow": mat("LaserGlow", "#ff4060", 0.2, 0, "#ff2a4a", 3.0),
+    "railglow": mat("RailGlow", "#c070ff", 0.2, 0, "#b050ff", 3.0),
+    "plasmaglow": mat("PlasmaGlow", "#7dff8a", 0.2, 0, "#4dff6a", 3.0),
+    "frost": mat("Frost", "#cfeeff", 0.3, 0.1, "#9fdcff", 0.6),
+    "copper": mat("Copper", "#c77a3e", 0.3, 1.0),
+    "brass": mat("Brass", "#d9a94a", 0.3, 1.0),
+    "hose": mat("Hose", "#1c1d22", 0.85),
+    "olive": mat("Olive", "#5b6b3a", 0.6),
+    "steel": mat("Steel", "#9aa2ae", 0.3, 0.9),
+})
+
+
+from mathutils import Matrix
+
+
+def wprop(name, objs):
+    """Junta as peças com o pivô na origem do mundo (não na primeira peça) e acabamento liso."""
+    ob = join(name, objs)
+    ob.data.transform(ob.matrix_basis)
+    ob.matrix_basis = Matrix()
+    smooth_weighted(ob, 40.0)
+    props[name] = ob
+    return ob
+
+
+def ring(name, r, w, loc, material, verts=20, axis="Y"):
+    return cyl(name, r, w, loc, material, verts=verts, axis=axis)
+
+
+def wpn_base(k):
+    p = [box(k + "_bp", (0.62, 0.62, 0.05), (0, 0, 0.025), M["gunmetal"], bevel=0.02)]
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            p.append(cyl(f"{k}_bb{sx}{sy}", 0.03, 0.03, (sx * 0.24, sy * 0.24, 0.06), M["chrome"], verts=6, axis="Z"))
+    p.append(cyl(k + "_bped", 0.16, 0.12, (0, 0, 0.11), M["gunmetal"], verts=20, axis="Z"))
+    p.append(cyl(k + "_bhz", 0.165, 0.035, (0, 0, 0.09), M["mine_y"], verts=20, axis="Z"))
+    p.append(cyl(k + "_bring", 0.19, 0.03, (0, 0, 0.185), M["steel"], verts=24, axis="Z"))
+    return p
+
+
+def wpn_yaw(k, cheek_h=0.3):
+    p = [cyl(k + "_ytt", 0.21, 0.04, (0, 0, 0.02), M["trim"], verts=24, axis="Z")]
+    for sx in (-1, 1):
+        p.append(box(f"{k}_yc{sx}", (0.05, 0.3, cheek_h), (sx * 0.21, 0, cheek_h / 2 + 0.03), M["gunmetal"], bevel=0.02))
+        p.append(cyl(f"{k}_ytr{sx}", 0.065, 0.05, (sx * 0.245, 0, 0.26), M["steel"], verts=12, axis="X"))
+        p.append(cyl(f"{k}_ytb{sx}", 0.03, 0.03, (sx * 0.27, 0, 0.26), M["chrome"], verts=6, axis="X"))
+    # pistão hidráulico (eleva o berço)
+    p.append(beam(k + "_yh", (0.12, 0.12, 0.05), (0.12, 0.02, 0.2), 0.04, 0.04, M["chrome"]))
+    return p
+
+
+W_SPIN = {}   # posição do pivô da peça giratória no corpo (Blender) — copiada para o jogo
+W_MUZ = {}    # boca da arma no corpo (Blender)
+
+
+def build_weapon(k):
+    g, s = [], []
+    if k == "mg":
+        # metralhadora rotativa: receptor, tampa de alimentação, cinta de munição, mira e 4 canos que giram
+        g += [box("mg_rc", (0.3, 0.42, 0.22), (0, 0.04, 0), M["gunmetal"], bevel=0.03),
+              box("mg_fc", (0.26, 0.22, 0.05), (0, 0.06, 0.13), M["trim"], bevel=0.015),
+              box("mg_ab", (0.17, 0.26, 0.2), (0.27, 0.08, -0.03), M["olive"], bevel=0.02),
+              box("mg_abl", (0.18, 0.05, 0.03), (0.27, 0.08, 0.075), M["steel"]),
+              cyl("mg_sh", 0.105, 0.16, (0, -0.24, 0), M["gunmetal"], verts=16, axis="Y"),
+              box("mg_gp", (0.16, 0.12, 0.14), (0, 0.3, -0.06), M["trim"], bevel=0.03),
+              box("mg_st", (0.04, 0.1, 0.07), (0, -0.05, 0.155), M["trim"]),
+              ring("mg_sr", 0.04, 0.02, (0, -0.06, 0.22), M["steel"], verts=12)]
+        for i in range(4):
+            g.append(box(f"mg_bl{i}", (0.06, 0.035, 0.035), (0.17 - i * 0.045, 0.05, 0.08 + 0.015 * i), M["brass"]))
+        W_SPIN[k] = (0, -0.32, 0)
+        for i in range(4):
+            a = i * math.pi / 2 + math.pi / 4
+            s.append(cyl(f"mg_br{i}", 0.026, 0.72, (math.cos(a) * 0.05, -0.36, math.sin(a) * 0.05), M["steel"], verts=8, axis="Y"))
+        s += [ring("mg_rf", 0.085, 0.03, (0, -0.62, 0), M["gunmetal"]), ring("mg_rm", 0.08, 0.03, (0, -0.3, 0), M["gunmetal"]),
+              ring("mg_hub", 0.035, 0.74, (0, -0.36, 0), M["trim"], verts=8)]
+        W_MUZ[k] = (0, -1.05, 0)
+    elif k == "rocket":
+        g += [box("rk_pod", (0.56, 0.62, 0.4), (0, 0, 0.02), M["gunmetal"], bevel=0.05),
+              box("rk_band", (0.58, 0.14, 0.42), (0, 0.12, 0.02), M["mine_y"], bevel=0.02),
+              box("rk_face", (0.5, 0.04, 0.34), (0, -0.32, 0.02), M["trim"], bevel=0.02),
+              box("rk_back", (0.46, 0.06, 0.28), (0, 0.33, 0.02), M["well"], bevel=0.02),
+              box("rk_sight", (0.08, 0.22, 0.1), (0.34, -0.05, 0.12), M["trim"], bevel=0.02),
+              ring("rk_lens", 0.035, 0.03, (0.34, -0.17, 0.12), M["head"], verts=10)]
+        for sx in (-1, 1):
+            g.append(box(f"rk_ar{sx}", (0.03, 0.5, 0.3), (sx * 0.295, -0.02, 0.02), M["steel"], bevel=0.01))
+        for i, (x, z) in enumerate([(-0.16, -0.07), (0, -0.07), (0.16, -0.07), (-0.16, 0.1), (0, 0.1), (0.16, 0.1)]):
+            g.append(ring(f"rk_t{i}", 0.068, 0.06, (x, -0.35, z), M["steel"], verts=12))
+            g.append(ring(f"rk_ti{i}", 0.05, 0.04, (x, -0.37, z), M["well"], verts=12))
+            g.append(cyl(f"rk_tp{i}", 0.04, 0.06, (x, -0.35, z), M["rocket"], verts=10, axis="Y", r2=0.0))
+        W_MUZ[k] = (0, -0.45, 0.02)
+    elif k == "zap":
+        # bobina de Tesla: coluna, espiras de cobre, esfera e duas pontas emissoras
+        g += [box("zp_bd", (0.3, 0.4, 0.16), (0, 0.05, -0.02), M["gunmetal"], bevel=0.03),
+              cyl("zp_col", 0.06, 0.32, (0, 0.06, 0.2), M["steel"], verts=12, axis="Z")]
+        for i in range(4):
+            g.append(cyl(f"zp_c{i}", 0.13 - i * 0.015, 0.035, (0, 0.06, 0.1 + i * 0.07), M["copper"], verts=16, axis="Z"))
+        g.append(ico("zp_sph", 0.13, (0, 0.06, 0.42), M["zapglow"], sub=2))
+        for sx in (-1, 1):
+            g.append(beam(f"zp_pr{sx}", (sx * 0.1, -0.1, 0), (sx * 0.07, -0.48, 0.03), 0.04, 0.04, M["copper"]))
+            g.append(ico(f"zp_pt{sx}", 0.045, (sx * 0.07, -0.5, 0.03), M["zapglow"], sub=1))
+            g.append(beam(f"zp_cb{sx}", (sx * 0.15, 0.2, -0.05), (sx * 0.06, 0.06, 0.12), 0.03, 0.03, M["hose"]))
+        W_SPIN[k] = (0, 0.06, 0.2)
+        for i in range(3):
+            a = i * 2 * math.pi / 3
+            s.append(box(f"zp_fn{i}", (0.03, 0.03, 0.2), (math.cos(a) * 0.17, math.sin(a) * 0.17, 0), M["steel"]))
+        s.append(cyl("zp_rr", 0.19, 0.02, (0, 0, 0.1), M["copper"], verts=20, axis="Z"))
+        W_MUZ[k] = (0, -0.52, 0.03)
+    elif k == "flame":
+        # lança-chamas: bocal com aletas de calor, ignitor, dois tanques com tampa, mangueiras e manômetro
+        g += [box("fl_bd", (0.24, 0.36, 0.18), (0, 0.06, 0), M["gunmetal"], bevel=0.03),
+              cyl("fl_nz", 0.055, 0.62, (0, -0.42, 0.02), M["steel"], verts=12, axis="Y"),
+              cyl("fl_tip", 0.085, 0.1, (0, -0.76, 0.02), M["gunmetal"], verts=12, axis="Y", r2=0.06),
+              cyl("fl_ign", 0.02, 0.12, (0, -0.72, -0.07), M["copper"], verts=6, axis="Y")]
+        for i in range(5):
+            g.append(ring(f"fl_fin{i}", 0.085, 0.02, (0, -0.2 - i * 0.09, 0.02), M["gunmetal"], verts=12))
+        for sx in (-1, 1):
+            g += [cyl(f"fl_tk{sx}", 0.12, 0.5, (sx * 0.24, 0.12, 0.02), M["rocket"], verts=16, axis="Y"),
+                  cyl(f"fl_tc{sx}", 0.09, 0.05, (sx * 0.24, 0.39, 0.02), M["chrome"], verts=12, axis="Y"),
+                  ring(f"fl_tb{sx}", 0.125, 0.03, (sx * 0.24, -0.02, 0.02), M["steel"], verts=16),
+                  beam(f"fl_hs{sx}", (sx * 0.24, -0.12, 0.05), (sx * 0.05, -0.3, 0.05), 0.035, 0.035, M["hose"])]
+        g += [cyl("fl_gauge", 0.05, 0.02, (0.12, 0.0, 0.11), M["white"], verts=12, axis="Z"),
+              cyl("fl_gr", 0.056, 0.02, (0.12, 0.0, 0.1), M["chrome"], verts=12, axis="Z")]
+        W_MUZ[k] = (0, -0.85, 0.02)
+    elif k == "laser":
+        # canhão laser: carcaça lisa, lente vermelha e aletas de resfriamento
+        g += [box("ls_hs", (0.26, 0.5, 0.2), (0, 0.04, 0), M["white"], bevel=0.06),
+              box("ls_st", (0.27, 0.08, 0.21), (0, 0.16, 0), M["laserglow"], bevel=0.03),
+              cyl("ls_bar", 0.06, 0.5, (0, -0.42, 0), M["gunmetal"], verts=16, axis="Y"),
+              ring("ls_lens", 0.05, 0.03, (0, -0.68, 0), M["laserglow"], verts=16),
+              ring("ls_lr", 0.07, 0.04, (0, -0.66, 0), M["chrome"], verts=16)]
+        for i in range(6):
+            g.append(ring(f"ls_fin{i}", 0.1, 0.018, (0, -0.24 - i * 0.065, 0), M["steel"], verts=16))
+        for sx in (-1, 1):
+            g.append(beam(f"ls_cb{sx}", (sx * 0.13, 0.2, -0.05), (sx * 0.07, -0.2, -0.02), 0.03, 0.03, M["hose"]))
+        W_MUZ[k] = (0, -0.72, 0)
+    elif k == "harpoon":
+        # arpão: trilho, arpão carregado, carretel de cabo e molas
+        g += [box("hp_rl", (0.14, 0.8, 0.08), (0, -0.15, 0), M["gunmetal"], bevel=0.02),
+              box("hp_bd", (0.28, 0.3, 0.2), (0, 0.15, -0.02), M["olive"], bevel=0.03),
+              cyl("hp_sp", 0.11, 0.1, (0.22, 0.12, 0.0), M["steel"], verts=16, axis="X"),
+              cyl("hp_spc", 0.08, 0.11, (0.22, 0.12, 0.0), M["mine_y"], verts=16, axis="X"),
+              cyl("hp_sh", 0.025, 0.85, (0, -0.2, 0.08), M["wood"] if "wood" in M else M["steel"], verts=8, axis="Y"),
+              cyl("hp_tp", 0.06, 0.18, (0, -0.68, 0.08), M["steel"], verts=8, axis="Y", r2=0.0)]
+        for sx in (-1, 1):
+            g.append(beam(f"hp_bw{sx}", (0, -0.45, 0.03), (sx * 0.3, -0.35, 0.03), 0.04, 0.05, M["trim"]))
+            g.append(beam(f"hp_str{sx}", (sx * 0.3, -0.35, 0.03), (0, 0.0, 0.08), 0.012, 0.012, M["white"]))
+        W_MUZ[k] = (0, -0.78, 0.08)
+    elif k == "mortar":
+        # morteiro: tubo grosso inclinado para cima, braçadeiras e caixa de granadas
+        tube = cyl("mt_tb", 0.12, 0.6, (0, -0.12, 0.16), M["olive"], verts=16, axis="Y")
+        tube.rotation_euler = (-0.6, 0, 0)
+        cap = cyl("mt_mz", 0.14, 0.08, (0, -0.36, 0.33), M["gunmetal"], verts=16, axis="Y")
+        cap.rotation_euler = (-0.6, 0, 0)
+        g += [box("mt_bd", (0.34, 0.36, 0.16), (0, 0.08, -0.04), M["gunmetal"], bevel=0.03), tube, cap,
+              box("mt_bx", (0.16, 0.22, 0.14), (0.26, 0.12, -0.02), M["olive"], bevel=0.02),
+              box("mt_bxs", (0.17, 0.05, 0.15), (0.26, 0.05, -0.02), M["mine_y"])]
+        for i in range(2):
+            b = ring(f"mt_cl{i}", 0.13, 0.04, (0, -0.02 - i * 0.16, 0.07 + i * 0.11), M["steel"], verts=16)
+            b.rotation_euler = (-0.6, 0, 0)
+            g.append(b)
+        W_MUZ[k] = (0, -0.4, 0.38)
+    elif k == "freeze":
+        # canhão de gelo: tanque gelado, bocal em funil e aletas de geada
+        g += [cyl("fz_tk", 0.15, 0.42, (0, 0.12, 0.02), M["frost"], verts=18, axis="Y"),
+              ring("fz_tb1", 0.155, 0.03, (0, 0.0, 0.02), M["steel"], verts=18), ring("fz_tb2", 0.155, 0.03, (0, 0.24, 0.02), M["steel"], verts=18),
+              cyl("fz_nz", 0.06, 0.32, (0, -0.25, 0.02), M["steel"], verts=12, axis="Y"),
+              cyl("fz_cone", 0.07, 0.16, (0, -0.48, 0.02), M["frost"], verts=14, axis="Y", r2=0.13),
+              box("fz_vl", (0.08, 0.08, 0.1), (0, -0.08, 0.12), M["barrel"] if "barrel" in M else M["trim"], bevel=0.02)]
+        for i in range(4):
+            g.append(box(f"fz_fin{i}", (0.34, 0.025, 0.05), (0, -0.13 - i * 0.06, 0.02), M["frost"]))
+        W_MUZ[k] = (0, -0.58, 0.02)
+    elif k == "railgun":
+        # canhão de trilho: dois trilhos longos com faixa de energia e capacitores
+        g += [box("rg_bd", (0.3, 0.4, 0.18), (0, 0.12, 0), M["gunmetal"], bevel=0.03),
+              box("rg_cap", (0.1, 0.24, 0.12), (0.2, 0.12, 0.02), M["railglow"], bevel=0.02),
+              box("rg_cap2", (0.1, 0.24, 0.12), (-0.2, 0.12, 0.02), M["railglow"], bevel=0.02),
+              box("rg_core", (0.04, 0.8, 0.03), (0, -0.4, 0), M["railglow"])]
+        for sx in (-1, 1):
+            g.append(box(f"rg_r{sx}", (0.05, 0.9, 0.12), (sx * 0.06, -0.38, 0), M["steel"], bevel=0.015))
+        for i in range(4):
+            g.append(box(f"rg_cl{i}", (0.22, 0.04, 0.16), (0, -0.05 - i * 0.2, 0), M["gunmetal"], bevel=0.01))
+        W_MUZ[k] = (0, -0.85, 0)
+    elif k == "plasma":
+        # plasma: núcleo verde em gaiola giratória e dois emissores curtos
+        g += [box("pl_bd", (0.3, 0.3, 0.16), (0, 0.15, -0.04), M["gunmetal"], bevel=0.04),
+              ico("pl_core", 0.15, (0, -0.05, 0.06), M["plasmaglow"], sub=2)]
+        for sx in (-1, 1):
+            g.append(cyl(f"pl_em{sx}", 0.045, 0.3, (sx * 0.08, -0.32, 0.03), M["steel"], verts=10, axis="Y"))
+            g.append(ring(f"pl_et{sx}", 0.055, 0.04, (sx * 0.08, -0.47, 0.03), M["plasmaglow"], verts=10))
+        W_SPIN[k] = (0, -0.05, 0.06)
+        for i in range(3):
+            r_ = cyl(f"pl_cg{i}", 0.22, 0.025, (0, 0, 0), M["chrome"], verts=24, axis="Y")
+            r_.scale = (1.0, 1.0, 1.0)
+            r_.rotation_euler = (0, 0, i * math.pi / 3)
+            s.append(r_)
+        W_MUZ[k] = (0, -0.5, 0.03)
+    wprop("wb_" + k, wpn_base(k))
+    wprop("wy_" + k, wpn_yaw(k))
+    wprop("wg_" + k, g)
+    if s:
+        wprop("ws_" + k, s)
+
+
+for _k in ["mg", "rocket", "zap", "flame", "laser", "harpoon", "mortar", "freeze", "railgun", "plasma"]:
+    build_weapon(_k)
+print("WPN_SPIN", {k: v for k, v in W_SPIN.items()})
+print("WPN_MUZ", W_MUZ)
+
 
 # ---------------------------------------------------------------- layout para preview / organização
 x = 0

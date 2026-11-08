@@ -19,7 +19,7 @@ const GRAV := 9.8 * 2.2
 const SPECS := {
 	"faisca": {"len": 3.7, "wid": 2.0, "h": 0.62, "clr": 0.34, "mass": 1.0, "vmax": 40.0, "nitro": 58.0, "accel": 26.0, "grip": 9.5, "drift_grip": 1.6, "turn": 2.7, "hp": 100.0},
 	"trovao": {"len": 4.1, "wid": 2.1, "h": 0.6, "clr": 0.3, "mass": 1.25, "vmax": 38.0, "nitro": 54.0, "accel": 23.0, "grip": 8.5, "drift_grip": 1.8, "turn": 2.45, "hp": 140.0},
-	"vespa": {"len": 3.4, "wid": 2.0, "h": 0.55, "clr": 0.45, "mass": 0.95, "vmax": 42.0, "nitro": 58.0, "accel": 28.0, "grip": 10.0, "drift_grip": 1.7, "turn": 2.95, "hp": 80.0},
+	"vespa": {"len": 3.6, "wid": 2.0, "h": 0.58, "clr": 0.32, "mass": 0.95, "vmax": 42.0, "nitro": 58.0, "accel": 28.0, "grip": 10.0, "drift_grip": 1.7, "turn": 2.95, "hp": 80.0},
 	"sedan": {"len": 3.9, "wid": 1.95, "h": 0.66, "clr": 0.3, "mass": 1.0, "vmax": 26.0, "nitro": 26.0, "accel": 12.0, "grip": 8.0, "drift_grip": 2.0, "turn": 2.2, "hp": 60.0},
 	"taxi": {"len": 3.9, "wid": 1.95, "h": 0.66, "clr": 0.3, "mass": 1.0, "vmax": 26.0, "nitro": 26.0, "accel": 12.0, "grip": 8.0, "drift_grip": 2.0, "turn": 2.2, "hp": 60.0},
 	"policia": {"len": 3.9, "wid": 1.95, "h": 0.66, "clr": 0.3, "mass": 1.1, "vmax": 30.0, "nitro": 30.0, "accel": 14.0, "grip": 8.0, "drift_grip": 2.0, "turn": 2.2, "hp": 70.0},
@@ -27,6 +27,13 @@ const SPECS := {
 	"van": {"len": 4.4, "wid": 2.1, "h": 0.85, "clr": 0.35, "mass": 1.8, "vmax": 22.0, "nitro": 22.0, "accel": 9.0, "grip": 8.0, "drift_grip": 2.0, "turn": 1.9, "hp": 90.0},
 	# picape monstro (comprável): pesada, resistente, menos ágil
 	"monstro": {"len": 4.3, "wid": 2.1, "h": 0.8, "clr": 0.45, "mass": 1.45, "vmax": 39.0, "nitro": 52.0, "accel": 22.0, "grip": 9.2, "drift_grip": 1.9, "turn": 2.35, "hp": 175.0},
+	# carros dos mundos (um por tema, modernos)
+	"zefiro": {"len": 3.9, "wid": 2.05, "h": 0.6, "clr": 0.2, "mass": 1.0, "vmax": 41.5, "nitro": 58.0, "accel": 27.0, "grip": 10.0, "drift_grip": 1.6, "turn": 2.75, "hp": 95.0},
+	"jacare": {"len": 4.2, "wid": 2.15, "h": 0.68, "clr": 0.5, "mass": 1.4, "vmax": 39.0, "nitro": 54.0, "accel": 23.0, "grip": 9.4, "drift_grip": 1.9, "turn": 2.4, "hp": 160.0},
+	"escorpiao": {"len": 4.5, "wid": 2.25, "h": 0.63, "clr": 0.52, "mass": 1.35, "vmax": 41.0, "nitro": 56.0, "accel": 25.0, "grip": 9.6, "drift_grip": 1.8, "turn": 2.45, "hp": 150.0},
+	"nevasca": {"len": 3.95, "wid": 2.1, "h": 0.64, "clr": 0.42, "mass": 1.3, "vmax": 40.5, "nitro": 56.0, "accel": 25.0, "grip": 10.4, "drift_grip": 1.8, "turn": 2.6, "hp": 145.0},
+	"nemesis": {"len": 4.3, "wid": 2.2, "h": 0.59, "clr": 0.15, "mass": 1.2, "vmax": 43.5, "nitro": 60.0, "accel": 29.0, "grip": 10.8, "drift_grip": 1.7, "turn": 2.65, "hp": 120.0},
+	"falcao": {"len": 4.2, "wid": 1.95, "h": 0.56, "clr": 0.24, "mass": 1.05, "vmax": 44.0, "nitro": 61.0, "accel": 29.0, "grip": 10.6, "drift_grip": 1.6, "turn": 2.75, "hp": 110.0},
 	# chefes (modelos ampliados 1,6x; vida alta, pesados)
 	"hyper": {"len": 4.1, "wid": 2.15, "h": 0.66, "clr": 0.18, "mass": 1.3, "vmax": 44.0, "nitro": 58.0, "accel": 28.0, "grip": 10.5, "drift_grip": 1.7, "turn": 2.6, "hp": 120.0},
 	"boss_brutus": {"len": 6.6, "wid": 3.45, "h": 1.06, "clr": 0.29, "mass": 4.0, "vmax": 41.0, "nitro": 50.0, "accel": 24.0, "grip": 10.0, "drift_grip": 2.4, "turn": 2.2, "hp": 1100.0},
@@ -43,21 +50,50 @@ const VSCALE := {"boss_brutus": 1.6, "boss_xerife": 1.6, "boss_imperador": 1.6, 
 ## cada carro tem armas próprias (estilo Rock n' Roll Racing): [arma de ataque, item de chão, mobilidade]
 ## a mobilidade fica no botão do NITRO; o ESPECIAL (escudo, choque, reparo) tem botão próprio e é comprado à parte
 const LOADOUT := {"faisca": ["mg", "oil", "short"], "vespa": ["zap", "spikes", "jump"],
-	"trovao": ["rocket", "mine", "long"], "monstro": ["flame", "barrel", "ram"]}
+	"trovao": ["rocket", "mine", "long"], "monstro": ["flame", "barrel", "ram"],
+	"zefiro": ["laser", "smoke", "dash"], "jacare": ["harpoon", "mud", "long"], "escorpiao": ["mortar", "fire", "jump"],
+	"nevasca": ["freeze", "ice", "short"], "nemesis": ["railgun", "emp", "dash"], "falcao": ["plasma", "vortex", "glide"]}
 const SPECIAL := {"shield": {"name": "Escudo", "cap": 2, "label": "ESCUDO"}, "shock": {"name": "Onda de choque", "cap": 2, "label": "CHOQUE"},
 	"repair": {"name": "Reparo", "cap": 1, "label": "REPARO"}}
 const SPECIAL_ORDER := ["shield", "shock", "repair"]
 
 ## equipamentos: valores base por volta (Rock n' Roll Racing: recarregam a cada volta)
 const FRONT := {"mg": {"name": "Metralhadora", "cap": 60, "up": 15}, "rocket": {"name": "Lança-foguetes", "cap": 4, "up": 1},
-	"zap": {"name": "Raio elétrico", "cap": 10, "up": 3}, "flame": {"name": "Lança-chamas", "cap": 60, "up": 15}, "none": {"name": "—", "cap": 0, "up": 0}}
+	"zap": {"name": "Raio elétrico", "cap": 10, "up": 3}, "flame": {"name": "Lança-chamas", "cap": 60, "up": 15},
+	"laser": {"name": "Canhão laser", "cap": 40, "up": 10}, "harpoon": {"name": "Arpão", "cap": 4, "up": 1},
+	"mortar": {"name": "Morteiro", "cap": 5, "up": 1}, "freeze": {"name": "Canhão de gelo", "cap": 8, "up": 2},
+	"railgun": {"name": "Canhão de trilho", "cap": 4, "up": 1}, "plasma": {"name": "Plasma", "cap": 24, "up": 6},
+	"none": {"name": "—", "cap": 0, "up": 0}}
+## torres articuladas (peças wb_/wy_/wg_/ws_ do minicars.glb): pivô da peça que gira, eixo do giro e boca da arma,
+## em coordenadas do corpo da arma. Yaw fica 0,2 acima da base; o corpo, 0,26 acima do yaw.
+const WPN := {
+	"mg": {"spin": Vector3(0, 0, 0.32), "axis": Vector3(0, 0, 1), "muz": Vector3(0, 0, 1.05), "spd": 34.0},
+	"rocket": {"muz": Vector3(0, 0.02, 0.45)}, "zap": {"spin": Vector3(0, 0.2, -0.06), "axis": Vector3(0, 1, 0), "muz": Vector3(0, 0.03, 0.52), "spd": 2.5},
+	"flame": {"muz": Vector3(0, 0.02, 0.85)}, "laser": {"muz": Vector3(0, 0, 0.72)}, "harpoon": {"muz": Vector3(0, 0.08, 0.78)},
+	"mortar": {"muz": Vector3(0, 0.38, 0.4), "pitch": 0.0}, "freeze": {"muz": Vector3(0, 0.02, 0.58)}, "railgun": {"muz": Vector3(0, 0, 0.85)},
+	"plasma": {"spin": Vector3(0, 0.06, 0.05), "axis": Vector3(0, 0, 1), "muz": Vector3(0, 0.03, 0.5), "spd": 3.0}}
+const WPN_YAW := 0.6        # quanto a torre gira para cada lado (rad)
+## rótulos curtos (botões na tela e HUD) e nomes dos carros jogáveis
+const LBL_F := {"mg": "TIRO", "rocket": "FOGUETE", "zap": "RAIO", "flame": "FOGO", "laser": "LASER", "harpoon": "ARPÃO",
+	"mortar": "MORTEIRO", "freeze": "GELO", "railgun": "TRILHO", "plasma": "PLASMA", "none": "—"}
+const LBL_R := {"mine": "MINA", "oil": "ÓLEO", "spikes": "PREGOS", "barrel": "BARRIL", "smoke": "FUMAÇA", "mud": "LAMA",
+	"fire": "FOGO", "ice": "GELO", "emp": "EMP", "vortex": "VÓRTICE", "none": "—"}
+const PLAYABLE := ["faisca", "vespa", "zefiro", "jacare", "trovao", "escorpiao", "monstro", "nevasca", "nemesis", "falcao"]
+const CAR_NAME := {"faisca": "FAÍSCA", "vespa": "VESPA", "trovao": "TROVÃO", "monstro": "MONSTRO", "zefiro": "ZÉFIRO",
+	"jacare": "JACARÉ", "escorpiao": "ESCORPIÃO", "nevasca": "NEVASCA", "nemesis": "NÊMESIS", "falcao": "FALCÃO"}
 const REAR := {"mine": {"name": "Minas", "cap": 3, "up": 1}, "oil": {"name": "Óleo", "cap": 3, "up": 1},
-	"spikes": {"name": "Pregos", "cap": 3, "up": 1}, "barrel": {"name": "Barril rolante", "cap": 3, "up": 1}, "none": {"name": "—", "cap": 0, "up": 0}}
+	"spikes": {"name": "Pregos", "cap": 3, "up": 1}, "barrel": {"name": "Barril rolante", "cap": 3, "up": 1},
+	"smoke": {"name": "Cortina de fumaça", "cap": 3, "up": 1}, "mud": {"name": "Poça de lama", "cap": 3, "up": 1},
+	"fire": {"name": "Rastro de fogo", "cap": 3, "up": 1}, "ice": {"name": "Placa de gelo", "cap": 3, "up": 1},
+	"emp": {"name": "Mina EMP", "cap": 2, "up": 1}, "vortex": {"name": "Vórtice", "cap": 2, "up": 1},
+	"none": {"name": "—", "cap": 0, "up": 0}}
 ## mobilidade (botão do nitro): nitro curto, nitro longo, salto e investida (arrancada que atropela quem estiver na frente)
 const NITRO := {"short": {"name": "Nitro curto", "cap": 4, "dur": 1.0, "acc": 2.3, "label": "NITRO"},
 	"long": {"name": "Nitro longo", "cap": 3, "dur": 2.2, "acc": 1.8, "label": "NITRO"},
 	"jump": {"name": "Salto", "cap": 3, "dur": 0.0, "acc": 0.0, "label": "SALTO"},
-	"ram": {"name": "Investida", "cap": 3, "dur": 0.75, "acc": 3.4, "label": "INVESTIDA"}}
+	"ram": {"name": "Investida", "cap": 3, "dur": 0.75, "acc": 3.4, "label": "INVESTIDA"},
+	"dash": {"name": "Esquiva", "cap": 4, "dur": 0.0, "acc": 0.0, "label": "ESQUIVA"},
+	"glide": {"name": "Planar", "cap": 3, "dur": 0.0, "acc": 0.0, "label": "PLANAR"}}
 
 var kind := ""
 var role := "traffic"       # player | rival | traffic
@@ -92,6 +128,7 @@ var ice_t := 0.0            # no gelo (chefe AVALANCHE): quase sem aderência
 var emp_t := 0.0            # pulso EMP (chefe BLACKOUT): armas e especial desligados
 var mud_t := 0.0            # atolado na lama (chefe CROCODILO)
 var slow_t := 0.0           # levando tiro de metralhadora: perde um pouco de velocidade
+var glide_t := 0.0          # planando (Falcão): cai devagar
 var special_cd := 0.0
 var game: Node = null
 var _burn_acc := 0.0
@@ -115,7 +152,9 @@ var tire_kind := ""
 var _mat_cache := {}
 static var _tire_cache := {}
 static var refl_metal: Material = null   # passada de reflexo do metal (criada pelo main.gd)
-const WHEEL_W := {"faisca": 0.5, "trovao": 0.52, "vespa": 0.55, "picape": 0.5}
+const WHEEL_W := {"faisca": 0.5, "trovao": 0.52, "vespa": 0.5, "picape": 0.5, "zefiro": 0.48, "jacare": 0.5, "escorpiao": 0.55,
+	"nevasca": 0.5, "nemesis": 0.52, "falcao": 0.48, "hyper": 0.5}
+const OFFROAD := ["picape", "jacare", "escorpiao", "nevasca"]   # pneus com cravos e para-barros no kit
 ## pneu por nível do upgrade: rua -> esportivo (perfil baixo) -> slick de corrida (nível 3: faixa na cor do kit)
 const TIRE_BY_LEVEL := ["street", "sport", "slick", "slick"]
 var _nitro_was := false
@@ -217,6 +256,15 @@ var mount_local := Vector3.ZERO
 var tail_local := [Vector3.ZERO, Vector3.ZERO]
 var muzzle_local := Vector3.ZERO
 var weapon_node: Node3D
+var wpn_yaw: Node3D
+var wpn_gun: Node3D
+var wpn_spin: Node3D
+var wpn_gun_mesh: MeshInstance3D
+var wpn_smoke: CPUParticles3D
+var aim_tgt: Car = null
+var aim_yaw := 0.0
+var aim_pitch := 0.0
+var spin_v := 0.0
 var weapon_base := Vector3.ZERO
 var recoil := 0.0
 var firing_t := 0.0
@@ -354,26 +402,158 @@ func configure(lib: Node3D, front: String, rear: String, nitro: String, up: Dict
 	max_health = sp.hp * (1.0 + 0.2 * int(up.get("armor", 0)))
 	health = max_health
 	refill()
-	if weapon_node:
-		weapon_node.queue_free()
-	weapon_node = lib.get_node("wpn_gun" if front in ["mg", "flame"] else "wpn_pod").duplicate()
-	if front == "zap" or front == "flame":
-		_weapon_extra(front)
-	# arma parafusada no teto (ponto "_mount" do modelo), sem atravessar cabine nem para-brisa
-	weapon_base = mount_local
-	weapon_node.transform = Transform3D(Basis.IDENTITY, weapon_base)
-	for c in weapon_node.get_children():
-		if c is GeometryInstance3D:
-			c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-	model.add_child(weapon_node)
-	muzzle_local = weapon_base + (Vector3(0, 0.32, 1.1) if front in ["mg", "flame"] else Vector3(0, 0.3, 0.55))
-	if front == "none":
-		weapon_node.visible = false
+	_build_weapon(lib, front)
 	_apply_tires(lib, up)
 	_build_kit(up)
 
 
-## visual das armas novas: bobina elétrica (raio) e tanques de combustível (lança-chamas)
+## torre da arma parafusada no teto (ponto "_mount" do modelo): base fixa, anel que gira (mira), corpo que
+## recua e peça giratória (canos rotativos, gaiola do plasma), com fumaça na boca e efeitos próprios de cada arma
+func _build_weapon(lib: Node3D, front: String) -> void:
+	if weapon_node:
+		weapon_node.queue_free()
+	wpn_yaw = null
+	wpn_gun = null
+	wpn_spin = null
+	wpn_gun_mesh = null
+	wpn_smoke = null
+	casings = null
+	weapon_base = mount_local
+	weapon_node = Node3D.new()
+	weapon_node.position = weapon_base
+	model.add_child(weapon_node)
+	if front == "none" or not WPN.has(front):
+		weapon_node.visible = false
+		muzzle_local = weapon_base + Vector3(0, 0.5, 0.6)
+		return
+	var cfg: Dictionary = WPN[front]
+	_wpn_mesh(lib, "wb_" + front, weapon_node)
+	wpn_yaw = Node3D.new()
+	wpn_yaw.position = Vector3(0, 0.2, 0)
+	weapon_node.add_child(wpn_yaw)
+	_wpn_mesh(lib, "wy_" + front, wpn_yaw)
+	wpn_gun = Node3D.new()
+	wpn_gun.position = Vector3(0, 0.26, 0)
+	wpn_yaw.add_child(wpn_gun)
+	wpn_gun_mesh = _wpn_mesh(lib, "wg_" + front, wpn_gun)
+	if cfg.has("spin") and lib.get_node_or_null("ws_" + front):
+		wpn_spin = Node3D.new()
+		wpn_spin.position = cfg.spin
+		wpn_gun.add_child(wpn_spin)
+		_wpn_mesh(lib, "ws_" + front, wpn_spin)
+	var muz: Vector3 = cfg.muz
+	# fumaça na boca ao atirar
+	wpn_smoke = _wpn_particles(muz, Color(0.75, 0.75, 0.78, 0.5), 10, 0.6, Vector3(0, 1.2, 0.6), 0.09, false)
+	match front:
+		"zap":
+			_wpn_particles(Vector3(0, 0.42, -0.06), Color(0.5, 0.9, 1.0), 6, 0.25, Vector3(0, 0.4, 0), 0.03, true, 1.6)
+		"flame":
+			_wpn_particles(muz, Color(1.0, 0.55, 0.15), 8, 0.22, Vector3(0, 0.6, 0.2), 0.035, true, 2.5)
+		"freeze":
+			_wpn_particles(muz, Color(0.85, 0.95, 1.0, 0.7), 8, 0.8, Vector3(0, -0.4, 0.2), 0.04, true)
+		"plasma":
+			_wpn_particles(Vector3(0, 0.06, 0.05), Color(0.4, 1.0, 0.5), 6, 0.4, Vector3(0, 0.3, 0), 0.03, true, 2.0)
+		"railgun":
+			_wpn_particles(Vector3(0, 0.0, 0.4), Color(0.75, 0.45, 1.0), 5, 0.3, Vector3(0, 0.2, 0), 0.025, true, 2.0)
+	muzzle_local = _muzzle_now()
+
+
+func _wpn_mesh(lib: Node3D, nm: String, parent: Node3D) -> MeshInstance3D:
+	var src := lib.get_node_or_null(nm) as MeshInstance3D
+	if src == null:
+		return null
+	var mi := MeshInstance3D.new()
+	mi.mesh = src.mesh
+	for si in mi.mesh.get_surface_count():
+		mi.set_surface_override_material(si, _car_mat(mi.mesh.surface_get_material(si), _mat_cache))
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	parent.add_child(mi)
+	return mi
+
+
+## partículas da arma (presas no corpo da arma, soltas no mundo): fumaça, faíscas, chama piloto, névoa
+func _wpn_particles(at: Vector3, col: Color, n: int, life: float, vel: Vector3, sz: float, always: bool, glow := 0.0) -> CPUParticles3D:
+	var p := CPUParticles3D.new()
+	p.amount = n
+	p.lifetime = life
+	p.local_coords = false
+	p.emitting = always
+	p.position = at
+	var m := SphereMesh.new()
+	m.radius = sz
+	m.height = sz * 2.0
+	m.radial_segments = 6
+	m.rings = 3
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = col
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.vertex_color_use_as_albedo = true
+	if glow > 0.0:
+		mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		mat.albedo_color = Color(col.r * glow, col.g * glow, col.b * glow, col.a)
+	m.material = mat
+	p.mesh = m
+	p.direction = vel.normalized() if vel.length() > 0.0 else Vector3.UP
+	p.spread = 30.0
+	p.initial_velocity_min = vel.length() * 0.6
+	p.initial_velocity_max = vel.length() * 1.2
+	p.gravity = Vector3(0, 0.6 if vel.y >= 0.0 else -1.5, 0)
+	p.scale_amount_min = 0.7
+	p.scale_amount_max = 1.4
+	var g := Gradient.new()
+	g.set_color(0, Color(1, 1, 1, 1))
+	g.set_color(1, Color(1, 1, 1, 0))
+	p.color_ramp = g
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	wpn_gun.add_child(p)
+	return p
+
+
+## boca da arma em coordenadas do carro (segue o giro e o recuo da torre)
+func _muzzle_now() -> Vector3:
+	if wpn_gun == null:
+		return muzzle_local
+	var muz: Vector3 = WPN[front_type].muz
+	return model.transform * weapon_node.transform * wpn_yaw.transform * wpn_gun.transform * muz
+
+
+## direção para onde a arma aponta (mundo)
+func gun_dir() -> Vector3:
+	if wpn_gun and wpn_gun.is_inside_tree():
+		return wpn_gun.global_transform.basis.z.normalized()
+	return global_transform.basis.z
+
+
+## mira da torre (visual): segue o alvo dentro do arco; sem alvo, varre devagar
+func _aim_turret(dt: float) -> void:
+	if wpn_yaw == null:
+		return
+	var want_y := sin(game_time * 0.7 + seed_f) * 0.2
+	var want_p := 0.0
+	if aim_tgt != null and is_instance_valid(aim_tgt) and not aim_tgt.wrecked:
+		var lp := global_transform.affine_inverse() * aim_tgt.global_position - (weapon_base + Vector3(0, 0.46, 0))
+		want_y = clampf(atan2(lp.x, lp.z), -WPN_YAW, WPN_YAW)
+		want_p = clampf(atan2(lp.y + 0.3, Vector2(lp.x, lp.z).length()), -0.12, 0.3)
+	if front_type == "mortar":
+		want_p = 0.0
+	var k := 1.0 - exp(-7.0 * dt)
+	aim_yaw = lerp_angle(aim_yaw, want_y, k)
+	aim_pitch = lerpf(aim_pitch, want_p, k)
+	wpn_yaw.rotation.y = aim_yaw
+	wpn_gun.rotation.x = -aim_pitch - recoil * 0.07
+	wpn_gun.position = Vector3(0, 0.26 + recoil * 0.02, -recoil * 0.13)
+	if wpn_spin:
+		var cfg: Dictionary = WPN[front_type]
+		var base_spd: float = 0.0 if front_type == "mg" else float(cfg.get("spd", 0.0))
+		spin_v = move_toward(spin_v, float(cfg.get("spd", 0.0)) if firing_t > 0.0 else base_spd, dt * 60.0)
+		wpn_spin.rotate_object_local(cfg.axis, spin_v * dt)
+	if wpn_smoke:
+		wpn_smoke.emitting = firing_t > 0.0 and not wrecked
+	muzzle_local = _muzzle_now()
+
+
+## (antigo) visual das armas: bobina elétrica e tanques — substituído pelas torres do modelo
 func _weapon_extra(front: String) -> void:
 	var em := StandardMaterial3D.new()
 	em.emission_enabled = true
@@ -436,14 +616,14 @@ func _apply_tires(lib: Node3D, up: Dictionary) -> void:
 	var lvl := int(up.get("tires", 0))
 	tire_grip = 1.0 + 0.06 * lvl
 	var vis := int(up.get("_tire_vis", lvl))
-	var k: String = "knobby" if mkind in ["vespa", "picape"] else String(TIRE_BY_LEVEL[clampi(vis, 0, 3)])
+	var k: String = "knobby" if mkind in OFFROAD else String(TIRE_BY_LEVEL[clampi(vis, 0, 3)])
 	if k == tire_kind:
 		return
 	var src := lib.get_node_or_null("tire_" + k) as MeshInstance3D
 	if src == null:
 		return
 	tire_kind = k
-	var ww: float = WHEEL_W.get(kind, 0.42)
+	var ww: float = WHEEL_W.get(mkind, 0.42)
 	for w in wheels:
 		var mi: MeshInstance3D = w.mesh
 		var side := 1.0 if (w.base as Vector3).x >= 0.0 else -1.0
@@ -759,12 +939,12 @@ func _physics_process(dt: float) -> void:
 		special_cd = 0.8
 		game.weapons.special(self, special_type)
 	_spec_was = spp
-	# mobilidade no botão do nitro: salto é um impulso; nitro e investida são arrancadas
-	if nitro_type == "jump":
-		if np and not _nitro_was and nitro_ch > 0 and special_cd <= 0.0 and emp_t <= 0.0 and game and game.weapons.can_special(self, "jump"):
+	# mobilidade no botão do nitro: salto, esquiva e planar são impulsos; nitro e investida são arrancadas
+	if nitro_type in ["jump", "dash", "glide"]:
+		if np and not _nitro_was and nitro_ch > 0 and special_cd <= 0.0 and emp_t <= 0.0 and game and game.weapons.can_special(self, nitro_type):
 			nitro_ch -= 1
 			special_cd = 0.6
-			game.weapons.special(self, "jump")
+			game.weapons.special(self, nitro_type)
 	elif np and not _nitro_was and nitro_ch > 0 and nitro_t <= 0.0 and emp_t <= 0.0:
 		nitro_ch -= 1
 		nitro_t = float(NITRO[nitro_type].dur)
@@ -775,6 +955,18 @@ func _physics_process(dt: float) -> void:
 	var nacc: float = NITRO[nitro_type].acc
 	var vmax_now: float = (sp.nitro * engine_mult) if nitroing else vmax
 	slow_t = maxf(0.0, slow_t - dt)
+	if glide_t > 0.0:
+		glide_t -= dt
+		if not on_ground:
+			# planando: a sustentação cancela boa parte da gravidade e empurra para frente
+			linear_velocity.y += GRAV * grav_factor * 0.55 * dt
+			var fwd_h := global_transform.basis.z.slide(Vector3.UP).normalized()
+			linear_velocity += fwd_h * 2.5 * dt
+			# planando o carro segue reto para onde aponta (some a deriva lateral)
+			var side_v := linear_velocity.slide(Vector3.UP) - fwd_h * linear_velocity.dot(fwd_h)
+			linear_velocity -= side_v * minf(1.0, 2.5 * dt)
+			# no ar dá para virar (as asinhas funcionam como leme)
+			angular_velocity.y = lerpf(angular_velocity.y, steer_s * 2.4, minf(1.0, 6.0 * dt))
 	if slow_t > 0.0:
 		# rajada de metralhadora segura o carro (o nitro ajuda a escapar; chefes sentem menos)
 		vmax_now *= (0.97 if is_boss else (0.93 if nitroing else 0.86))
@@ -1180,6 +1372,8 @@ func _kit_mat(col: Color, rough := 0.4, metal := 0.3, emit := 0.0) -> StandardMa
 
 ## caixa que envolve o casulo da arma (sem os enfeites de upgrade), em coordenadas do nó da arma
 func _pod_box() -> AABB:
+	if wpn_gun_mesh:
+		return wpn_gun_mesh.get_aabb()   # corpo da arma (sem base nem anel)
 	if weapon_node is MeshInstance3D:
 		return (weapon_node as MeshInstance3D).get_aabb()   # o casulo do modelo é uma malha só
 	var out := AABB()
@@ -1249,7 +1443,7 @@ func _build_kit(up: Dictionary) -> void:
 				mi.set_surface_override_material(si, rim)
 			elif sm and sm.resource_name == "TireStripe" and tier >= 2:
 				mi.set_surface_override_material(si, accent)
-	var offroad: bool = mkind in ["vespa", "picape"]
+	var offroad: bool = mkind in OFFROAD or mkind == "vespa"
 	if tier >= 1:
 		# lâmina dianteira rente ao para-choque e filete na cor do kit encostado na lateral (entre as rodas)
 		_kit_box(Vector3(Wc * 0.84, 0.035, 0.2), Vector3(0, sp.clr + 0.02, Lc * 0.5 + 0.03), carbon)
@@ -1304,32 +1498,22 @@ func _build_kit(up: Dictionary) -> void:
 	if weapon_node and front_type != "none":
 		var dl := int(up.get("dmg", 0))
 		var rl := int(up.get("rate", 0))
-		var gun: bool = front_type in ["mg", "flame"]
+		var pb := _pod_box()
+		# só o "miolo" do corpo (sem esfera, tanques altos ou mira)
+		pb = AABB(Vector3(maxf(pb.position.x, -0.2), maxf(pb.position.y, -0.13), pb.position.z), Vector3(minf(pb.size.x, 0.4), minf(pb.size.y, 0.26), pb.size.z))
 		if dl >= 1:
-			# DANO: dissipador laranja abraçando os canos (metralhadora/lança-chamas) ou faixa laranja no casulo
+			# DANO: cinta laranja de dissipação abraçando o corpo da arma (mais larga por nível)
 			var hot := _kit_mat(Color("#ff6a1a"), 0.35, 0.5, 0.25 * dl)
-			if gun:
-				_kit_box(Vector3(0.3, 0.17, 0.12 + 0.06 * dl), Vector3(0, 0.32, 0.72), hot, Vector3.ZERO, weapon_node)
-			else:
-				# faixa abraçando o casulo, pelo tamanho real da peça
-				var pb := _pod_box()
-				_kit_box(Vector3(pb.size.x + 0.04, pb.size.y + 0.03, 0.06 + 0.04 * dl), pb.get_center() - Vector3(0, 0, pb.size.z * 0.18), hot, Vector3.ZERO, weapon_node)
+			_kit_box(Vector3(pb.size.x + 0.04, pb.size.y + 0.03, 0.05 + 0.03 * dl), pb.get_center() + Vector3(0, 0, pb.size.z * 0.12), hot, Vector3.ZERO, wpn_gun)
 		if rl >= 1:
-			# CADÊNCIA: respiros azuis nas laterais da arma (um par por nível)
+			# CADÊNCIA: respiros azuis nas laterais do corpo (um par por nível)
 			var cool := _kit_mat(Color("#2ee6ff"), 0.3, 0.4, 0.35 * rl)
 			for k in rl:
 				for sx: float in [-1.0, 1.0]:
-					if gun:
-						_kit_box(Vector3(0.03, 0.06, 0.1), Vector3(sx * 0.26, 0.12, -0.18 + k * 0.14), cool, Vector3.ZERO, weapon_node)
-					else:
-						var pb2 := _pod_box()
-						_kit_box(Vector3(0.03, pb2.size.y * 0.45, 0.08), Vector3(pb2.get_center().x + sx * (pb2.size.x * 0.5 + 0.01), pb2.get_center().y, pb2.get_center().z + 0.1 + k * 0.12), cool, Vector3.ZERO, weapon_node)
-	if int(up.get("ammo", 0)) >= 2 and weapon_node and front_type != "none":
-		var drum_at := Vector3(0.36, 0.28, 0.05)
-		if not front_type in ["mg", "flame"]:
-			var pb3 := _pod_box()
-			drum_at = Vector3(pb3.end.x + 0.09, pb3.position.y + 0.14, pb3.get_center().z - pb3.size.z * 0.2)
-		_kit_cyl(0.13, 0.18, drum_at, _kit_mat(Color("#c8a43a"), 0.35, 0.8), Vector3(0, 0, PI / 2), weapon_node)
+					_kit_box(Vector3(0.03, pb.size.y * 0.4, 0.07), Vector3(pb.get_center().x + sx * (pb.size.x * 0.5 + 0.012), pb.get_center().y, pb.get_center().z - 0.12 + k * 0.11), cool, Vector3.ZERO, wpn_gun)
+	if int(up.get("ammo", 0)) >= 2 and wpn_gun and front_type != "none":
+		var pb3 := _pod_box()
+		_kit_cyl(0.11, 0.16, Vector3(pb3.end.x + 0.08, pb3.position.y + 0.12, pb3.get_center().z - pb3.size.z * 0.15), _kit_mat(Color("#c8a43a"), 0.35, 0.8), Vector3(0, 0, PI / 2), wpn_gun)
 
 
 ## encostado na mureta: o carro não "sobe" nela nem é lançado para fora (tira a velocidade para cima
@@ -1518,8 +1702,7 @@ func _visuals(dt: float) -> void:
 	recoil = maxf(0.0, recoil - dt * 9.0)
 	firing_t = maxf(0.0, firing_t - dt)
 	if weapon_node:
-		weapon_node.position = weapon_base - Vector3(0, 0, recoil * 0.18) + Vector3(0, recoil * 0.03, 0)
-		weapon_node.rotation.x = -recoil * 0.12
+		_aim_turret(dt)
 	if casings:
 		casings.emitting = firing_t > 0.0 and not wrecked
 	if hbar:

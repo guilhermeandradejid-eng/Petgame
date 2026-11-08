@@ -53,24 +53,27 @@ func _init() -> void:
 	lib.visible = false
 	var kinds := ["faisca", "vespa", "trovao", "monstro"]
 	var cols := [Color("#e8352b"), Color("#2f6fd6"), Color("#ffd23a"), Color("#33c46b")]
-	var solo := args[4] if args.size() > 4 else ""
+	var solo := args[4] if args.size() > 4 and args[4] != "-" else ""
 	if solo != "":
-		cols = [cols[kinds.find(solo)]]
+		cols = [cols[kinds.find(solo)] if kinds.has(solo) else Color("#ff7a1a")]
 		kinds = [solo]
+	elif args.size() > 3 and args[3] == "novos":
+		kinds = ["zefiro", "jacare", "escorpiao", "nevasca", "nemesis", "falcao"]
+		cols = [Color("#e8f0ff"), Color("#5a7a32"), Color("#d9822b"), Color("#f2f5fa"), Color("#7b2cff"), Color("#2ec4ff")]
 	for i in kinds.size():
 		var c := Car.new()
 		root3.add_child(c)
 		c.setup(lib, kinds[i], "rival", cols[i])
 		var lo: Array = Car.LOADOUT[kinds[i]]
-		c.configure(lib, lo[0] if armed else "none", lo[1], lo[2], {"engine": lv, "armor": lv, "ammo": lv, "nitro": lv, "tires": lv, "dmg": lv, "rate": lv})
+		c.configure(lib, lo[0] if armed or args[3] == "novos" else "none", lo[1], lo[2], {"engine": lv, "armor": lv, "ammo": lv, "nitro": lv, "tires": lv, "dmg": lv, "rate": lv})
 		c.freeze = true
-		var at := Vector3.ZERO if solo != "" else Vector3((i % 2) * 6.5 - 3.25, 0.0, (i / 2) * 7.0 - 3.5)
+		var at := Vector3.ZERO if solo != "" else Vector3((i % 2) * 6.5 - 3.25, 0.0, (i / 2) * 7.0 - 3.5 * (kinds.size() / 2 - 1))
 		c.global_transform = Transform3D(Basis(Vector3.UP, deg_to_rad(ang)), at)
 	var cam := Camera3D.new()
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
 	cam.size = 13.0 if solo == "" else (float(args[6]) if args.size() > 6 else 5.6)
 	root3.add_child(cam)
-	var look := Vector3(0, 0.6, 0)
+	var look := Vector3(0, float(args[7]) if args.size() > 7 else 0.6, 0)
 	var cp := look + Vector3(14, float(args[5]) if args.size() > 5 else 11.0, 14)
 	cam.transform = Transform3D(Basis.looking_at(look - cp, Vector3.UP), cp)
 	cam.make_current()

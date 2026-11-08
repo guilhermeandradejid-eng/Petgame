@@ -278,6 +278,24 @@ Dentro de cada mundo, as pistas vão da mais simples para a mais difícil (das c
   - **Escapamento embutido** no para-choque com moldura (antes pendurado por baixo).
   - **Gaiola do buggy** com juntas soldadas e sapatas; banco com encosto. Aros mais claros (o aro escuro sumia no pneu).
   - `tools/car_studio.gd` agora tem céu (metal e cromo refletem como na pista) e câmera de perto, para revisar acabamento.
+- **Armas montadas de verdade** (torres articuladas do `minicars.glb`: `wb_` base parafusada com faixa de alerta, `wy_` anel giratório com berço e pistão, `wg_` corpo da arma, `ws_` peça que gira):
+  - A torre **gira e mira** no alvo à frente (até ~35° para cada lado), inclina para cima/baixo, **recua** a cada tiro e os tiros saem para onde ela aponta.
+  - Metralhadora **rotativa de 4 canos** (giram ao atirar) com cinta de munição e cartuchos saindo pela janela de ejeção; casulo de 6 foguetes com blindagem lateral e mira; bobina de Tesla com espiras de cobre, esfera brilhante e aletas girando; lança-chamas com aletas de calor, ignitor, dois tanques, mangueiras e manômetro.
+  - Partículas: fumaça na boca ao atirar, faíscas na bobina, chama piloto no lança-chamas, névoa no canhão de gelo, brilho no plasma e no canhão de trilho.
+- **Faróis e lanternas**: carcaça arredondada com moldura cromada, projetores com aro e refletor, DRL de LED em curva descendo pela quina; lanternas envolventes (dobram para a lateral) com 3 filetes de LED e luz de ré. Carroceria com chanfros maiores (mais curvas).
+- **VESPA virou um hatch de rally moderno** (estilo WRC): para-lamas alargados com rebites, asa na borda do teto, 4 faróis auxiliares, tomada de ar no teto, para-barros e gancho de reboque.
+- **Um carro moderno por mundo** (aparecem na loja ao chegar no mundo; na carreira, dois rivais de cada mundo correm com ele):
+
+| Carro | Mundo · preço | Arma de ataque | Item de chão | Mobilidade |
+|---|---|---|---|---|
+| ZÉFIRO (GT elétrico) | Parque · $4.500 | **Laser**: feixe contínuo que queima | **Fumaça**: ninguém mira em quem está dentro | **Esquiva**: salto lateral |
+| JACARÉ (SUV anfíbio) | Pântano · $7.500 | **Arpão**: fisga, puxa e segura | **Lama** | Nitro longo |
+| ESCORPIÃO (trophy truck) | Deserto · $9.500 | **Morteiro**: granada em arco onde o alvo vai estar | **Rastro de fogo** | Salto |
+| NEVASCA (SUV de neve) | Neve · $12.500 | **Canhão de gelo**: o alvo escorrega | **Placa de gelo** | Nitro curto |
+| NÊMESIS (hipercarro) | Cidade · $15.000 | **Canhão de trilho**: atravessa todos na linha | **Mina EMP** | Esquiva |
+| FALCÃO (aerocarro) | Céu · $19.000 | **Plasma**: rajada teleguiada | **Vórtice**: segura e gira quem entra | **Planar**: impulso e voo planado com leme |
+
+- Garagem com os 10 carros em duas colunas; rótulos das armas centralizados (`Car.LBL_F`/`LBL_R`), multijogador local e online com todos os carros.
 - Rivais: no mundo 1 quase nenhum tem especial; a partir do mundo 2 todos têm, e nos mundos finais também têm dano e cadência melhorados.
 
 **Chefes**: carros gigantes (modelo 1,6–1,7x, vida 1.100–1.500, barra de vida na tela). Os ataques são diferentes das armas equipáveis e **sempre avisados no chão** antes de acertar:

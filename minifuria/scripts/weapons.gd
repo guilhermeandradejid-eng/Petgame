@@ -23,6 +23,9 @@ var barrels: Array = []    # barris rolando
 var rings: Array = []      # ondas de choque (efeito visual)
 var bolts: Array = []      # raios elétricos (efeito visual)
 var hazards: Array = []
+var shots: Array = []      # projéteis das armas novas: arpão, morteiro, gelo, plasma
+var beams: Array = []      # feixes que somem (canhão de trilho)
+var smokes: Array = []     # cortinas de fumaça (escondem quem está dentro)
 var uses := {}             # contagem de uso por arma (testes)    # perigos de chefes: {"kind", "pos", "r", "t", "dur", "owner", "node"}
 var reticle: MeshInstance3D
 var ret_pulse := 0.0
@@ -141,7 +144,7 @@ func _target(car: Car, max_d: float, cos_cone: float) -> Car:
 	var bd := max_d
 	var f := car.global_transform.basis.z
 	for o in game.cars:
-		if o == car or o.wrecked or (o.role == "traffic" and car.role != "player"):
+		if o == car or o.wrecked or (o.role == "traffic" and car.role != "player") or in_smoke(o.global_position):
 			continue
 		var d: Vector3 = o.global_position + Vector3.UP * 0.6 - car.global_position
 		var dist := d.length()
@@ -158,6 +161,9 @@ func update(dt: float) -> void:
 			continue
 		if c.role == "rival" and not c.net_remote and not c.human:
 			_ai(c)
+		# alvo da torre (a arma gira para ele dentro do arco); recalcula a cada 3 quadros
+		if c.front_type != "none" and (Engine.get_physics_frames() + c.slot) % 3 == 0:
+			c.aim_tgt = _target(c, 48.0, cos(Car.WPN_YAW + 0.1))
 		if c.emp_t > 0.0:
 			c.ctrl.fire = false
 			c.ctrl.drop = false
@@ -172,6 +178,19 @@ func update(dt: float) -> void:
 					_fire_flame(c)
 				"rocket":
 					_fire_rocket(c)
+				"laser":
+					_fire_laser(c)
+				"harpoon":
+					_fire_shot(c, "harpoon")
+				"mortar":
+					_fire_mortar(c)
+				"freeze":
+					_fire_shot(c, "freeze")
+				"railgun":
+					_fire_rail(c)
+				"plasma":
+					_fire_shot(c, "plasma")
+		_laser_fx(c)
 		_flame_fx(c)
 		if c.shield_t > 0.0:
 			_shield_ram(c)
@@ -188,6 +207,9 @@ func update(dt: float) -> void:
 	_step_rings(dt)
 	_step_bolts(dt)
 	_step_hazards(dt)
+	_step_shots(dt)
+	_step_beams(dt)
+	_step_smokes(dt)
 	_step_tracers(dt)
 	for f in flashes:
 		if f.t > 0.0:
@@ -214,6 +236,14 @@ func _ai(c: Car) -> void:
 			c.ctrl.fire = _target(c, 26.0, 0.9) != null and randf() < 0.06
 		"flame":
 			c.ctrl.fire = _target(c, 10.0, 0.85) != null
+		"laser", "plasma":
+			c.ctrl.fire = burst_on and _target(c, 34.0, 0.95) != null
+		"harpoon", "freeze":
+			c.ctrl.fire = _target(c, 36.0, 0.95) != null and randf() < 0.04
+		"mortar":
+			c.ctrl.fire = _target(c, 42.0, 0.8) != null and randf() < 0.03
+		"railgun":
+			c.ctrl.fire = _target(c, 60.0, 0.985) != null and randf() < 0.03
 		_:
 			c.ctrl.fire = _target(c, 55.0, 0.97) != null and randf() < 0.02
 	# especial comprado (a IA usa quando faz sentido)
@@ -229,9 +259,16 @@ func _ai(c: Car) -> void:
 				c.ctrl.special = (c.health < c.max_health * 0.55 and near >= 1 and randf() < 0.04) or (near >= 2 and randf() < 0.01)
 			"repair":
 				c.ctrl.special = c.health < c.max_health * 0.4 and randf() < 0.05
-	# mobilidade de salto: de vez em quando (o nitro comum fica com a IA de direção)
-	if c.nitro_type == "jump" and c.nitro_ch > 0:
-		c.ctrl.nitro = randf() < 0.004 and c.on_ground and not c.on_feature
+	# mobilidade de salto/planar/esquiva: de vez em quando (o nitro comum fica com a IA de direção)
+	if c.nitro_type in ["jump", "glide"] and c.nitro_ch > 0:
+		# só em reta (planar numa curva joga o carro para fora)
+		var tr = game.track
+		var straight: bool = tr != null and absf(tr.curv[tr.idx(c.ti + 12)]) < 0.006 and absf(tr.curv[tr.idx(c.ti + 24)]) < 0.006
+		c.ctrl.nitro = randf() < (0.004 if c.nitro_type == "jump" else 0.0015) and c.on_ground and not c.on_feature and (c.nitro_type == "jump" or straight)
+	elif c.nitro_type == "dash" and c.nitro_ch > 0:
+		c.ctrl.nitro = c.health < c.max_health * 0.7 and randf() < 0.008
+	if in_smoke(c.global_position):
+		c.ctrl.fire = false
 	# mina/óleo quando alguém está colado atrás
 	var b := -c.global_transform.basis.z
 	for o in game.cars:
@@ -269,16 +306,20 @@ func _fire_mg(c: Car) -> void:
 	c.ammo_f -= 1
 	c.recoil = 1.0
 	c.firing_t = 0.12
-	if c.casings == null and c.weapon_node:
+	if c.casings == null and c.wpn_gun:
+		# cartuchos saem pela janela de ejeção, do lado da caixa de munição
 		c.casings = _make_casings()
-		c.weapon_node.add_child(c.casings)
-		c.casings.position = Vector3(0.25, 0.3, 0.0)
+		c.wpn_gun.add_child(c.casings)
+		c.casings.position = Vector3(0.18, 0.06, 0.0)
 	var mz: Vector3 = c.global_transform * c.muzzle_local
-	var f := c.global_transform.basis.z
-	var tgt := _target(c, 50.0, 0.982)
+	# os tiros saem para onde a torre aponta; se o alvo está na mira, corrige o resto
+	var f := c.gun_dir()
+	var tgt := c.aim_tgt if c.aim_tgt != null and is_instance_valid(c.aim_tgt) and not c.aim_tgt.wrecked else _target(c, 50.0, 0.982)
 	var aim := f
 	if tgt:
-		aim = (tgt.global_position + tgt.global_transform.basis.y * 0.7 - mz).normalized()
+		var to_t: Vector3 = (tgt.global_position + tgt.global_transform.basis.y * 0.7 - mz).normalized()
+		if to_t.dot(f) > 0.97 or tgt == _target(c, 50.0, 0.982):
+			aim = to_t
 	aim = (aim + Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * 0.014).normalized()
 	var space := get_world_3d().direct_space_state
 	var q := PhysicsRayQueryParameters3D.create(mz, mz + aim * 55.0, 1 | 2 | 4 | 16, [c.get_rid()])
@@ -472,9 +513,10 @@ func _step_reticle(dt: float) -> void:
 func _fire_rocket(c: Car) -> void:
 	_use("rocket")
 	c.fire_cd = 0.55 / c.rate_mult
+	c.firing_t = 0.3
 	c.ammo_f -= 1
 	var mz: Vector3 = c.global_transform * c.muzzle_local
-	var f := c.global_transform.basis.z
+	var f := c.gun_dir()
 	var node := lib.get_node("proj_rocket").duplicate() as Node3D
 	add_child(node)
 	node.global_position = mz
@@ -559,7 +601,7 @@ func _step_rockets(dt: float) -> void:
 		var q := PhysicsRayQueryParameters3D.create(p0, p1, 1 | 2 | 4 | 16, excl)
 		var res := space.intersect_ray(q)
 		if res or r.t > 4.0:
-			var at: Vector3 = res.position if res else p1
+			var at: Vector3 = res.position if not res.is_empty() else p1
 			_explode(at, r.owner, 34.0 * ((r.owner as Car).dmg_mult if is_instance_valid(r.owner) else 1.0), 6.0, "rocket")
 			var tr: CPUParticles3D = r.trail
 			tr.emitting = false
@@ -629,7 +671,22 @@ func _drop(c: Car) -> void:
 	if c.rear_type == "barrel":
 		_drop_barrel(c, p, n)
 		return
-	if c.rear_type == "mine":
+	var fwd_r: Vector3 = b.z.slide(n).normalized()
+	match c.rear_type:
+		"smoke":
+			_drop_smoke(c, p)
+			return
+		"mud", "ice", "fire":
+			hazard(c.rear_type, c, p, 3.2 if c.rear_type != "fire" else 2.6, 0.15, 6.0 if c.rear_type != "fire" else 4.5,
+				{"n": n, "fwd": fwd_r, "rz": 3.2 if c.rear_type != "fire" else 4.0,
+				"col": {"mud": Color(0.45, 0.32, 0.18), "ice": Color(0.7, 0.9, 1.0), "fire": Color(1.0, 0.4, 0.1)}[c.rear_type]})
+			sfx.play("drop", -6.0)
+			return
+		"vortex":
+			hazard("vortex", c, p, 5.0, 0.4, 3.5, {"n": n, "fwd": fwd_r, "col": Color(0.7, 0.35, 1.0)})
+			sfx.play("zap", -4.0, 0.5)
+			return
+	if c.rear_type == "mine" or c.rear_type == "emp":
 		var node := lib.get_node("proj_mine").duplicate() as Node3D
 		add_child(node)
 		node.global_transform = Transform3D(basis, p + n * 0.02)
@@ -638,7 +695,10 @@ func _drop(c: Car) -> void:
 		l.omni_range = 3.0
 		l.position = Vector3(0, 0.4, 0)
 		node.add_child(l)
-		mines.append({"node": node, "owner": c, "t": 0.0, "light": l, "n": n})
+		if c.rear_type == "emp":
+			l.light_color = Color(0.4, 0.8, 1.0)
+			node.scale = Vector3(1.0, 1.4, 1.0)
+		mines.append({"node": node, "owner": c, "t": 0.0, "light": l, "n": n, "emp": c.rear_type == "emp"})
 		sfx.play("drop", -6.0)
 	else:
 		var mi := MeshInstance3D.new()
@@ -673,7 +733,10 @@ func _step_mines(dt: float) -> void:
 				if c.wrecked or (c == m.owner and m.t < 1.6):
 					continue
 				if c.global_position.distance_to(node.global_position) < 2.4:
-					_explode(node.global_position, m.owner, 30.0, 4.5, "mine")
+					if m.get("emp", false):
+						_emp_burst(node.global_position, m.owner, 6.5)
+					else:
+						_explode(node.global_position, m.owner, 30.0, 4.5, "mine")
 					gone = true
 					break
 		if gone:
@@ -733,6 +796,7 @@ func _add_mat(col: Color, energy := 3.0) -> StandardMaterial3D:
 func _fire_zap(c: Car) -> void:
 	_use("zap")
 	c.fire_cd = 0.55 / c.rate_mult
+	c.firing_t = 0.2
 	c.ammo_f -= 1
 	c.recoil = 1.2
 	var mz: Vector3 = c.global_transform * c.muzzle_local
@@ -824,7 +888,7 @@ func _fire_flame(c: Car) -> void:
 	c.firing_t = 0.15
 	if Engine.get_physics_frames() % 2 != 0:
 		return
-	var f := c.global_transform.basis.z
+	var f := c.gun_dir()
 	var mz: Vector3 = c.global_transform * c.muzzle_local
 	for o in game.cars:
 		var t: Car = o
@@ -989,6 +1053,8 @@ func can_special(c: Car, kind: String) -> bool:
 	match kind:
 		"jump":
 			return c.on_ground and not c.on_feature
+		"glide":
+			return not c.on_feature
 		"repair":
 			return c.health < c.max_health - 1.0
 	return true
@@ -1020,6 +1086,26 @@ func special(c: Car, kind: String) -> void:
 		"shock":
 			shock_wave(c, c.global_position, 12.0, 18.0, 1.0)
 			game.pop_for(c, "ONDA DE CHOQUE!", Color("#ff9a1a"))
+		"dash":
+			# esquiva: salto lateral rápido para o lado que o carro está virando (sem direção: alterna)
+			var side := signf(-c.ctrl.steer) if absf(c.ctrl.steer) > 0.2 else (1.0 if int(game.time_g * 2.0) % 2 == 0 else -1.0)
+			var rgt: Vector3 = c.global_transform.basis.x
+			c.apply_central_impulse((rgt * side * 11.0 + c.global_transform.basis.z * 3.0 + Vector3.UP * 1.5) * c.mass)
+			c.invuln = maxf(c.invuln, 0.35)
+			if vis:
+				fx.burst("dust", c.global_position)
+				sfx.play("whoosh", -3.0, 1.5)
+				ring_fx(c.global_position, 3.0, Color(0.5, 0.9, 1.0))
+			game.pop_for(c, "ESQUIVA!", Color("#7fe9ff"))
+		"glide":
+			# planar: impulso para cima (se estiver no chão) e queda bem lenta por 1,8 s
+			if c.on_ground:
+				c.apply_central_impulse((c.ground_n * 7.0 + c.global_transform.basis.z * 1.5) * c.mass)
+			c.glide_t = 1.6
+			if vis:
+				sfx.play("whoosh", -2.0, 0.8)
+				fx.burst("dust", c.global_position)
+			game.pop_for(c, "PLANANDO!", Color("#9fe7ff"))
 		"repair":
 			# reparo de emergência: devolve 40% da blindagem e apaga fogo/pneu furado
 			if not c.net_remote:
@@ -1182,6 +1268,8 @@ func hazard(kind: String, owner: Car, pos: Vector3, r: float, delay: float, dur:
 	m.shader = load("res://shaders/telegraph.gdshader")
 	m.set_shader_parameter("col", extra.get("col", Color(1.0, 0.2, 0.1)))
 	m.set_shader_parameter("mode", {"fire": 1.0, "spikewall": 2.0, "lane": 2.0, "laser": 2.0, "mud": 3.0, "ice": 4.0}.get(kind, 0.0))
+	if is_instance_valid(owner) and not owner.is_boss:
+		h["player_item"] = true
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
@@ -1244,6 +1332,22 @@ func _step_hazards(dt: float) -> void:
 						if absf(d.dot(mi.global_basis.x.normalized())) < float(h.r) and absf(d.dot(mi.global_basis.z.normalized())) < float(h.get("rz", h.r)) and absf(d.y) < 2.5:
 							c.burn_t = maxf(c.burn_t, 1.2)
 							c.burn_by = h.owner
+				"vortex":
+					# puxa para o centro e segura quem está dentro (gira o anel)
+					mi.rotate_object_local(Vector3.UP, dt * 4.0)
+					for car in game.cars:
+						var c: Car = car
+						if c == h.owner or c.wrecked or c.is_boss:
+							continue
+						var d: Vector3 = pos - c.global_position
+						var dl := Vector3(d.x, 0, d.z).length()
+						if dl < float(h.r) and absf(d.y) < 3.0:
+							# segura e gira (sem empurrar para fora da pista)
+							c.slow_t = maxf(c.slow_t, 0.5)
+							c.linear_velocity *= 1.0 - 1.2 * dt
+							c.angular_velocity.y += 2.5 * dt
+							if c.local_idx >= 0 and int(h.t * 4.0) % 4 == 0:
+								game.pop_for(c, "VÓRTICE!", Color("#c28bff"))
 				"mud", "ice":
 					for car in game.cars:
 						var c: Car = car
@@ -1319,3 +1423,377 @@ func _meteor_hit(h: Dictionary) -> void:
 			c.apply_central_impulse((d.normalized() + Vector3.UP).normalized() * c.mass * 8.0)
 			c.burn_t = maxf(c.burn_t, 1.5)
 			c.burn_by = h.owner
+
+
+
+# ================================================================== armas dos carros dos mundos
+func _glow_mat(col: Color, energy := 3.0) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = Color(col.r * energy, col.g * energy, col.b * energy)
+	return m
+
+
+## direção de tiro: para onde a torre aponta; se um alvo está quase na mira, corrige para ele
+func _aim_dir(c: Car, from: Vector3, lock := 0.96) -> Vector3:
+	var f := c.gun_dir()
+	var t: Car = c.aim_tgt
+	if t != null and is_instance_valid(t) and not t.wrecked:
+		var to: Vector3 = (t.global_position + t.global_transform.basis.y * 0.7 - from).normalized()
+		if to.dot(f) > lock:
+			return to
+	return f
+
+
+## LASER (Zéfiro): feixe contínuo enquanto segura o tiro; queima um pouco a cada pulso
+func _fire_laser(c: Car) -> void:
+	_use("laser")
+	c.fire_cd = 0.07 / c.rate_mult
+	c.ammo_f -= 1
+	c.firing_t = 0.12
+	var mz: Vector3 = c.global_transform * c.muzzle_local
+	var aim := _aim_dir(c, mz, 0.93)
+	var space := get_world_3d().direct_space_state
+	var res := space.intersect_ray(PhysicsRayQueryParameters3D.create(mz, mz + aim * 38.0, 1 | 2 | 4 | 16, [c.get_rid()]))
+	var endp: Vector3 = res.position if res else mz + aim * 38.0
+	c.set_meta("laser_end", endp)
+	if res and res.collider is Car:
+		var t: Car = res.collider
+		var killed := t.apply_damage(2.3 * c.dmg_mult, endp, c, false)
+		t.burn_t = maxf(t.burn_t, 0.4)
+		t.burn_by = c
+		if Engine.get_physics_frames() % 3 == 0 and game._on_screen(endp):
+			fx.sparks(endp, -aim, 0.6)
+		if c == game.player:
+			game.on_player_hit_enemy(t, killed)
+	if game._on_screen(mz) and Engine.get_physics_frames() % 5 == 0:
+		sfx.play("zap", -14.0 if c != game.player else -8.0, 1.8)
+
+
+func _laser_fx(c: Car) -> void:
+	if c.front_type != "laser":
+		return
+	var beam: MeshInstance3D = c.get_meta("laser_beam") if c.has_meta("laser_beam") else null
+	if beam == null:
+		beam = MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3(0.09, 0.09, 1.0)
+		beam.mesh = bm
+		beam.material_override = _add_mat(Color(1.0, 0.2, 0.3), 4.0)
+		beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(beam)
+		c.set_meta("laser_beam", beam)
+	var on: bool = c.firing_t > 0.0 and not c.wrecked and c.has_meta("laser_end")
+	beam.visible = on
+	if on:
+		var a: Vector3 = c.global_transform * c.muzzle_local
+		var b: Vector3 = c.get_meta("laser_end")
+		var ln := maxf(0.1, a.distance_to(b))
+		var w := 0.8 + 0.4 * sin(game.time_g * 60.0)
+		beam.global_transform = Transform3D(Basis.looking_at(b - a, Vector3.UP).scaled(Vector3(w, w, ln)), (a + b) * 0.5)
+
+
+## projéteis: arpão (puxa e segura o alvo), gelo (congela o chão sob o alvo) e plasma (rajada teleguiada)
+func _fire_shot(c: Car, kind: String) -> void:
+	_use(kind)
+	var cd: float = {"harpoon": 1.1, "freeze": 0.7, "plasma": 0.16}[kind]
+	c.fire_cd = cd / c.rate_mult
+	c.ammo_f -= 1
+	c.firing_t = 0.25
+	c.recoil = 1.4 if kind != "plasma" else 0.6
+	var mz: Vector3 = c.global_transform * c.muzzle_local
+	var aim := _aim_dir(c, mz, 0.94)
+	var spd: float = float({"harpoon": 62.0, "freeze": 46.0, "plasma": 58.0}[kind]) * (1.0 + (c.rate_mult - 1.0) * 0.6)
+	var node := MeshInstance3D.new()
+	match kind:
+		"harpoon":
+			var cm := CylinderMesh.new()
+			cm.top_radius = 0.0
+			cm.bottom_radius = 0.09
+			cm.height = 0.9
+			node.mesh = cm
+			var mm := StandardMaterial3D.new()
+			mm.albedo_color = Color(0.75, 0.77, 0.82)
+			mm.metallic = 1.0
+			mm.roughness = 0.3
+			node.material_override = mm
+		"freeze":
+			var sm := SphereMesh.new()
+			sm.radius = 0.28
+			sm.height = 0.56
+			node.mesh = sm
+			node.material_override = _glow_mat(Color(0.7, 0.92, 1.0), 1.6)
+		_:
+			var sm2 := SphereMesh.new()
+			sm2.radius = 0.2
+			sm2.height = 0.4
+			node.mesh = sm2
+			node.material_override = _glow_mat(Color(0.35, 1.0, 0.45), 3.0)
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(node)
+	node.global_position = mz
+	var cable: MeshInstance3D = null
+	if kind == "harpoon":
+		cable = MeshInstance3D.new()
+		var cb := BoxMesh.new()
+		cb.size = Vector3(0.03, 0.03, 1.0)
+		cable.mesh = cb
+		var cmat := StandardMaterial3D.new()
+		cmat.albedo_color = Color(0.1, 0.1, 0.12)
+		cable.material_override = cmat
+		add_child(cable)
+	shots.append({"node": node, "vel": aim * spd, "owner": c, "kind": kind, "t": 0.0, "grav": 0.0, "cable": cable, "tgt": c.aim_tgt})
+	if game._on_screen(mz):
+		_muzzle_flash(mz, aim, kind == "harpoon")
+		sfx.play({"harpoon": "whoosh", "freeze": "whoosh", "plasma": "zap"}[kind], -6.0 if c == game.player else -11.0, {"harpoon": 0.7, "freeze": 1.4, "plasma": 2.2}[kind])
+
+
+## MORTEIRO (Escorpião): granada em arco até onde o alvo vai estar; explode em área
+func _fire_mortar(c: Car) -> void:
+	_use("mortar")
+	c.fire_cd = 1.2 / c.rate_mult
+	c.ammo_f -= 1
+	c.firing_t = 0.35
+	c.recoil = 2.2
+	var mz: Vector3 = c.global_transform * c.muzzle_local
+	var t: Car = c.aim_tgt if c.aim_tgt != null and is_instance_valid(c.aim_tgt) else _target(c, 45.0, 0.7)
+	var T := 1.15 / (1.0 + (c.rate_mult - 1.0) * 0.5)
+	var dest: Vector3 = (t.global_position + t.linear_velocity * T) if t else c.global_position + c.global_transform.basis.z * (c.linear_velocity.length() * T + 16.0)
+	var g := 22.0
+	var dv := dest - mz
+	var vel := Vector3(dv.x / T, (dv.y + 0.5 * g * T * T) / T, dv.z / T)
+	var node := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 0.24
+	sm.height = 0.48
+	node.mesh = sm
+	var mm := StandardMaterial3D.new()
+	mm.albedo_color = Color(0.3, 0.36, 0.2)
+	mm.metallic = 0.5
+	node.material_override = mm
+	add_child(node)
+	node.global_position = mz
+	shots.append({"node": node, "vel": vel, "owner": c, "kind": "mortar", "t": 0.0, "grav": g, "cable": null, "tgt": null})
+	if game._on_screen(mz):
+		_muzzle_flash(mz, vel.normalized(), true)
+		fx.burst("dust", mz)
+		sfx.play("boom", -8.0 if c == game.player else -13.0, 1.6)
+	if c == game.player:
+		game._shake(0.12)
+
+
+func _step_shots(dt: float) -> void:
+	var space := get_world_3d().direct_space_state
+	for i in range(shots.size() - 1, -1, -1):
+		var s: Dictionary = shots[i]
+		s.t += dt
+		var node: MeshInstance3D = s.node
+		var vel: Vector3 = s.vel
+		vel.y -= float(s.grav) * dt
+		# plasma: leve perseguição do alvo
+		if s.kind == "plasma" and s.tgt != null and is_instance_valid(s.tgt) and not (s.tgt as Car).wrecked:
+			var want: Vector3 = ((s.tgt as Car).global_position + Vector3.UP * 0.6 - node.global_position).normalized()
+			vel = vel.normalized().slerp(want, minf(1.0, 2.2 * dt)) * vel.length()
+		s.vel = vel
+		var p0 := node.global_position
+		var p1 := p0 + vel * dt
+		var owner: Car = s.owner if is_instance_valid(s.owner) else null
+		var excl := [owner.get_rid()] if owner and s.t < 0.3 else []
+		var res := space.intersect_ray(PhysicsRayQueryParameters3D.create(p0, p1, 1 | 2 | 4 | 16, excl))
+		node.global_position = p1
+		if vel.length() > 0.1:
+			node.global_transform = Transform3D(Basis.looking_at(vel, Vector3.UP).rotated(Basis.looking_at(vel, Vector3.UP).x, -PI / 2) if s.kind == "harpoon" else Basis(), p1)
+		var cable: MeshInstance3D = s.cable
+		if cable and owner:
+			var a: Vector3 = owner.global_transform * owner.muzzle_local
+			cable.global_transform = Transform3D(Basis.looking_at(p1 - a, Vector3.UP).scaled(Vector3(1, 1, maxf(0.1, a.distance_to(p1)))), (a + p1) * 0.5)
+		var hit_car: Car = null
+		if not res.is_empty() and res.collider is Car:
+			hit_car = res.collider
+		var done: bool = (not res.is_empty()) or float(s.t) > 3.0
+		if done:
+			var at: Vector3 = res.position if res else p1
+			_shot_hit(s, at, hit_car, owner)
+			node.queue_free()
+			if cable:
+				cable.queue_free()
+			shots.remove_at(i)
+
+
+func _shot_hit(s: Dictionary, at: Vector3, t: Car, owner: Car) -> void:
+	var dm: float = owner.dmg_mult if owner else 1.0
+	match String(s.kind):
+		"mortar":
+			_explode(at, owner, 30.0 * dm, 6.0, "rocket")
+		"harpoon":
+			if t:
+				var killed := t.apply_damage(14.0 * dm, at, owner)
+				if owner and not t.is_boss:
+					# o cabo puxa o alvo para trás e segura a velocidade
+					var d: Vector3 = owner.global_position - t.global_position
+					t.apply_central_impulse(Vector3(d.x, 0, d.z).normalized() * t.mass * 7.0)
+				t.slow_t = maxf(t.slow_t, 1.8)
+				if t.local_idx >= 0:
+					game.pop_for(t, "ARPOADO!", Color("#ffcf33"))
+				if owner == game.player:
+					game.on_player_hit_enemy(t, killed)
+			if game._on_screen(at):
+				fx.sparks(at, Vector3.UP, 1.0)
+				sfx.play("metal", -4.0, 0.9)
+		"freeze":
+			# bola de gelo: dano leve e gelo em volta (carro escorrega e perde força)
+			for car in game.cars:
+				var c: Car = car
+				if c == owner or c.wrecked:
+					continue
+				if c.global_position.distance_to(at) < 3.5:
+					var killed2 := c.apply_damage(7.0 * dm, at, owner, false)
+					c.ice_t = maxf(c.ice_t, 1.8)
+					c.slow_t = maxf(c.slow_t, 1.5)
+					if c.local_idx >= 0:
+						game.pop_for(c, "CONGELADO!", Color("#bfe6ff"))
+					if owner == game.player:
+						game.on_player_hit_enemy(c, killed2)
+			if game._on_screen(at):
+				fx.sparkle(at, Color(0.8, 0.95, 1.0))
+				ring_fx(at, 3.5, Color(0.6, 0.85, 1.0))
+				sfx.play("tink", -2.0, 0.6)
+		"plasma":
+			if t:
+				var killed3 := t.apply_damage(7.5 * dm, at, owner, false)
+				t.stun = maxf(t.stun, 0.15)
+				if owner == game.player:
+					game.on_player_hit_enemy(t, killed3)
+			if game._on_screen(at):
+				fx.hit_light(at, Color(0.4, 1.0, 0.5), 5.0, 6.0, 0.15)
+				fx.sparks(at, Vector3.UP, 0.6)
+
+
+## CANHÃO DE TRILHO (Nêmesis): disparo instantâneo que atravessa todos os carros na linha
+func _fire_rail(c: Car) -> void:
+	_use("railgun")
+	c.fire_cd = 1.0 / c.rate_mult
+	c.ammo_f -= 1
+	c.firing_t = 0.4
+	c.recoil = 2.4
+	var mz: Vector3 = c.global_transform * c.muzzle_local
+	var aim := _aim_dir(c, mz, 0.97)
+	var space := get_world_3d().direct_space_state
+	var res := space.intersect_ray(PhysicsRayQueryParameters3D.create(mz, mz + aim * 70.0, 1, [c.get_rid()]))
+	var endp: Vector3 = res.position if res else mz + aim * 70.0
+	var ln := mz.distance_to(endp)
+	for car in game.cars:
+		var t: Car = car
+		if t == c or t.wrecked:
+			continue
+		var rel: Vector3 = t.global_position + Vector3.UP * 0.5 - mz
+		var along := rel.dot(aim)
+		if along < 0.0 or along > ln:
+			continue
+		if (rel - aim * along).length() < 1.4:
+			var killed := t.apply_damage(28.0 * c.dmg_mult, t.global_position + Vector3.UP, c)
+			t.apply_central_impulse((aim * 8.0 + Vector3.UP * 3.0) * t.mass)
+			t.stun = maxf(t.stun, 0.4)
+			if c == game.player:
+				game.on_player_hit_enemy(t, killed)
+	var beam := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(0.22, 0.22, 1.0)
+	beam.mesh = bm
+	beam.material_override = _add_mat(Color(0.75, 0.4, 1.0), 4.0)
+	beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(beam)
+	beam.global_transform = Transform3D(Basis.looking_at(endp - mz, Vector3.UP).scaled(Vector3(1, 1, ln)), (mz + endp) * 0.5)
+	beams.append({"node": beam, "t": 0.0})
+	if game._on_screen(mz):
+		_muzzle_flash(mz, aim, true)
+		sfx.play("zap", -2.0 if c == game.player else -8.0, 0.6)
+		fx.hit_light(endp, Color(0.7, 0.4, 1.0), 6.0, 8.0, 0.2)
+	if c == game.player:
+		game._shake(0.18)
+
+
+func _step_beams(dt: float) -> void:
+	for i in range(beams.size() - 1, -1, -1):
+		var b: Dictionary = beams[i]
+		b.t += dt
+		var n: MeshInstance3D = b.node
+		var k: float = 1.0 - float(b.t) / 0.35
+		n.scale = Vector3(maxf(0.05, k), maxf(0.05, k), 1.0)
+		if b.t > 0.35:
+			n.queue_free()
+			beams.remove_at(i)
+
+
+## mina EMP: desliga armas e especiais de quem estiver perto
+func _emp_burst(pos: Vector3, owner: Car, r: float) -> void:
+	ring_fx(pos, r, Color(0.4, 0.8, 1.0))
+	if game._on_screen(pos):
+		sfx.play("zap", 0.0, 0.5)
+		fx.hit_light(pos + Vector3.UP, Color(0.4, 0.8, 1.0), 8.0, 10.0, 0.3)
+	for car in game.cars:
+		var c: Car = car
+		if c == owner or c.wrecked:
+			continue
+		if c.global_position.distance_to(pos) < r:
+			c.emp_t = 3.0
+			c.apply_damage(6.0, pos, owner, false)
+			c.stun = maxf(c.stun, 0.3)
+			if c.local_idx >= 0:
+				game.pop_for(c, "EMP! ARMAS DESLIGADAS", Color("#7fd8ff"))
+
+
+## cortina de fumaça: nuvem que esconde (ninguém mira em quem está dentro, nem quem está dentro atira)
+func _drop_smoke(c: Car, p: Vector3) -> void:
+	var pr := CPUParticles3D.new()
+	pr.amount = 26
+	pr.lifetime = 2.2
+	pr.local_coords = false
+	pr.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	pr.emission_sphere_radius = 2.2
+	var m := SphereMesh.new()
+	m.radius = 1.0
+	m.height = 2.0
+	m.radial_segments = 8
+	m.rings = 4
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.72, 0.72, 0.76, 0.55)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.vertex_color_use_as_albedo = true
+	m.material = mat
+	pr.mesh = m
+	pr.direction = Vector3.UP
+	pr.initial_velocity_min = 0.4
+	pr.initial_velocity_max = 1.2
+	pr.gravity = Vector3(0, 0.3, 0)
+	pr.scale_amount_min = 0.9
+	pr.scale_amount_max = 1.8
+	var g := Gradient.new()
+	g.set_color(0, Color(1, 1, 1, 0.0))
+	g.add_point(0.2, Color(1, 1, 1, 1))
+	g.set_color(g.get_point_count() - 1, Color(1, 1, 1, 0))
+	pr.color_ramp = g
+	pr.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(pr)
+	pr.global_position = p + Vector3.UP * 0.8
+	smokes.append({"node": pr, "pos": p, "t": 0.0, "r": 4.5, "owner": c})
+	sfx.play("whoosh", -6.0, 0.5)
+
+
+func _step_smokes(dt: float) -> void:
+	for i in range(smokes.size() - 1, -1, -1):
+		var s: Dictionary = smokes[i]
+		s.t += dt
+		if s.t > 5.0:
+			(s.node as CPUParticles3D).emitting = false
+		if s.t > 7.5:
+			(s.node as Node).queue_free()
+			smokes.remove_at(i)
+
+
+func in_smoke(p: Vector3) -> bool:
+	for s in smokes:
+		if s.t < 5.5 and p.distance_to(s.pos) < float(s.r):
+			return true
+	return false

@@ -6,8 +6,8 @@ extends Node
 
 const RIG_FIELDS := ["cam_pos", "cam_yaw", "cam_pitch", "cam_mode", "cam_mode_t", "cam_loop", "cam_loop_u", "cam_kick",
 	"view_h", "nitro_zoom", "zoom_kick", "trauma", "shake_t", "cam", "player", "cam_focus", "focus_t", "cam_size_mul"]
-const CARS := ["faisca", "vespa", "trovao", "monstro"]
-const CAR_NAMES := {"faisca": "FAÍSCA", "trovao": "TROVÃO", "vespa": "VESPA", "monstro": "MONSTRO"}
+const CARS := Car.PLAYABLE
+const CAR_NAMES := Car.CAR_NAME
 
 var game: Node
 var hud: Hud
@@ -350,8 +350,8 @@ func update(rdt: float) -> void:
 		var hp := clampf(car.health / car.max_health, 0.0, 1.0)
 		(ui.bar as ColorRect).size.x = 216.0 * hp
 		(ui.bar as ColorRect).color = Color("#7dff6a") if hp > 0.5 else (Color("#ffcf33") if hp > 0.25 else Color("#ff2d55"))
-		var fr: String = {"mg": "TIRO", "rocket": "FOGUETE", "zap": "RAIO", "flame": "FOGO"}.get(car.front_type, "TIRO")
-		var rr: String = {"mine": "MINA", "oil": "ÓLEO", "spikes": "PREGOS", "barrel": "BARRIL"}.get(car.rear_type, "MINA")
+		var fr: String = Car.LBL_F.get(car.front_type, "TIRO")
+		var rr: String = Car.LBL_R.get(car.rear_type, "MINA")
 		var tx := "%s %d · %s %d · %s %d" % [fr, car.ammo_f, rr, car.ammo_r, String(Car.NITRO[car.nitro_type].label), car.nitro_ch]
 		if car.special_type != "":
 			tx += " · %s %d" % [String(Car.SPECIAL[car.special_type].label), car.spec_ch]

@@ -405,10 +405,10 @@ func _draw_status() -> void:
 			status.draw_rect(r.grow(2), Color(1, 1, 1, 0.7), true)
 			status.draw_rect(r, Color("#5dff6a") if i < p.spec_ch else Color(0.1, 0.08, 0.2, 0.9), true)
 	# armas
-	var fa := "%s %d" % [{"mg": "MG", "rocket": "FOGUETE x", "zap": "RAIO x", "flame": "FOGO"}.get(p.front_type, "MG"), p.ammo_f]
+	var fa := "%s %d" % [String(Car.LBL_F.get(p.front_type, "MG")), p.ammo_f]
 	if p.front_type == "none":
 		fa = "SEM ARMA"
-	var ra := "%s x%d" % [{"mine": "MINA", "oil": "ÓLEO", "spikes": "PREGOS", "barrel": "BARRIL"}.get(p.rear_type, "MINA"), p.ammo_r]
+	var ra := "%s x%d" % [String(Car.LBL_R.get(p.rear_type, "MINA")), p.ammo_r]
 	_text(status, fa, Vector2(w - 4, y + 15), 15, false, true, Color("#ffb08a") if p.ammo_f > 0 else Color(1, 1, 1, 0.35))
 	_text(status, ra, Vector2(w - 4, y + 38), 13, false, true, Color("#ffe27a") if p.ammo_r > 0 else Color(1, 1, 1, 0.35))
 
@@ -601,8 +601,14 @@ func _build_garage() -> void:
 	cols.add_theme_constant_override("separation", 16)
 	v.add_child(cols)
 	var c1 := _panel(cols, "CARROS")
-	for k in ["faisca", "vespa", "trovao", "monstro"]:
-		_choice(c1, "car", k, 62)
+	# 10 carros em duas colunas (os dos mundos aparecem na loja ao chegar em cada mundo)
+	var cgrid := GridContainer.new()
+	cgrid.columns = 2
+	cgrid.add_theme_constant_override("h_separation", 6)
+	cgrid.add_theme_constant_override("v_separation", 6)
+	c1.add_child(cgrid)
+	for k in Career.CAR_ORDER:
+		_choice(cgrid, "car", k, 54, 154)
 	var cl := UI.title(c1, "COR DA PINTURA", 16, UI.INFO)
 	cl.label_settings.outline_size = 3
 	var cg := GridContainer.new()
@@ -687,9 +693,10 @@ func _panel(parent: Node, title: String) -> VBoxContainer:
 	return v
 
 
-func _choice(parent: Node, slot: String, key: String, h: int) -> void:
+func _choice(parent: Node, slot: String, key: String, h: int, w := 310) -> void:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(310, h)
+	b.custom_minimum_size = Vector2(w, h)
+	b.clip_text = true
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.add_theme_font_size_override("font_size", 14)
 	b.add_theme_font_override("font", UI.body_bold)
@@ -740,7 +747,11 @@ func refresh_garage() -> void:
 				var tag := ""
 				if not game.career.owned(k):
 					tag = "   [$%d]" % int(shop.price) if game.career.available(k) else "   [MUNDO %d]" % (int(shop.world) + 1)
-				txt = "%s%s\nVEL %s  BLIND %s  CONTROLE %s" % [shop.name, tag, _bar((sp.vmax - 34.0) / 10.0), _bar(sp.hp / 175.0), _bar((sp.turn - 2.0) / 1.1)]
+				tag = ""
+				if not game.career.owned(k):
+					tag = " $%d" % int(shop.price) if game.career.available(k) else " M%d" % (int(shop.world) + 1)
+				txt = "%s%s\nV%s B%s C%s" % [shop.name, tag, _bar((sp.vmax - 34.0) / 10.0).left(1), _bar(sp.hp / 175.0).left(1), _bar((sp.turn - 2.0) / 1.1).left(1)]
+				b.add_theme_font_size_override("font_size", 12)
 				b.disabled = not game.career.owned(k) and not game.career.available(k)
 			"front":
 				txt = "FRENTE: %s (%d por volta)" % [String(Car.FRONT[k].name).to_upper(), int(Car.FRONT[k].cap)]

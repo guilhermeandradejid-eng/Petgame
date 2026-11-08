@@ -1190,8 +1190,17 @@ func _spawn_cars() -> void:
 		rivals.append(bc)
 		boss = bc
 		gi = 1
+	# rivais com a cara do mundo: na carreira, dois deles correm com o carro do tema; na corrida rápida, carros variados
+	const WORLD_RIVAL := [["zefiro", "#e8f0ff", "BRISA"], ["jacare", "#5a7a32", "SUCURI"], ["escorpiao", "#d9822b", "MIRAGEM"],
+		["nevasca", "#f2f5fa", "GLACIAL"], ["nemesis", "#7b2cff", "NEON"], ["falcao", "#2ec4ff", "TURBINA"]]
 	for i in n_ai:
 		var r: Dictionary = ai_list[i % ai_list.size()]
+		if not ev.is_empty() and i % 2 == 0:
+			var wr: Array = WORLD_RIVAL[int(ev.world)]
+			r = {"kind": wr[0], "color": wr[1], "name": wr[2] if i == 0 else String(wr[2]) + " II"}
+		elif ev.is_empty() and i % 3 == 1:
+			var wr2: Array = WORLD_RIVAL[(track_idx + i) % WORLD_RIVAL.size()]
+			r = {"kind": wr2[0], "color": wr2[1], "name": wr2[2]}
 		var c := _make_car(r.kind, "rival", Color(r.color))
 		c.display_name = r.name
 		c.seed_f = i * 2.1 + 0.5
@@ -1387,8 +1396,8 @@ func _start_race_now() -> void:
 		multi.setup_views()
 	hud.show_screen("race")
 	hud.touch.release_all()
-	hud.touch.labels["drop"] = {"mine": "MINA", "oil": "ÓLEO", "spikes": "PREGOS", "barrel": "BARRIL"}.get(player.rear_type, "MINA")
-	hud.touch.labels["fire"] = {"mg": "TIRO", "rocket": "FOGUETE", "zap": "RAIO", "flame": "FOGO", "none": "—"}.get(player.front_type, "TIRO")
+	hud.touch.labels["drop"] = String(Car.LBL_R.get(player.rear_type, "MINA"))
+	hud.touch.labels["fire"] = String(Car.LBL_F.get(player.front_type, "TIRO"))
 	hud.touch.labels["nitro"] = String(Car.NITRO[player.nitro_type].label)
 	hud.touch.labels["special"] = String(Car.SPECIAL[player.special_type].label) if player.special_type != "" else ""
 	mode = "countdown"

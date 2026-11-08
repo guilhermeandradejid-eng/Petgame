@@ -8,7 +8,7 @@ extends Node
 const SEND_HZ := 20.0
 const DELAY := 0.1
 const K_STATE := 1
-const CAR_NAMES := {"faisca": "FAÍSCA", "trovao": "TROVÃO", "vespa": "VESPA", "monstro": "MONSTRO"}
+const CAR_NAMES := Car.CAR_NAME
 
 var game: Node
 var hud: Hud
@@ -257,7 +257,7 @@ func leave() -> void:
 
 
 func _cycle_car(step: int) -> void:
-	var cars := ["faisca", "vespa", "trovao", "monstro"]
+	var cars: Array = Car.PLAYABLE
 	my_car = cars[posmod(cars.find(my_car) + step, cars.size())]
 	_send_prof()
 	_refresh_lobby()

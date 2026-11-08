@@ -33,17 +33,27 @@ const SHOP := {
 	"vespa": {"price": 3000, "world": 0, "name": "VESPA", "desc": "Buggy leve: o mais ágil, salta obstáculos."},
 	"trovao": {"price": 6500, "world": 2, "name": "TROVÃO", "desc": "Muscle car blindado: foguetes e nitro longo."},
 	"monstro": {"price": 11000, "world": 3, "name": "MONSTRO", "desc": "Picape pesada: fogo, barris e investida."},
+	# um carro moderno por mundo
+	"zefiro": {"price": 4500, "world": 0, "name": "ZÉFIRO", "desc": "GT elétrico: laser, fumaça e esquiva lateral."},
+	"jacare": {"price": 7500, "world": 1, "name": "JACARÉ", "desc": "SUV anfíbio: arpão, lama e nitro longo."},
+	"escorpiao": {"price": 9500, "world": 2, "name": "ESCORPIÃO", "desc": "Trophy truck: morteiro, fogo e salto."},
+	"nevasca": {"price": 12500, "world": 3, "name": "NEVASCA", "desc": "SUV de neve: canhão de gelo e placas de gelo."},
+	"nemesis": {"price": 15000, "world": 4, "name": "NÊMESIS", "desc": "Hipercarro: canhão de trilho, mina EMP e esquiva."},
+	"falcao": {"price": 19000, "world": 5, "name": "FALCÃO", "desc": "Aerocarro: plasma, vórtice e voo planado."},
 }
-const CAR_ORDER := ["faisca", "vespa", "trovao", "monstro"]
+const CAR_ORDER := ["faisca", "vespa", "zefiro", "jacare", "trovao", "escorpiao", "monstro", "nevasca", "nemesis", "falcao"]
 ## modo história: o carro sai da loja só com o ITEM DE CHÃO e a MOBILIDADE dele; a arma de ataque (uma fixa por
 ## carro) e o ESPECIAL são comprados entre as corridas. Na corrida rápida e no multijogador vem tudo liberado.
-const WEAPON_PRICE := {"mg": 1200, "zap": 1500, "rocket": 2200, "flame": 2600}
+const WEAPON_PRICE := {"mg": 1200, "zap": 1500, "rocket": 2200, "flame": 2600, "laser": 1800, "harpoon": 2400,
+	"mortar": 2800, "freeze": 3000, "railgun": 3600, "plasma": 4200}
 const SPECIAL_PRICE := {"shield": 2500, "shock": 3000, "repair": 1800}
-const DEF_SPECIAL := {"faisca": "shield", "vespa": "shock", "trovao": "shield", "monstro": "shock"}
+const DEF_SPECIAL := {"faisca": "shield", "vespa": "shock", "trovao": "shield", "monstro": "shock", "zefiro": "repair",
+	"jacare": "shield", "escorpiao": "shock", "nevasca": "repair", "nemesis": "shield", "falcao": "shock"}
 ## upgrades da arma de ataque: caros
 const WPN_UP_PRICE := [1500, 3000, 5000]
 const UP_KEYS := ["engine", "armor", "ammo", "rear", "nitro", "tires", "dmg", "rate"]
-const UP_MULT := {"faisca": 1.0, "vespa": 1.15, "trovao": 1.35, "monstro": 1.6}
+const UP_MULT := {"faisca": 1.0, "vespa": 1.15, "zefiro": 1.2, "jacare": 1.4, "trovao": 1.35, "escorpiao": 1.5, "monstro": 1.6,
+	"nevasca": 1.65, "nemesis": 1.8, "falcao": 2.0}
 const WEAPON_DESC := {
 	"mg": "Rajada contínua de balas.", "rocket": "Foguete teleguiado no alvo da frente.",
 	"zap": "Raio instantâneo que salta para um 2º carro.", "flame": "Jato curto que incendeia (dano contínuo).",
@@ -51,6 +61,13 @@ const WEAPON_DESC := {
 	"spikes": "Furam os pneus: o carro fica lento.", "barrel": "Barril rola para trás e explode.",
 	"short": "Arrancadas curtas e fortes (4 por volta).", "long": "Arrancadas longas (3 por volta).",
 	"jump": "Pula minas, óleo e carros (3 por volta).", "ram": "Arrancada que atropela e arremessa quem estiver na frente.",
+	"laser": "Feixe contínuo que queima.", "harpoon": "Fisga o alvo, puxa para trás e segura.",
+	"mortar": "Granada em arco onde o alvo vai estar.", "freeze": "Bola de gelo: o alvo escorrega e perde força.",
+	"railgun": "Disparo que atravessa todos na linha.", "plasma": "Rajada de bolas teleguiadas.",
+	"smoke": "Nuvem: ninguém mira em quem está dentro.", "mud": "Poça que atola quem passa.",
+	"fire": "Chão em chamas atrás de você.", "ice": "Placa lisa: quem passa derrapa.",
+	"emp": "Mina que desliga armas e especial.", "vortex": "Redemoinho que puxa e segura.",
+	"dash": "Salto lateral rápido para desviar.", "glide": "Impulso e voo planado por 1,8 s.",
 	"shield": "3 s invulnerável + aríete.", "shock": "Arremessa e machuca quem está perto.",
 	"repair": "Devolve 40% da blindagem e apaga o fogo.",
 }
