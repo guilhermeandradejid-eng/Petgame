@@ -385,7 +385,7 @@ func _draw_status() -> void:
 	_text(status, "BLINDAGEM", Vector2(w * 0.5, 17), 13, true)
 	# nitro (cargas) + medidor de manobras
 	var y := 32.0
-	_text(status, "NITRO", Vector2(0, y + 15), 13, false)
+	_text(status, {"jump": "SALTO", "shield": "ESCUDO", "shock": "CHOQUE"}.get(p.special_type, "NITRO"), Vector2(0, y + 15), 13, false)
 	for i in p.nitro_cap:
 		var r := Rect2(62 + i * 30, y, 24, 18)
 		var full := i < p.nitro_ch
@@ -397,8 +397,8 @@ func _draw_status() -> void:
 	status.draw_rect(Rect2(62, y + 22, 30 * p.nitro_cap - 6, 4), Color(0.1, 0.08, 0.2, 0.9), true)
 	status.draw_rect(Rect2(62, y + 22, (30 * p.nitro_cap - 6) * p.nitro_meter, 4), Color("#b4f6ff"), true)
 	# armas
-	var fa := "MG %d" % p.ammo_f if p.front_type == "mg" else "FOGUETE x%d" % p.ammo_f
-	var ra := ("MINA x%d" if p.rear_type == "mine" else "ÓLEO x%d") % p.ammo_r
+	var fa := "%s %d" % [{"mg": "MG", "rocket": "FOGUETE x", "zap": "RAIO x", "flame": "FOGO"}.get(p.front_type, "MG"), p.ammo_f]
+	var ra := "%s x%d" % [{"mine": "MINA", "oil": "ÓLEO", "spikes": "PREGOS", "barrel": "BARRIL"}.get(p.rear_type, "MINA"), p.ammo_r]
 	_text(status, fa, Vector2(w - 4, y + 15), 15, false, true, Color("#ffb08a") if p.ammo_f > 0 else Color(1, 1, 1, 0.35))
 	_text(status, ra, Vector2(w - 4, y + 38), 13, false, true, Color("#ffe27a") if p.ammo_r > 0 else Color(1, 1, 1, 0.35))
 
