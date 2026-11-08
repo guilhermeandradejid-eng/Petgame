@@ -612,6 +612,7 @@ func _build_menu() -> void:
 		ex.tooltip_text = "Sair"
 		ex.pressed.connect(func(): get_tree().quit())
 		row.add_child(ex)
+	menu_anim = v.get_children()
 	# dinheiro e nome do carro (canto direito)
 	var tr := HBoxContainer.new()
 	tr.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
@@ -651,8 +652,18 @@ func _build_menu() -> void:
 	nv.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hr.add_child(nv)
 	menu_car = UI.title(nv, "", 34, UI.TEXT)
-	menu_class = UI.text(nv, "", 14, UI.INFO, true)
+	var cr := HBoxContainer.new()
+	cr.add_theme_constant_override("separation", 10)
+	cr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	nv.add_child(cr)
+	menu_class = UI.text(cr, "", 14, UI.INFO, true)
 	menu_class.add_theme_font_override("font", UI.body_bold)
+	menu_tag_icon = Icon.make("star", 16, UI.HOT)
+	menu_tag_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	cr.add_child(menu_tag_icon)
+	menu_tag = UI.text(cr, "", 14, UI.HOT)
+	menu_tag.add_theme_font_override("font", UI.display_it)
+	menu_info = info
 	var mr := HBoxContainer.new()
 	mr.alignment = BoxContainer.ALIGNMENT_CENTER
 	mr.add_theme_constant_override("separation", 16)
@@ -675,6 +686,10 @@ func _build_menu() -> void:
 
 var menu_cash: Label
 var menu_car: Label
+var menu_info: Control
+var menu_tag: Label
+var menu_tag_icon: Icon
+var menu_anim: Array = []
 var menu_class: Label
 var menu_badge: Control
 var menu_bars := {}
@@ -774,6 +789,7 @@ func _build_garage() -> void:
 	root.move_child(show3d, 0)
 	show3d.setup(game)
 	show3d.visible = false
+	show3d.car_changed.connect(_menu_car_info)
 	garage = Control.new()
 	garage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	garage.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -789,6 +805,78 @@ func refresh_garage() -> void:
 
 
 ## liga a vitrine nas telas que mostram o carro (menu e garagem); nas outras a pista volta a aparecer ao fundo
+## carros do desfile do menu: o seu primeiro, depois os outros da garagem e os da loja já liberados
+func _parade_list() -> Array:
+	var s: Dictionary = game.save
+	var mine := String(s.car)
+	var out: Array = []
+	var keys: Array = [mine]
+	for k in Career.CAR_ORDER:
+		if k != mine and game.career.owned(k):
+			keys.append(k)
+	for k in Career.CAR_ORDER:
+		if not game.career.owned(k) and game.career.available(k):
+			keys.append(k)
+	for k in keys.slice(0, 7):
+		var owned: bool = game.career.owned(k)
+		var lo: Array = game.career.loadout(k) if owned else Car.LOADOUT[k] + [""]
+		out.append({"kind": k, "col": Color(String(s.get("color", game.PAINT_COLORS[0]))) if owned else Color(String(Showroom.THUMB_COLORS.get(k, "#e8352b"))),
+			"front": lo[0], "rear": lo[1], "nitro": lo[2], "special": lo[3], "up": (s.garage.up.get(k, {}) as Dictionary).duplicate() if owned else {},
+			"tag": "mine" if k == mine else ("owned" if owned else "shop")})
+	return out
+
+
+## placa embaixo do carro do menu: nota, nome, classe, situação (seu / na garagem / preço) e medidores
+func _menu_car_info(e: Dictionary) -> void:
+	if menu_car == null:
+		return
+	var k := String(e.kind)
+	menu_car.text = String(Career.SHOP[k].name)
+	menu_class.text = String(Career.SHOP[k].get("class", ""))
+	match String(e.tag):
+		"mine":
+			menu_tag_icon.set_icon("star", UI.HOT)
+			menu_tag.text = "SEU CARRO"
+			menu_tag.add_theme_color_override("font_color", UI.HOT)
+		"owned":
+			menu_tag_icon.set_icon("check", UI.TEXT)
+			menu_tag.text = "NA GARAGEM"
+			menu_tag.add_theme_color_override("font_color", UI.TEXT)
+		_:
+			menu_tag_icon.set_icon("coin", UI.OK)
+			menu_tag.text = garage_ui._money(int(Career.SHOP[k].price))
+			menu_tag.add_theme_color_override("font_color", UI.OK)
+	var base := Car.ratings(k, {}, String(Car.LOADOUT[k][0]))
+	var cur := Car.ratings(k, e.up, String(e.front))
+	for st in menu_bars:
+		var sb: Garage.StatBar = menu_bars[st]
+		sb.base = minf(float(base[st]), float(cur[st])) if String(e.front) != "none" or st != "atk" else 0.0
+		sb.cur = float(cur[st])
+		sb.prev = sb.cur
+		sb.queue_redraw()
+	menu_badge.set_meta("v", Car.overall(cur))
+	menu_badge.queue_redraw()
+	# a placa entra deslizando junto com o carro
+	menu_info.modulate.a = 0.0
+	var tw := menu_info.create_tween()
+	tw.tween_interval(0.35)
+	tw.tween_property(menu_info, "modulate:a", 1.0, 0.35)
+
+
+## entrada do menu: logo e botões aparecem em sequência
+func _menu_intro() -> void:
+	var i := 0
+	for nd in menu_anim:
+		var c := nd as Control
+		c.modulate.a = 0.0
+		c.pivot_offset = Vector2(0, c.size.y * 0.5)
+		c.scale = Vector2(0.9, 0.9)
+		var tw := c.create_tween().set_parallel()
+		tw.tween_property(c, "modulate:a", 1.0, 0.25).set_delay(0.05 * i)
+		tw.tween_property(c, "scale", Vector2.ONE, 0.35).set_delay(0.05 * i).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		i += 1
+
+
 func _sync_showroom() -> void:
 	if show3d == null or game == null or game.career == null:
 		return
@@ -800,6 +888,7 @@ func _sync_showroom() -> void:
 	if not on:
 		return
 	if cur_screen == "garage":
+		show3d.stop_parade()
 		show3d.frame_off = Vector2(0.0, -0.07)
 		show3d.size_k = 1.45
 		show3d.auto_spin = true
@@ -810,22 +899,9 @@ func _sync_showroom() -> void:
 		show3d.size_k = 1.6
 		show3d.auto_spin = true
 		show3d.set_focus("")
-		var k := String(game.save.car)
 		menu_cash.text = garage_ui._money(int(game.save.cash))
-		menu_car.text = String(Career.SHOP[k].name)
-		menu_class.text = String(Career.SHOP[k].get("class", ""))
-		var kit: Array = game.career.loadout(k)
-		var base := Car.ratings(k, {}, String(Car.LOADOUT[k][0]))
-		var cur := Car.ratings(k, game.save.up, String(kit[0]))
-		for st in menu_bars:
-			var sb: Garage.StatBar = menu_bars[st]
-			sb.base = minf(float(base[st]), float(cur[st])) if String(kit[0]) != "none" or st != "atk" else 0.0
-			sb.cur = float(cur[st])
-			sb.prev = sb.cur
-			sb.queue_redraw()
-		menu_badge.set_meta("v", Car.overall(cur))
-		menu_badge.queue_redraw()
-		show3d.show_car(k, Color(String(game.save.get("color", game.PAINT_COLORS[0]))), kit[0], kit[1], kit[2], game.save.up, kit[3])
+		show3d.start_parade(_parade_list())
+		_menu_intro()
 
 
 # ------------------------------------------------------------------ pausa e resultado

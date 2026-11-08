@@ -263,7 +263,7 @@ func set_accent(c: Color) -> void:
 
 # ------------------------------------------------------------------ carro
 ## mostra um carro (kind, cor, armas, upgrades). Se só os upgrades/cor mudaram, remonta o kit sem trocar o carro.
-func show_car(kind: String, col: Color, front: String, rear: String, nitro: String, up: Dictionary, special := "") -> void:
+func show_car(kind: String, col: Color, front: String, rear: String, nitro: String, up: Dictionary, special := "", pop := true) -> void:
 	var cfg := {"kind": kind, "col": col, "front": front, "rear": rear, "nitro": nitro, "up": up.duplicate(), "special": special}
 	if car and is_instance_valid(car) and String(_cur.get("kind", "")) == kind:
 		if cfg.hash() == _cur.hash():
@@ -290,6 +290,9 @@ func show_car(kind: String, col: Color, front: String, rear: String, nitro: Stri
 	var nm: String = Car.CAR_NAME.get(kind, kind.to_upper())
 	name3d.text = nm
 	sub3d.text = String(Career.SHOP[kind].get("class", "")) if Career.SHOP.has(kind) else ""
+	_make_exhaust_fx()
+	if not pop:
+		return
 	# entrada do carro: cai na plataforma com um "quique" e o anel pisca
 	spin.scale = Vector3(0.82, 0.82, 0.82)
 	spin.position.y = 0.6
@@ -334,7 +337,11 @@ func _process(dt: float) -> void:
 		_rebuild_mirror()
 	var f: Dictionary = FOCUS[focus_key]
 	_idle += dt
-	if not _drag:
+	if not parade.is_empty():
+		_parade_step(dt)
+	if _phase != "" and not _drag:
+		pass   # alinhar/sair/entrar: o desfile cuida do giro
+	elif not _drag:
 		if focus_key == "" and auto_spin and _idle > 1.2:
 			yaw_vel = lerpf(yaw_vel, 0.22, dt * 1.5)
 		elif focus_key != "":
@@ -365,7 +372,15 @@ func _process(dt: float) -> void:
 		tw = spin.transform.basis * tw
 	_tgt = _tgt.lerp(tw, k)
 	var d3 := base_d * _dist
-	var dir := Vector3(0, sin(_pitch), cos(_pitch))
+	var cy := 0.0
+	var pp := _pitch
+	if not parade.is_empty():
+		# câmera de vitrine: passeia devagar em volta, sobe/desce e respira a distância
+		_cam_t += dt
+		cy = 0.32 * sin(_cam_t * 0.16)
+		pp += 0.09 * sin(_cam_t * 0.23 + 0.7)
+		d3 *= 1.0 + 0.08 * sin(_cam_t * 0.13 + 1.9)
+	var dir := Vector3(sin(cy) * cos(pp), sin(pp), cos(cy) * cos(pp))
 	cam.position = _tgt + dir * d3
 	cam.look_at(_tgt, Vector3.UP)
 	# tela mais "quadrada" que 16:9 (tablet): mantém a largura do enquadramento, para o carro não crescer
@@ -587,3 +602,247 @@ func prewarm() -> void:
 		if not _thumbs.has(k) and _queue.filter(func(j): return j.key == k).is_empty():
 			_queue.append({"key": k, "targets": []})
 	set_process(true)
+
+
+# ------------------------------------------------------------------ desfile (menu principal)
+## O menu mostra os seus carros (e os da loja liberados) em revezamento: a plataforma alinha o carro, ele
+## ronca com estalos no escapamento, acelera e sai pela direita; o próximo entra pela esquerda freando, com as
+## lanternas acesas, mergulha o nariz e o anel pisca. A câmera passeia e dois fachos de luz varrem o estúdio.
+signal car_changed(entry: Dictionary)
+
+const SHOW_TIME := 6.5
+const DRIVE_X := 18.0
+var parade: Array = []
+var parade_i := 0
+var _pt := 0.0
+var _phase := ""
+var _phase_t := 0.0
+var _drive_z := 0.0
+var _rev := 0.0
+var _revved := false
+var _body_pitch := 0.0
+var _body_pv := 0.0
+var _cam_t := 0.0
+var _pops: Array = []
+var _pop_light: OmniLight3D
+var beams: Array = []
+
+
+func start_parade(list: Array) -> void:
+	parade = list
+	parade_i = 0
+	_pt = 0.0
+	_phase = ""
+	_set_drive(0.0)
+	if list.is_empty():
+		return
+	var e: Dictionary = list[0]
+	show_car(e.kind, e.col, e.front, e.rear, e.nitro, e.up, e.get("special", ""))
+	car_changed.emit(e)
+	_beams(true)
+
+
+func stop_parade() -> void:
+	parade = []
+	_phase = ""
+	_set_drive(0.0)
+	_rev = 0.0
+	_beams(false)
+	if car and is_instance_valid(car) and car.model:
+		car.model.position = Vector3.ZERO
+		car.model.rotation = Vector3.ZERO
+		for s in car.ex_smoke:
+			(s as CPUParticles3D).emitting = false
+
+
+func _set_drive(z: float) -> void:
+	_drive_z = z
+	if car and is_instance_valid(car):
+		car.position = Vector3(0, 0, z)
+	for ch in mirror_root.get_children():
+		(ch as Node3D).position = Vector3(0, 0, z)
+
+
+func _parade_step(dt: float) -> void:
+	var n := parade.size()
+	var speed := 0.0
+	match _phase:
+		"":
+			_pt += dt
+			# ronco de vez em quando (mesmo com um carro só)
+			if fmod(_pt, 4.0) < dt and _pt > 1.0:
+				_rev_blip(0.6)
+			if _pt > SHOW_TIME and n > 1:
+				_phase = "align"
+				_phase_t = 0.0
+				_revved = false
+		"align":
+			_phase_t += dt
+			# gira a plataforma até o carro apontar para a direita da tela
+			var ty := PI * 0.5
+			yaw += wrapf(ty - yaw, -PI, PI) * minf(1.0, dt * 4.5)
+			yaw_vel = 0.0
+			if _phase_t > 0.6 and not _revved:
+				_revved = true
+				_rev_blip(1.0)
+			if _phase_t > 1.25:
+				yaw = ty
+				_phase = "out"
+				_phase_t = 0.0
+				_body_pv -= 0.9   # empina ao arrancar
+				if game:
+					game.sfx.play("nitro", -14.0, 1.15)
+		"out":
+			_phase_t += dt
+			speed = 30.0 * _phase_t
+			_set_drive(0.5 * 30.0 * _phase_t * _phase_t)
+			for s in car.ex_smoke:
+				(s as CPUParticles3D).emitting = true
+			if _drive_z > DRIVE_X:
+				parade_i = (parade_i + 1) % n
+				var e: Dictionary = parade[parade_i]
+				show_car(e.kind, e.col, e.front, e.rear, e.nitro, e.up, e.get("special", ""), false)
+				_set_drive(-DRIVE_X)
+				_phase = "in"
+				_phase_t = 0.0
+				car_changed.emit(e)
+				if game:
+					game.sfx.play("whoosh", -10.0, 0.9)
+		"in":
+			_phase_t += dt
+			var u := clampf(_phase_t / 1.2, 0.0, 1.0)
+			_set_drive(-DRIVE_X * pow(1.0 - u, 3.0))
+			speed = DRIVE_X * 3.0 * pow(1.0 - u, 2.0) / 1.2
+			if car.tail_mat:
+				car.tail_mat.emission_energy_multiplier = 6.0 if u > 0.35 else 1.5
+			if u >= 1.0:
+				_phase = ""
+				_pt = 0.0
+				_body_pv += 1.1   # mergulha o nariz na freada
+				_pulse = 1.0
+				if car.tail_mat:
+					car.tail_mat.emission_energy_multiplier = 1.5
+				if game:
+					game.sfx.play("land", -12.0, 1.2)
+	# rodas girando, carroceria (mola) e ronco
+	if car and is_instance_valid(car) and car.model:
+		for w in car.wheels:
+			var mi: MeshInstance3D = w.mesh
+			mi.rotation.x += speed / maxf(0.2, float(w.r)) * dt
+		_body_pv += (-_body_pitch * 60.0 - _body_pv * 7.0) * dt
+		_body_pitch += _body_pv * dt
+		_rev = maxf(0.0, _rev - dt * 1.4)
+		var jit := _rev * 0.014
+		car.model.position = Vector3(randf_range(-jit, jit), randf_range(0.0, jit), 0.0)
+		car.model.rotation = Vector3(clampf(_body_pitch, -0.12, 0.12) * -0.6 + (-0.04 if _phase == "out" else 0.0), 0.0, sin(_cam_t * 70.0) * _rev * 0.008)
+		if _pop_light:
+			_pop_light.light_energy = maxf(0.0, _pop_light.light_energy - dt * 30.0)
+		if _phase == "":
+			for s in car.ex_smoke:
+				(s as CPUParticles3D).emitting = _rev > 0.3
+	for b in beams:
+		var bl: SpotLight3D = b.light
+		var ph: float = b.phase
+		# inclinado para o fundo do estúdio e varrendo de um lado para o outro
+		bl.rotation = Vector3(-PI * 0.5 + 0.5 + 0.2 * sin(_cam_t * 0.5 + ph), 0.75 * sin(_cam_t * 0.33 + ph * 1.7), 0.0)
+
+
+## ronco: carroceria treme, estalos com chama e clarão nas ponteiras, fumaça
+func _rev_blip(k: float) -> void:
+	_rev = k
+	for p in _pops:
+		(p as CPUParticles3D).restart()
+		(p as CPUParticles3D).emitting = true
+	if _pop_light:
+		_pop_light.light_energy = 5.0 * k
+	if game:
+		game.sfx.play("gun", -16.0 + 4.0 * k, 0.42)
+		if k >= 1.0:
+			get_tree().create_timer(0.12).timeout.connect(func(): if game: game.sfx.play("gun", -14.0, 0.5))
+
+
+## chamas dos estalos e o clarão nas ponteiras do escapamento do carro atual
+func _make_exhaust_fx() -> void:
+	_pops.clear()
+	_pop_light = null
+	if car == null or car.model == null:
+		return
+	for s in car.ex_smoke:
+		var sm := s as CPUParticles3D
+		sm.process_mode = Node.PROCESS_MODE_ALWAYS
+		sm.emitting = false
+		var p := CPUParticles3D.new()
+		p.process_mode = Node.PROCESS_MODE_ALWAYS
+		p.one_shot = true
+		p.emitting = false
+		p.amount = 10
+		p.lifetime = 0.2
+		p.explosiveness = 0.9
+		p.local_coords = true
+		p.position = sm.position
+		var m := SphereMesh.new()
+		m.radius = 0.09
+		m.height = 0.18
+		m.radial_segments = 6
+		m.rings = 3
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.vertex_color_use_as_albedo = true
+		mat.albedo_color = Color(1.6, 0.8, 0.25)
+		m.material = mat
+		p.mesh = m
+		p.direction = Vector3(0, 0.15, -1)
+		p.spread = 18.0
+		p.initial_velocity_min = 2.5
+		p.initial_velocity_max = 5.0
+		p.gravity = Vector3.ZERO
+		p.scale_amount_min = 0.7
+		p.scale_amount_max = 1.5
+		var g := Gradient.new()
+		g.set_color(0, Color(1.0, 0.95, 0.6, 1.0))
+		g.set_color(1, Color(1.0, 0.25, 0.05, 0.0))
+		p.color_ramp = g
+		car.model.add_child(p)
+		_pops.append(p)
+	if not car.ex_smoke.is_empty():
+		_pop_light = OmniLight3D.new()
+		_pop_light.light_color = Color(1.0, 0.55, 0.15)
+		_pop_light.omni_range = 3.0
+		_pop_light.light_energy = 0.0
+		_pop_light.position = (car.ex_smoke[0] as Node3D).position + Vector3(0, 0.2, -0.3)
+		car.model.add_child(_pop_light)
+
+
+## dois fachos de luz (âmbar e ciano) varrendo o estúdio, com o cone visível
+func _beams(on: bool) -> void:
+	if beams.is_empty() and on:
+		var root3: Node3D = spin.get_parent()
+		for it in [[Vector3(-5.5, 9.0, -2.5), Color("#ffb21a"), 0.0], [Vector3(5.5, 9.0, -2.0), Color("#2ee6ff"), 2.1]]:
+			var sl := SpotLight3D.new()
+			sl.position = it[0]
+			sl.light_color = it[1]
+			sl.light_energy = 4.0
+			sl.spot_range = 16.0
+			sl.spot_angle = 16.0
+			sl.spot_attenuation = 0.6
+			root3.add_child(sl)
+			var cone := MeshInstance3D.new()
+			var cm := CylinderMesh.new()
+			cm.top_radius = 0.18
+			cm.bottom_radius = 2.4
+			cm.height = 11.0
+			cm.radial_segments = 20
+			cm.rings = 1
+			cone.mesh = cm
+			var bm := ShaderMaterial.new()
+			bm.shader = preload("res://shaders/beam.gdshader")
+			bm.set_shader_parameter("col", it[1])
+			bm.set_shader_parameter("strength", 0.16)
+			cone.material_override = bm
+			cone.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			cone.rotation = Vector3(PI * 0.5, 0, 0)
+			cone.position = Vector3(0, 0, -5.5)
+			sl.add_child(cone)
+			beams.append({"light": sl, "phase": it[2]})
+	for b in beams:
+		(b.light as SpotLight3D).visible = on

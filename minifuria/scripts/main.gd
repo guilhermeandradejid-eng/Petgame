@@ -433,6 +433,22 @@ func _ui_shots() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--only="):
 			only = a.substr(7)
+	if "parade" in only.split(","):
+		# desfile do menu: fotos em vários momentos (girando, alinhando/roncando, saindo, entrando, parado)
+		hud.show_screen("menu")
+		var t0 := Time.get_ticks_msec()
+		var shots := 0
+		var last_phase := "?"
+		while shots < 8 and (Time.get_ticks_msec() - t0) < 60000:
+			await get_tree().process_frame
+			var ph := hud.show3d._phase
+			if ph != last_phase or (ph == "out" and hud.show3d._phase_t > 0.25 and shots == 2) or (ph == "in" and hud.show3d._phase_t > 0.5 and shots == 4):
+				print("PARADE %.2f %s %s fps=%d" % [(Time.get_ticks_msec() - t0) / 1000.0, ph, hud.show3d.car.kind, Engine.get_frames_per_second()])
+				get_viewport().get_texture().get_image().save_png("user://ui_parade_%d.png" % shots)
+				shots += 1
+				last_phase = ph
+		get_tree().quit()
+		return
 	for scr in ["menu", "tracks", "garage", "local", "online", "config", "config2", "pause", "career", "world", "garage2", "garage3", "garage4", "garage5", "results"]:
 		if only != "" and not scr in only.split(","):
 			continue
