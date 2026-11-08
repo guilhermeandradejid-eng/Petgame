@@ -1,0 +1,13 @@
+Texturas CC0 (domínio público) do ambientCG — https://ambientcg.com
+Obtidas do acervo https://github.com/Papyszoo/CC0-Public-Domain-Textures (pack ambientcg-textures),
+convertidas de KTX2 para PNG (normal 512, rugosidade 256 e detalhe de cor em cinza 512).
+
+Rubber004        pneus, flancos e mangueiras
+Plastic006       para-choques, frisos e peças plásticas
+Metal009         metal escovado: cromados, aros, aço, cobre e latão
+Metal046A        metal gasto: corpo das armas, blindagens e escapamentos
+PaintedMetal004  pintura riscada: peças pintadas das armas (amarelo, verde-oliva, vermelho)
+DiamondPlate004  chapa xadrez: base das torres e assoalho de caçambas
+Leather026       bancos
+
+Licença CC0 1.0: uso livre, inclusive comercial, sem necessidade de atribuição.

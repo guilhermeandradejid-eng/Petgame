@@ -208,6 +208,9 @@ var oily_t := 0.0      # pneus sujos de graxa: deixam rastro escuro por um tempo
 var _hard_t := 0.0      # tempo de curva forte (auto-drift)
 var _dh := 0.0
 # "game juice" visual: amassa ao pousar, estica e empina no nitro (mola amortecida, só no modelo)
+var eng_rpm := 0.0           # rotação do motor (0..1) para a vibração e o escapamento
+var _thr_prev := 0.0
+var ex_smoke: Array = []      # fumaça saindo das ponteiras
 var squash := 0.0
 var squash_v := 0.0
 var pitch_kick := 0.0
@@ -340,7 +343,7 @@ func setup(lib: Node3D, kind_: String, role_: String, col: Color) -> void:
 			for s in mi.mesh.get_surface_count():
 				arrays.append(mi.mesh.surface_get_arrays(s))
 			parts[part_name] = {"mesh": mi, "orig": mi.mesh, "arrays": arrays, "mats": mats, "hp": 100.0, "off": false,
-				"center": mi.transform * mi.mesh.get_aabb().get_center()}
+				"center": mi.transform * mi.mesh.get_aabb().get_center(), "base": mi.position, "rot": mi.rotation}
 	_apply_tires(lib, {})
 	var Lc: float = sp.len
 	var Wc: float = sp.wid
@@ -357,6 +360,12 @@ func setup(lib: Node3D, kind_: String, role_: String, col: Color) -> void:
 		exhaust2_local = exl.position * vscale
 	if mnt:
 		mount_local = mnt.position
+	# fumaça do escapamento (sai das ponteiras abertas; engrossa ao acelerar)
+	ex_smoke.clear()
+	if role != "traffic" or true:
+		for exn in [exr, exl]:
+			if exn:
+				ex_smoke.append(_exhaust_smoke(exn.position))
 	if vscale != 1.0:
 		# chefe: modelo ampliado; a física usa as rodas na escala nova (o visual continua no espaço do modelo)
 		model.scale = Vector3.ONE * vscale
@@ -1654,6 +1663,89 @@ func ai(track: Track, _game: Node, dt: float) -> void:
 
 
 # ------------------------------------------------------------------ visual
+func _exhaust_smoke(at: Vector3) -> CPUParticles3D:
+	var p := CPUParticles3D.new()
+	p.amount = 14
+	p.lifetime = 0.9
+	p.local_coords = false
+	p.position = at
+	var m := SphereMesh.new()
+	m.radius = 0.13
+	m.height = 0.26
+	m.radial_segments = 6
+	m.rings = 3
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.62, 0.62, 0.66, 0.35)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.vertex_color_use_as_albedo = true
+	m.material = mat
+	p.mesh = m
+	p.direction = Vector3(0, 0.35, -1)
+	p.spread = 14.0
+	p.initial_velocity_min = 1.2
+	p.initial_velocity_max = 2.4
+	p.gravity = Vector3(0, 0.8, 0)
+	p.damping_min = 1.5
+	p.damping_max = 2.5
+	p.scale_amount_min = 0.8
+	p.scale_amount_max = 1.6
+	var g := Gradient.new()
+	g.set_color(0, Color(1, 1, 1, 0.9))
+	g.set_color(1, Color(1, 1, 1, 0))
+	p.color_ramp = g
+	var sc := Curve.new()
+	sc.add_point(Vector2(0, 0.6))
+	sc.add_point(Vector2(1, 2.4))
+	p.scale_amount_curve = sc
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	model.add_child(p)
+	return p
+
+
+## motor vivo: a carroceria (não as rodas) treme com a rotação — forte na marcha lenta acelerando
+## parado, mais fina em alta; fumaça nas ponteiras e estalos ao tirar o pé em alta rotação
+func _engine_life(dt: float) -> void:
+	var thr: float = clampf(ctrl.throttle, 0.0, 1.0)
+	var spd01 := clampf(absf(v_f) / maxf(1.0, float(sp.vmax) * engine_mult), 0.0, 1.2)
+	var g := minf(4.0, floorf(spd01 * 5.0 * 0.999))
+	var want := 0.22 + (spd01 * 5.0 - g) * 0.7 * (0.6 + thr * 0.4) + g * 0.04
+	if spd01 < 0.08:
+		want = 0.18 + thr * 0.75   # acelerando parado (largada): giro sobe e cai
+	eng_rpm = lerpf(eng_rpm, want, minf(1.0, dt * (9.0 if want > eng_rpm else 4.0)))
+	var live := not wrecked and role != "traffic"
+	var amp := 0.0
+	if live:
+		amp = (0.0045 + 0.011 * thr * (1.0 - spd01 * 0.6) + (0.006 if nitroing else 0.0)) * (1.0 if on_ground else 0.35)
+	var t := game_time
+	var f := 38.0 + eng_rpm * 46.0
+	var off := Vector3(sin(t * f * 0.83) * 0.4, sin(t * f) + sin(t * f * 1.71) * 0.4, sin(t * f * 0.57) * 0.25) * amp
+	var roll := sin(t * f * 0.91 + 1.3) * amp * 1.6
+	for pn in parts:
+		var pp: Dictionary = parts[pn]
+		if pp.off or not pp.has("base"):
+			continue
+		var mi: MeshInstance3D = pp.mesh
+		mi.position = (pp.base as Vector3) + off
+		mi.rotation = (pp.rot as Vector3) + Vector3(0, 0, roll)
+	if weapon_node:
+		weapon_node.position = weapon_base + off
+	# fumaça: mais e mais escura com o pé no fundo
+	for s in ex_smoke:
+		var p: CPUParticles3D = s
+		p.emitting = live and (thr > 0.05 or spd01 < 0.3)
+		p.speed_scale = 0.7 + thr * 0.8
+		p.color = Color(1.0 - thr * 0.35, 1.0 - thr * 0.35, 1.0 - thr * 0.3, 0.45 + thr * 0.55)
+		p.initial_velocity_max = 2.0 + thr * 2.5
+	# estalo do escapamento: soltou o acelerador em alta rotação
+	if live and _thr_prev > 0.8 and thr < 0.2 and eng_rpm > 0.55 and randf() < 0.45 and game and game._on_screen(global_position):
+		for s in ex_smoke:
+			game.fx.hit_light((s as Node3D).global_position, Color(1.0, 0.55, 0.15), 4.0, 3.0, 0.08)
+		if self == game.player:
+			game.sfx.play("gun", -16.0, 0.45)
+	_thr_prev = thr
+
+
 func juice_squash(amount: float) -> void:
 	squash_v += amount
 
@@ -1676,6 +1768,8 @@ func _visuals(dt: float) -> void:
 		pitch_kick = clampf(pitch_kick + pitch_v * dt, -0.12, 0.12)
 		model.scale = Vector3(1.0 + squash * 0.45, 1.0 - squash, 1.0 - squash * 0.35) * vscale
 		model.rotation.x = -pitch_kick
+	if model:
+		_engine_life(dt)
 	for w in wheels:
 		if w.lost:
 			continue

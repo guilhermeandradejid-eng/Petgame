@@ -604,6 +604,43 @@ func _refl_theme() -> void:
 		m.set_shader_parameter("night", 1.0 if night else (0.4 if dusk else 0.0))
 
 
+## texturas CC0 do ambientCG (textures/cc0): normal, rugosidade e detalhe de cor, em projeção triplanar
+const CC0 := {"rubber": "rubber004", "plastic": "plastic006", "brushed": "metal009", "worn": "metal046a",
+	"paintworn": "paintedmetal004", "deck": "diamondplate004", "leather": "leather026"}
+const CC0_SCALE := {"rubber": 5.0, "plastic": 2.5, "brushed": 2.2, "worn": 2.0, "paintworn": 1.6, "deck": 4.0, "leather": 3.0}
+var _cc0_cache := {}
+
+
+func _cc0_tex(path: String) -> Texture2D:
+	if not _cc0_cache.has(path):
+		_cc0_cache[path] = load(path) if ResourceLoader.exists(path) else null
+	return _cc0_cache[path]
+
+
+func _cc0(m: StandardMaterial3D, kind: String, depth: float, rough: float, detail := true) -> void:
+	var base := "res://textures/cc0/%s" % String(CC0[kind])
+	var n := _cc0_tex(base + "_n.png")
+	if n == null:
+		_detail(m, "rubber" if kind in ["rubber", "plastic", "leather"] else "brushed", depth * 0.5)
+		return
+	m.normal_enabled = true
+	m.normal_texture = n
+	m.normal_scale = depth
+	var r := _cc0_tex(base + "_r.png")
+	if r:
+		m.roughness_texture = r
+		m.roughness = clampf(rough / 0.75, 0.0, 1.0)
+	var c := _cc0_tex(base + "_c.png")
+	if detail and c:
+		m.detail_enabled = true
+		m.detail_albedo = c
+		m.detail_blend_mode = BaseMaterial3D.BLEND_MODE_MUL
+	m.uv1_triplanar = true
+	m.uv1_world_triplanar = false
+	m.uv1_triplanar_sharpness = 4.0
+	m.uv1_scale = Vector3.ONE * float(CC0_SCALE[kind])
+
+
 func _detail(m: StandardMaterial3D, kind: String, depth: float) -> void:
 	if not _detail_tex.has(kind):
 		var nz := FastNoiseLite.new()
@@ -658,25 +695,34 @@ func _prep_materials(n: Node, done: Dictionary) -> void:
 					m.rim_tint = 0.6
 					_detail(m, "flake", 0.12)   # pintura metálica: "flocos" finos no reflexo
 					m.next_pass = _refl("paint")   # verniz: reflexo do céu e brilho do sol
-				"Tire", "Sidewall":
-					m.roughness = 0.92
+				"Tire", "Sidewall", "Hose":
 					m.metallic_specular = 0.3
-					_detail(m, "rubber", 0.9)   # borracha granulada
+					_cc0(m, "rubber", 0.9, 0.92)   # borracha de verdade (Rubber004)
 				"RimDark":
-					m.roughness = 0.38
 					m.metallic = 0.85
-					_detail(m, "brushed", 0.35)
-				"Trim", "Gunmetal":
-					_detail(m, "rubber", 0.35)
+					_cc0(m, "brushed", 0.4, 0.38, false)
+				"Trim":
+					_cc0(m, "plastic", 0.6, 0.62)   # plástico fosco com marcas de uso
+				"Gunmetal", "Exhaust":
+					_cc0(m, "worn", 0.7, 0.45)   # metal gasto
+				"Deck":
+					_cc0(m, "deck", 1.0, 0.5)   # chapa xadrez
+				"Seat":
+					_cc0(m, "leather", 0.6, 0.7)
+				"MineYellow", "Olive", "RocketRed", "AmmoGreen":
+					_cc0(m, "paintworn", 0.5, 0.55)   # pintura riscada das armas
+				"Steel", "Copper", "Brass":
+					m.metallic = 1.0
+					_cc0(m, "brushed", 0.35, 0.3, false)
+					m.next_pass = _refl("chrome")
 				"Glass":
 					m.roughness = 0.03
 					m.metallic = 0.7
 					m.metallic_specular = 1.0
 					m.next_pass = _refl("glass")
 				"Chrome", "Rim", "LugNut":
-					m.roughness = 0.16
 					m.metallic = 1.0
-					_detail(m, "brushed", 0.25)   # metal escovado
+					_cc0(m, "brushed", 0.3, 0.16, false)   # metal escovado (Metal009)
 					m.next_pass = _refl("chrome")
 				"SignYellow", "SignBlack", "Metal":
 					m.cull_mode = BaseMaterial3D.CULL_DISABLED

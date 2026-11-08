@@ -115,6 +115,7 @@ M = {
     "board2": mat("Billboard2", "#2ee6ff", 0.4, 0.0, "#2ee6ff", 1.6),
     "mine_y": mat("MineYellow", "#ffc61f", 0.5),
     "rocket": mat("RocketRed", "#e8372f", 0.4, 0.2),
+    "deck": mat("Deck", "#6a707a", 0.45, 0.85),
 }
 
 
@@ -834,9 +835,17 @@ def build_car2(key, s):
         # escapamento embutido no para-choque (antes ficava pendurado por baixo)
         ez = clr + 0.08
         P["bumperR"].append(box(f"{key}_exh{sd}", (0.22, 0.03, 0.16), (sd * W * 0.25, yR + 0.05, ez), M["well"], bevel=0.02))
-        P["bumperR"].append(cyl(f"{key}_ex{sd}", 0.06, 0.2, (sd * W * 0.25, yR + 0.02, ez), M["exhaust"], verts=12, axis="Y"))
-        P["bumperR"].append(cyl(f"{key}_ext{sd}", 0.072, 0.07, (sd * W * 0.25, yR + 0.12, ez), M["chrome"], verts=14, axis="Y"))
-        P["bumperR"].append(cyl(f"{key}_exi{sd}", 0.05, 0.02, (sd * W * 0.25, yR + 0.16, ez), M["well"], verts=12, axis="Y"))
+        # ponteira ABERTA: tubo cromado oco (boca com lábio) e fundo escuro bem recuado lá dentro
+        ex_x = sd * W * 0.25
+        P["bumperR"].append(cyl(f"{key}_ex{sd}", 0.06, 0.2, (ex_x, yR + 0.02, ez), M["exhaust"], verts=16, axis="Y"))
+        tip = cyl(f"{key}_ext{sd}", 0.074, 0.12, (ex_x, yR + 0.12, ez), M["chrome"], verts=20, axis="Y")
+        boolean(tip, cyl(f"{key}_exc{sd}", 0.056, 0.4, (ex_x, yR + 0.2, ez), M["chrome"], verts=20, axis="Y"), "DIFFERENCE")
+        P["bumperR"].append(tip)
+        P["bumperR"].append(cyl(f"{key}_exl{sd}", 0.078, 0.015, (ex_x, yR + 0.178, ez), M["chrome"], verts=20, axis="Y"))
+        lipc = P["bumperR"][-1]
+        boolean(lipc, cyl(f"{key}_exlc{sd}", 0.06, 0.1, (ex_x, yR + 0.178, ez), M["chrome"], verts=20, axis="Y"), "DIFFERENCE")
+        P["bumperR"].append(cyl(f"{key}_exi{sd}", 0.056, 0.02, (ex_x, yR + 0.09, ez), M["groove"] if "groove" in M else M["well"], verts=16, axis="Y"))
+        P["bumperR"].append(cyl(f"{key}_exs{sd}", 0.05, 0.012, (ex_x, yR + 0.13, ez), M["well"], verts=16, axis="Y"))
         ex = empty(key + ("_exR" if sd > 0 else "_exL"), (sd * W * 0.25, yR + 0.22, ez))
         parent(ex, root)
     # ---- cabine em estufa: vidro inclinado, teto e colunas (cor do carro)
@@ -947,7 +956,7 @@ def build_car2(key, s):
         elif k == "bed":
             # caçamba: paredes rentes ao corpo, assoalho escuro
             y0, y1, h = ex[1], ex[2], ex[3]
-            P["cargo"].append(box(key + "_bd", (W * 0.86, y1 - y0, 0.06), (0, (y0 + y1) / 2, zb + 0.02), M["well"]))
+            P["cargo"].append(box(key + "_bd", (W * 0.86, y1 - y0, 0.06), (0, (y0 + y1) / 2, zb + 0.02), M["deck"]))
             for sd in (-1, 1):
                 P["cargo"].append(box(f"{key}_bw{sd}", (0.1, y1 - y0, h), (sd * (W / 2 - 0.05), (y0 + y1) / 2, zb + h / 2), paint, bevel=0.03))
             P["cargo"].append(box(key + "_bt", (W, 0.1, h), (0, y1 - 0.05, zb + h / 2), paint, bevel=0.03))
@@ -1522,7 +1531,7 @@ def ring(name, r, w, loc, material, verts=20, axis="Y"):
 
 
 def wpn_base(k):
-    p = [box(k + "_bp", (0.62, 0.62, 0.05), (0, 0, 0.025), M["gunmetal"], bevel=0.02)]
+    p = [box(k + "_bp", (0.62, 0.62, 0.05), (0, 0, 0.025), M["deck"], bevel=0.02)]
     for sx in (-1, 1):
         for sy in (-1, 1):
             p.append(cyl(f"{k}_bb{sx}{sy}", 0.03, 0.03, (sx * 0.24, sy * 0.24, 0.06), M["chrome"], verts=6, axis="Z"))

@@ -296,6 +296,9 @@ Dentro de cada mundo, as pistas vão da mais simples para a mais difícil (das c
 | FALCÃO (aerocarro) | Céu · $19.000 | **Plasma**: rajada teleguiada | **Vórtice**: segura e gira quem entra | **Planar**: impulso e voo planado com leme |
 
 - Garagem com os 10 carros em duas colunas; rótulos das armas centralizados (`Car.LBL_F`/`LBL_R`), multijogador local e online com todos os carros.
+- **Texturas CC0 (ambientCG)** em `minifuria/textures/cc0` (créditos em `CREDITOS.txt`), aplicadas em projeção triplanar com normal, rugosidade e detalhe de cor: borracha nos pneus e mangueiras (Rubber004), plástico fosco nos para-choques (Plastic006), metal escovado nos cromados e aros (Metal009), metal gasto no corpo das armas, blindagens e escapamentos (Metal046A), pintura riscada nas peças pintadas das armas (PaintedMetal004), chapa xadrez na base das torres e no assoalho das caçambas (DiamondPlate004) e couro nos bancos (Leather026). Convertidas de KTX2 com `Image.load_ktx_from_buffer` do Godot.
+- **Escapamento aberto**: ponteira cromada oca com lábio e fundo escuro recuado (antes era um cilindro fechado).
+- **Motor vivo**: a carroceria (não as rodas) treme com a rotação — mais forte acelerando parado na largada, mais fina em alta, extra no nitro; fumaça saindo das ponteiras (mais grossa e escura com o pé no fundo) e estalo com clarão ao tirar o pé em alta rotação.
 - Rivais: no mundo 1 quase nenhum tem especial; a partir do mundo 2 todos têm, e nos mundos finais também têm dano e cadência melhorados.
 
 **Chefes**: carros gigantes (modelo 1,6–1,7x, vida 1.100–1.500, barra de vida na tela). Os ataques são diferentes das armas equipáveis e **sempre avisados no chão** antes de acertar:

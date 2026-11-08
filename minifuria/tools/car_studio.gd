@@ -51,6 +51,9 @@ func _init() -> void:
 	var lib: Node3D = (load("res://assets/minicars.glb") as PackedScene).instantiate()
 	root3.add_child(lib)
 	lib.visible = false
+	# mesmos materiais do jogo (texturas CC0, reflexos)
+	var gm: Node = load("res://scripts/main.gd").new()
+	gm._prep_materials(lib, {})
 	var kinds := ["faisca", "vespa", "trovao", "monstro"]
 	var cols := [Color("#e8352b"), Color("#2f6fd6"), Color("#ffd23a"), Color("#33c46b")]
 	var solo := args[4] if args.size() > 4 and args[4] != "-" else ""
