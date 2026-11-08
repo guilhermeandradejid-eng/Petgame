@@ -228,6 +228,35 @@ Sobre as músicas do Rock n' Roll Racing ("Bad to the Bone", "Paranoid", "Born t
 - Retrovisores, saias laterais e portas encaixadas entre os para-lamas; o capô fica entre os para-lamas.
 - `tools/car_preview.gd` tira uma foto de estúdio dos carros com as armas para conferir a montagem.
 
+## Identidade visual, carregamento e configurações
+
+**Identidade "FÚRIA"** (`scripts/ui.gd`, aplicada em todas as telas), baseada em referências de interface de corrida:
+- Gran Turismo: fundo escuro, uma única cor de destaque e navegação vertical à esquerda repetida em todas as telas.
+- Fundos com rastros de luz para sugerir velocidade.
+- Guias de UI de jogos: uma cor "quente" só para ação e foco, contraste ≥ 4,5:1 e estados que não dependem só da cor.
+
+Elementos:
+- **Cores**: tinta `#0f0d1c`, destaque âmbar `#ffb21a` (ação principal e foco), ciano `#2ee6ff` só para informação, verde para compra/sucesso, vermelho para perigo.
+- **Forma**: botões em paralelogramo inclinado com "degrau" embaixo (parecem teclas físicas); cartões de pista inclinados com a cor da zebra do tema.
+- **Tipografia**: Bungee itálica (títulos e botões) + Barlow (texto e dicas, SIL OFL, em `fonts/`).
+- **Foco/hover** (mouse, toque e controle): borda branca, seta ▸ e leve aumento.
+- **Fundo dos menus**: shader `ui_backdrop` escurece à esquerda e desenha linhas de velocidade animadas sobre o voo da pista.
+
+**Carregamento com carrinho andando** (sem a tela do Godot):
+- **PC/Android**: a cena `boot.tscn` carrega o jogo em segundo plano (`ResourceLoader.load_threaded_request`) enquanto mostra o carregamento animado: estrada com zebra, carrinho quicando, rodas girando, fumaça e dicas.
+- **Ao trocar de pista**: o mesmo carregamento cobre a montagem da pista.
+- **Web**: a página mostra a mesma animação em HTML/CSS/SVG, com o progresso real do download (bytes de cada pedaço), e passa direto para o carregamento do jogo.
+- O splash estático do Godot ficou só na cor de fundo.
+
+**Configurações** (menu principal e pausa; salvas no save e aplicadas na hora):
+- **Áudio**: volume geral, música, efeitos e chat de voz (barramentos de áudio separados).
+- **Vídeo**:
+  - qualidade (Baixa: sem sombras nem MSAA · Média: sombras + MSAA 2x · Alta: sombras suaves + MSAA 4x);
+  - resolução 3D (50–100%);
+  - tela cheia (PC), VSync, efeitos de tela (borrão, aberração, linhas) e contador de FPS.
+- **Jogo**: direção (TELA/CARRO), intensidade do tremor da câmera e vibração (celular e rumble do controle).
+- **Controles**: tabela de teclado e controle.
+
 ## Multijogador
 
 ### Local (até 4 na mesma tela)

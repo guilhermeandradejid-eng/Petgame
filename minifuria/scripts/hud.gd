@@ -54,9 +54,8 @@ func _init() -> void:
 
 func _ready() -> void:
 	font = load("res://fonts/Bungee.woff2")
-	var th := Theme.new()
-	th.default_font = font
-	th.default_font_size = 20
+	UI.load_fonts()
+	var th := UI.make_theme()
 	var pl := CanvasLayer.new()
 	pl.layer = 1
 	add_child(pl)
@@ -85,7 +84,7 @@ func _ready() -> void:
 func _label(fs: int, col: Color, outline: Color, parent: Node = null) -> Label:
 	var l := Label.new()
 	var ls := LabelSettings.new()
-	ls.font = font
+	ls.font = UI.display_it if fs >= 28 else font
 	ls.font_size = fs
 	ls.font_color = col
 	ls.outline_size = maxi(4, fs / 6)
@@ -118,30 +117,17 @@ func _btn(txt: String, parent: Node, primary := true, w := 300.0, h := 66.0) -> 
 	b.text = txt
 	b.custom_minimum_size = Vector2(w, h)
 	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	b.add_theme_font_size_override("font_size", 26 if primary else 20)
-	var base := Color("#ffcf33") if primary else Color(1, 1, 1, 0.14)
-	var sb := _sb(base, 18)
-	sb.shadow_color = Color("#c77a00") if primary else Color(0, 0, 0, 0.35)
-	sb.shadow_offset = Vector2(0, 6)
-	sb.shadow_size = 1
-	var sh := sb.duplicate() as StyleBoxFlat
-	sh.bg_color = base.lightened(0.25)
-	for st in ["normal"]:
-		b.add_theme_stylebox_override(st, sb)
-	for st in ["hover", "pressed", "focus"]:
-		b.add_theme_stylebox_override(st, sh)
-	var fc := Color("#1b1530") if primary else Color.WHITE
-	for k in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-		b.add_theme_color_override(k, fc)
+	UI.style_button(b, primary, 24 if primary else 18)
+	b.pressed.connect(func(): if game: game.sfx.play("coin", -14.0, 1.6))
 	parent.add_child(b)
 	return b
 
 
 func _screen(dim := 0.62) -> Control:
-	var bg := ColorRect.new()
-	bg.color = Color(0.1, 0.07, 0.2, dim)
+	var bg := Control.new()
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(bg)
+	UI.backdrop(bg, clampf(dim + 0.12, 0.6, 0.94))
 	return bg
 
 
@@ -451,30 +437,45 @@ func _rot(p: Vector2) -> Vector2:
 # ------------------------------------------------------------------ menu
 func _build_menu() -> void:
 	menu = _screen(0.55)
-	var v := _vcenter(menu)
-	var logo := _label(104, Color.WHITE, Color("#ff2d55"), v)
-	logo.text = "MINI"
-	logo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var logo2 := _label(104, Color("#ffcf33"), Color("#ff6a1a"), v)
-	logo2.text = "FÚRIA"
-	logo2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var tag := _label(16, Color("#2ee6ff"), Color(0, 0, 0, 0.5), v)
-	tag.text = "9 PISTAS · ARMAS · LOOPINGS · UPGRADES"
-	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_btn("CORRER", v).pressed.connect(func(): game.set_solo(); show_screen("tracks"))
-	var mrow := HBoxContainer.new()
-	mrow.alignment = BoxContainer.ALIGNMENT_CENTER
-	mrow.add_theme_constant_override("separation", 14)
-	v.add_child(mrow)
-	_btn("LOCAL (ATÉ 4)", mrow, false, 240, 56).pressed.connect(func(): game.multi.open_join())
-	_btn("ONLINE (ATÉ 8)", mrow, false, 240, 56).pressed.connect(func(): game.online.open())
-	var info := Label.new()
-	info.text = "Cada volta recarrega munição e nitro. Destrua rivais para ganhar dinheiro e melhorar o carro.\nSetas/WASD apontam para onde ir na tela (o drift é automático nas curvas fortes) · B freio/ré · Z tiro · X mina · SHIFT nitro · R volta à pista\nControle: analógico dirige · A/RT acelera · B/LT freio · X tiro · Y mina · RB nitro · START pausa · BACK volta à pista"
-	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	info.add_theme_font_override("font", SystemFont.new())
-	info.add_theme_font_size_override("font_size", 15)
-	info.modulate = Color(1, 1, 1, 0.8)
-	v.add_child(info)
+	# navegação vertical à esquerda (mesma posição em todas as telas); a pista passa ao fundo, à direita
+	var m := MarginContainer.new()
+	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	m.add_theme_constant_override("margin_left", 64)
+	m.add_theme_constant_override("margin_top", 40)
+	m.add_theme_constant_override("margin_bottom", 34)
+	menu.add_child(m)
+	var v := VBoxContainer.new()
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_theme_constant_override("separation", 10)
+	m.add_child(v)
+	var logo := UI.title(v, "MINI", 72, UI.TEXT)
+	logo.label_settings.shadow_color = UI.BAD
+	var logo2 := UI.title(v, "FÚRIA", 92, UI.HOT)
+	logo.add_theme_constant_override("line_spacing", -14)
+	UI.checker(v, 330, 12)
+	var tag := UI.text(v, "9 PISTAS  ·  ARMAS  ·  LOOPINGS  ·  ATÉ 8 ONLINE", 16, UI.INFO, true)
+	tag.add_theme_font_override("font", UI.body_bold)
+	var sp := Control.new()
+	sp.custom_minimum_size = Vector2(0, 6)
+	v.add_child(sp)
+	var items := [["CORRER", true, func(): game.set_solo(); show_screen("tracks")],
+		["MULTIJOGADOR LOCAL", false, func(): game.multi.open_join()],
+		["ONLINE", false, func(): game.online.open()],
+		["CONFIGURAÇÕES", false, func(): game.settings.open("menu")]]
+	if OS.get_name() in ["Windows", "Linux", "macOS", "FreeBSD"]:
+		items.append(["SAIR", false, func(): get_tree().quit()])
+	var k := 0
+	for it in items:
+		var b := _btn(it[0], v, it[1], 380 - k * 6, 60 if it[1] else 50)
+		b.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.pressed.connect(it[2])
+		k += 1
+	var sp2 := Control.new()
+	sp2.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(sp2)
+	var info := UI.text(v, "Teclado: setas/WASD dirigem · B freio · Z tiro · X mina · SHIFT nitro · R volta à pista\nControle: analógico dirige · A acelera · B freio · X tiro · Y mina · RB nitro · START pausa", 14, UI.MUTED)
+	info.modulate = Color(1, 1, 1, 0.85)
 
 
 # ------------------------------------------------------------------ seleção de pista
@@ -484,6 +485,8 @@ func _build_tracks() -> void:
 	var tl := _label(44, Color("#ffcf33"), Color("#c74200"), v)
 	tl.text = "ESCOLHA A PISTA"
 	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tl.label_settings.font_color = UI.HOT
+	tl.label_settings.outline_color = UI.INK
 	var grid := GridContainer.new()
 	grid.columns = 5
 	grid.add_theme_constant_override("h_separation", 10)
@@ -500,9 +503,12 @@ func _build_tracks() -> void:
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 		b.add_theme_font_size_override("font_size", 13)
-		var c1 := Color(th.sky_hor).darkened(0.35)
-		var sb := _sb(c1, 14, Color(th.curb[0]), 4)
-		var sh := _sb(c1.lightened(0.15), 14, Color.WHITE, 5)
+		b.add_theme_font_override("font", UI.display_it)
+		var c1 := Color(th.sky_hor).darkened(0.45).lerp(UI.INK2, 0.35)
+		var sb := UI.box(c1, Color(th.curb[0]), 3, 0.12, 6, Color(0, 0, 0, 0.5), 8)
+		sb.border_width_left = 8
+		var sh := UI.box(c1.lightened(0.15), Color.WHITE, 4, 0.12, 6, Color.WHITE, 8)
+		sh.border_width_left = 10
 		b.add_theme_stylebox_override("normal", sb)
 		b.add_theme_stylebox_override("hover", sh)
 		b.add_theme_stylebox_override("pressed", sh)
@@ -518,7 +524,7 @@ func _build_tracks() -> void:
 
 
 func _refresh_tracks() -> void:
-	var grid := tracks_s.get_child(0).get_node("Grid")
+	var grid := tracks_s.find_child("Grid", true, false)
 	for b in grid.get_children():
 		var i: int = b.get_meta("idx")
 		var d: Dictionary = TrackData.TRACKS[i]
@@ -576,10 +582,14 @@ func _build_garage() -> void:
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(110, 48)
 		b.add_theme_font_size_override("font_size", 15)
-		b.add_theme_stylebox_override("normal", _sb(Color("#2e7d32"), 10))
-		b.add_theme_stylebox_override("hover", _sb(Color("#43a047"), 10))
-		b.add_theme_stylebox_override("pressed", _sb(Color("#43a047"), 10))
-		b.add_theme_stylebox_override("disabled", _sb(Color(1, 1, 1, 0.08), 10))
+		b.add_theme_font_override("font", UI.display_it)
+		b.add_theme_stylebox_override("normal", UI.box(Color("#1f8a3a"), Color(0, 0, 0, 0), 0, UI.SKEW, 4, Color("#0d4a1c"), 4))
+		b.add_theme_stylebox_override("hover", UI.box(Color("#2fb04f"), Color.WHITE, 2, UI.SKEW, 4, Color.WHITE, 4))
+		b.add_theme_stylebox_override("focus", UI.box(Color("#2fb04f"), Color.WHITE, 2, UI.SKEW, 4, Color.WHITE, 4))
+		b.add_theme_stylebox_override("pressed", UI.box(Color("#2fb04f"), Color.WHITE, 2, UI.SKEW, 1, Color.WHITE, 4))
+		b.add_theme_stylebox_override("disabled", UI.box(Color(1, 1, 1, 0.06), UI.LINE, 1, UI.SKEW, 2, Color.BLACK, 4))
+		l.add_theme_font_override("font", UI.body_bold)
+		l.add_theme_font_size_override("font_size", 17)
 		b.pressed.connect(func(): game.buy_upgrade(k))
 		row.add_child(b)
 		g_up[k] = {"label": l, "btn": b}
@@ -604,14 +614,14 @@ func _build_garage() -> void:
 
 func _panel(parent: Node, title: String) -> VBoxContainer:
 	var pc := PanelContainer.new()
-	pc.add_theme_stylebox_override("panel", _sb(Color(1, 1, 1, 0.07), 16))
+	pc.add_theme_stylebox_override("panel", UI.panel_box(UI.HOT))
 	pc.custom_minimum_size = Vector2(340, 0)
 	parent.add_child(pc)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
 	pc.add_child(v)
-	var l := _label(20, Color("#2ee6ff"), Color(0, 0, 0, 0.5), v)
-	l.text = title
+	var l := UI.title(v, title, 20, UI.INFO)
+	l.label_settings.outline_size = 3
 	return v
 
 
@@ -620,9 +630,11 @@ func _choice(parent: Node, slot: String, key: String, h: int) -> void:
 	b.custom_minimum_size = Vector2(310, h)
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.add_theme_font_size_override("font_size", 14)
-	b.add_theme_stylebox_override("normal", _sb(Color(1, 1, 1, 0.08), 12))
-	b.add_theme_stylebox_override("hover", _sb(Color(1, 1, 1, 0.16), 12))
-	b.add_theme_stylebox_override("pressed", _sb(Color(1, 1, 1, 0.16), 12))
+	b.add_theme_font_override("font", UI.body_bold)
+	b.add_theme_stylebox_override("normal", UI.box(Color(1, 1, 1, 0.06), UI.LINE, 1, 0.1, 0, Color.BLACK, 6))
+	b.add_theme_stylebox_override("hover", UI.box(Color(1, 1, 1, 0.14), Color.WHITE, 2, 0.1, 0, Color.BLACK, 6))
+	b.add_theme_stylebox_override("focus", UI.box(Color(1, 1, 1, 0.14), Color.WHITE, 2, 0.1, 0, Color.BLACK, 6))
+	b.add_theme_stylebox_override("pressed", UI.box(Color(1, 1, 1, 0.18), UI.HOT, 2, 0.1, 0, Color.BLACK, 6))
 	b.pressed.connect(func(): game.equip(slot, key))
 	parent.add_child(b)
 	g_boxes[slot + ":" + key] = b
@@ -656,8 +668,10 @@ func refresh_garage() -> void:
 			"nitro":
 				txt = "%s (%d x %.1fs)" % [String(Car.NITRO[k].name).to_upper(), int(Car.NITRO[k].cap), float(Car.NITRO[k].dur)]
 		b.text = ("> " if on else "   ") + txt
-		var col := Color("#ff7a1a") if on else Color(1, 1, 1, 0.08)
-		b.add_theme_stylebox_override("normal", _sb(col, 12, Color.WHITE if on else Color(0, 0, 0, 0), 2 if on else 0))
+		var col := UI.HOT if on else Color(1, 1, 1, 0.06)
+		b.add_theme_stylebox_override("normal", UI.box(col, Color.WHITE if on else UI.LINE, 2 if on else 1, 0.1, 3 if on else 0, UI.HOT_DARK, 6))
+		b.add_theme_color_override("font_color", UI.INK if on else UI.TEXT)
+		b.add_theme_color_override("font_hover_color", UI.TEXT)
 	for k in g_up:
 		var lvl: int = s.up[k]
 		var row: Dictionary = g_up[k]
@@ -684,6 +698,7 @@ func _build_pause() -> void:
 	sb.pressed.connect(func(): game.toggle_steer())
 	steer_btns.append(sb)
 	_btn("REINICIAR", v, false).pressed.connect(func(): game.start_race())
+	_btn("CONFIGURAÇÕES", v, false).pressed.connect(func(): game.settings.open("pause"))
 	_btn("SAIR DA CORRIDA", v, false).pressed.connect(func(): game.to_menu())
 	pause_extra = VBoxContainer.new()
 	pause_extra.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -697,7 +712,8 @@ func _build_results() -> void:
 	res_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	res_list = Label.new()
 	res_list.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	res_list.add_theme_font_size_override("font_size", 19)
+	res_list.add_theme_font_size_override("font_size", 20)
+	res_list.add_theme_font_override("font", UI.body_bold)
 	v.add_child(res_list)
 	res_cash = _label(30, Color("#7dff6a"), Color(0, 0, 0, 0.6), v)
 	res_cash.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

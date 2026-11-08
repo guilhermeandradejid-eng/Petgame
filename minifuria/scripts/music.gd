@@ -52,6 +52,7 @@ func _ensure() -> void:
 		return
 	player = AudioStreamPlayer.new()
 	player.volume_db = -60.0
+	player.bus = "Musica"
 	add_child(player)
 
 

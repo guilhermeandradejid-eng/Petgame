@@ -52,6 +52,8 @@ var locals: Array = []     # jogadores desta máquina: {"car", "dev", "idx", "na
 ## sessão: "solo" | "local" (tela dividida, até 4) | "online" (até 8, em salas)
 var session := {"kind": "solo", "players": []}
 var multi: Multi
+var settings: Settings
+var loader: Loader
 var online: NetGame
 var race_end_t := -1.0     # multijogador: depois que o 1º humano termina, a corrida acaba em 30 s
 const HUMAN_COLORS := ["#e8352b", "#2f6fd6", "#2fbf71", "#ffb31a", "#c04de0", "#ff7a1a", "#2ee6ff", "#f2f2f2"]
@@ -219,6 +221,11 @@ func _ready() -> void:
 	add_child(hud)
 	music = Music.new()
 	add_child(music)
+	settings = Settings.new()
+	add_child(settings)
+	settings.setup(self, hud)
+	loader = Loader.new()
+	hud.add_child(loader)
 	multi = Multi.new()
 	add_child(multi)
 	multi.setup(self, hud)
@@ -365,8 +372,19 @@ func _overview_shots() -> void:
 
 
 func _ui_shots() -> void:
-	for scr in ["menu", "tracks", "garage", "local", "online"]:
-		if scr == "local":
+	if "--loadershot" in OS.get_cmdline_user_args():
+		loader.show_for("CIRCUITO DO PARQUE")
+		loader.progress = 0.62
+		for k in 50:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("user://ui_loader.png")
+		loader.visible = false
+	for scr in ["menu", "tracks", "garage", "local", "online", "config", "config2", "pause"]:
+		if scr == "config":
+			settings.open("menu")
+		elif scr == "config2":
+			settings._show_tab("video")
+		elif scr == "local":
 			multi.open_join()
 			multi.slots = [{"dev": "kbA", "car": "faisca"}, {"dev": "joy0", "car": "vespa"}]
 			multi._refresh_join()
@@ -1212,7 +1230,30 @@ func next_track() -> void:
 	hud.show_screen("garage")
 
 
+var _loading := false
+
+
+## largada com a tela de carregamento (carrinho andando) enquanto a pista é montada
 func start_race() -> void:
+	if auto_test or loader == null or _loading:
+		_start_race_now()
+		return
+	_loading = true
+	loader.show_for(String(TrackData.TRACKS[track_idx].name).to_upper())
+	loader.progress = 0.35
+	hud.show_screen("none")
+	for i in 3:
+		await get_tree().process_frame
+	loader.progress = 0.7
+	await get_tree().process_frame
+	_start_race_now()
+	loader.progress = 1.0
+	await get_tree().process_frame
+	loader.finish()
+	_loading = false
+
+
+func _start_race_now() -> void:
 	load_track(track_idx)
 	stats = {"kills": 0, "takedowns": 0, "near": 0, "best_drift": 0.0, "air": 0.0, "falls": 0, "deaths": 0, "score": 0, "oncoming": 0.0, "prize": 0}
 	race_t = 0.0
@@ -1345,7 +1386,7 @@ func _on_died(c: Car, killer: Car) -> void:
 		if c == player:
 			stats.deaths += 1
 			crash_t = 0.0
-		Input.vibrate_handheld(150)
+		_vibrate(150)
 		return
 	if c == player:
 		stats.deaths += 1
@@ -1356,7 +1397,7 @@ func _on_died(c: Car, killer: Car) -> void:
 		_slowmo(0.3, 1.4)
 		crash_t = 0.0
 		zoom_kick -= 8.0
-		Input.vibrate_handheld(150)
+		_vibrate(150)
 		return
 	if killer and killer.local_idx >= 0 and killer != player and mode == "race":
 		pop_for(killer, "DESTRUIU %s!" % c.display_name, Color("#ff2d55"))
@@ -1382,7 +1423,7 @@ func _on_died(c: Car, killer: Car) -> void:
 			if randf() < 0.6:
 				hitstop = maxf(hitstop, 0.05)
 			_add_meter(0.5)
-			Input.vibrate_handheld(80)
+			_vibrate(80)
 	elif c.role != "traffic" and mode == "race":
 		hud.killfeed("%s destruiu %s" % [killer.display_name if killer else "A PISTA", c.display_name], Color(1, 1, 1, 0.85))
 
@@ -1447,7 +1488,21 @@ func _add_meter(a: float) -> void:
 
 
 func _shake(a: float) -> void:
-	trauma = minf(1.0, trauma + a)
+	trauma = minf(1.0, trauma + a * float(settings.val("shake")) if settings else a)
+
+
+## vibração: celular e controles dos jogadores (se estiver ligada nas configurações)
+func _vibrate(ms: int) -> void:
+	if settings and not bool(settings.val("vibration")):
+		return
+	Input.vibrate_handheld(ms)
+	for lp in locals:
+		var dev := String(lp.dev)
+		if dev.begins_with("joy"):
+			Input.start_joy_vibration(int(dev.substr(3)), 0.4, 0.8, ms / 1000.0)
+		elif dev == "solo":
+			for j in Input.get_connected_joypads():
+				Input.start_joy_vibration(j, 0.4, 0.8, ms / 1000.0)
 
 
 func _flash(c: Color, a: float) -> void:
@@ -2660,9 +2715,10 @@ func _post(rdt: float) -> void:
 	post_lines = lerpf(post_lines, (1.35 if p.nitroing else 0.0) + clampf((sp - 42.0) / 15.0, 0.0, 0.6), minf(1.0, rdt * 6.0))
 	flash.a *= exp(-rdt * 7.0)
 	var m := hud.post_mat
-	m.set_shader_parameter("blur", post_blur)
-	m.set_shader_parameter("aberr", post_aberr)
-	m.set_shader_parameter("lines", post_lines)
+	var sfx_on: float = 1.0 if bool(settings.val("screen_fx")) else 0.0
+	m.set_shader_parameter("blur", post_blur * sfx_on)
+	m.set_shader_parameter("aberr", post_aberr * sfx_on)
+	m.set_shader_parameter("lines", post_lines * sfx_on)
 	m.set_shader_parameter("flash", Vector4(flash.r, flash.g, flash.b, flash.a))
 	m.set_shader_parameter("sat", 0.7 if slow else 1.0)
 	m.set_shader_parameter("vig", 0.3 + (0.25 if p.nitroing else 0.0) + (0.3 if slow else 0.0))

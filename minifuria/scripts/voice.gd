@@ -230,6 +230,7 @@ func _on_bin(kind: int, from: int, data: PackedByteArray) -> void:
 		gen.mix_rate = RATE
 		gen.buffer_length = 0.2
 		pl.stream = gen
+		pl.bus = "Voz"
 		pl.volume_db = volume_db
 		add_child(pl)
 		pl.play()

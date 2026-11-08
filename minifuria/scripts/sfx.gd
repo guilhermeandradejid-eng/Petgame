@@ -44,11 +44,13 @@ func _ready() -> void:
 	player.stream = st
 	player.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 	player.volume_db = -4.0
+	player.bus = "Efeitos"
 	add_child(player)
 	player.play()
 	gen = player.get_stream_playback()
 	for i in 10:
 		var p := AudioStreamPlayer.new()
+		p.bus = "Efeitos"
 		add_child(p)
 		pool.append(p)
 	_build_shots()

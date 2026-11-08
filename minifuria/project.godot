@@ -5,9 +5,11 @@ config_version=5
 
 config/name="Mini Fúria"
 config/description="Corrida isométrica de mini carros com batidas, destruição e nitro."
-run/main_scene="res://scenes/main.tscn"
+run/main_scene="res://scenes/boot.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icons/icon.png"
+boot_splash/bg_color=Color(0.0588, 0.051, 0.11, 1)
+boot_splash/show_image=false
 
 [display]
 
