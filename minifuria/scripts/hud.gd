@@ -570,6 +570,7 @@ func _refresh_tracks() -> void:
 # ------------------------------------------------------------------ garagem
 const UP_NAMES := {"engine": "MOTOR", "armor": "BLINDAGEM", "ammo": "ARMA DA FRENTE", "rear": "ARMA DE TRÁS", "nitro": "ESPECIAL +1", "tires": "PNEUS"}
 var g_weap: Label
+var g_swatches: Array = []
 var boss_bar: Control
 
 
@@ -589,6 +590,25 @@ func _build_garage() -> void:
 	var c1 := _panel(cols, "CARROS")
 	for k in ["faisca", "vespa", "trovao", "monstro"]:
 		_choice(c1, "car", k, 62)
+	var cl := UI.title(c1, "COR DA PINTURA", 16, UI.INFO)
+	cl.label_settings.outline_size = 3
+	var cg := GridContainer.new()
+	cg.columns = 6
+	cg.add_theme_constant_override("h_separation", 8)
+	cg.add_theme_constant_override("v_separation", 8)
+	c1.add_child(cg)
+	for hexc in game.PAINT_COLORS:
+		var sw := Button.new()
+		sw.custom_minimum_size = Vector2(40, 32)
+		sw.set_meta("col", hexc)
+		sw.tooltip_text = hexc
+		sw.pressed.connect(func():
+			game.save.color = hexc
+			game._write_save()
+			game.sfx.play("coin", -10.0, 1.4)
+			refresh_garage())
+		cg.add_child(sw)
+		g_swatches.append(sw)
 	var c2 := _panel(cols, "ARMAS DO CARRO")
 	g_weap = UI.text(c2, "", 15, UI.TEXT)
 	g_weap.add_theme_font_override("font", UI.body_bold)
@@ -701,6 +721,16 @@ func refresh_garage() -> void:
 		b.add_theme_stylebox_override("normal", UI.box(col, Color.WHITE if on else UI.LINE, 2 if on else 1, 0.1, 3 if on else 0, UI.HOT_DARK, 6))
 		b.add_theme_color_override("font_color", UI.INK if on else UI.TEXT)
 		b.add_theme_color_override("font_hover_color", UI.TEXT)
+	var cur := String(s.get("color", game.PAINT_COLORS[0]))
+	for sw in g_swatches:
+		var c := Color(String(sw.get_meta("col")))
+		var on: bool = String(sw.get_meta("col")) == cur
+		sw.add_theme_stylebox_override("normal", UI.box(c, Color.WHITE if on else Color(0, 0, 0, 0.6), 4 if on else 2, 0.12, 0, Color.BLACK, 4))
+		sw.add_theme_stylebox_override("hover", UI.box(c.lightened(0.15), Color.WHITE, 3, 0.12, 0, Color.BLACK, 4))
+		sw.add_theme_stylebox_override("focus", UI.box(c.lightened(0.15), Color.WHITE, 3, 0.12, 0, Color.BLACK, 4))
+		sw.add_theme_stylebox_override("pressed", UI.box(c, Color.WHITE, 4, 0.12, 0, Color.BLACK, 4))
+		sw.text = "✓" if on else ""
+		sw.add_theme_color_override("font_color", Color.BLACK if c.get_luminance() > 0.5 else Color.WHITE)
 	var lo: Array = Car.LOADOUT[String(s.car)]
 	var sn: String = Car.SPECIAL[lo[2]].name if Car.SPECIAL.has(lo[2]) else "Nitro"
 	g_weap.text = "%s\n%s\n\nFRENTE · %s\n%s\n\nTRÁS · %s\n%s\n\nESPECIAL · %s\n%s" % [Career.SHOP[s.car].name, Career.SHOP[s.car].desc,

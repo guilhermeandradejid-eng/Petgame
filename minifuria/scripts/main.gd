@@ -22,7 +22,6 @@ const TRAFFIC := [
 	["taxi", ["#ffcf33"]],
 	["policia", ["#f4f4f4"]],
 	["picape", ["#8a5cd6", "#e2553b", "#3d8bd6"]],
-	["van", ["#f08a7a", "#ffd23a", "#7fc8d9"]],
 ]
 
 var lib: Node3D
@@ -59,6 +58,8 @@ var career_lines: Array = []
 var loader: Loader
 var online: NetGame
 var race_end_t := -1.0     # multijogador: depois que o 1º humano termina, a corrida acaba em 30 s
+## paleta da garagem (cor da pintura do seu carro)
+const PAINT_COLORS := ["#e8352b", "#ff7a1a", "#ffcf33", "#7dff6a", "#1fae5b", "#2ee6ff", "#2f6fd6", "#5b3df0", "#c04de0", "#ff4fa3", "#f4f2ff", "#2a2a33"]
 const HUMAN_COLORS := ["#e8352b", "#2f6fd6", "#2fbf71", "#ffb31a", "#c04de0", "#ff7a1a", "#2ee6ff", "#f2f2f2"]
 const MORE_AI := [
 	{"kind": "faisca", "color": "#6b6f7a", "name": "FUMAÇA"},
@@ -1123,7 +1124,7 @@ func _spawn_cars() -> void:
 	var wlv: int = int(Career.WORLDS[int(ev.world)].lv) if not ev.is_empty() else -1
 	locals.clear()
 	# quem corre: pessoas (locais ou da sala online) + IA para completar o grid
-	var people: Array = session.players if session.kind != "solo" and session.players.size() > 0 else [{"dev": "solo", "name": "VOCÊ", "car": save.car, "local": true}]
+	var people: Array = session.players if session.kind != "solo" and session.players.size() > 0 else [{"dev": "solo", "name": "VOCÊ", "car": save.car, "local": true, "color": String(save.get("color", HUMAN_COLORS[0]))}]
 	var n_ai: int = int(session.get("ai", -1))
 	if n_ai < 0:
 		n_ai = mini(RIVALS.size(), 8 - people.size()) if session.kind != "online" else clampi(6 - people.size(), 0, 4)

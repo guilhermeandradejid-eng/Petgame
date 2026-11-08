@@ -90,7 +90,7 @@ func _go() -> void:
 		return
 	var players: Array = []
 	for i in slots.size():
-		players.append({"dev": slots[i].dev, "car": slots[i].car, "name": "P%d" % (i + 1), "color": game.HUMAN_COLORS[i], "local": true})
+		players.append({"dev": slots[i].dev, "car": slots[i].car, "name": "P%d" % (i + 1), "color": String(game.save.get("color", game.HUMAN_COLORS[0])) if i == 0 else game.HUMAN_COLORS[i], "local": true})
 	game.session = {"kind": "local" if players.size() > 1 else "solo", "players": players}
 	if players.size() == 1:
 		game.session.players[0].name = "VOCÊ"

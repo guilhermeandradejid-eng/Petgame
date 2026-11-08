@@ -160,7 +160,8 @@ Os carros foram refeitos do zero (`build_car2` em `blender/build_assets.py`):
 - **Rodas embutidas**: a face do pneu fica rente à lateral, as caixas de roda são recortadas na lataria e a linha de cintura passa acima da roda (sem para-lama "de Fusca").
 - **Cabine em estufa**: vidro inclinado para dentro, colunas e teto na cor do carro.
 - **Portas**: só vincos gravados na lataria, maçaneta e retrovisor; friso cromado e saia lateral.
-- **Silhuetas de combate distintas**: Faísca esportivo em cunha com asa; Vespa trophy truck com gaiola e estepe; Trovão muscle blindado com blower, janelas em fresta e chapas rebitadas; Monstro picape alta com caçamba, chaminés e para-choque de impulsão; e mais sedã, táxi, viatura e van.
+- **Silhuetas de combate distintas**: Faísca esportivo em cunha com asa; Vespa trophy truck com gaiola e estepe; Trovão muscle blindado com blower, janelas em fresta e chapas rebitadas; Monstro picape alta com caçamba, chaminés e para-choque de impulsão; hipercarro elétrico (chefe BRUTUS) com corcovas sobre as rodas dianteiras, LED de ponta a ponta, bolha de vidro e asa; e mais sedã, táxi e viatura. A van com baú saiu.
+- **Cor da pintura**: paleta de 12 cores na garagem. A cor fica salva e vale no solo, na carreira, para o P1 no local e no online (os outros veem a sua cor).
 
 ## Pneus (upgrade PNEUS) e materiais
 
@@ -265,7 +266,7 @@ Dentro de cada mundo, as pistas vão da mais simples para a mais difícil (das c
 - **CROCODILO DO BREJO** (picape verde): **LAMA**, 3 poças que atolam (o carro perde embalo e a tela suja); **BOTE**, marca a sua faixa e dá um bote lateral nela.
 - **AVALANCHE** (trophy truck da neve): **BOLAS DE NEVE** gigantes rolando pela pista contra você, deixando sempre uma faixa livre (avisada); **GELO**, um trecho vira gelo liso (quase sem aderência).
 - **BLACKOUT** (sedã hacker): **PULSO EMP**, anel que desliga suas armas e o especial por 3 s; **PORTÕES LASER**, barreiras que ligam e desligam a cada 1,2 s.
-- **BRUTUS** (van blindada): **TREMOR**, um círculo onde você vai passar daqui a 1 s, depois o chão explode e arremessa; **BARRIS GIGANTES** rolando para trás quando você está atrás dele.
+- **BRUTUS** (hipercarro elétrico blindado): **TREMOR**, um círculo onde você vai passar daqui a 1 s, depois o chão explode e arremessa; **BARRIS GIGANTES** rolando para trás quando você está atrás dele.
 - **XERIFE DE AÇO** (viatura): **ÍMÃ**, um raio que te puxa e segura a velocidade (escape com salto, escudo ou distância); **BLOQUEIO**, uma fileira de pregos atravessando a pista com uma única brecha marcada por cones.
 - **O IMPERADOR** (muscle car dourado): **METEOROS**, 4 círculos à sua frente com impacto 1,3 s depois; **MURO DE FOGO** deixado na pista atrás dele.
 - O chefe "segura" quando abre vantagem (o duelo fica ao alcance dos ataques) e só acelera tudo na última volta.

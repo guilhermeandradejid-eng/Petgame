@@ -346,7 +346,7 @@ func _on_msg(d: Dictionary) -> void:
 
 func _send_prof(to := -1) -> void:
 	var p := {"k": "prof", "name": name_e.text, "car": my_car, "front": game.save.front, "rear": game.save.rear,
-		"nitro": game.save.nitro, "up": game.save.up}
+		"nitro": game.save.nitro, "up": game.save.up, "color": String(game.save.get("color", game.HUMAN_COLORS[0]))}
 	profiles[net.my_id] = p
 	net.room_send(p, to)
 
@@ -442,7 +442,7 @@ func start_race() -> void:
 		var p: Dictionary = profiles.get(id, {})
 		players.append({"id": id, "name": String(p.get("name", net.room.members[id])).to_upper(), "car": String(p.get("car", "faisca")),
 			"front": String(p.get("front", "mg")), "rear": String(p.get("rear", "mine")), "nitro": String(p.get("nitro", "short")),
-			"up": p.get("up", {}), "color": game.HUMAN_COLORS[i % game.HUMAN_COLORS.size()]})
+			"up": p.get("up", {}), "color": String(p.get("color", game.HUMAN_COLORS[i % game.HUMAN_COLORS.size()]))})
 	var n_ai := clampi(6 - players.size(), 0, 4) if ai_fill else 0
 	var d := {"k": "start", "track": sel_track, "ai": n_ai, "players": players}
 	net.send({"t": "lock", "open": false})

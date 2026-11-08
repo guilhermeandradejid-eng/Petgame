@@ -6,7 +6,7 @@ extends Node
 
 const WORLDS := [
 	{"name": "PARQUE", "theme": "park", "tracks": [0, 1, 2, 3], "boss_track": 1, "need": 24, "boss": "boss_brutus", "boss_name": "BRUTUS, O ROLO",
-		"boss_desc": "Van blindada gigante. TREMOR: marca um círculo onde você vai passar e explode o chão. BARRIS: rola barris gigantes para trás.",
+		"boss_desc": "Hipercarro elétrico blindado gigante. TREMOR: marca um círculo onde você vai passar e explode o chão. BARRIS: rola barris gigantes para trás.",
 		"boss_col": "#4a4652", "mult": 1.0, "lv": 0, "col": "#7dff6a"},
 	{"name": "PÂNTANO", "theme": "swamp", "tracks": [4, 5, 6, 7], "boss_track": 6, "need": 28, "boss": "boss_croc", "boss_name": "CROCODILO DO BREJO",
 		"boss_desc": "Picape-crocodilo gigante. LAMA: cospe poças que atolam o carro e sujam a tela. BOTE: marca uma faixa da pista e dá um bote lateral nela.",

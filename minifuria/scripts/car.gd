@@ -28,7 +28,8 @@ const SPECS := {
 	# picape monstro (comprável): pesada, resistente, menos ágil
 	"monstro": {"len": 4.3, "wid": 2.1, "h": 0.8, "clr": 0.45, "mass": 1.45, "vmax": 39.0, "nitro": 52.0, "accel": 22.0, "grip": 9.2, "drift_grip": 1.9, "turn": 2.35, "hp": 175.0},
 	# chefes (modelos ampliados 1,6x; vida alta, pesados)
-	"boss_brutus": {"len": 7.0, "wid": 3.4, "h": 1.36, "clr": 0.56, "mass": 4.0, "vmax": 41.0, "nitro": 50.0, "accel": 24.0, "grip": 10.0, "drift_grip": 2.4, "turn": 2.2, "hp": 1100.0},
+	"hyper": {"len": 4.1, "wid": 2.15, "h": 0.66, "clr": 0.18, "mass": 1.3, "vmax": 44.0, "nitro": 58.0, "accel": 28.0, "grip": 10.5, "drift_grip": 1.7, "turn": 2.6, "hp": 120.0},
+	"boss_brutus": {"len": 6.6, "wid": 3.45, "h": 1.06, "clr": 0.29, "mass": 4.0, "vmax": 41.0, "nitro": 50.0, "accel": 24.0, "grip": 10.0, "drift_grip": 2.4, "turn": 2.2, "hp": 1100.0},
 	"boss_xerife": {"len": 6.2, "wid": 3.1, "h": 1.05, "clr": 0.48, "mass": 3.2, "vmax": 42.0, "nitro": 54.0, "accel": 26.0, "grip": 10.5, "drift_grip": 2.2, "turn": 2.4, "hp": 1300.0},
 	"boss_croc": {"len": 6.9, "wid": 3.4, "h": 1.3, "clr": 0.77, "mass": 3.8, "vmax": 41.5, "nitro": 52.0, "accel": 24.0, "grip": 10.5, "drift_grip": 2.2, "turn": 2.3, "hp": 1250.0},
 	"boss_avalanche": {"len": 5.8, "wid": 3.4, "h": 1.0, "clr": 0.82, "mass": 3.2, "vmax": 42.5, "nitro": 54.0, "accel": 26.0, "grip": 10.5, "drift_grip": 2.2, "turn": 2.5, "hp": 1350.0},
@@ -36,7 +37,7 @@ const SPECS := {
 	"boss_imperador": {"len": 6.6, "wid": 3.4, "h": 0.96, "clr": 0.48, "mass": 3.6, "vmax": 43.0, "nitro": 56.0, "accel": 28.0, "grip": 11.0, "drift_grip": 2.2, "turn": 2.5, "hp": 1500.0},
 }
 ## modelo 3D de cada tipo (os chefes e a Monstro reaproveitam modelos, ampliados ou não)
-const MODEL := {"monstro": "picape", "boss_brutus": "van", "boss_xerife": "policia", "boss_imperador": "trovao",
+const MODEL := {"monstro": "picape", "boss_brutus": "hyper", "boss_xerife": "policia", "boss_imperador": "trovao",
 	"boss_croc": "picape", "boss_avalanche": "vespa", "boss_blackout": "sedan"}
 const VSCALE := {"boss_brutus": 1.6, "boss_xerife": 1.6, "boss_imperador": 1.6, "boss_croc": 1.6, "boss_avalanche": 1.7, "boss_blackout": 1.6}
 ## cada carro tem armas próprias (estilo Rock n' Roll Racing): [frente, trás, especial]

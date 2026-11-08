@@ -702,20 +702,23 @@ def build_car2(key, s):
     # para-lamas retos, fundidos à carroceria (cobrem o pneu que passa da linha de cintura)
     for n, (sd, y, r, fr) in WH.items():
         top = 2 * r + 0.1
-        if 2 * r + 0.08 > zb:
-            fw = ww + 0.18
-            z0_ = zb - 0.2
-            f = box(f"{key}_fl{n}", (fw, 2 * r + 0.6, top - z0_), (sd * (W / 2 - fw / 2 + 0.035), y, (top + z0_) / 2), paint, bevel=0.09)
+        hump = fr and s.get("front_fenders")
+        if 2 * r + 0.08 > zb or hump:
+            # para-lama integrado (corcova de hipercarro sobre a roda dianteira)
+            top = 2 * r + (0.17 if hump else 0.1)
+            fw = ww + (0.24 if hump else 0.18)
+            z0_ = (nose - 0.15) if hump else zb - 0.2
+            f = box(f"{key}_fl{n}", (fw, 2 * r + (0.45 if hump else 0.6), top - z0_), (sd * (W / 2 - fw / 2 + 0.02), y, (top + z0_) / 2), paint, bevel=0.13 if hump else 0.09)
             apply_mods(f)
             boolean(body, f, "UNION")
     # caixas de roda (frente mais funda: a roda esterça)
     for n, (sd, y, r, fr) in WH.items():
-        inner = W / 2 - ww - (0.3 if fr else 0.14)
+        inner = W / 2 - ww - (0.3 if fr and not s.get("front_fenders") else 0.14)
         c = cyl(f"{key}_cut{n}", r + 0.075, (W / 2 + 0.5) - inner, (sd * (inner + (W / 2 + 0.5)) / 2, y, r), M["well"], verts=32, axis="X")
         boolean(body, c, "DIFFERENCE")
     # interior escuro da caixa de roda (some o "vazio" atrás do pneu)
     for n, (sd, y, r, fr) in WH.items():
-        P["body"].append(cyl(f"{key}_wl{n}", r + 0.06, 0.04, (sd * (W / 2 - ww - (0.28 if fr else 0.12)), y, r), M["well"], verts=24))
+        P["body"].append(cyl(f"{key}_wl{n}", r + 0.06, 0.04, (sd * (W / 2 - ww - (0.28 if fr and not s.get("front_fenders") else 0.12)), y, r), M["well"], verts=24))
     P["body"].append(body)
     # assoalho/saia escura, friso cromado na linha de cintura e saia lateral (quebram a lateral chapada)
     P["body"].append(box(key + "_fl", (W * 0.94, wb + 0.4, 0.08), (0, oy, clr + 0.02), M["trim"]))
@@ -796,6 +799,13 @@ def build_car2(key, s):
             for sd in (-1, 1):
                 P["spoiler"].append(box(f"{key}_we{sd}", (0.04, 0.42, 0.22), (sd * W * 0.47, yR - 0.22, tail + h - 0.04), M["trim"]))
                 P["spoiler"].append(beam(f"{key}_ws{sd}", (sd * W * 0.3, yR - 0.3, tail - 0.02), (sd * W * 0.3, yR - 0.2, tail + h), 0.06, 0.12, M["trim"]))
+        elif k == "ledfront":
+            # faixa de LED de ponta a ponta no bico + "sobrancelhas" de LED
+            P["bumperF"].append(beam(key + "_led", (-W * 0.44, yF + 0.12, nose - 0.02), (W * 0.44, yF + 0.12, nose - 0.02), 0.05, 0.035, M["head"]))
+            P["bumperR"].append(beam(key + "_tled", (-W * 0.47, yR + 0.004, tail - 0.08), (W * 0.47, yR + 0.004, tail - 0.08), 0.05, 0.05, M["tail"]))
+        elif k == "diffuser":
+            for i_ in range(5):
+                P["bumperR"].append(box(f"{key}_df{i_}", (0.03, 0.4, 0.18), ((i_ - 2) * W * 0.12, yR - 0.1, clr + 0.08), M["trim"]))
         elif k == "ducktail":
             P["spoiler"].append(box(key + "_dt", (W * 0.9, 0.3, 0.1), (0, yR - 0.12, tail + 0.04), paint, bevel=0.03, taper=(1.0, 0.6, 0.06)))
         elif k == "intakes":
@@ -910,9 +920,10 @@ CARS2 = {
     "policia": dict(L=3.9, W=1.95, clr=0.26, wr=0.36, wb=2.4, ww=0.42, zb=0.86, nose=0.68, tail=0.86,
                     cowl=-0.55, deck=0.95, cab=(-0.55, -0.05, 0.6, 1.0, 1.36, 0.86, 0.68), door=(-0.5, 0.9),
                     extras=[("siren",), ("bullbar",)]),
-    "van": dict(L=4.4, W=2.1, clr=0.3, wr=0.4, wb=2.8, ww=0.46, zb=1.0, nose=0.82, tail=1.0, flat_hood=True,
-                cowl=-1.45, deck=2.1, cab=(-1.45, -1.05, -0.62, -0.5, 1.95, 0.9, 0.82), door=(-1.4, -0.6),
-                extras=[("box", -0.55, 2.2, 2.05)]),
+    # hipercarro elétrico (chefe BRUTUS): baixíssimo, largo, cunha afiada, bolha de vidro, LEDs de ponta a ponta
+    "hyper": dict(L=4.1, W=2.15, clr=0.18, wr=0.34, wrr=0.36, wb=2.55, ww=0.5, zb=0.84, nose=0.46, tail=0.88, bev=0.12, front_fenders=True,
+                  cowl=-0.25, deck=1.25, cab=(-0.25, 0.25, 0.72, 1.2, 1.2, 0.78, 0.5), door=(-0.22, 0.85),
+                  extras=[("ledfront",), ("wing", 0.26), ("intakes",), ("diffuser",), ("vents",)]),
 }
 
 car_roots = {}
