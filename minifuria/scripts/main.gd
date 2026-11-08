@@ -97,6 +97,7 @@ var cam_mode_t := 0.0
 var cam_loop := {}
 var cam_kick := Vector3.ZERO
 var oil_fx := 0.0
+var nitro_zoom := 0.0
 
 
 func _ready() -> void:
@@ -160,6 +161,7 @@ func _ready() -> void:
 	cam.far = 500.0
 	add_child(cam)
 	cam.make_current()
+	cam.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF   # a câmera anda no _process
 
 	lib = (load("res://assets/minicars.glb") as PackedScene).instantiate()
 	_prep_materials(lib, {})
@@ -167,6 +169,7 @@ func _ready() -> void:
 	road_shader = load("res://shaders/road.gdshader")
 	fx = Fx.new()
 	add_child(fx)
+	fx.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF   # efeitos posicionados a cada quadro
 	sfx = Sfx.new()
 	add_child(sfx)
 	for i in 6:
@@ -428,8 +431,11 @@ func _apply_theme() -> void:
 	# color grade: ambiente mais baixo (sombras mais densas) e noites bem mais escuras
 	var night := bool(theme.night)
 	var dusk := bool(theme.get("dusk", false))
-	env.ambient_light_energy = float(theme.amb) * (0.5 if night else (0.6 if dusk else 0.72))
-	env.tonemap_exposure = 0.92 if night else (0.95 if dusk else 1.0)
+	env.ambient_light_energy = float(theme.amb) * (0.95 if night else (0.75 if dusk else 0.72))
+	# à noite parte da luz ambiente vem de uma cor de "luar" (o céu noturno sozinho deixava tudo escuro)
+	env.ambient_light_sky_contribution = 0.5 if night else (0.75 if dusk else 1.0)
+	env.ambient_light_color = Color(0.46, 0.52, 0.74) if night else Color(0.62, 0.6, 0.66)
+	env.tonemap_exposure = 1.0 if night else (0.98 if dusk else 1.0)
 	env.adjustment_saturation = 1.18 if night else 1.1
 	env.adjustment_contrast = 1.2 if night else 1.14
 	env.fog_enabled = String(theme.fog) != ""
@@ -437,7 +443,7 @@ func _apply_theme() -> void:
 		env.fog_light_color = Color(theme.fog)
 		env.fog_density = float(theme.get("fog_d", 0.0011))
 	sun.light_color = Color(theme.sun)
-	sun.light_energy = float(theme.sun_e) * (0.55 if night else (0.75 if dusk else 1.05))
+	sun.light_energy = float(theme.sun_e) * (0.7 if night else (0.8 if dusk else 1.05))
 	sun.rotation = Vector3(deg_to_rad(theme.sun_rot[0]), deg_to_rad(theme.sun_rot[1]), 0)
 	env.glow_intensity = 0.8 if night else 0.55
 
@@ -682,6 +688,7 @@ func _make_car(kind: String, role: String, col: Color) -> Car:
 		e.dust = [fx.make_dust(), fx.make_dust()]
 		for s in e.smoke + e.dust:
 			world.add_child(s)
+			s.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 		_add_xray(c)
 		if bool(theme.night) or bool(theme.get("dusk", false)):
 			e.lights = _add_headlights(c)
@@ -701,9 +708,11 @@ func _make_car(kind: String, role: String, col: Color) -> Car:
 	e.fire.position = Vector3(0, 0.9, c.sp.len * 0.3)
 	e.shadow = fx.contact_shadow(c.sp.len, c.sp.wid)
 	world.add_child(e.shadow)
+	e.shadow.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	if role == "player":
 		e.wind = fx.make_wind()
 		world.add_child(e.wind)
+		e.wind.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	em[c] = e
 	return c
 
@@ -796,6 +805,9 @@ func start_race() -> void:
 	hud.touch.labels["fire"] = "TIRO" if player.front_type == "mg" else "FOGUETE"
 	mode = "countdown"
 	countdown = 3.0
+	# compila os shaders dos efeitos agora, escondidos sob a largada (evita tranco na 1ª explosão/nitro)
+	var a0 := track.at(6.0)
+	fx.prewarm((a0.pos as Vector3) - (a0.up as Vector3) * 2.5, lib)
 	last_beep = 4
 	hud.big(String(track.data.name).to_upper(), Color("#ffcf33"), Color("#c74200"))
 
@@ -1354,12 +1366,14 @@ func _add_headlights(c: Car) -> Array:
 	var z: float = c.sp.len * 0.5 + 0.15
 	var sp := SpotLight3D.new()
 	sp.light_color = Color(1.0, 0.92, 0.78)
-	sp.light_energy = 5.0 if c.role == "player" else 3.2
-	sp.spot_range = 26.0
-	sp.spot_angle = 36.0
-	sp.spot_attenuation = 0.7
+	# luz suave: menos energia, cone mais aberto com borda esfumada e queda maior com a distância
+	sp.light_energy = 2.6 if c.role == "player" else 1.7
+	sp.spot_range = 24.0
+	sp.spot_angle = 46.0
+	sp.spot_angle_attenuation = 2.4
+	sp.spot_attenuation = 1.4
 	sp.shadow_enabled = false
-	sp.light_specular = 0.5
+	sp.light_specular = 0.18
 	sp.transform = Transform3D(Basis.looking_at(Vector3(0, -0.2, 1.0), Vector3.UP), Vector3(0, y + 0.2, z))
 	c.add_child(sp)
 	out.append(sp)
@@ -1377,7 +1391,7 @@ func _add_headlights(c: Car) -> Array:
 		mi.mesh = cm
 		var m := ShaderMaterial.new()
 		m.shader = bsh
-		m.set_shader_parameter("strength", 0.16 if c.role == "player" else 0.1)
+		m.set_shader_parameter("strength", 0.085 if c.role == "player" else 0.055)
 		mi.material_override = m
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		# cilindro "deitado": eixo apontando para a frente e um pouco para baixo
@@ -1411,16 +1425,17 @@ func _update_flares(rdt: float) -> void:
 	for c in cars:
 		if c.wrecked or not _on_screen(c.global_position):
 			continue
-		var f: Vector3 = c.global_transform.basis.z
+		var cxf: Transform3D = c.get_global_transform_interpolated()
+		var f: Vector3 = cxf.basis.z
 		if night:
 			# faróis virados para a câmera brilham na lente
 			var facing := clampf(-f.dot(cam_f) * 1.6 + 0.25, 0.0, 1.0)
 			if facing > 0.05:
 				for sx: float in [-1.0, 1.0]:
-					var hp: Vector3 = c.global_transform * Vector3(sx * c.sp.wid * 0.32, c.sp.clr + c.sp.h * 0.6, c.sp.len * 0.5 + 0.1)
+					var hp: Vector3 = cxf * Vector3(sx * c.sp.wid * 0.32, c.sp.clr + c.sp.h * 0.6, c.sp.len * 0.5 + 0.1)
 					cand.append([hp, Color(1.0, 0.9, 0.75), facing * (0.9 if c == player else 0.6), 1.0])
 		if c.nitroing:
-			cand.append([c.global_transform * c.exhaust_local, Color(0.45, 0.75, 1.0), 0.7, 1.2])
+			cand.append([cxf * c.exhaust_local, Color(0.45, 0.75, 1.0), 0.7, 1.2])
 	for i in range(flares_t.size() - 1, -1, -1):
 		var ft: Dictionary = flares_t[i]
 		ft.t += rdt
@@ -1432,7 +1447,7 @@ func _update_flares(rdt: float) -> void:
 	var pos_a: Array = []
 	var col_a: Array = []
 	for cd in cand:
-		if pos_a.size() >= 12:
+		if pos_a.size() >= 8:
 			break
 		var wp: Vector3 = cd[0]
 		if cam.is_position_behind(wp):
@@ -1727,6 +1742,7 @@ func _car_fx(dt: float) -> void:
 	_scrapes()
 	for c in cars:
 		var e: Dictionary = em[c]
+		var cx: Transform3D = c.get_global_transform_interpolated()
 		var vis: bool = _on_screen(c.global_position)
 		var slip: float = absf(c.v_s)
 		var braking: bool = c.ctrl.brake > 0.0 and c.v_f > 10.0
@@ -1737,7 +1753,7 @@ func _car_fx(dt: float) -> void:
 			if w.lost:
 				wi += 1
 				continue
-			var wp: Vector3 = c.global_transform * Vector3(w.base.x, 0.0, w.base.z)
+			var wp: Vector3 = cx * Vector3(w.base.x, 0.0, w.base.z)
 			var oily: bool = c.oily_t > 0.0 and vis and c.on_ground and w.contact and not c.wrecked
 			if (skidding and w.contact and (not w.front or braking)) or oily:
 				var last = e.skid[wi]
@@ -1756,14 +1772,14 @@ func _car_fx(dt: float) -> void:
 				var s: CPUParticles3D = e.smoke[i]
 				var du: CPUParticles3D = e.dust[i]
 				if i < rear.size() and not rear[i].lost:
-					var wpos: Vector3 = c.global_transform * Vector3(rear[i].base.x, 0.2, rear[i].base.z)
+					var wpos: Vector3 = cx * Vector3(rear[i].base.x, 0.2, rear[i].base.z)
 					s.global_position = wpos
 					du.global_position = wpos
 				s.emitting = skidding and (c.drifting or slip > 5.0 or braking or launching)
 				du.emitting = vis and not c.wrecked and c.on_ground and absf(c.lat) > track.HALF + 0.4 and c.linear_velocity.length() > 8.0
 			var flame: Node3D = e.flame
 			if c.nitroing and not e.get("was_n", false) and c != player and vis:
-				fx.nitro_burst(c.global_transform * c.exhaust_local, c.global_transform.basis.z)
+				fx.nitro_burst(cx * c.exhaust_local, cx.basis.z)
 			e.was_n = c.nitroing
 			e.heat_t = 0.5 if c.nitroing else maxf(0.0, float(e.get("heat_t", 0.0)) - dt)
 			for fl: Node3D in [flame, e.flame2]:
@@ -1775,7 +1791,7 @@ func _car_fx(dt: float) -> void:
 					var w := randf_range(0.9, 1.15)
 					core.scale = Vector3(w, w, randf_range(0.8, 1.25))
 			for i in 2:
-				var tp: Vector3 = c.global_transform * c.tail_local[i]
+				var tp: Vector3 = cx * c.tail_local[i]
 				fx.trail_push(e.trails[i], tp, real, c.nitroing and vis)
 		(e.dark as CPUParticles3D).emitting = vis and (c.health < c.max_health * 0.45 or c.wrecked)
 		(e.fire as CPUParticles3D).emitting = vis and (c.health < c.max_health * 0.2 or (c.wrecked and c.wreck_t < 3.0))
@@ -1786,7 +1802,7 @@ func _car_fx(dt: float) -> void:
 			var gp: Vector3 = c.ground_pt if c.on_ground and not c.wrecked else a.pos
 			var gn: Vector3 = c.ground_n if c.on_ground and not c.wrecked else a.up
 			var hgt: float = maxf(0.0, (c.global_position - gp).dot(gn))
-			var f: Vector3 = c.global_transform.basis.z.slide(gn).normalized()
+			var f: Vector3 = cx.basis.z.slide(gn).normalized()
 			if f.length() < 0.5:
 				f = a.tan
 			sh.global_transform = Transform3D(Basis(gn.cross(f).normalized(), gn, f).scaled_local(Vector3(c.sp.wid * 1.45, 1, c.sp.len * 1.25)), gp + gn * 0.08)
@@ -1804,7 +1820,7 @@ func _car_fx(dt: float) -> void:
 		if vis and not c.wrecked and c.linear_velocity.length() > 6.0:
 			for w in c.wheels:
 				if w.lost and randf() < dt * 30.0:
-					fx.sparks(c.global_transform * Vector3(w.base.x, 0.1, w.base.z), -c.linear_velocity, 0.25)
+					fx.sparks(cx * Vector3(w.base.x, 0.1, w.base.z), -c.linear_velocity, 0.25)
 
 
 func _cam_mode(rdt: float) -> String:
@@ -1842,13 +1858,18 @@ func _cam_mode(rdt: float) -> String:
 func _camera(rdt: float) -> void:
 	var p := player
 	var v := p.linear_velocity
-	var target := p.global_position + Vector3(v.x, 0, v.z) * 0.36
+	# posição desenhada (interpolada entre passos de física): câmera e carro andam juntos, sem tremer
+	var pp := p.get_global_transform_interpolated().origin
+	# nitro: a câmera abre (zoom out) e olha mais à frente — sensação de velocidade
+	nitro_zoom = move_toward(nitro_zoom, 1.0 if (p.nitroing and not p.wrecked) else 0.0, rdt * (2.2 if p.nitroing else 1.1))
+	var nz := nitro_zoom * nitro_zoom * (3.0 - 2.0 * nitro_zoom)
+	var target := pp + Vector3(v.x, 0, v.z) * (0.36 + nz * 0.16)
 	var focus_h := 0.0
 	if cam_focus and focus_t > 0.0:
-		target = (cam_focus.global_position + p.global_position) * 0.5
+		target = (cam_focus.get_global_transform_interpolated().origin + pp) * 0.5
 		focus_h = -5.0
 	if p.wrecked:
-		target = p.global_position
+		target = pp
 	if mode == "menu":
 		target = track.at(fmod(real * 18.0, track.length)).pos
 	var cm := _cam_mode(rdt) if mode != "shots" else ""
@@ -1867,9 +1888,9 @@ func _camera(rdt: float) -> void:
 			var y2 := atan2(-axh.x, -axh.z)
 			want_yaw = y1 if absf(angle_difference(CAM_YAW, y1)) <= absf(angle_difference(CAM_YAW, y2)) else y2
 			want_pitch = 0.2
-			var along := (p.global_position - lc).dot(ax)
+			var along := (pp - lc).dot(ax)
 			var mid := lc + ax * along
-			target = mid.lerp(p.global_position, 0.25)
+			target = mid.lerp(pp, 0.25)
 			size_fix = float(cam_loop.r) * 2.0 + 18.0
 			follow = 3.5
 		"twist":
@@ -1879,7 +1900,7 @@ func _camera(rdt: float) -> void:
 			var yb := atan2(-th.x, -th.z)
 			want_yaw = lerp_angle(CAM_YAW, yb, 0.75)
 			want_pitch = 0.45
-			target = p.global_position + th * 7.0 + Vector3.UP * 1.5
+			target = pp + th * 7.0 + Vector3.UP * 1.5
 			size_fix = 26.0
 			follow = 5.0
 		"helix":
@@ -1902,7 +1923,7 @@ func _camera(rdt: float) -> void:
 	var aspect := vs.x / maxf(1.0, vs.y)
 	var base := maxf(28.0, 26.0 / aspect) if aspect < 1.0 else 28.0
 	var sp := v.length()
-	var want := base + clampf(sp / 55.0, 0.0, 1.0) * 8.0 + (4.0 if p.nitroing else 0.0) + focus_h + (-8.0 if p.wrecked else 0.0) + extra
+	var want := base + clampf(sp / 55.0, 0.0, 1.0) * 8.0 + nz * base * 0.34 + focus_h + (-8.0 if p.wrecked else 0.0) + extra
 	if size_fix > 0.0:
 		want = maxf(size_fix, base) / clampf(aspect, 0.6, 1.0)
 	if mode == "menu":
@@ -1934,7 +1955,7 @@ func _post(rdt: float) -> void:
 	post_blur = lerpf(post_blur, bt, minf(1.0, rdt * 6.0))
 	oil_fx = maxf(0.0, oil_fx - rdt * 1.2)
 	post_aberr = lerpf(post_aberr, (0.8 if p.nitroing else 0.0) + trauma * 1.5 + (0.8 if slow else 0.0) + oil_fx * 2.2, minf(1.0, rdt * 8.0))
-	post_lines = lerpf(post_lines, (1.0 if p.nitroing else 0.0) + clampf((sp - 42.0) / 15.0, 0.0, 0.6), minf(1.0, rdt * 6.0))
+	post_lines = lerpf(post_lines, (1.35 if p.nitroing else 0.0) + clampf((sp - 42.0) / 15.0, 0.0, 0.6), minf(1.0, rdt * 6.0))
 	flash.a *= exp(-rdt * 7.0)
 	var m := hud.post_mat
 	m.set_shader_parameter("blur", post_blur)
@@ -1945,7 +1966,7 @@ func _post(rdt: float) -> void:
 	m.set_shader_parameter("vig", 0.3 + (0.25 if p.nitroing else 0.0) + (0.3 if slow else 0.0))
 	var vs := get_viewport().get_visible_rect().size
 	m.set_shader_parameter("aspect", vs.x / maxf(1.0, vs.y))
-	m.set_shader_parameter("center", cam.unproject_position(p.global_position + Vector3.UP * 0.6) / vs)
+	m.set_shader_parameter("center", cam.unproject_position(p.get_global_transform_interpolated().origin + Vector3.UP * 0.6) / vs)
 
 
 func _hud() -> void:

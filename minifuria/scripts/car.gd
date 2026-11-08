@@ -317,6 +317,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		state.linear_velocity = _teleport.vel
 		state.angular_velocity = Vector3.ZERO
 		_teleport = null
+		call_deferred("reset_physics_interpolation")
 		_prev_v = state.linear_velocity
 	_contacts.clear()
 	for i in state.get_contact_count():
@@ -325,6 +326,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 
 func _physics_process(dt: float) -> void:
 	game_time += dt
+	_visuals(dt)
 	_dent_cd = maxf(0.0, _dent_cd - dt)
 	flash_t = maxf(0.0, flash_t - dt)
 	fire_cd = maxf(0.0, fire_cd - dt)
@@ -477,7 +479,7 @@ func _physics_process(dt: float) -> void:
 
 	# auto-drift: curva forte em velocidade entra sozinha num drift suave (sem botão)
 	var demand: float = (absf(_dh) / 0.8) if ctrl.dir != null else (absf(ctrl.steer) / 0.9)
-	if on_ground and v_f > 19.0 and demand >= 1.0:
+	if on_ground and v_f > 19.0 and demand >= 1.0 and not on_feature:
 		_hard_t += dt
 	else:
 		_hard_t = maxf(0.0, _hard_t - dt * 2.0)
@@ -980,7 +982,9 @@ func juice_pitch(amount: float) -> void:
 	pitch_v += amount
 
 
-func _process(dt: float) -> void:
+## visual do carro (rodas, suspensão, "squash", recuo da arma): roda no passo de física para a
+## interpolação de física desenhar tudo junto, sem "soquinhos"
+func _visuals(dt: float) -> void:
 	if model and not wrecked:
 		if nitroing and not _nitro_vis:
 			juice_squash(-1.6)   # estica para a frente

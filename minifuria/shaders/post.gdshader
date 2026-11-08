@@ -25,16 +25,22 @@ void fragment() {
 	vec2 da = vec2(d.x * aspect, d.y);
 	float r = length(da);
 	float amt = blur * smoothstep(0.1, 0.8, r);
-	vec3 col = vec3(0.0);
-	for (int i = 0; i < 8; i++) {
-		float k = float(i) / 7.0;
-		vec2 u = uv - d * amt * k * 0.05;
+	vec3 col;
+	if (blur > 0.003 || aberr > 0.003) {
+		// só paga as 6 amostras quando há blur/aberração (nitro, batida, câmera lenta)
+		col = vec3(0.0);
 		vec2 ab = d * aberr * 0.008;
-		col.r += texture(screen_tex, u + ab).r;
-		col.g += texture(screen_tex, u).g;
-		col.b += texture(screen_tex, u - ab).b;
+		for (int i = 0; i < 6; i++) {
+			float k = float(i) / 5.0;
+			vec2 u = uv - d * amt * k * 0.05;
+			col.r += texture(screen_tex, u + ab).r;
+			col.g += texture(screen_tex, u).g;
+			col.b += texture(screen_tex, u - ab).b;
+		}
+		col /= 6.0;
+	} else {
+		col = texture(screen_tex, uv).rgb;
 	}
-	col /= 8.0;
 	// linhas de velocidade (estilo anime), saindo do carro
 	float ang = atan(da.y, da.x);
 	float cell = floor(ang * 38.0);
@@ -42,7 +48,9 @@ void fragment() {
 	float thin = smoothstep(0.5, 0.0, abs(fract(ang * 38.0) - 0.5) * 2.0 - 0.0);
 	float flick = step(0.55, hash(cell + floor(TIME * 18.0)));
 	float ln = step(0.6, h) * flick * smoothstep(0.35 + h * 0.2, 0.95, r) * thin;
-	col += vec3(1.0) * ln * lines * 0.55;
+	if (lines > 0.01) {
+		col += vec3(1.0) * ln * lines * 0.55;
+	}
 	// lens flare: halo + risco anamórfico horizontal + "fantasmas" refletidos pelo centro da lente
 	vec2 c0 = vec2(0.5);
 	for (int i = 0; i < 12; i++) {

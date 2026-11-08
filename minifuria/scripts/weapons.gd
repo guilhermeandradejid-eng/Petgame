@@ -458,7 +458,8 @@ func _fire_rocket(c: Car) -> void:
 	fl.name = "Glow"
 	node.add_child(fl)
 	var tgt := _target(c, 75.0, 0.93)
-	rockets.append({"node": node, "vel": c.linear_velocity + f * 46.0, "owner": c, "t": 0.0, "target": tgt, "trail": trail})
+	var v0 := maxf(0.0, c.linear_velocity.dot(f)) + 14.0
+	rockets.append({"node": node, "vel": f * v0, "owner": c, "t": 0.0, "target": tgt, "trail": trail})
 	_muzzle_flash(mz, f, true)
 	c.recoil = 2.0
 	sfx.play("rocket", -4.0 if c == game.player else -9.0)
@@ -475,11 +476,12 @@ func _step_rockets(dt: float) -> void:
 		r.t += dt
 		var node: Node3D = r.node
 		var vel: Vector3 = r.vel
-		var spd := minf(vel.length() + 40.0 * dt, 70.0)
+		# acelera até 50 m/s: mais rápido que o carro na reta (40), mais lento que o nitro (~58)
+		var spd := move_toward(vel.length(), 50.0, 16.0 * dt)
 		var tg = r.target
 		if tg != null and is_instance_valid(tg) and not tg.wrecked:
 			var want: Vector3 = ((tg as Car).global_position + Vector3.UP * 0.7 - node.global_position).normalized()
-			vel = vel.normalized().slerp(want, minf(1.0, 2.6 * dt)) * spd
+			vel = vel.normalized().slerp(want, minf(1.0, 1.9 * dt)) * spd
 		else:
 			vel = vel.normalized() * spd
 		r.vel = vel
@@ -488,7 +490,7 @@ func _step_rockets(dt: float) -> void:
 		var excl := [] if r.t > 0.25 else [(r.owner as Car).get_rid()]
 		var q := PhysicsRayQueryParameters3D.create(p0, p1, 1 | 2 | 4 | 16, excl)
 		var res := space.intersect_ray(q)
-		if res or r.t > 2.4:
+		if res or r.t > 4.0:
 			var at: Vector3 = res.position if res else p1
 			_explode(at, r.owner, 34.0, 6.0, "rocket")
 			var tr: CPUParticles3D = r.trail

@@ -264,6 +264,49 @@ func _streak_mesh(w: float, l: float) -> ArrayMesh:
 	return st.commit()
 
 
+## Pré-aquecimento: desenha cada efeito uma vez (escondido sob a pista, dentro da câmera) para o
+## navegador compilar os shaders antes da corrida. Sem isso a 1ª explosão/nitro/foguete dava um tranco.
+func prewarm(pos: Vector3, lib: Node3D) -> void:
+	for nm in pools.keys():
+		var nd: Node3D = _next(nm)
+		nd.global_position = pos
+		if nd is CPUParticles3D:
+			(nd as CPUParticles3D).restart()
+			(nd as CPUParticles3D).emitting = true
+			var sub := nd.get_node_or_null("Streamers") as CPUParticles3D
+			if sub:
+				sub.restart()
+				sub.emitting = true
+		elif nd is MeshInstance3D:
+			nd.visible = true
+			var mi := nd as MeshInstance3D
+			get_tree().create_timer(0.5, false).timeout.connect(func(): mi.visible = false)
+	var tmp := Node3D.new()
+	add_child(tmp)
+	tmp.global_position = pos
+	var fl := make_nitro_flame()
+	tmp.add_child(fl)
+	(fl.get_node("Core") as Node3D).visible = true
+	(fl.get_node("P") as CPUParticles3D).emitting = true
+	(fl.get_node("Haze") as CPUParticles3D).emitting = true
+	for k in ["proj_rocket", "proj_mine", "pickup_ammo", "pickup_repair", "pickup_nitro", "wpn_gun", "wpn_pod"]:
+		var src := lib.get_node_or_null(k) as Node3D
+		if src:
+			var d := src.duplicate() as Node3D
+			tmp.add_child(d)
+	for sh in ["res://shaders/oil.gdshader", "res://shaders/beam.gdshader", "res://shaders/xray.gdshader", "res://shaders/confetti.gdshader"]:
+		var mi := MeshInstance3D.new()
+		var qm := QuadMesh.new()
+		qm.size = Vector2(1, 1)
+		mi.mesh = qm
+		var m := ShaderMaterial.new()
+		m.shader = load(sh)
+		mi.material_override = m
+		tmp.add_child(mi)
+	skid(pos, pos + Vector3(0, 0, 0.5), 0.3, 0.0)
+	get_tree().create_timer(0.7, false).timeout.connect(tmp.queue_free)
+
+
 func _pool(name_: String, count: int, maker: Callable) -> void:
 	pools[name_] = []
 	pool_i[name_] = 0
@@ -1017,6 +1060,7 @@ func trail_push(t: Dictionary, p: Vector3, now: float, active: bool) -> void:
 # ------------------------------------------------------------------ destroços físicos
 func spawn_debris(mesh: MeshInstance3D, xform: Transform3D, vel: Vector3, is_wheel: bool) -> RigidBody3D:
 	var rb := RigidBody3D.new()
+	rb.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON   # pedaço com física: interpolado
 	rb.collision_layer = 8
 	rb.collision_mask = 1 | 8
 	rb.mass = 30.0 if is_wheel else 15.0
