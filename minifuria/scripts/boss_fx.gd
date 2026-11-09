@@ -382,8 +382,8 @@ static func laser_pylon(beam_h: float) -> Dictionary:
 	var emit_m := glow_mat(Color(1.0, 0.15, 0.25), 4.0)
 	var ring := MeshInstance3D.new()
 	var tm := TorusMesh.new()
-	tm.inner_radius = 0.24
-	tm.outer_radius = 0.36
+	tm.inner_radius = 0.3
+	tm.outer_radius = 0.46
 	tm.rings = 20
 	tm.ring_segments = 8
 	ring.mesh = tm
@@ -418,28 +418,29 @@ static func laser_beam(length: float) -> Node3D:
 	var root := Node3D.new()
 	var core := MeshInstance3D.new()
 	var cm := CylinderMesh.new()
-	cm.top_radius = 0.05
-	cm.bottom_radius = 0.05
+	cm.top_radius = 0.11
+	cm.bottom_radius = 0.11
 	cm.height = length
 	cm.radial_segments = 8
 	core.mesh = cm
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.albedo_color = Color(3.5, 1.4, 1.6)
+	m.albedo_color = Color(4.0, 1.2, 1.5)
 	core.material_override = m
 	core.rotation = Vector3(0, 0, PI * 0.5)
 	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(core)
 	var glow := MeshInstance3D.new()
 	var gm := CylinderMesh.new()
-	gm.top_radius = 0.42
-	gm.bottom_radius = 0.42
+	gm.top_radius = 0.75
+	gm.bottom_radius = 0.75
 	gm.height = length
 	gm.radial_segments = 16
 	glow.mesh = gm
 	var sh := ShaderMaterial.new()
 	sh.shader = load("res://shaders/beam_glow.gdshader")
 	sh.set_shader_parameter("col", Color(1.0, 0.15, 0.25))
+	sh.set_shader_parameter("power", 1.6)
 	glow.material_override = sh
 	glow.rotation = Vector3(0, 0, PI * 0.5)
 	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

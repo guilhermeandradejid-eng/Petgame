@@ -133,7 +133,7 @@ func _warn(text: String) -> void:
 		game.set_meta("bshots", nshot)
 		if nshot >= 5:
 			get_tree().create_timer(1.8, false).timeout.connect(get_tree().quit)
-		for dl: float in [0.45, 1.35]:
+		for dl: float in [0.45, 1.35, 2.2]:
 			get_tree().create_timer(dl, false).timeout.connect(func():
 				get_viewport().get_texture().get_image().save_png("user://boss_%s_%.2f.png" % [nm, dl]))
 
@@ -187,8 +187,8 @@ func _magnet_on(t: Car) -> void:
 		for i in 4:
 			var r := MeshInstance3D.new()
 			var tm := TorusMesh.new()
-			tm.inner_radius = 0.55
-			tm.outer_radius = 0.7
+			tm.inner_radius = 0.85
+			tm.outer_radius = 1.05
 			tm.rings = 24
 			tm.ring_segments = 6
 			r.mesh = tm
@@ -244,10 +244,10 @@ func _magnet_step(dt: float) -> void:
 			var off := Vector3.ZERO
 			if strand > 0:
 				var ph := float(strand) * TAU / 3.0 + _mag_t * 9.0 + u * TAU * 2.5
-				off = (p1v * cos(ph) + p2v * sin(ph)) * 0.55 * env
+				off = (p1v * cos(ph) + p2v * sin(ph)) * 0.85 * env
 			off += Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * 0.06 * env
 			pts.append(a.lerp(b, u) + off)
-		var wdt := 0.09 if strand == 0 else 0.07
+		var wdt := 0.17 if strand == 0 else 0.12
 		var cc := Color(0.85, 0.95, 1.0, 0.95) if strand == 0 else Color(0.35, 0.65, 1.0, 0.8)
 		for i in N:
 			var q0: Vector3 = pts[i]
