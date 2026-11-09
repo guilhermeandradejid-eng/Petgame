@@ -129,6 +129,10 @@ func _warn(text: String) -> void:
 	if game.auto_test and "--bossshots" in OS.get_cmdline_user_args():
 		# teste: fotos do aviso e do golpe de cada ataque
 		var nm := "%s_%02d" % [car.kind, int(game.race_t)]
+		var nshot := int(game.get_meta("bshots", 0)) + 1
+		game.set_meta("bshots", nshot)
+		if nshot >= 5:
+			get_tree().create_timer(1.8, false).timeout.connect(get_tree().quit)
 		for dl: float in [0.45, 1.35]:
 			get_tree().create_timer(dl, false).timeout.connect(func():
 				get_viewport().get_texture().get_image().save_png("user://boss_%s_%.2f.png" % [nm, dl]))
