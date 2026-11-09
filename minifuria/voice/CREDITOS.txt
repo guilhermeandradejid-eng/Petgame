@@ -1,0 +1,14 @@
+Mini Fúria — narrador (pasta voice/)
+=====================================
+
+ZECA TURBO (narrador) e TIA GRAXA (mecânica, pelo rádio) são personagens originais do jogo. O roteiro
+(as falas) está em tools/build_voice.py.
+
+As vozes foram geradas por inteligência artificial com o Kokoro-82M (licença Apache 2.0, hexgrad),
+rodando pelo kokoro-onnx (licença MIT, thewh1teagle), vozes "pm_alex" (Zeca) e "pf_dora" (Tia Graxa).
+  https://github.com/hexgrad/kokoro
+  https://github.com/thewh1teagle/kokoro-onnx
+Depois de geradas, as falas passam por efeitos (tom um pouco acima, som de alto-falante de estádio e eco
+curto no Zeca; filtro de rádio na Tia Graxa) e normalização de volume.
+
+Para gerar de novo: python tools/build_voice.py PASTA_DO_MODELO voice scripts/voice_lines.gd

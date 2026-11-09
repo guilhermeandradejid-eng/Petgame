@@ -144,6 +144,8 @@ func refresh_steer() -> void:
 
 func show_screen(name_: String) -> void:
 	close_confirm()
+	if not name_ in ["race", "results", "pause", "none"]:
+		caption_hide()
 	if game and steer_btns.size() > 0:
 		refresh_steer()
 	if name_ != "race" and wrong_l:
@@ -288,6 +290,7 @@ func _build_race_hud() -> void:
 	touch.font = font
 	root.add_child(touch)
 	race_nodes = [info, status, onc_l, minimap, feed, btns]
+	_build_caption()
 
 
 func _small_btn(txt: String, parent: Node) -> Button:
@@ -531,6 +534,7 @@ func big(text: String, col: Color, outline: Color) -> void:
 
 func _process(dt: float) -> void:
 	t += dt
+	_step_caption(dt)
 	if status.visible:
 		status.queue_redraw()
 		minimap.queue_redraw()
@@ -1139,3 +1143,178 @@ func set_results(title: String, tiles: Array, chips: Array, prize: int, total: i
 		cl.add_theme_font_override("font", UI.display_it)
 	res_cash.text = "+" + garage_ui._money(prize)
 	res_total.text = "TOTAL " + garage_ui._money(total)
+
+
+# ------------------------------------------------------------------ narrador: legenda animada
+## Caixa no alto da tela (abaixo das barras): rosto do personagem que fala (desenhado), nome e a fala
+## aparecendo letra a letra. A boca abre e fecha conforme o volume da voz (pico do barramento "Narrador").
+## ZECA TURBO: óculos escuros, topete e fone com microfone. TIA GRAXA: boné de mecânica, mancha de graxa.
+const CAP_W := 560.0
+const CAP_H := 74.0
+var cap: Control
+var cap_face: Control
+var cap_name: Label
+var cap_text: Label
+var cap_who := "z"
+var cap_life := 0.0
+var cap_dur := 0.0
+var cap_mouth := 0.0
+var cap_blink := 0.0
+
+
+func _build_caption() -> void:
+	cap = Control.new()
+	cap.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	# deslocamentos a partir da âncora (centro do topo), não posição absoluta
+	cap.offset_left = -CAP_W * 0.5 + 20.0
+	cap.offset_right = CAP_W * 0.5 + 20.0
+	cap.offset_top = 80.0
+	cap.offset_bottom = 80.0 + CAP_H
+	cap.pivot_offset = Vector2(CAP_W * 0.5, CAP_H * 0.5)
+	cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cap.visible = false
+	cap.draw.connect(_draw_cap_box)
+	root.add_child(cap)
+	cap_face = Control.new()
+	cap_face.size = Vector2(86, 86)
+	cap_face.position = Vector2(-30, -8)
+	cap_face.pivot_offset = Vector2(43, 70)
+	cap_face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cap_face.draw.connect(_draw_cap_face)
+	cap.add_child(cap_face)
+	cap_name = UI.text(cap, "", 14, UI.HOT)
+	cap_name.add_theme_font_override("font", UI.display_it)
+	cap_name.position = Vector2(66, 5)
+	cap_text = UI.text(cap, "", 17, UI.TEXT)
+	cap_text.add_theme_font_override("font", UI.body_bold)
+	cap_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	cap_text.position = Vector2(66, 24)
+	cap_text.size = Vector2(CAP_W - 84, 48)
+	cap_text.add_theme_constant_override("line_spacing", -4)
+
+
+func caption(who: String, text: String, dur: float) -> void:
+	if cap == null:
+		return
+	cap_who = who
+	cap_dur = maxf(0.6, dur)
+	cap_life = 0.0
+	cap_name.text = "ZECA TURBO" if who == "z" else "TIA GRAXA  ·  RÁDIO"
+	cap_name.add_theme_color_override("font_color", UI.HOT if who == "z" else UI.INFO)
+	cap_text.text = text
+	cap_text.visible_ratio = 0.0
+	cap.visible = cur_screen in ["race", "results", "pause"] or cur_screen == "none"
+	cap.modulate.a = 1.0
+	cap.scale = Vector2(0.6, 0.6)
+	cap.rotation = -0.05
+	var tw := cap.create_tween().set_parallel()
+	tw.tween_property(cap, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(cap, "rotation", 0.0, 0.22)
+	cap.queue_redraw()
+
+
+func caption_hide() -> void:
+	if cap:
+		cap.visible = false
+		cap_life = 99.0
+
+
+func _step_caption(dt: float) -> void:
+	if cap == null or not cap.visible:
+		return
+	cap_life += dt
+	# letra a letra durante ~85% da fala
+	cap_text.visible_ratio = clampf(cap_life / (cap_dur * 0.85), 0.0, 1.0)
+	# boca no ritmo da voz
+	var bi := AudioServer.get_bus_index("Narrador")
+	var lv := 0.0
+	if bi >= 0:
+		lv = clampf((AudioServer.get_bus_peak_volume_left_db(bi, 0) + 38.0) / 30.0, 0.0, 1.0)
+	cap_mouth = lerpf(cap_mouth, lv, minf(1.0, dt * 22.0))
+	cap_blink = maxf(0.0, cap_blink - dt)
+	if cap_blink <= 0.0 and randf() < dt * 0.6:
+		cap_blink = 0.12
+	# cabeça balança falando; some 0,6 s depois da fala
+	cap_face.rotation = sin(t * 9.0) * 0.06 * cap_mouth + sin(t * 2.1) * 0.03
+	cap_face.position.y = -8.0 - cap_mouth * 3.0
+	if cap_life > cap_dur + 0.6:
+		cap.modulate.a = maxf(0.0, cap.modulate.a - dt * 4.0)
+		if cap.modulate.a <= 0.0:
+			cap.visible = false
+	cap_face.queue_redraw()
+
+
+func _draw_cap_box() -> void:
+	var col := UI.HOT if cap_who == "z" else UI.INFO
+	var sk := 10.0
+	var pts := PackedVector2Array([Vector2(sk, 0), Vector2(CAP_W, 0), Vector2(CAP_W - sk, CAP_H), Vector2(0, CAP_H)])
+	cap.draw_colored_polygon(PackedVector2Array([Vector2(sk + 4, 5), Vector2(CAP_W + 4, 5), Vector2(CAP_W - sk + 4, CAP_H + 5), Vector2(4, CAP_H + 5)]), Color(0, 0, 0, 0.35))
+	cap.draw_colored_polygon(pts, Color(0.06, 0.05, 0.11, 0.9))
+	cap.draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[0]]), col, 2.5)
+	cap.draw_colored_polygon(PackedVector2Array([Vector2(sk, 0), Vector2(sk + 8, 0), Vector2(8, CAP_H), Vector2(0, CAP_H)]), col)
+
+
+func _draw_cap_face() -> void:
+	var c := Vector2(43, 44)
+	var ci := cap_face
+	var ring := UI.HOT if cap_who == "z" else UI.INFO
+	ci.draw_circle(c, 38.0, ring)
+	ci.draw_circle(c, 34.0, Color(0.12, 0.1, 0.2))
+	var skin := Color("#f0b088") if cap_who == "z" else Color("#d99a72")
+	# pescoço/ombros
+	ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-20, 34), c + Vector2(20, 34), c + Vector2(26, 46), c + Vector2(-26, 46)]), Color("#e8452c") if cap_who == "z" else Color("#2a5fa8"))
+	# rosto
+	ci.draw_circle(c + Vector2(0, 2), 22.0, skin)
+	var mouth_h := 2.0 + cap_mouth * 11.0
+	if cap_who == "z":
+		# topete
+		ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-22, -6), c + Vector2(-18, -20), c + Vector2(-4, -27), c + Vector2(14, -30), c + Vector2(24, -18), c + Vector2(20, -8), c + Vector2(4, -16), c + Vector2(-10, -12)]), Color("#3a2416"))
+		# fone (arco) e microfone
+		ci.draw_arc(c + Vector2(0, 0), 25.0, PI * 1.08, PI * 1.92, 16, Color(0.15, 0.15, 0.18), 4.0)
+		ci.draw_circle(c + Vector2(-24, 2), 5.0, Color(0.15, 0.15, 0.18))
+		ci.draw_line(c + Vector2(-24, 6), c + Vector2(-10, 16), Color(0.2, 0.2, 0.24), 2.5)
+		ci.draw_circle(c + Vector2(-9, 16), 3.2, Color(0.08, 0.08, 0.1))
+		# óculos escuros com brilho
+		ci.draw_rect(Rect2(c + Vector2(-17, -6), Vector2(14, 8)), Color(0.05, 0.05, 0.08))
+		ci.draw_rect(Rect2(c + Vector2(3, -6), Vector2(14, 8)), Color(0.05, 0.05, 0.08))
+		ci.draw_line(c + Vector2(-3, -3), c + Vector2(3, -3), Color(0.05, 0.05, 0.08), 2.0)
+		ci.draw_line(c + Vector2(-14, -4), c + Vector2(-10, -4), Color(1, 1, 1, 0.7), 1.5)
+		# bocão de narrador: lábios, dentes e língua
+		var m0 := c + Vector2(0, 12)
+		ci.draw_colored_polygon(_ellipse(m0, 9.0, mouth_h * 0.5 + 1.0), Color("#5a1414"))
+		if mouth_h > 4.0:
+			ci.draw_rect(Rect2(m0 + Vector2(-7, -mouth_h * 0.5), Vector2(14, minf(3.0, mouth_h * 0.3))), Color.WHITE)
+			ci.draw_colored_polygon(_ellipse(m0 + Vector2(0, mouth_h * 0.25), 5.0, mouth_h * 0.22), Color("#d9586a"))
+	else:
+		# cachos ruivos saindo do boné
+		for sx: float in [-1.0, 1.0]:
+			ci.draw_colored_polygon(_ellipse(c + Vector2(sx * 20.0, 0), 7.0, 11.0), Color("#c4552d"))
+			ci.draw_colored_polygon(_ellipse(c + Vector2(sx * 19.0, 10), 5.5, 7.0), Color("#a8441f"))
+		# boné de mecânica com aba
+		ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-22, -8), c + Vector2(-20, -22), c + Vector2(0, -28), c + Vector2(20, -22), c + Vector2(22, -8)]), Color("#2a5fa8"))
+		ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-4, -10), c + Vector2(30, -12), c + Vector2(28, -6), c + Vector2(-4, -6)]), Color("#1d4377"))
+		ci.draw_circle(c + Vector2(-2, -18), 3.0, Color("#ffcf33"))
+		# olhos (piscam) e mancha de graxa
+		var eh := 1.0 if cap_blink > 0.0 else 3.5
+		for sx: float in [-8.0, 8.0]:
+			ci.draw_colored_polygon(_ellipse(c + Vector2(sx, -1), 3.0, eh), Color(0.1, 0.08, 0.08))
+			# cílios
+			ci.draw_line(c + Vector2(sx + 2.5 * signf(sx), -4.5), c + Vector2(sx + 5.0 * signf(sx), -6.5), Color(0.1, 0.08, 0.08), 1.5)
+		# mancha de graxa na bochecha e bochechas rosadas
+		ci.draw_colored_polygon(_ellipse(c + Vector2(-13, 5), 4.0, 2.2), Color(0.22, 0.2, 0.19, 0.75))
+		ci.draw_colored_polygon(_ellipse(c + Vector2(13, 6), 3.5, 2.2), Color(0.95, 0.5, 0.45, 0.45))
+		# brincos
+		ci.draw_circle(c + Vector2(-22, 8), 2.2, Color("#ffcf33"))
+		ci.draw_circle(c + Vector2(22, 8), 2.2, Color("#ffcf33"))
+		# boca de lado (sorriso torto)
+		var m1 := c + Vector2(2, 12)
+		ci.draw_colored_polygon(_ellipse(m1, 7.0, mouth_h * 0.45 + 0.8), Color("#5a1414"))
+		ci.draw_line(m1 + Vector2(-7, -1), m1 + Vector2(9, -3), Color("#7a2a1e"), 1.5)
+
+
+static func _ellipse(c: Vector2, rx: float, ry: float, n := 14) -> PackedVector2Array:
+	var p := PackedVector2Array()
+	for i in n:
+		var a := TAU * i / n
+		p.append(c + Vector2(cos(a) * rx, sin(a) * ry))
+	return p

@@ -53,6 +53,9 @@ var locals: Array = []     # jogadores desta máquina: {"car", "dev", "idx", "na
 var session := {"kind": "solo", "players": []}
 var multi: Multi
 var settings: Settings
+var narrator: Narrator
+var _narr_place := 0
+var _narr_t := 0.0
 var career: Career
 var boss: Car = null          # chefe da corrida (carreira)
 var career_lines: Array = []
@@ -245,6 +248,10 @@ func _ready() -> void:
 	settings = Settings.new()
 	add_child(settings)
 	settings.setup(self, hud)
+	narrator = Narrator.new()
+	add_child(narrator)
+	narrator.setup(self)
+	narrator.enabled = float(settings.val("vol_narr")) > 0.001
 	loader = Loader.new()
 	hud.add_child(loader)
 	career = Career.new()
@@ -1557,6 +1564,20 @@ func _start_race_now() -> void:
 		if music.now_text != "":
 			hud.killfeed("♪ " + music.now_text, Color(1.0, 0.85, 0.45))
 	countdown = 4.2   # ~1 s mostrando o nome da pista, depois 3, 2, 1, VAI!
+	# narrador abre a corrida (sempre com chefe; senão em metade das largadas, para não cansar ao repetir)
+	narrator.stop()
+	_narr_place = 0
+	var intro := 0.0
+	if boss != null and VoiceLines.LINES.has(boss.kind):
+		intro = narrator.say(boss.kind, 3)
+	elif randf() < 0.5 or not has_meta("narr_intro_done"):
+		intro = narrator.say("intro", 3)
+	set_meta("narr_intro_done", true)
+	for a in OS.get_cmdline_user_args():
+		if auto_test and a.begins_with("--narr="):
+			intro = narrator.say(a.substr(7), 5)   # teste: força uma fala na largada
+	if intro > 0.0:
+		countdown += minf(intro, 5.4) - 0.9
 	# compila os shaders dos efeitos agora, escondidos sob a largada (evita tranco na 1ª explosão/nitro)
 	var a0 := track.at(6.0)
 	fx.prewarm((a0.pos as Vector3) - (a0.up as Vector3) * 2.5, lib)
@@ -1566,6 +1587,8 @@ func _start_race_now() -> void:
 
 
 func to_menu() -> void:
+	if narrator:
+		narrator.stop()
 	if online:
 		online.leave()
 	set_solo()
@@ -1646,6 +1669,11 @@ func _on_died(c: Car, killer: Car) -> void:
 	var big := c.role != "traffic"
 	var from: Vector3 = killer.global_position if killer else c.global_position - c.global_transform.basis.z
 	var fell: bool = c.get_meta("fell", false)
+	if mode == "race":
+		if c == player and not fell:
+			narrator.say("killed", 2, 1.0, 0.45)
+		elif killer == player and c != player:
+			narrator.say("kill", 2, 1.0, 0.35)
 	c.set_meta("fell", false)
 	c.wreck(28.0, (c.global_position - from).normalized(), not fell)
 	if _on_screen(c.global_position):
@@ -1756,6 +1784,8 @@ func _on_landed(c: Car, air: float, impact: float) -> void:
 	if air > 0.6 and mode == "race":
 		var pts := int(air * 150)
 		hud.popup("PULÃO %.1fs" % air, Color("#7dff6a"), "+%d" % pts)
+		if air > 1.0:
+			narrator.say("air", 1, 0.75)
 		stats.score += pts
 		stats.air = maxf(stats.air, air)
 		_add_meter(0.25)
@@ -2122,7 +2152,7 @@ func _rules(dt: float) -> void:
 					pop_for(c, "MUNIÇÃO E NITRO RECARREGADOS", Color("#2ee6ff"))
 					sfx.play("pickup", -6.0)
 					if lap == LAPS - 1 and c == player:
-						sfx.play("v_final", -1.0)
+						narrator.say("final_lap", 3)
 					fx.burst("confetti", c.global_position + Vector3.UP)
 	if mode != "race":
 		return
@@ -2169,6 +2199,8 @@ func _rules(dt: float) -> void:
 	if was_drift and not p.drifting and p.drift_t > 0.8:
 		var pts := int(p.drift_t * 120)
 		hud.popup("DRIFT %.1fs" % p.drift_t, Color("#c77dff"), "+%d" % pts)
+		if p.drift_t > 2.4 and p == player:
+			narrator.say("drift", 1, 0.6)
 		stats.score += pts
 		stats.best_drift = maxf(stats.best_drift, p.drift_t)
 		_add_meter(minf(0.3, p.drift_t * 0.08))
@@ -2469,6 +2501,8 @@ func _xray_step() -> void:
 
 
 func _fall_wreck(c: Car, water: bool) -> void:
+	if c == player and mode == "race":
+		narrator.say("fall", 2, 1.0, 0.4)
 	if auto_test and OS.get_cmdline_user_args().has("--debugfall"):
 		print("FALL %s s=%d lat=%.1f h=%.1f v=%.1f water=%s feat=%d gap=%d loop=%d" % [c.display_name, int(c.s_track), c.lat, c.h_track, c.linear_velocity.length(), water, track.feat[c.ti], track.gap[c.ti], track.loopf[c.ti]])
 	if c == player:
@@ -2612,10 +2646,15 @@ func _finish() -> void:
 	_write_save()
 	hud.big("VITÓRIA!" if place == 1 else "%dº LUGAR" % place, Color("#ffcf33"), Color("#c74200"))
 	sfx.play("fanfare", -3.0)
-	if place == 1:
-		sfx.play("v_win", -1.0)
-	elif record:
-		sfx.play("v_record", -1.0)
+	var beat_boss: bool = career.active() and boss != null and "CHEFE DERROTADO" in " ".join(career_lines)
+	if beat_boss:
+		narrator.say("boss_beaten", 5)
+	elif place == 1:
+		narrator.say("win", 5, 1.0, 0.4)
+	elif place <= 3:
+		narrator.say("podium", 5)
+	else:
+		narrator.say("lose", 5, 1.0, 0.4)
 	fx.burst("confetti", player.global_position + Vector3.UP)
 	_slowmo(0.35, 1.2)
 	get_tree().create_timer(2.0, true, false, true).timeout.connect(_show_results)
@@ -2734,19 +2773,16 @@ func _process(_delta: float) -> void:
 	if mode == "countdown":
 		countdown -= rdt
 		var n := int(ceil(countdown))
-		if last_beep == 4 and countdown < 3.9 and not ready_said:
-			ready_said = true
-			sfx.play("v_ready", -2.0)
 		if n < last_beep and n > 0 and n <= 3:
 			last_beep = n
 			hud.big(str(n), Color.WHITE, Color("#2e7dff"))
-			sfx.play("count%d" % n, -1.0)
+			narrator.say("count%d" % n, 5)
 			sfx.play("warn", -14.0, 0.9)
 			_shake(0.1)
 		if countdown <= 0.0:
 			mode = "race"
 			hud.big("VAI!", Color("#7dff6a"), Color("#1f8a2a"))
-			sfx.play("go", 0.0)
+			narrator.say("go", 5)
 			_shake(0.3)
 			zoom_kick += 4.0
 			for c in racers():
@@ -2757,9 +2793,11 @@ func _process(_delta: float) -> void:
 			if Input.is_action_pressed("up") or hud.touch.used or auto_test:
 				player.linear_velocity = player.global_transform.basis.z * 14.0
 				hud.popup("LARGADA PERFEITA!", Color("#ff9a1a"))
+				narrator.say("perfect_start", 2, 0.7)
 	_car_fx(rdt * eff)
 	if player.nitroing and not was_nitro:
 		sfx.play("nitro")
+		narrator.say("nitro", 1, 0.3)
 		zoom_kick += 4.5
 		cam_kick -= player.global_transform.basis.z * 2.6   # a câmera "fica para trás" e alcança o carro
 		_shake(0.18)
@@ -2777,6 +2815,7 @@ func _process(_delta: float) -> void:
 		slip += 0.5
 	sfx.world_on = mode in ["race", "countdown", "finish"]
 	_xray_step()
+	_narr_step(rdt)
 	_dyn_res(rdt)
 	if settings:
 		var want_fps: int = settings.fps_cap(mode in ["race", "countdown", "finish"])
@@ -3259,3 +3298,28 @@ func _dyn_res(rdt: float) -> void:
 		vp.scaling_3d_scale = maxf(0.7, vp.scaling_3d_scale - 0.05)
 	elif avg < budget * 0.55 and vp.scaling_3d_scale < max_s - 0.01:
 		vp.scaling_3d_scale = minf(max_s, vp.scaling_3d_scale + 0.05)
+
+
+
+## narrador: ultrapassagens, liderança e vida baixa (olha a cada meio segundo)
+func _narr_step(rdt: float) -> void:
+	if narrator == null or mode != "race" or player == null:
+		return
+	_narr_t += rdt
+	if _narr_t < 0.5:
+		return
+	_narr_t = 0.0
+	var pl := standings().find(player) + 1
+	if pl <= 0:
+		return
+	if _narr_place > 0 and race_t > 6.0 and not player.wrecked:
+		if pl < _narr_place:
+			if pl == 1:
+				narrator.say("lead", 2, 1.0, 0.3)
+			else:
+				narrator.say("overtake", 1, 0.55)
+		elif pl > _narr_place:
+			narrator.say("overtaken", 1, 0.5, 0.3)
+	_narr_place = pl
+	if not player.wrecked and player.health < player.max_health * 0.25:
+		narrator.say("lowhp", 1)

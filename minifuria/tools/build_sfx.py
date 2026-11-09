@@ -167,15 +167,6 @@ ONESHOTS = {
     "pickup": ([K + "interface-sounds__maximize_00%d.ogg" % i for i in (1, 2, 3, 4)], -18, 0.6),
     "error": ([K + "interface-sounds__error_00%d.ogg" % i for i in (1, 2)], -20, 0.5),
     "warn": ([K + "interface-sounds__bong_001.ogg"], -16, 1.0),
-    "count3": (["ogsi/dl/voiceover-pack__3.ogg"], -14, 1.0),
-    "count2": (["ogsi/dl/voiceover-pack__2.ogg"], -14, 1.0),
-    "count1": (["ogsi/dl/voiceover-pack__1.ogg"], -14, 1.0),
-    "go": (["ogsi/dl/voiceover-pack__go.ogg"], -12, 1.0),
-    "v_ready": (["ogsi/dl/voiceover-pack__ready.ogg"], -14, 1.2),
-    "v_final": (["ogsi/dl/voiceover-pack__final_round.ogg"], -14, 1.6),
-    "v_win": (["ogsi/dl/voiceover-pack__you_win.ogg"], -13, 1.6),
-    "v_over": (["ogsi/dl/voiceover-pack__game_over.ogg"], -14, 1.8),
-    "v_record": (["ogsi/dl/voiceover-pack__new_highscore.ogg"], -14, 2.0),
     "fanfare": ([K + "music-jingles__jingles_HIT0%d.ogg" % i for i in (0, 3, 6)], -15, 4.0),
 }
 

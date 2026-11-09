@@ -126,6 +126,8 @@ func _warn(text: String) -> void:
 		if h.local_idx >= 0 and h.global_position.distance_to(car.global_position) < 90.0:
 			game.pop_for(h, text, Color("#ff5a5a"))
 	game.sfx.play("warn", -4.0)
+	if game.narrator:
+		game.narrator.say("boss_attack", 1, 0.35)
 	if game.auto_test and "--bossshots" in OS.get_cmdline_user_args():
 		# teste: fotos do aviso e do golpe de cada ataque
 		var nm := "%s_%02d" % [car.kind, int(game.race_t)]

@@ -238,10 +238,22 @@ Todos os efeitos são **gravações reais** de pacotes livres (CC0, CC-BY e CC-B
 - **Pneu cantando** na derrapagem, na freada e na largada (Yorg, CC-BY-SA), **metal raspando** na mureta (Halleck, CC-BY 4.0), vento com a velocidade e turbo durante o nitro, todos em loop sem emenda.
 - **Rivais com motor 3D**: cada carro da corrida ronca com o próprio motor, mais alto quando passa perto e do lado da tela em que ele está. O ouvinte fica logo acima do seu carro (a câmera ortográfica fica longe demais).
 - **Batidas, armas e explosões** com 2 a 7 variações sorteadas cada (batidas de metal de Halleck, armas e explosões do Red Eclipse, impactos da Kenney).
-- **Narrador** na largada ("Ready? 3, 2, 1, Go!"), na última volta, na vitória e no recorde (Kenney Voiceover Pack, CC0).
 - **Vitrine**: no desfile do menu, cada carro ronca ao acelerar, arranca alto e some ao sair de cena; na garagem, o carro escolhido dá uma acelerada.
 
 Para montar a pasta `sfx/` de novo: clone as fontes listadas no começo de `tools/build_sfx.py` e rode `python3 tools/build_sfx.py FONTES sfx` (precisa de `ffmpeg` e `numpy`).
+
+## Narrador: Zeca Turbo e Tia Graxa
+
+Uma dupla de personagens originais comenta a corrida, com humor e muita empolgação:
+- **ZECA TURBO**, o narrador, exagerado e com voz de estádio (alto-falante, compressão e um eco curto de arquibancada).
+- **TIA GRAXA**, a mecânica sarcástica que responde pelo rádio de vez em quando ("Eu cobro por peça, viu?").
+
+São **113 falas** em português (`tools/build_voice.py` tem o roteiro): abertura da corrida, contagem ("Três! Dois! Um! Acelera!"), largada perfeita, ultrapassagens, liderança, ser ultrapassado, destruir um rival, ser destruído, cair da pista, pulão, drift longo, nitro, carro quase destruído, última volta, vitória, pódio, derrota, chegada de cada chefe, ataques do chefe, chefe derrotado e comentários quando a corrida fica quieta. As vozes foram geradas por IA com o **Kokoro-82M** (Apache 2.0) e tratadas com efeitos (créditos em `voice/CREDITOS.txt`).
+
+- **Legenda animada** no alto da tela: o rosto de quem fala (desenhado: o Zeca de óculos escuros, topete e fone; a Tia Graxa de boné, cachos e graxa na bochecha), com a **boca mexendo no ritmo da voz** e o texto aparecendo letra a letra.
+- **Sem falar demais**: uma fala por vez; contagem e fim de corrida furam a fila; cada tipo de fala tem intervalo mínimo; as variações não se repetem em seguida. Enquanto alguém fala, a música e os efeitos abaixam um pouco.
+- Na largada, o Zeca abre a corrida (sempre nas corridas de chefe; nas outras, em metade das vezes) e a contagem espera ele terminar.
+- **Configurações > Áudio > NARRADOR** ajusta o volume (zero desliga a narração e a legenda).
 
 ## Cenário do Céu e do Pântano
 

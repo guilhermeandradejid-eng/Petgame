@@ -11,8 +11,7 @@ extends Node
 const SHOTS := {"crash": 7, "bump": 7, "metal": 5, "tink": 5, "glass": 5, "smash": 5, "land": 4, "splash": 3, "splat": 1,
 	"whoosh": 4, "nitro": 5, "backfire": 1, "shift": 3, "gun": 2, "rocket": 1, "boom": 3, "boom_small": 2, "zap": 2,
 	"laser": 5, "plasma": 1, "rail": 1, "mortar": 1, "harpoon": 1, "freeze": 3, "flame": 1, "emp": 1, "deploy": 5,
-	"click": 3, "ui_drop": 4, "buy": 4, "pickup": 4, "error": 2, "warn": 1, "count3": 1, "count2": 1, "count1": 1,
-	"go": 1, "v_ready": 1, "v_final": 1, "v_win": 1, "v_over": 1, "v_record": 1, "fanfare": 3}
+	"click": 3, "ui_drop": 4, "buy": 4, "pickup": 4, "error": 2, "warn": 1, "fanfare": 3}
 ## nomes antigos (som sintetizado) -> sons novos
 const ALIAS := {"coin": "click", "drop": "ui_drop", "beep": "warn"}
 ## séries de motor (rotação de cada gravação)

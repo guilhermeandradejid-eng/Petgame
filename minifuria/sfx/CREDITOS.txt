@@ -71,15 +71,15 @@ laser_*, freeze_*       Kenney "Sci-fi Sounds" (laserLarge, forceField) — CC0
 harpoon_0               "Battle Sound Effects" (Bow) — CC0  https://opengameart.org/content/battle-sound-effects
 
 
-INTERFACE, NARRADOR E VINHETAS
+INTERFACE E VINHETAS
 ------------------------------
 click_*, ui_drop_*, pickup_*, error_*, warn_0
                         Kenney "Interface Sounds" — CC0  https://kenney.nl/assets/interface-sounds
 buy_*                   Kenney "Casino Audio" (chips-stack) — CC0  https://kenney.nl/assets/casino-audio
-count3/2/1, go, v_ready, v_final, v_win, v_over, v_record
-                        Kenney "Voiceover Pack" — CC0  https://kenney.nl/assets/voiceover-pack
 fanfare_*               Kenney "Music Jingles" — CC0  https://kenney.nl/assets/music-jingles
 
 Os arquivos da Kenney e do OpenGameArt (CC0) foram obtidos pelo índice
 https://github.com/Mcamento8/open-game-sfx-index (que mantém a licença e a origem de cada som).
 Obrigado a todos os autores!
+
+O narrador (Zeca Turbo e Tia Graxa) fica em voice/ (veja voice/CREDITOS.txt).
