@@ -332,6 +332,8 @@ if "--reel" in argv:
         cy += (roots[i][1] - cy) * 0.22
         if only and (i // step) not in only:
             continue
+        if "--reel-resume" in argv and os.path.exists(os.path.join(out, "reel", "%04d.png" % (i // step))):
+            continue
         o = rig.V(cx, cy, 0.0)
         scene.frame_set(i)
         # 4:3 frame tall enough for the whole body, the sword overhead and the leap
