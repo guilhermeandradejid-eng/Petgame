@@ -270,8 +270,8 @@ if "--reel" in argv:
     def add(name, f0, f1, blend=0):
         for k, f in enumerate(range(f0, f1)):
             seq.append((name, f, blend if k == 0 else 0))
-    add("Idle", 0, 80); add("Attack1", 0, 22); add("Attack2", 0, 22); add("Attack3", 0, 82); add("Idle", 0, 30)
-    add("Dash", 0, 36); add("Idle", 0, 14); add("Run", 0, 108, 8); add("Idle", 0, 50, 10); add("Hit", 0, 40); add("Idle", 0, 40)
+    add("Idle", 0, 56); add("Attack1", 0, 22); add("Attack2", 0, 22); add("Attack3", 0, 82); add("Idle", 0, 20)
+    add("Dash", 0, 36); add("Idle", 0, 10); add("Run", 0, 108, 8); add("Idle", 0, 34, 10); add("Hit", 0, 40); add("Idle", 0, 26)
     act = bpy.data.actions.new("Reel")
     arm.animation_data.action = act
     springs = rig.Springs(rg, model.EXTRA)
@@ -326,12 +326,16 @@ if "--reel" in argv:
     cx, cy = 0.0, 0.0
     step = int(opt("--reel-step", "2"))
     size = int(opt("--reel-res", "720"))
+    only = [int(x) for x in opt("--reel-only").split(",")] if opt("--reel-only") else None
     for i in range(0, len(seq), step):
         cx += (roots[i][0] - cx) * 0.22
         cy += (roots[i][1] - cy) * 0.22
+        if only and (i // step) not in only:
+            continue
         o = rig.V(cx, cy, 0.0)
         scene.frame_set(i)
-        look.aim(cam, Vector((-4.4, -6.2, 2.2)) + o, Vector((0, 0, 1.0)) + o, 100)
-        look.render(scene, os.path.join(out, "reel", "%04d.png" % (i // step)), (int(size * 16 / 9), size), samples=samples)
+        # 4:3 frame tall enough for the whole body, the sword overhead and the leap
+        look.aim(cam, Vector((-4.4, -6.2, 2.3)) + o, Vector((0, 0, 1.12)) + o, 77)
+        look.render(scene, os.path.join(out, "reel", "%04d.png" % (i // step)), (int(size * 4 / 3), size), samples=samples)
     print("reel: %d frames" % (len(seq) // step))
 print("done in %.1fs" % (time.time() - T0))
