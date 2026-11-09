@@ -330,6 +330,7 @@ function prop(geo, kind, line = 0.012) {
     const g = prop(new THREE.CylinderGeometry(0.45 + r() * 0.3, 0.6 + r() * 0.35, h, 6), 'stone', 0.02);
     g.position.set(Math.sin(a) * d, h / 2 - 0.1, 6 + Math.cos(a) * d);
     g.rotation.set((r() - 0.5) * 0.16, r() * 3, (r() - 0.5) * 0.16);
+    g.name = 'stone';
     scene.add(g);
   }
 }
@@ -833,7 +834,7 @@ function tick(real) {
 }
 function loop() { requestAnimationFrame(loop); const d = Math.min(clock.getDelta(), 0.05); if (!window.__manual) tick(d); }
 window.__tick = tick;
-window.__cam = { camera, controls };
+window.__cam = { camera, controls, scene };
 
 function fail(e) {
   console.error(e);
