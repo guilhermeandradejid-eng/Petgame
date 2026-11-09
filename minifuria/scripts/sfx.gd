@@ -59,6 +59,16 @@ var world_on := false
 
 
 func _ready() -> void:
+	# limitador no Master: muitos sons juntos (batida + explosão + motor) não estouram
+	var has_lim := false
+	for i in AudioServer.get_bus_effect_count(0):
+		if AudioServer.get_bus_effect(0, i) is AudioEffectHardLimiter:
+			has_lim = true
+	if not has_lim:
+		var lim := AudioEffectHardLimiter.new()
+		lim.ceiling_db = -0.8
+		lim.pre_gain_db = 0.0
+		AudioServer.add_bus_effect(0, lim)
 	for i in 16:
 		var p := AudioStreamPlayer.new()
 		p.bus = "Efeitos"

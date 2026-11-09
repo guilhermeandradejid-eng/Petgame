@@ -454,7 +454,7 @@ func _ui_shots() -> void:
 				last_phase = ph
 		get_tree().quit()
 		return
-	for scr in ["menu", "tracks", "garage", "local", "online", "config", "config2", "pause", "career", "world", "garage2", "garage3", "garage4", "garage5", "results"]:
+	for scr in ["menu", "tracks", "garage", "local", "online", "config", "config2", "config3", "pause", "career", "world", "garage2", "garage3", "garage4", "garage5", "results"]:
 		if only != "" and not scr in only.split(","):
 			continue
 		if scr == "garage3":
@@ -483,6 +483,8 @@ func _ui_shots() -> void:
 			settings.open("menu")
 		elif scr == "config2":
 			settings._show_tab("video")
+		elif scr == "config3":
+			settings._show_tab("creditos")
 		elif scr == "local":
 			multi.open_join()
 			multi.slots = [{"dev": "kbA", "car": "faisca"}, {"dev": "joy0", "car": "vespa"}]

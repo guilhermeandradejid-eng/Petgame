@@ -105,6 +105,20 @@ def make_loop(x, length, xf=0.12, start=None, linear=False):
     return out
 
 
+def presence(x, amt_db=-6.0):
+    """Realça os harmônicos do próprio motor (saturação suave, filtrada entre ~400 Hz e ~4,5 kHz) e mistura por baixo.
+    As gravações do engine-sim são quase só grave (<250 Hz), que alto-falante de celular não toca: com os
+    harmônicos, o ouvido "reconstrói" o grave e o ronco aparece. O filtro é feito na FFT do loop inteiro
+    (convolução circular) e a saturação não tem memória, então o loop continua sem emenda."""
+    r = float(np.sqrt(np.mean(x ** 2))) + 1e-9
+    h = np.tanh(x / r * 1.2)
+    f = np.fft.rfftfreq(len(h), 1.0 / SR)
+    mask = (1.0 - 1.0 / (1.0 + (f / 400.0) ** 4)) / (1.0 + (f / 4500.0) ** 4)
+    h = np.fft.irfft(np.fft.rfft(h) * mask, len(h))
+    h *= r / (float(np.sqrt(np.mean(h ** 2))) + 1e-9) * db(amt_db)
+    return x + h
+
+
 def remove_dc(x):
     return x - np.mean(x)
 
@@ -216,7 +230,8 @@ def main():
         for rpm, f in lst:
             x = remove_dc(decode(os.path.join(src, f)))
             # trecho estável do meio; quanto mais alta a rotação, mais curto o ciclo (loop menor basta)
-            segs.append((rpm, make_loop(x, 1.2, 0.1, linear=True)))
+            lp = make_loop(x, 1.2, 0.1, linear=True)
+            segs.append((rpm, lp if name == "elec" else presence(lp)))
         # mesma escala para a série toda (a mais forte em -15 dB RMS): o volume natural sobe com a rotação
         g = db(-15) / max(active_rms(s) for _, s in segs)
         manifest["engines"][name] = []
