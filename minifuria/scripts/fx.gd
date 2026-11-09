@@ -976,6 +976,7 @@ func make_scrape() -> Node3D:
 	l.name = "L"
 	l.light_color = Color(1.0, 0.65, 0.25)
 	l.light_energy = 0.0
+	l.visible = false
 	l.omni_range = 8.0
 	l.position.y = 0.8
 	root.add_child(l)
@@ -997,6 +998,7 @@ func set_scrape(n: Node3D, on: bool, pos: Vector3, dir: Vector3, strength: float
 		l.light_energy = randf_range(2.0, 6.0) * clampf(strength, 0.4, 1.2)
 	else:
 		l.light_energy = maxf(0.0, l.light_energy - 0.6)
+	l.visible = l.light_energy > 0.05
 
 
 # ------------------------------------------------------------------ marcas de pneu
@@ -1005,7 +1007,7 @@ func skid(a: Vector3, b: Vector3, width: float, alpha: float, n := Vector3.UP) -
 	var l := d.length()
 	if l < 0.05 or l > 4.0:
 		return
-	var mid := (a + b) * 0.5 + n * 0.05
+	var mid := (a + b) * 0.5 + n * 0.08   # acima o bastante para a marca não "afundar" no asfalto em lombadas
 	var z := d / l
 	var x := n.cross(z).normalized()
 	var basis := Basis(x * width, n, z * (l + 0.06))

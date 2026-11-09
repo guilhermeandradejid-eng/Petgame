@@ -450,6 +450,67 @@ func configure(lib: Node3D, front: String, rear: String, nitro: String, up: Dict
 	_build_weapon(lib, front)
 	_apply_tires(lib, up)
 	_build_kit(up)
+	bake_shadow()
+
+
+# ------------------------------------------------------------------ sombra numa chamada só
+## As ~50 peças do carro (carroceria, rodas, kit) faziam ~50 desenhos só para a sombra do sol. Agora elas
+## não projetam sombra; uma malha invisível juntando tudo (posição e índices, sem material) projeta a
+## sombra numa chamada. A torre da arma, que gira, continua com a sombra própria.
+var _shadow_proxy: MeshInstance3D
+
+
+func bake_shadow() -> void:
+	if _shadow_proxy and is_instance_valid(_shadow_proxy):
+		_shadow_proxy.queue_free()
+	_shadow_proxy = null
+	if model == null:
+		return
+	var verts := PackedVector3Array()
+	var ids := PackedInt32Array()
+	var stack: Array = [model]
+	while stack.size() > 0:
+		var nd: Node = stack.pop_back()
+		if nd == weapon_node or String(nd.name) == "ShadowProxy":
+			continue
+		if nd is MeshInstance3D and (nd as MeshInstance3D).mesh and (nd as Node3D).visible and ((nd as MeshInstance3D).cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF or nd.has_meta("sb")):
+			var mi := nd as MeshInstance3D
+			var xf := mi.transform
+			var pp := mi.get_parent()
+			while pp != null and pp != model:
+				if pp is Node3D:
+					xf = (pp as Node3D).transform * xf
+				pp = pp.get_parent()
+			for si in mi.mesh.get_surface_count():
+				var arr := mi.mesh.surface_get_arrays(si)
+				var vs: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+				var base := verts.size()
+				for v in vs:
+					verts.append(xf * v)
+				if arr[Mesh.ARRAY_INDEX] != null and (arr[Mesh.ARRAY_INDEX] as PackedInt32Array).size() > 0:
+					for ix in (arr[Mesh.ARRAY_INDEX] as PackedInt32Array):
+						ids.append(base + ix)
+				else:
+					for k in vs.size():
+						ids.append(base + k)
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mi.set_meta("sb", true)
+		if nd is Node3D and not (nd as Node3D).visible:
+			continue
+		stack.append_array(nd.get_children())
+	if verts.is_empty():
+		return
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_INDEX] = ids
+	var am := ArrayMesh.new()
+	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	_shadow_proxy = MeshInstance3D.new()
+	_shadow_proxy.name = "ShadowProxy"
+	_shadow_proxy.mesh = am
+	_shadow_proxy.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+	model.add_child(_shadow_proxy)
 
 
 ## torre da arma parafusada no teto (ponto "_mount" do modelo): base fixa, anel que gira (mira), corpo que
@@ -1376,6 +1437,8 @@ func repair() -> void:
 	if paint:
 		paint.albedo_color = color
 		paint.roughness = 0.24
+	if _shadow_proxy:
+		bake_shadow()   # peças de volta: a sombra também
 
 
 func place(xform: Transform3D, speed: float) -> void:

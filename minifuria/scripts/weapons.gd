@@ -73,6 +73,7 @@ func setup(game_: Node, fx_: Fx, sfx_: Sfx, lib_: Node3D) -> void:
 		l.light_color = Color(1.0, 0.75, 0.35)
 		l.omni_range = 7.0
 		l.light_energy = 0.0
+		l.visible = false
 		add_child(l)
 		var q := MeshInstance3D.new()
 		var qm := QuadMesh.new()
@@ -215,6 +216,7 @@ func update(dt: float) -> void:
 		if f.t > 0.0:
 			f.t -= dt
 			(f.l as OmniLight3D).light_energy = maxf(0.0, f.t) * 90.0
+			(f.l as OmniLight3D).visible = f.t > 0.0   # luz apagada fora do clarão (não custa passada de luz)
 			(f.q as MeshInstance3D).visible = f.t > 0.0
 			(f.cone as MeshInstance3D).visible = f.t > 0.0
 	_step_numbers(dt)
@@ -725,7 +727,9 @@ func _step_mines(dt: float) -> void:
 		var m: Dictionary = mines[i]
 		m.t += dt
 		var node: Node3D = m.node
-		(m.light as OmniLight3D).light_energy = 3.0 if fmod(m.t, 0.5) < 0.12 else 0.2
+		var blink := fmod(m.t, 0.5) < 0.12
+		(m.light as OmniLight3D).light_energy = 3.0
+		(m.light as OmniLight3D).visible = blink   # a luz da mina só existe na piscada
 		var gone: bool = m.t > 30.0
 		if m.t > 0.7:
 			for car in game.cars:

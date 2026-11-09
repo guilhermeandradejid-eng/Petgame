@@ -203,7 +203,7 @@ func _ready() -> void:
 	sun = DirectionalLight3D.new()
 	sun.shadow_enabled = true
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-	sun.directional_shadow_max_distance = 140.0
+	sun.directional_shadow_max_distance = 120.0   # a câmera fica a 70 m: 120 cobre a tela toda
 	sun.shadow_bias = 0.03
 	sun.shadow_normal_bias = 1.0
 	sun.shadow_blur = 1.1
@@ -789,6 +789,58 @@ func _prep_materials(n: Node, done: Dictionary) -> void:
 		_prep_materials(c, done)
 
 
+# ------------------------------------------------------------------ cenário em lotes (MultiMesh)
+## Objetos parados que se repetem (árvores, pedras, prédios, placas, nuvens...) não viram um nó cada:
+## vão para MultiMeshes agrupados por tipo e por área de 64 m (a câmera ainda descarta as áreas fora da
+## tela). Antes eram ~360 malhas e ~1.100 superfícies desenhadas uma a uma (mais a sombra de cada uma).
+const BATCH_CELL := 128.0
+const NO_SHADOW := ["prop_rock", "prop_cone", "prop_reeds", "prop_crystal", "prop_crystalM"]
+var _batch := {}
+
+
+func _batch_mesh(key: String, mesh: Mesh, xf: Transform3D, mat: Material = null, shadow := true) -> void:
+	if not _batch.has(key):
+		_batch[key] = {"mesh": mesh, "mat": mat, "shadow": shadow, "xf": []}
+	(_batch[key].xf as Array).append(xf)
+
+
+## objeto da biblioteca no lote (espelhado fica como nó: o lote não inverte as faces)
+func _batch_prop(kind: String, xf: Transform3D) -> void:
+	if xf.basis.determinant() < 0.0:
+		var n := _inst(kind)
+		n.transform = xf
+		world.add_child(n)
+		return
+	var src := lib.get_node(kind) as MeshInstance3D
+	_batch_mesh(kind, src.mesh, xf, src.material_override, not kind in NO_SHADOW)
+
+
+func _flush_batches() -> void:
+	for key in _batch:
+		var b: Dictionary = _batch[key]
+		var cells := {}
+		for xf: Transform3D in b.xf:
+			var c := Vector2i(floori(xf.origin.x / BATCH_CELL), floori(xf.origin.z / BATCH_CELL))
+			if not cells.has(c):
+				cells[c] = []
+			(cells[c] as Array).append(xf)
+		for c in cells:
+			var arr: Array = cells[c]
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.mesh = b.mesh
+			mm.instance_count = arr.size()
+			for i in arr.size():
+				mm.set_instance_transform(i, arr[i])
+			var mmi := MultiMeshInstance3D.new()
+			mmi.multimesh = mm
+			if b.mat:
+				mmi.material_override = b.mat
+			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if b.shadow else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			world.add_child(mmi)
+	_batch.clear()
+
+
 func _inst(name_: String) -> Node3D:
 	var n := lib.get_node(name_).duplicate() as Node3D
 	n.transform = Transform3D.IDENTITY
@@ -895,11 +947,10 @@ func _build_scenery() -> void:
 		st.rotation.y = atan2(n.x, n.z)
 		world.add_child(st)
 	for spot in track.decor_spots():
-		var nd := _inst(spot.kind)
-		nd.transform = spot.xf
+		var xf: Transform3D = spot.xf
 		if spot.get("flip", false):
-			nd.scale = Vector3(-1, 1, 1)
-		world.add_child(nd)
+			xf = xf.scaled_local(Vector3(-1, 1, 1))
+		_batch_prop(spot.kind, xf)
 	var mn := Vector2(1e9, 1e9)
 	var mx := Vector2(-1e9, -1e9)
 	for i in range(0, track.n, 5):
@@ -932,15 +983,12 @@ func _build_scenery() -> void:
 		if kind == "container":
 			_container_pad(Vector3(x, gy, z), rng)
 		else:
-			var m := _inst(kind)
 			var base_y := gy
 			if gy < -0.5:
 				base_y = gy + 0.6
 				_mound(Vector3(x, gy, z), rng.randf_range(2.4, 3.6))
-			m.position = Vector3(x, base_y, z)
-			m.rotation.y = rng.randf() * TAU
-			m.scale = Vector3.ONE * (0.8 + rng.randf() * 0.7) * pscale
-			world.add_child(m)
+			var sc := (0.8 + rng.randf() * 0.7) * pscale
+			_batch_prop(kind, Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * sc), Vector3(x, base_y, z)))
 		placed += 1
 	placed = 0
 	var bn: int = theme.bldg
@@ -951,18 +999,18 @@ func _build_scenery() -> void:
 		var z := rng.randf_range(mn.y - 40, mx.y + 40)
 		if track.clearance_xz(Vector3(x, 0, z)) < track.WALL + 12.0:
 			continue
-		var b := _inst(["prop_bldgA", "prop_bldgB", "prop_bldgC"][rng.randi() % 3])
-		b.position = Vector3(x, gy, z)
-		b.rotation.y = round(rng.randf() * 4.0) * PI / 2.0
+		var bk: String = ["prop_bldgA", "prop_bldgB", "prop_bldgC"][rng.randi() % 3]
+		var bb := Basis(Vector3.UP, round(rng.randf() * 4.0) * PI / 2.0)
 		if theme.night:
-			b.scale = Vector3(1.0, 1.0 + rng.randf() * 1.5, 1.0)
-		world.add_child(b)
+			bb = bb.scaled_local(Vector3(1.0, 1.0 + rng.randf() * 1.5, 1.0))
+		_batch_prop(bk, Transform3D(bb, Vector3(x, gy, z)))
 		placed += 1
 	if theme.ground == 8:
 		_clouds(rng, mn, mx)
 		_sky_decor(rng, mn, mx)
 	if theme.ground == 9:
 		_swamp_decor(rng, mn, mx)
+	_flush_batches()
 	for ps in track.pickup_spots:
 		var a := track.at(ps.s, ps.lat)
 		var nd := _inst("pickup_" + String(ps.kind))
@@ -980,9 +1028,9 @@ func _build_scenery() -> void:
 		gm.albedo_color = {"ammo": Color(0.6, 1.4, 0.4), "repair": Color(1.5, 0.5, 0.45), "nitro": Color(0.4, 0.9, 1.6)}[ps.kind]
 		glow.material_override = gm
 		glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		glow.transform = Transform3D(a.basis, (a.pos as Vector3) + (a.up as Vector3) * 0.1)
+		glow.transform = Transform3D(a.basis, (a.pos as Vector3) + (a.up as Vector3) * 0.2)
 		world.add_child(glow)
-		pickups.append({"node": nd, "kind": ps.kind, "t": 0.0, "base": a.pos + a.up * 1.0, "up": a.up})
+		pickups.append({"node": nd, "glow": glow, "kind": ps.kind, "t": 0.0, "base": a.pos + a.up * 1.0, "up": a.up})
 	var made := 0
 	for i in track.n:
 		if made >= 6:
@@ -1006,12 +1054,9 @@ func _sky_decor(rng: RandomNumberGenerator, mn: Vector2, mx: Vector2) -> void:
 		var p := Vector3(x, 0, z)
 		if track.clearance_xz(p) < track.WALL + 16.0:
 			continue
-		var isl := _inst("prop_island")
 		var sc := rng.randf_range(0.8, 1.9)
-		isl.position = Vector3(x, float(theme.gy) + rng.randf_range(6.0, 26.0), z)
-		isl.rotation.y = rng.randf() * TAU
-		isl.scale = Vector3.ONE * sc
-		world.add_child(isl)
+		var iy := float(theme.gy) + rng.randf_range(6.0, 26.0)
+		_batch_prop("prop_island", Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * sc), Vector3(x, iy, z)))
 		placed += 1
 	placed = 0
 	for k in 200:
@@ -1045,11 +1090,7 @@ func _swamp_decor(rng: RandomNumberGenerator, mn: Vector2, mx: Vector2) -> void:
 			var pp: Vector3 = track.P[i] + track.L[i] * sg * off
 			if track.clearance_xz(pp) < track.WALL + 1.0:
 				continue
-			var r := _inst("prop_reeds")
-			r.position = Vector3(pp.x, float(theme.gy) - 0.1, pp.z)
-			r.rotation.y = rng.randf() * TAU
-			r.scale = Vector3.ONE * rng.randf_range(1.0, 1.7)
-			world.add_child(r)
+			_batch_prop("prop_reeds", Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(1.0, 1.7)), Vector3(pp.x, float(theme.gy) - 0.1, pp.z)))
 	var ff := CPUParticles3D.new()
 	ff.amount = 160
 	ff.lifetime = 6.0
@@ -1078,21 +1119,19 @@ func _swamp_decor(rng: RandomNumberGenerator, mn: Vector2, mx: Vector2) -> void:
 
 func _mound(p: Vector3, r: float) -> void:
 	# ilhota de terra/pedra embaixo dos objetos na água ou na lava
-	var mi := MeshInstance3D.new()
-	var cm := CylinderMesh.new()
-	cm.top_radius = r * 0.75
-	cm.bottom_radius = r
-	cm.height = 1.4
-	cm.radial_segments = 9
-	cm.rings = 1
-	mi.mesh = cm
-	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(theme.shoulder).darkened(0.1) if (theme.ground != 3 and theme.ground != 9) else Color("#4f5e30")
-	m.roughness = 1.0
-	mi.material_override = m
-	mi.position = p + Vector3(0, -0.1, 0)
-	mi.rotation.y = randf() * TAU
-	world.add_child(mi)
+	if not _batch.has("mound"):
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.75
+		cm.bottom_radius = 1.0
+		cm.height = 1.4
+		cm.radial_segments = 9
+		cm.rings = 1
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(theme.shoulder).darkened(0.1) if (theme.ground != 3 and theme.ground != 9) else Color("#4f5e30")
+		m.roughness = 1.0
+		_batch_mesh("mound", cm, Transform3D(), m)
+		(_batch.mound.xf as Array).clear()
+	_batch_mesh("mound", null, Transform3D(Basis(Vector3.UP, randf() * TAU).scaled(Vector3(r, 1.0, r)), p + Vector3(0, -0.1, 0)))
 
 
 func _container_pad(p: Vector3, rng: RandomNumberGenerator) -> void:
@@ -1109,9 +1148,8 @@ func _container_pad(p: Vector3, rng: RandomNumberGenerator) -> void:
 	world.add_child(pad)
 	var cnt := rng.randi_range(1, 3)
 	for k in cnt:
-		var c := _inst(["prop_containerR", "prop_containerB", "prop_containerY"][rng.randi() % 3])
-		c.position = Vector3([-2.5, 2.5, 0.0][k], 2.0 + (2.6 if k == 2 else 0.0), 0)
-		pad.add_child(c)
+		var ck: String = ["prop_containerR", "prop_containerB", "prop_containerY"][rng.randi() % 3]
+		_batch_prop(ck, pad.transform * Transform3D(Basis(), Vector3([-2.5, 2.5, 0.0][k], 2.0 + (2.6 if k == 2 else 0.0), 0)))
 
 
 func _clouds(rng: RandomNumberGenerator, mn: Vector2, mx: Vector2) -> void:
@@ -1130,14 +1168,9 @@ func _clouds(rng: RandomNumberGenerator, mn: Vector2, mx: Vector2) -> void:
 		var c := Vector3(rng.randf_range(mn.x, mx.x), float(theme.gy) + rng.randf_range(-3, 3), rng.randf_range(mn.y, mx.y))
 		var s := rng.randf_range(6, 14)
 		for b in rng.randi_range(4, 7):
-			var mi := MeshInstance3D.new()
-			mi.mesh = sm
-			mi.material_override = m
 			var bs := s * rng.randf_range(0.5, 1.0)
-			mi.scale = Vector3(bs, bs * 0.75, bs)
-			mi.position = c + Vector3(rng.randf_range(-1.4, 1.4) * s, rng.randf_range(0.0, 0.5) * s, rng.randf_range(-1.0, 1.0) * s)
-			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			world.add_child(mi)
+			var cp := c + Vector3(rng.randf_range(-1.4, 1.4) * s, rng.randf_range(0.0, 0.5) * s, rng.randf_range(-1.0, 1.0) * s)
+			_batch_mesh("cloud", sm, Transform3D(Basis().scaled(Vector3(bs, bs * 0.75, bs)), cp), m, false)
 
 
 func _add_prop(name_: String, a: Dictionary, m: float, dims: Vector2) -> void:
@@ -1692,7 +1725,10 @@ func on_player_got_hit(amount: float) -> void:
 
 func _on_part_off(c: Car, mesh: MeshInstance3D, xform: Transform3D, vel: Vector3, is_wheel: bool) -> void:
 	mesh.material_overlay = null
+	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON   # a peça solta projeta a própria sombra
 	var rb := fx.spawn_debris(mesh, xform, vel, is_wheel)
+	if is_instance_valid(c):
+		c.bake_shadow.call_deferred()   # a sombra do carro perde a peça
 	if not _on_screen(xform.origin):
 		return
 	fx.sparks(xform.origin, vel, 0.6)
@@ -1976,6 +2012,7 @@ func _pickups(dt: float) -> void:
 		if pk.t > 0.0:
 			pk.t -= dt
 			nd.visible = pk.t <= 0.0
+			(pk.glow as Node3D).visible = nd.visible   # o brilho no chão some junto (antes ficava um ponto aceso na pista)
 			continue
 		nd.rotate(pk.up, dt * 2.0)
 		nd.position = (pk.base as Vector3) + (pk.up as Vector3) * sin(time_g * 3.0) * 0.25
@@ -1985,6 +2022,7 @@ func _pickups(dt: float) -> void:
 			if c.global_position.distance_to(nd.global_position) < 2.8:
 				pk.t = 10.0
 				nd.visible = false
+				(pk.glow as Node3D).visible = false
 				match String(pk.kind):
 					"ammo":
 						c.ammo_f = mini(c.front_cap, c.ammo_f + maxi(1, c.front_cap / 2))
@@ -2235,7 +2273,9 @@ func _add_headlights(c: Car) -> Array:
 	var out := []
 	var y: float = c.sp.clr + c.sp.h * 0.6
 	var z: float = c.sp.len * 0.5 + 0.15
+	# luz de verdade só no carro de quem joga (cada luz redesenha o que ela ilumina); rivais ficam com os fachos
 	var sp := SpotLight3D.new()
+	sp.visible = c.role == "player"
 	sp.light_color = Color(1.0, 0.92, 0.78)
 	# luz suave: menos energia, cone mais aberto com borda esfumada e queda maior com a distância
 	var dusk_only: bool = not bool(theme.night)
@@ -2366,13 +2406,44 @@ func _add_xray(c: Car) -> void:
 	var col: Color = c.color if not me else Color("#ffd23a")
 	m.set_shader_parameter("col", col.lightened(0.25))
 	m.set_shader_parameter("strength", 1.0 if me else 0.6)
+	# a silhueta só liga quando a pista está entre o carro e a câmera (_xray_step): antes ficava sempre
+	# ligada em todas as peças, desenhando cada carro duas vezes
+	var list: Array = []
 	var stack: Array = [c.model]
 	while stack.size() > 0:
 		var nd: Node = stack.pop_back()
-		if nd is MeshInstance3D:
-			(nd as MeshInstance3D).material_overlay = m
+		if nd is MeshInstance3D and String(nd.name) != "ShadowProxy":
+			list.append(nd)
 		for ch in nd.get_children():
 			stack.append(ch)
+	c.set_meta("xray", {"mat": m, "meshes": list, "on": false})
+
+
+var _xray_i := 0
+
+
+## a cada quadro testa dois carros: um raio do carro na direção da câmera bate num trecho de pista?
+func _xray_step() -> void:
+	if cars.is_empty() or cam == null:
+		return
+	var space := get_world_3d().direct_space_state
+	var back := cam.global_basis.z
+	for k in mini(2, cars.size()):
+		_xray_i = (_xray_i + 1) % cars.size()
+		var c: Car = cars[_xray_i]
+		if not is_instance_valid(c) or not c.has_meta("xray"):
+			continue
+		var xr: Dictionary = c.get_meta("xray")
+		var on := false
+		if c.visible and mode != "menu":
+			var from := c.global_position + c.global_transform.basis.y * 0.9 + back * 3.0   # 3 m: a mureta ao lado não conta
+			var q := PhysicsRayQueryParameters3D.create(from, from + back * 80.0, 1)
+			on = not space.intersect_ray(q).is_empty()
+		if on != bool(xr.on):
+			xr.on = on
+			for mi in xr.meshes:
+				if is_instance_valid(mi):
+					(mi as MeshInstance3D).material_overlay = xr.mat if on else null
 
 
 func _fall_wreck(c: Car, water: bool) -> void:
@@ -2683,6 +2754,11 @@ func _process(_delta: float) -> void:
 	if player.ctrl.brake > 0.0 and player.v_f > 10.0:
 		slip += 0.5
 	sfx.world_on = mode in ["race", "countdown", "finish"]
+	_xray_step()
+	if settings:
+		var want_fps: int = settings.fps_cap(mode in ["race", "countdown", "finish"])
+		if Engine.max_fps != want_fps and not auto_test:
+			Engine.max_fps = want_fps
 	sfx.drive(clampf(sp01, 0.0, 1.3), player.ctrl.throttle, slip, player.nitroing, ts < 0.6, mode in ["race", "countdown", "finish"] and not player.wrecked)
 	_camera(rdt)
 	if multi and multi.split:
@@ -2707,6 +2783,15 @@ func _process(_delta: float) -> void:
 			print("CAMSHOT ", cam_mode, " ", fr / 40)
 	elif auto_test:
 		stats.erase("cam_loop"); stats.erase("cam_twist"); stats.erase("cam_helix"); stats.erase("cam_air")
+	if auto_test and "--perfdump" in OS.get_cmdline_user_args() and not has_meta("perfdumped") and mode == "race" and race_t > 3.0:
+		set_meta("perfdumped", true)
+		_perf_dump()
+	if auto_test and "--perf" in OS.get_cmdline_user_args() and fmod(real, 3.0) < rdt and mode == "race":
+		print("PERF t=%.0f fps=%d draw=%d obj=%d prim=%dk mem=%.0fMB vram=%.0fMB tex=%.0fMB nodes=%d mat=%d shadowdraw?" % [real, Engine.get_frames_per_second(),
+			Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
+			Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME) / 1000, Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0,
+			Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0, Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / 1048576.0,
+			Performance.get_monitor(Performance.OBJECT_NODE_COUNT), Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT)])
 	if auto_test and "--musicdbg" in OS.get_cmdline_user_args():
 		for nm in ["Musica", "Efeitos", "Master"]:
 			var bi := AudioServer.get_bus_index(nm)
@@ -3054,3 +3139,48 @@ func _hud() -> void:
 	tc.counts["nitro"] = str(p.nitro_ch)
 	tc.counts["special"] = str(p.spec_ch)
 	tc.nitro_on = p.nitroing
+
+
+## teste: de onde vêm os objetos desenhados (malhas, superfícies, sombras, sobreposições, partículas) por grupo
+func _perf_dump() -> void:
+	var groups := {}
+	var stack: Array = [[self, "main"]]
+	while stack.size() > 0:
+		var it: Array = stack.pop_back()
+		var nd: Node = it[0]
+		var g: String = it[1]
+		if nd == world:
+			g = "world"
+		elif nd is Car:
+			g = "cars"
+		elif nd == fx:
+			g = "fx"
+		elif nd == weapons:
+			g = "weapons"
+		elif nd == track:
+			g = "track"
+		elif nd is CanvasLayer:
+			continue
+		var st: Dictionary = groups.get(g, {"mesh": 0, "surf": 0, "shadow": 0, "overlay": 0, "mm": 0, "mm_inst": 0, "parts": 0, "lights": 0, "hidden": 0})
+		if nd is VisualInstance3D and not (nd as Node3D).is_visible_in_tree():
+			st.hidden += 1
+		elif nd is MeshInstance3D and (nd as MeshInstance3D).mesh:
+			var mi := nd as MeshInstance3D
+			st.mesh += 1
+			st.surf += mi.mesh.get_surface_count()
+			if mi.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
+				st.shadow += mi.mesh.get_surface_count()
+			if mi.material_overlay:
+				st.overlay += mi.mesh.get_surface_count()
+		elif nd is MultiMeshInstance3D:
+			st.mm += 1
+			st.mm_inst += (nd as MultiMeshInstance3D).multimesh.instance_count if (nd as MultiMeshInstance3D).multimesh else 0
+		elif nd is CPUParticles3D or nd is GPUParticles3D:
+			st.parts += 1
+		elif nd is Light3D:
+			st.lights += 1
+		groups[g] = st
+		for ch in nd.get_children():
+			stack.append([ch, g])
+	for g in groups:
+		print("PERFDUMP ", g, " ", groups[g])

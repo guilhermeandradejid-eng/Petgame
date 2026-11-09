@@ -5,9 +5,10 @@ extends Node
 ## Fica salvo em save["cfg"] e é aplicado na hora.
 
 const DEFAULTS := {"vol_master": 0.9, "vol_music": 0.9, "vol_sfx": 0.9, "vol_voice": 1.0,
-	"quality": "alta", "scale": 1.0, "fullscreen": false, "vsync": true, "screen_fx": true, "fps": false,
+	"quality": "alta", "scale": 1.0, "fullscreen": false, "vsync": true, "screen_fx": true, "fps": false, "fps_cap": 120,
 	"shake": 1.0, "vibration": true}
 const QUALITY := [["baixa", "BAIXA"], ["media", "MÉDIA"], ["alta", "ALTA"]]
+const FPS_CAPS := [[30, "30"], [60, "60"], [90, "90"], [120, "120"], [0, "SEM LIMITE"]]
 
 var game: Node
 var hud: Hud
@@ -94,6 +95,16 @@ func apply_all() -> void:
 		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if bool(val("vsync")) else DisplayServer.VSYNC_DISABLED)
 	if fps_l:
 		fps_l.visible = bool(val("fps"))
+	Engine.max_fps = fps_cap(true)
+
+
+## limite de quadros: o escolhido na corrida; nos menus no máximo 60 (a vitrine não precisa de 120 e o
+## celular economiza bateria). No Android o limite também escolhe a taxa da tela (frame pacing).
+func fps_cap(racing: bool) -> int:
+	var c := int(val("fps_cap"))
+	if not racing:
+		return 60 if c == 0 else mini(c, 60)
+	return c
 
 
 func _process(_dt: float) -> void:
@@ -187,6 +198,8 @@ func _show_tab(t: String) -> void:
 			if cfg().has("fullscreen"):
 				_choice("fullscreen", "TELA CHEIA", [[false, "NÃO"], [true, "SIM"]])
 			_choice("vsync", "VSYNC (SEM CORTES NA IMAGEM)", [[true, "LIGADO"], [false, "DESLIGADO"]])
+			_choice("fps_cap", "TAXA DE QUADROS (FPS)", FPS_CAPS)
+			_note("120 FPS precisa de tela de 120 Hz (celulares e monitores rápidos). Nos menus o jogo segura em 60 para poupar bateria.")
 			_choice("screen_fx", "EFEITOS DE TELA (BORRÃO, ABERRAÇÃO, LINHAS)", [[true, "LIGADOS"], [false, "DESLIGADOS"]])
 			_choice("fps", "MOSTRAR FPS", [[false, "NÃO"], [true, "SIM"]])
 		"jogo":

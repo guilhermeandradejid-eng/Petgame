@@ -662,36 +662,75 @@ func build(ground_shader: Shader, road_shader: Shader) -> void:
 	_build_pads()
 
 
-func _build_pillars() -> void:
+## pilares sob os trechos elevados: o topo segue a parte de baixo da pista NO PONTO do pilar (em curva
+## inclinada o lado de dentro fica mais baixo; antes o topo ficava na altura do centro e furava o asfalto)
+## e nenhum pilar atravessa outro trecho da pista que passe por baixo (viaduto).
+const PILLAR_R := 0.9
+
+
+func pillar_xforms() -> Array:
+	var out: Array = []
 	if not theme.pillars:
-		return
+		return out
 	var gy: float = theme.gy
-	var xs: Array = []
 	for i in range(0, n, 7):
 		if gap[i] == 1 or loopf[i] == 1 or U[i].y < 0.8:
 			continue
-		var bottom := P[i].y - 0.9
-		if bottom - gy < 1.2:
-			continue
+		var tilt := sqrt(maxf(0.0, 1.0 - U[i].y * U[i].y)) / maxf(U[i].y, 0.1)
 		for sgn: float in [-1.0, 1.0]:
-			var base: Vector3 = P[i] + L[i] * sgn * HALF * 0.55
-			# não fincar pilar em cima de outro trecho da pista (viaduto)
-			var blocked := false
-			for k in range(0, n, 2):
-				if absi(k - i) < 12 or absi(k - i) > n - 12:
-					continue
-				if P[k].y < bottom - 1.0 and Vector2(P[k].x - base.x, P[k].z - base.z).length() < HALF + 3.0:
-					blocked = true
-					break
-			if not blocked:
-				xs.append(Transform3D(Basis().scaled(Vector3(1, bottom - gy, 1)), Vector3(base.x, (bottom + gy) * 0.5, base.z)))
+			var lat := sgn * HALF * 0.55
+			var tp := _off(i, lat, -0.9)
+			var top := tp.y
+			# a pista sobe/desce ao longo do trecho: o topo fica abaixo da parte de baixo dos vizinhos também
+			for dk in [-2, -1, 1, 2]:
+				if gap[idx(i + dk)] == 0:
+					top = minf(top, _off(i + dk, lat, -0.9).y)
+			top -= 0.08 + PILLAR_R * tilt
+			if top - gy < 1.2:
+				continue
+			if _hits_other_road(Vector2(tp.x, tp.z), gy, top, i):
+				continue
+			out.append(Transform3D(Basis().scaled(Vector3(1, top - gy, 1)), Vector3(tp.x, (top + gy) * 0.5, tp.z)))
+	return out
+
+
+## alguma parte da pista (fora o próprio trecho i) cruza a coluna vertical em xz entre y0 e y1?
+func _hits_other_road(xz: Vector2, y0: float, y1: float, i: int) -> bool:
+	for k in n:
+		var dk := absi(k - i)
+		if mini(dk, n - dk) < 6 or gap[k] == 1:
+			continue
+		var t := Vector2(T[k].x, T[k].z)
+		if t.length() < 0.2:
+			# trecho quase vertical (looping): basta estar perto em xz
+			if Vector2(P[k].x, P[k].z).distance_to(xz) < WALL + 1.0 + PILLAR_R and P[k].y > y0 - 1.0 and P[k].y < y1 + 1.5:
+				return true
+			continue
+		t = t.normalized()
+		var d := xz - Vector2(P[k].x, P[k].z)
+		var along := d.dot(t)
+		if absf(along) > ds * 0.75 + PILLAR_R:
+			continue
+		var lat_h := d.dot(Vector2(-t.y, t.x))
+		var lk := Vector2(L[k].x, L[k].z)
+		var latk := lat_h * signf(lk.dot(Vector2(-t.y, t.x))) / maxf(lk.length(), 0.3)
+		if absf(latk) > WALL + 1.0 + PILLAR_R:
+			continue
+		var y := _off(k, latk, 0.0).y
+		if y > y0 - 1.0 and y < y1 + 1.5:
+			return true
+	return false
+
+
+func _build_pillars() -> void:
+	var xs := pillar_xforms()
 	if xs.is_empty():
 		return
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	var cyl := CylinderMesh.new()
 	cyl.top_radius = 0.7
-	cyl.bottom_radius = 0.9
+	cyl.bottom_radius = PILLAR_R
 	cyl.height = 1.0
 	cyl.radial_segments = 10
 	var m := StandardMaterial3D.new()
@@ -910,4 +949,22 @@ func validate() -> Dictionary:
 					under += 1
 					if under_at.size() < 4:
 						under_at.append([int(i * ds), snappedf(q.y - float(theme.gy), 0.01)])
-	return {"len": int(length), "min_r": snappedf(min_r, 0.1), "at": Vector3i(min_at), "wat": Vector3i(wa), "conflicts": conflicts, "worst": snappedf(worst, 0.1), "min_y": snappedf(min_y, 0.1), "overlap3d": over, "over_at": over_at, "sub_ground": under, "sub_at": under_at}
+	var pil := 0
+	var pil_at := []
+	for xf: Transform3D in pillar_xforms():
+		var top := xf.origin.y + xf.basis.y.length() * 0.5
+		var c := Vector2(xf.origin.x, xf.origin.z)
+		# o asfalto (com zebra/acostamento) mais próximo acima do topo do pilar, no próprio trecho
+		var hit := false
+		for k in n:
+			if gap[k] == 1:
+				continue
+			for e: float in [-WALL, -HALF, -HALF * 0.55, 0.0, HALF * 0.55, HALF, WALL]:
+				var q := _off(k, e, 0.0)
+				if Vector2(q.x, q.z).distance_to(c) < PILLAR_R + 0.4 and q.y < top + 0.6 and q.y > float(theme.gy):
+					hit = true
+		if hit:
+			pil += 1
+			if pil_at.size() < 4:
+				pil_at.append(Vector3i(xf.origin))
+	return {"len": int(length), "min_r": snappedf(min_r, 0.1), "pillar_hits": pil, "pil_at": pil_at, "at": Vector3i(min_at), "wat": Vector3i(wa), "conflicts": conflicts, "worst": snappedf(worst, 0.1), "min_y": snappedf(min_y, 0.1), "overlap3d": over, "over_at": over_at, "sub_ground": under, "sub_at": under_at}
