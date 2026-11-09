@@ -232,6 +232,8 @@ func activate(on: bool) -> void:
 		return
 	_on = on
 	visible = on
+	if not on and game:
+		game.sfx.menu_engine("", 0.0, 0.0)   # devolve o motor para a corrida
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS if on else SubViewport.UPDATE_DISABLED
 	set_process(on or not _queue.is_empty())
 	if game:
@@ -265,6 +267,8 @@ func set_accent(c: Color) -> void:
 ## mostra um carro (kind, cor, armas, upgrades). Se só os upgrades/cor mudaram, remonta o kit sem trocar o carro.
 func show_car(kind: String, col: Color, front: String, rear: String, nitro: String, up: Dictionary, special := "", pop := true) -> void:
 	var cfg := {"kind": kind, "col": col, "front": front, "rear": rear, "nitro": nitro, "up": up.duplicate(), "special": special}
+	if parade.is_empty() and _on and _cur.has("kind") and String(_cur.kind) != kind:
+		_rev = 0.9
 	if car and is_instance_valid(car) and String(_cur.get("kind", "")) == kind:
 		if cfg.hash() == _cur.hash():
 			return
@@ -339,6 +343,10 @@ func _process(dt: float) -> void:
 	_idle += dt
 	if not parade.is_empty():
 		_parade_step(dt)
+	elif game:
+		# garagem: trocou de carro, ele dá uma acelerada e o motor some de novo
+		_rev = maxf(0.0, _rev - dt * 1.1)
+		game.sfx.menu_engine(String(_cur.get("kind", "")), 0.04 + _rev * 0.7, _rev * 0.4)
 	if _phase != "" and not _drag:
 		pass   # alinhar/sair/entrar: o desfile cuida do giro
 	elif not _drag:
@@ -645,6 +653,8 @@ func start_parade(list: Array) -> void:
 func stop_parade() -> void:
 	parade = []
 	_phase = ""
+	if game:
+		game.sfx.menu_engine("", 0.0, 0.0)
 	_set_drive(0.0)
 	_rev = 0.0
 	_beams(false)
@@ -740,6 +750,19 @@ func _parade_step(dt: float) -> void:
 		if _phase == "":
 			for s in car.ex_smoke:
 				(s as CPUParticles3D).emitting = _rev > 0.3
+	if game and _on:
+		var ek := String(_cur.get("kind", ""))
+		var rv := 0.04 + _rev * 0.75
+		var vol := 0.2 + _rev * 0.18
+		match _phase:
+			"out":
+				rv = minf(1.0, 0.45 + _phase_t * 0.9)
+				vol = 0.42 * clampf(1.0 - _drive_z / (DRIVE_X * 1.3), 0.0, 1.0) + 0.02
+			"in":
+				var ui := clampf(_phase_t / 1.2, 0.0, 1.0)
+				rv = 0.08 + 0.45 * (1.0 - ui) * (1.0 - ui)
+				vol = 0.08 + 0.2 * ui
+		game.sfx.menu_engine(ek, rv, vol)
 	for b in beams:
 		var bl: SpotLight3D = b.light
 		var ph: float = b.phase
@@ -756,9 +779,9 @@ func _rev_blip(k: float) -> void:
 	if _pop_light:
 		_pop_light.light_energy = 5.0 * k
 	if game:
-		game.sfx.play("gun", -16.0 + 4.0 * k, 0.42)
+		game.sfx.play("backfire", -16.0 + 4.0 * k)
 		if k >= 1.0:
-			get_tree().create_timer(0.12).timeout.connect(func(): if game: game.sfx.play("gun", -14.0, 0.5))
+			get_tree().create_timer(0.12).timeout.connect(func(): if game: game.sfx.play("backfire", -14.0, 1.08))
 
 
 ## chamas dos estalos e o clarão nas ponteiras do escapamento do carro atual

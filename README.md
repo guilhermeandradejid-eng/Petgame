@@ -212,6 +212,19 @@ As faixas foram cortadas (máx. ~2:45), normalizadas (-15 LUFS) e convertidas pa
 
 Sobre as músicas do Rock n' Roll Racing ("Bad to the Bone", "Paranoid", "Born to Be Wild", "Highway Star", "Peter Gunn"): são obras protegidas. Usar num jogo exige licença de sincronização da editora (composição) e licença da gravação (gravadora), ou uma regravação própria, que ainda precisa da licença da editora. Use só músicas que você tenha direito de usar.
 
+## Efeitos sonoros (gravações reais)
+
+Todos os efeitos são **gravações reais** de pacotes livres (CC0, CC-BY e CC-BY-SA), editados por `tools/build_sfx.py` para `minifuria/sfx/` (~2,5 MB). Autores e licenças de cada arquivo estão em [`minifuria/sfx/CREDITOS.txt`](minifuria/sfx/CREDITOS.txt).
+
+- **Motor**: cada carro tem um motor próprio, gravado em rotações fixas de 1.000 em 1.000 rpm no engine-sim (Stunt Rally 3, CryHam, CC-BY 4.0): boxer de rally no Faísca, V8 muscle no Monstro, V12 no Nêmesis, diesel nos chefes, elétrico no Zéfiro... O jogo toca as duas gravações mais próximas da rotação do momento, ajusta o tom e mistura as duas. Tem 5 marchas, com o tranco da troca, e um filtro que abafa o ronco quando você tira o pé.
+- **Pneu cantando** na derrapagem, na freada e na largada (Yorg, CC-BY-SA), **metal raspando** na mureta (Halleck, CC-BY 4.0), vento com a velocidade e turbo durante o nitro, todos em loop sem emenda.
+- **Rivais com motor 3D**: cada carro da corrida ronca com o próprio motor, mais alto quando passa perto e do lado da tela em que ele está. O ouvinte fica logo acima do seu carro (a câmera ortográfica fica longe demais).
+- **Batidas, armas e explosões** com 2 a 7 variações sorteadas cada (batidas de metal de Halleck, armas e explosões do Red Eclipse, impactos da Kenney).
+- **Narrador** na largada ("Ready? 3, 2, 1, Go!"), na última volta, na vitória e no recorde (Kenney Voiceover Pack, CC0).
+- **Vitrine**: no desfile do menu, cada carro ronca ao acelerar, arranca alto e some ao sair de cena; na garagem, o carro escolhido dá uma acelerada.
+
+Para montar a pasta `sfx/` de novo: clone as fontes listadas no começo de `tools/build_sfx.py` e rode `python3 tools/build_sfx.py FONTES sfx` (precisa de `ffmpeg` e `numpy`).
+
 ## Cenário do Céu e do Pântano
 
 - **Espiral do Céu**: mar de nuvens animado (topo iluminado, vales azulados, sombras de nuvens altas), ilhas flutuantes com gramado, pedras e árvore em várias alturas, e balões de ar quente subindo e descendo.
@@ -451,7 +464,7 @@ Ferramentas: `godot --headless -s res://tools/validate_tracks.gd` confere raio m
 ## Estrutura
 
 - `minifuria/blender/build_assets.py`: carros em peças destrutíveis, peças do kit de upgrades (`kit_*`), props de todos os temas, armas e itens, com oclusão ambiente assada nos vértices (Cycles) → `minifuria/assets/minicars.glb`.
-- `minifuria/scripts/track_data.gd` (pistas e temas), `track.gd` (geração 3D), `car.gd` (física, dano, IA), `weapons.gd` (armas), `main.gd` (fluxo, regras, câmera, efeitos), `fx.gd` (partículas e efeitos), `hud.gd` / `touch.gd` (interface), `showroom.gd` (vitrine 3D e miniaturas), `garage.gd` (garagem), `icons.gd` (ícones vetoriais), `sfx.gd` (áudio sintetizado).
+- `minifuria/scripts/track_data.gd` (pistas e temas), `track.gd` (geração 3D), `car.gd` (física, dano, IA), `weapons.gd` (armas), `main.gd` (fluxo, regras, câmera, efeitos), `fx.gd` (partículas e efeitos), `hud.gd` / `touch.gd` (interface), `showroom.gd` (vitrine 3D e miniaturas), `garage.gd` (garagem), `icons.gd` (ícones vetoriais), `sfx.gd` (som: motores gravados, loops de pneu/vento/turbo, efeitos e motores 3D dos rivais).
 - `minifuria/shaders/`: asfalto por tema, chão (grama, areia, neve, água, lava, lua, cidade, tapete, nuvens), chama do nitro, efeitos no chão, barra de vida, pós-processamento e a vitrine (`showroom_sky`, `showroom_floor`, `showroom_vignette`).
 - `minifuria/tools/pack_web.py`: divide o export web em arquivos de 4 MB.
 - Fonte Bungee (SIL OFL), ver `minifuria/fonts/FONT-LICENSE.txt`.

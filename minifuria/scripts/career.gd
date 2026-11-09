@@ -151,7 +151,7 @@ func pick_car(k: String) -> String:
 			return "Faltam $%d" % (price - int(s.cash))
 		s.cash = int(s.cash) - price
 		s.garage.owned.append(k)
-		game.sfx.play("coin")
+		game.sfx.play("buy", -4.0)
 	s.car = k
 	s.up = s.garage.up[k]
 	var lo: Array = Car.LOADOUT[k]
@@ -219,7 +219,7 @@ func buy_front() -> String:
 		return "Faltam $%d" % (price - int(s.cash))
 	s.cash = int(s.cash) - price
 	s.garage.kit[k].front = true
-	game.sfx.play("coin")
+	game.sfx.play("buy", -4.0)
 	game._write_save()
 	return ""
 
@@ -235,7 +235,7 @@ func pick_special(sp: String) -> String:
 			return "Faltam $%d" % (price - int(s.cash))
 		s.cash = int(s.cash) - price
 		kt.spec.append(sp)
-		game.sfx.play("coin")
+		game.sfx.play("buy", -4.0)
 	elif String(kt.eq) == sp and active():
 		kt.eq = ""
 		game._write_save()

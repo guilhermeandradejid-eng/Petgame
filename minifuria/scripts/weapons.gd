@@ -341,7 +341,7 @@ func _fire_mg(c: Car) -> void:
 	tr.hit = hit
 	tr.owner = c
 	if game._on_screen(mz):
-		sfx.play("gun", -11.0 if c != game.player else -5.0, randf_range(0.88, 1.12))
+		sfx.play("gun", -14.0 if c != game.player else -8.0, randf_range(0.94, 1.06))
 	if c == game.player:
 		game._shake(0.03)
 
@@ -396,7 +396,7 @@ func _bullet_impact(tr: Dictionary) -> void:
 			fx.sparks(p, -aim + tc.global_transform.basis.y * 0.5, 0.18)
 			_muzzle_flash(p - aim * 0.3, -aim)
 		if c == game.player:
-			sfx.play("tink", -8.0, randf_range(0.85, 1.25))
+			sfx.play("tink", -10.0, randf_range(0.9, 1.15))
 			ret_pulse = 1.0
 			var e: Dictionary = acc.get(tc, {"dmg": 0.0, "t": 0.0})
 			e.dmg += dmg
@@ -407,7 +407,7 @@ func _bullet_impact(tr: Dictionary) -> void:
 			game.on_player_hit_enemy(tc, killed)
 		elif tc == game.player:
 			game.on_player_got_hit(dmg)
-			sfx.play("tink", -12.0, randf_range(0.7, 0.9))
+			sfx.play("tink", -14.0, randf_range(0.75, 0.9))
 	else:
 		if hc is RigidBody3D:
 			(hc as RigidBody3D).apply_impulse(aim * 60.0)
@@ -422,7 +422,7 @@ func _bullet_impact(tr: Dictionary) -> void:
 			# muro: ricochete com faísca
 			fx.sparks(p, aim.bounce(n) if aim.dot(n) < 0.0 else n, 0.15)
 			if randf() < 0.3:
-				sfx.play("tink", -16.0, randf_range(1.2, 1.6))
+				sfx.play("bump", -22.0, randf_range(1.3, 1.6))
 
 
 func _make_casings() -> CPUParticles3D:
@@ -624,7 +624,7 @@ func _step_rockets(dt: float) -> void:
 func _explode(pos: Vector3, owner: Car, dmg: float, radius: float, style: String) -> void:
 	fx.explosion(pos, false, style)
 	if game._on_screen(pos):
-		sfx.play("boom", -2.0 if style != "mine" else 0.0, randf_range(0.9, 1.15))
+		sfx.play("boom" if radius >= 4.0 else "boom_small", -2.0 if style != "mine" else 0.0, randf_range(0.92, 1.08))
 		var dp: float = pos.distance_to(game.player.global_position)
 		game._shake(clampf(0.6 - dp * 0.03, 0.05, 0.6))
 	for car in game.cars:
@@ -680,11 +680,11 @@ func _drop(c: Car) -> void:
 			hazard(c.rear_type, c, p, 3.2 if c.rear_type != "fire" else 2.6, 0.15, 6.0 if c.rear_type != "fire" else 4.5,
 				{"n": n, "fwd": fwd_r, "rz": 3.2 if c.rear_type != "fire" else 4.0,
 				"col": {"mud": Color(0.45, 0.32, 0.18), "ice": Color(0.7, 0.9, 1.0), "fire": Color(1.0, 0.4, 0.1)}[c.rear_type]})
-			sfx.play("drop", -6.0)
+			sfx.play("deploy", -6.0)
 			return
 		"vortex":
 			hazard("vortex", c, p, 5.0, 0.4, 3.5, {"n": n, "fwd": fwd_r, "col": Color(0.7, 0.35, 1.0)})
-			sfx.play("zap", -4.0, 0.5)
+			sfx.play("emp", -6.0, 1.1)
 			return
 	if c.rear_type == "mine" or c.rear_type == "emp":
 		var node := lib.get_node("proj_mine").duplicate() as Node3D
@@ -699,7 +699,7 @@ func _drop(c: Car) -> void:
 			l.light_color = Color(0.4, 0.8, 1.0)
 			node.scale = Vector3(1.0, 1.4, 1.0)
 		mines.append({"node": node, "owner": c, "t": 0.0, "light": l, "n": n, "emp": c.rear_type == "emp"})
-		sfx.play("drop", -6.0)
+		sfx.play("deploy", -6.0)
 	else:
 		var mi := MeshInstance3D.new()
 		var pm := PlaneMesh.new()
@@ -803,7 +803,7 @@ func _fire_zap(c: Car) -> void:
 	var tgt := _target(c, 28.0, 0.88)
 	if tgt == null:
 		_bolt(mz, mz + c.global_transform.basis.z * 9.0 + Vector3.UP * randf_range(-1, 1), 0.6)
-		sfx.play("zap", -10.0, randf_range(1.1, 1.3))
+		sfx.play("zap", -12.0, randf_range(1.05, 1.2))
 		return
 	var hp: Vector3 = tgt.global_position + Vector3.UP * 0.8
 	_bolt(mz, hp, 1.0)
@@ -821,7 +821,7 @@ func _fire_zap(c: Car) -> void:
 	if best:
 		_bolt(hp, best.global_position + Vector3.UP * 0.8, 0.7)
 		_zap_hit(c, best, 9.0 * c.dmg_mult)
-	sfx.play("zap", -4.0 if c == game.player else -9.0, randf_range(0.9, 1.1))
+	sfx.play("zap", -5.0 if c == game.player else -10.0)
 	if c == game.player:
 		game._shake(0.06)
 
@@ -902,7 +902,7 @@ func _fire_flame(c: Car) -> void:
 			if c == game.player:
 				game.on_player_hit_enemy(t, killed)
 	if game._on_screen(mz) and Engine.get_physics_frames() % 6 == 0:
-		sfx.play("flame", -12.0 if c != game.player else -6.0, randf_range(0.9, 1.1))
+		sfx.play("flame", -14.0 if c != game.player else -9.0)
 
 
 func _flame_fx(c: Car) -> void:
@@ -958,7 +958,7 @@ func _drop_spikes(c: Car, p: Vector3, basis: Basis, n: Vector3) -> void:
 		s.rotation = Vector3(randf_range(-0.4, 0.4), randf() * TAU, randf_range(-0.4, 0.4))
 		node.add_child(s)
 	spikes.append({"node": node, "owner": c, "t": 0.0, "pos": p, "n": n, "hit": {}})
-	sfx.play("drop", -6.0, 1.3)
+	sfx.play("deploy", -6.0, 1.2)
 	if c == game.player:
 		game.hud.popup("PREGOS!", Color("#ffcf33"))
 
@@ -982,7 +982,7 @@ func _step_spikes(dt: float) -> void:
 				var killed := c.apply_damage(8.0, c.global_position, s.owner, false)
 				if game._on_screen(c.global_position):
 					fx.sparks(c.global_position, -c.linear_velocity.normalized() + Vector3.UP, 1.2)
-					sfx.play("metal", -6.0, 1.4)
+					sfx.play("tink", -8.0, 0.9)
 				if c == game.player or c.local_idx >= 0:
 					game.pop_for(c, "PNEU FURADO!", Color("#ff7a7a"))
 				if s.owner == game.player and c != game.player:
@@ -997,7 +997,7 @@ func _drop_barrel(c: Car, p: Vector3, n: Vector3) -> void:
 	var back := -c.global_transform.basis.z
 	var v: Vector3 = c.linear_velocity * 0.35 + back * 9.0
 	barrels.append({"node": node, "owner": c, "t": 0.0, "vel": v.slide(n), "n": n, "spin": 0.0})
-	sfx.play("drop", -4.0, 0.8)
+	sfx.play("deploy", -4.0, 0.85)
 	if c == game.player:
 		game.hud.popup("BARRIL!", Color("#ffcf33"))
 
@@ -1074,7 +1074,7 @@ func special(c: Car, kind: String) -> void:
 			c.juice_squash(1.4)
 			if vis:
 				fx.burst("dust", c.global_position)
-				sfx.play("whoosh", -3.0, 1.2)
+				sfx.play("whoosh", -3.0, 1.1)
 			game.pop_for(c, "SALTO!", Color("#2ee6ff"))
 		"shield":
 			c.shield_t = 3.0
@@ -1094,7 +1094,7 @@ func special(c: Car, kind: String) -> void:
 			c.invuln = maxf(c.invuln, 0.35)
 			if vis:
 				fx.burst("dust", c.global_position)
-				sfx.play("whoosh", -3.0, 1.5)
+				sfx.play("whoosh", -3.0, 1.25)
 				ring_fx(c.global_position, 3.0, Color(0.5, 0.9, 1.0))
 			game.pop_for(c, "ESQUIVA!", Color("#7fe9ff"))
 		"glide":
@@ -1103,7 +1103,7 @@ func special(c: Car, kind: String) -> void:
 				c.apply_central_impulse((c.ground_n * 7.0 + c.global_transform.basis.z * 1.5) * c.mass)
 			c.glide_t = 1.6
 			if vis:
-				sfx.play("whoosh", -2.0, 0.8)
+				sfx.play("whoosh", -2.0, 0.85)
 				fx.burst("dust", c.global_position)
 			game.pop_for(c, "PLANANDO!", Color("#9fe7ff"))
 		"repair":
@@ -1115,7 +1115,7 @@ func special(c: Car, kind: String) -> void:
 			if vis:
 				fx.sparkle(c.global_position + Vector3.UP, Color(0.5, 1.5, 0.6))
 				fx.hit_light(c.global_position + Vector3.UP, Color(0.4, 1.0, 0.5), 6.0, 10.0, 0.4)
-				sfx.play("pickup", -4.0, 0.8)
+				sfx.play("pickup", -4.0, 0.9)
 			game.pop_for(c, "REPARO!", Color("#5dff6a"))
 
 
@@ -1123,7 +1123,7 @@ func special(c: Car, kind: String) -> void:
 func ram_start(c: Car) -> void:
 	_use("ram")
 	if game._on_screen(c.global_position):
-		sfx.play("nitro", -3.0, 0.7)
+		sfx.play("nitro", -3.0, 0.85)
 		fx.burst("dust", c.global_position)
 		ring_fx(c.global_position + c.global_transform.basis.z * c.sp.len * 0.5, 3.0, Color(1.0, 0.45, 0.15))
 	game.pop_for(c, "INVESTIDA!", Color("#ff7a1a"))
@@ -1147,7 +1147,7 @@ func _ram_hit(c: Car) -> void:
 		t.stun = maxf(t.stun, 0.5)
 		if game._on_screen(t.global_position):
 			fx.sparks(t.global_position + Vector3.UP, d.normalized(), 1.5)
-			sfx.play("metal", -2.0, 0.8)
+			sfx.play("crash", -2.0)
 			game._shake(0.25 if c == game.player or t == game.player else 0.0)
 		if c == game.player:
 			game.on_player_hit_enemy(t, killed)
@@ -1157,7 +1157,7 @@ func _ram_hit(c: Car) -> void:
 func shock_wave(owner: Car, pos: Vector3, radius: float, dmg: float, power: float) -> void:
 	ring_fx(pos, radius, Color(1.0, 0.6, 0.2))
 	if game._on_screen(pos):
-		sfx.play("boom", -2.0, 0.7)
+		sfx.play("boom_small", -2.0, 0.8)
 		fx.burst("dust", pos)
 		var dp: float = pos.distance_to(game.player.global_position)
 		game._shake(clampf(0.7 - dp * 0.02, 0.1, 0.7))
@@ -1300,17 +1300,17 @@ func _step_hazards(dt: float) -> void:
 				"meteor":
 					_meteor_hit(h)
 				"spikewall":
-					sfx.play("metal", -4.0, 0.8)
+					sfx.play("metal", -4.0, 0.9)
 				"lane":
 					if is_instance_valid(h.owner) and not (h.owner as Car).wrecked:
 						var o: Car = h.owner
 						var to: Vector3 = (pos - o.global_position)
 						o.apply_central_impulse((Vector3(to.x, 0, to.z).normalized() * 16.0 + o.global_transform.basis.z * 6.0) * o.mass)
 						o.shield_t = 1.0   # o bote derruba quem estiver na faixa (aríete)
-						sfx.play("whoosh", 0.0, 0.6)
+						sfx.play("whoosh", -1.0, 0.75)
 				"emp":
 					ring_fx(pos, float(h.r), Color(0.4, 0.8, 1.0))
-					sfx.play("zap", 0.0, 0.5)
+					sfx.play("emp", -3.0, 0.9)
 					for car in game.cars:
 						var c: Car = car
 						if c == h.owner or c.wrecked:
@@ -1410,7 +1410,7 @@ func _meteor_hit(h: Dictionary) -> void:
 	var pos: Vector3 = h.pos
 	fx.explosion(pos, true, "fireball")
 	if game._on_screen(pos):
-		sfx.play("boom", 0.0, 0.8)
+		sfx.play("boom", 0.0, 0.85)
 		var dp: float = pos.distance_to(game.player.global_position)
 		game._shake(clampf(0.8 - dp * 0.03, 0.05, 0.8))
 	for car in game.cars:
@@ -1467,7 +1467,7 @@ func _fire_laser(c: Car) -> void:
 		if c == game.player:
 			game.on_player_hit_enemy(t, killed)
 	if game._on_screen(mz) and Engine.get_physics_frames() % 5 == 0:
-		sfx.play("zap", -14.0 if c != game.player else -8.0, 1.8)
+		sfx.play("laser", -14.0 if c != game.player else -8.0)
 
 
 func _laser_fx(c: Car) -> void:
@@ -1545,7 +1545,7 @@ func _fire_shot(c: Car, kind: String) -> void:
 	shots.append({"node": node, "vel": aim * spd, "owner": c, "kind": kind, "t": 0.0, "grav": 0.0, "cable": cable, "tgt": c.aim_tgt})
 	if game._on_screen(mz):
 		_muzzle_flash(mz, aim, kind == "harpoon")
-		sfx.play({"harpoon": "whoosh", "freeze": "whoosh", "plasma": "zap"}[kind], -6.0 if c == game.player else -11.0, {"harpoon": 0.7, "freeze": 1.4, "plasma": 2.2}[kind])
+		sfx.play(kind, -6.0 if c == game.player else -11.0)
 
 
 ## MORTEIRO (Escorpião): granada em arco até onde o alvo vai estar; explode em área
@@ -1577,7 +1577,7 @@ func _fire_mortar(c: Car) -> void:
 	if game._on_screen(mz):
 		_muzzle_flash(mz, vel.normalized(), true)
 		fx.burst("dust", mz)
-		sfx.play("boom", -8.0 if c == game.player else -13.0, 1.6)
+		sfx.play("mortar", -5.0 if c == game.player else -10.0)
 	if c == game.player:
 		game._shake(0.12)
 
@@ -1639,7 +1639,7 @@ func _shot_hit(s: Dictionary, at: Vector3, t: Car, owner: Car) -> void:
 					game.on_player_hit_enemy(t, killed)
 			if game._on_screen(at):
 				fx.sparks(at, Vector3.UP, 1.0)
-				sfx.play("metal", -4.0, 0.9)
+				sfx.play("metal", -4.0)
 		"freeze":
 			# bola de gelo: dano leve e gelo em volta (carro escorrega e perde força)
 			for car in game.cars:
@@ -1657,7 +1657,7 @@ func _shot_hit(s: Dictionary, at: Vector3, t: Car, owner: Car) -> void:
 			if game._on_screen(at):
 				fx.sparkle(at, Color(0.8, 0.95, 1.0))
 				ring_fx(at, 3.5, Color(0.6, 0.85, 1.0))
-				sfx.play("tink", -2.0, 0.6)
+				sfx.play("freeze", -4.0, 0.8)
 		"plasma":
 			if t:
 				var killed3 := t.apply_damage(7.5 * dm, at, owner, false)
@@ -1707,7 +1707,7 @@ func _fire_rail(c: Car) -> void:
 	beams.append({"node": beam, "t": 0.0})
 	if game._on_screen(mz):
 		_muzzle_flash(mz, aim, true)
-		sfx.play("zap", -2.0 if c == game.player else -8.0, 0.6)
+		sfx.play("rail", -3.0 if c == game.player else -9.0)
 		fx.hit_light(endp, Color(0.7, 0.4, 1.0), 6.0, 8.0, 0.2)
 	if c == game.player:
 		game._shake(0.18)
@@ -1729,7 +1729,7 @@ func _step_beams(dt: float) -> void:
 func _emp_burst(pos: Vector3, owner: Car, r: float) -> void:
 	ring_fx(pos, r, Color(0.4, 0.8, 1.0))
 	if game._on_screen(pos):
-		sfx.play("zap", 0.0, 0.5)
+		sfx.play("emp", -2.0)
 		fx.hit_light(pos + Vector3.UP, Color(0.4, 0.8, 1.0), 8.0, 10.0, 0.3)
 	for car in game.cars:
 		var c: Car = car
@@ -1778,7 +1778,7 @@ func _drop_smoke(c: Car, p: Vector3) -> void:
 	add_child(pr)
 	pr.global_position = p + Vector3.UP * 0.8
 	smokes.append({"node": pr, "pos": p, "t": 0.0, "r": 4.5, "owner": c})
-	sfx.play("whoosh", -6.0, 0.5)
+	sfx.play("whoosh", -7.0, 0.7)
 
 
 func _step_smokes(dt: float) -> void:

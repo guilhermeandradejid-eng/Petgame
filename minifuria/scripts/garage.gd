@@ -626,7 +626,7 @@ func _buy(k: String) -> void:
 	var price: int = game.upgrade_price(k)
 	if int(game.save.cash) < price:
 		hud.popup("Faltam $%d" % (price - int(game.save.cash)), Color("#ff7a7a"))
-		game.sfx.play("drop", -6.0, 0.7)
+		game.sfx.play("error", -8.0)
 		return
 	game.buy_upgrade(k)
 	room.flash()
@@ -640,7 +640,7 @@ func _action() -> void:
 	var msg: String = game.career.pick_car(k)
 	if msg != "":
 		hud.popup(msg, Color("#ff7a7a"))
-		game.sfx.play("drop", -6.0, 0.7)
+		game.sfx.play("error", -8.0)
 	else:
 		room.flash()
 		hud.popup(String(Career.SHOP[k].name) + "!", UI.HOT, "NOVO CARRO NA GARAGEM")

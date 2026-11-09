@@ -1,59 +1,88 @@
 class_name Sfx
 extends Node
-## Áudio 100% sintetizado: motor contínuo (AudioStreamGenerator) com trocas de marcha, pneu, nitro, vento
-## e efeitos curtos gerados em buffers PCM na inicialização.
+## Áudio com sons REAIS (pasta sfx/, autores e licenças em sfx/CREDITOS.txt; montada por tools/build_sfx.py):
+## - motor do seu carro feito de gravações em rotação fixa (6 a 10 por motor, do engine-sim): tocam as duas
+##   mais próximas da rotação atual, com o tom ajustado e mistura entre elas; marchas com troca audível e
+##   filtro que abafa o motor quando você tira o pé;
+## - pneu cantando (derrapagem/freada), metal raspando na mureta, vento e turbo do nitro em loop;
+## - efeitos curtos com variações sorteadas (batidas, armas, explosões, interface, narrador);
+## - motor 3D dos rivais (cada um com a gravação do próprio carro, mais alto quando passa perto).
 
-const RATE := 22050.0
-var gen: AudioStreamGeneratorPlayback
-var player: AudioStreamPlayer
+const SHOTS := {"crash": 7, "bump": 7, "metal": 5, "tink": 5, "glass": 5, "smash": 5, "land": 4, "splash": 3, "splat": 1,
+	"whoosh": 4, "nitro": 5, "backfire": 1, "shift": 3, "gun": 2, "rocket": 1, "boom": 3, "boom_small": 2, "zap": 2,
+	"laser": 5, "plasma": 1, "rail": 1, "mortar": 1, "harpoon": 1, "freeze": 3, "flame": 1, "emp": 1, "deploy": 5,
+	"click": 3, "ui_drop": 4, "buy": 4, "pickup": 4, "error": 2, "warn": 1, "count3": 1, "count2": 1, "count1": 1,
+	"go": 1, "v_ready": 1, "v_final": 1, "v_win": 1, "v_over": 1, "v_record": 1, "fanfare": 3}
+## nomes antigos (som sintetizado) -> sons novos
+const ALIAS := {"coin": "click", "drop": "ui_drop", "beep": "warn"}
+## séries de motor (rotação de cada gravação)
+const ENGINES := {"b-i6r": [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000], "su-mid": [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000],
+	"su-sz": [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000], "exh": [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000],
+	"tsu": [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000], "gv8": [1000, 2000, 3000, 4000, 5000, 6000],
+	"ct-v8": [1000, 2000, 3000, 4000, 5000, 6000, 7000], "v12d": [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000],
+	"v8f": [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000], "dsl": [300, 630, 1000, 1500, 2000, 2350], "elec": [4000]}
+## motor de cada carro (o tipo de motor combina com o carro: rally boxer, muscle V8, V12 do hipercarro...)
+const ENGINE_OF := {"faisca": "b-i6r", "vespa": "su-mid", "zefiro": "elec", "trovao": "exh", "jacare": "tsu", "escorpiao": "gv8",
+	"monstro": "ct-v8", "nevasca": "su-sz", "nemesis": "v12d", "falcao": "v8f", "hyper": "v12d", "sedan": "tsu", "taxi": "tsu",
+	"policia": "exh", "picape": "gv8", "van": "dsl"}
+## faixa de rotação usada (marcha lenta .. corte) por série
+const RANGE := {"dsl": [500.0, 2350.0], "elec": [2200.0, 7600.0], "gv8": [1000.0, 6000.0], "ct-v8": [1000.0, 7000.0]}
+
 var muted := false
-var ph1 := 0.0
-var ph2 := 0.0
-var lp := 0.0
-var lp_n := 0.0
-var lp_b := 0.0
-var bp1 := 0.0
-var bp2 := 0.0
-# alvos (setados pelo jogo)
-var t_freq := 60.0
-var t_vol := 0.0
-var t_cut := 0.2
-var t_tire := 0.0
-var t_nitro := 0.0
-var t_wind := 0.0
-var t_scrape := 0.0
-var scr := 0.0
-var lp_s := 0.0
-var ring_ph := 0.0
-var freq := 60.0
-var vol := 0.0
-var cut := 0.2
-var tire := 0.0
-var nit := 0.0
-var wind := 0.0
-var shots := {}
 var pool: Array = []
 var pool_i := 0
+var _cache := {}
+# motor do jogador (2D)
+var eng_set := ""
+var eng_rpms: Array = []
+var eng_players: Array = []
+var rpm := 1000.0
+var t_rpm := 1000.0
+var eng_vol := 0.0
+var t_eng_vol := 0.0
+var throttle_s := 0.0
+var gear := 0
+var _shift_dip := 0.0
+var slow_k := 1.0
+var _lp: AudioEffectLowPassFilter
+var _motor_bus := -1
+# loops
+var loops := {}
+var t_loop := {}
+var v_loop := {}
+var t_scrape := 0.0
+# menu/vitrine controla o motor (ronco no desfile)
+var menu_on := false
+# motores 3D dos rivais (só tocam com a corrida na tela)
+var engines3d: Array = []
+var world_on := false
 
 
 func _ready() -> void:
-	player = AudioStreamPlayer.new()
-	var st := AudioStreamGenerator.new()
-	st.mix_rate = RATE
-	st.buffer_length = 0.12
-	player.stream = st
-	player.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
-	player.volume_db = -4.0
-	player.bus = "Efeitos"
-	add_child(player)
-	player.play()
-	gen = player.get_stream_playback()
-	for i in 10:
+	for i in 16:
 		var p := AudioStreamPlayer.new()
 		p.bus = "Efeitos"
 		add_child(p)
 		pool.append(p)
-	_build_shots()
+	for nm in ["loop_skid", "loop_scrape", "loop_wind", "loop_turbo"]:
+		var p := AudioStreamPlayer.new()
+		p.bus = "Efeitos"
+		p.stream = _load("res://sfx/%s.ogg" % nm, true)
+		p.volume_db = -80.0
+		add_child(p)
+		loops[nm] = p
+		t_loop[nm] = 0.0
+		v_loop[nm] = 0.0
+
+
+func _load(path: String, loop := false) -> AudioStream:
+	if _cache.has(path):
+		return _cache[path]
+	var st: AudioStream = load(path) if ResourceLoader.exists(path) else null
+	if st is AudioStreamOggVorbis:
+		(st as AudioStreamOggVorbis).loop = loop
+	_cache[path] = st
+	return st
 
 
 func set_muted(m: bool) -> void:
@@ -61,191 +90,223 @@ func set_muted(m: bool) -> void:
 	AudioServer.set_bus_mute(0, m)
 
 
-## speed01 0..1+, throttle 0..1, slip 0..1
+## barramento "Motor" (manda para "Efeitos"), com filtro que abafa o motor sem acelerador
+func _ensure_motor_bus() -> void:
+	_motor_bus = AudioServer.get_bus_index("Motor")
+	if _motor_bus < 0:
+		AudioServer.add_bus()
+		_motor_bus = AudioServer.bus_count - 1
+		AudioServer.set_bus_name(_motor_bus, "Motor")
+		AudioServer.set_bus_send(_motor_bus, "Efeitos")
+		_lp = AudioEffectLowPassFilter.new()
+		_lp.cutoff_hz = 9000.0
+		_lp.resonance = 0.6
+		AudioServer.add_bus_effect(_motor_bus, _lp)
+	elif _lp == null:
+		_lp = AudioServer.get_bus_effect(_motor_bus, 0) as AudioEffectLowPassFilter
+
+
+## motor do carro do jogador (troca a série de gravações)
+func set_engine(kind: String) -> void:
+	var s: String = ENGINE_OF.get(kind, "b-i6r")
+	if not ENGINES.has(s):
+		s = "b-i6r"
+	if s == eng_set:
+		return
+	_ensure_motor_bus()
+	for p in eng_players:
+		(p as Node).queue_free()
+	eng_players.clear()
+	eng_set = s
+	eng_rpms = ENGINES[s]
+	for r in eng_rpms:
+		var p := AudioStreamPlayer.new()
+		p.bus = "Motor"
+		p.stream = _load("res://sfx/engine/%s_%d.ogg" % [s, int(r)], true)
+		p.volume_db = -80.0
+		add_child(p)
+		p.play()
+		p.stream_paused = true
+		eng_players.append(p)
+	var rg: Array = RANGE.get(s, [float(eng_rpms[0]), float(eng_rpms[-1])])
+	rpm = rg[0]
+	t_rpm = rpm
+
+
+func _range() -> Array:
+	return RANGE.get(eng_set, [float(eng_rpms[0]), float(eng_rpms[-1])]) if eng_rpms.size() > 0 else [1000.0, 7000.0]
+
+
 func set_scrape(level: float) -> void:
 	t_scrape = clampf(level, 0.0, 1.0)
 
 
+## jogo (a cada quadro): velocidade 0..1+, acelerador, derrapagem 0..1, nitro, câmera lenta, carro ativo
 func drive(speed01: float, throttle: float, slip: float, nitro: bool, slowmo: bool, active: bool) -> void:
-	var gears := 5.0
-	var g := minf(gears - 1.0, floorf(speed01 * gears * 0.999))
-	var frac := speed01 * gears - g
-	var rpm := 0.25 + frac * 0.75 * (0.6 + throttle * 0.4) + g * 0.04
-	t_freq = (48.0 + rpm * 120.0 + (25.0 if nitro else 0.0)) * (0.55 if slowmo else 1.0)
-	t_cut = clampf(0.12 + rpm * 0.35 + throttle * 0.1, 0.05, 0.8)
-	t_vol = (0.22 + throttle * 0.2) if active else 0.0
-	t_tire = clampf(slip, 0.0, 1.0) * 0.5 if active else 0.0
-	t_nitro = 0.45 if (active and nitro) else 0.0
-	t_wind = maxf(0.0, speed01 - 0.3) * 0.25 if active else 0.0
-
-
-func _process(_dt: float) -> void:
-	if gen == null:
+	slow_k = 0.62 if slowmo else 1.0
+	if menu_on:
 		return
-	var n := gen.get_frames_available()
-	if n <= 0:
-		return
-	var buf := PackedVector2Array()
-	buf.resize(n)
-	var k := 0.004
-	for i in n:
-		freq += (t_freq - freq) * k
-		vol += (t_vol - vol) * k
-		cut += (t_cut - cut) * k
-		tire += (t_tire - tire) * k * 2.0
-		nit += (t_nitro - nit) * k
-		wind += (t_wind - wind) * k
-		scr += (t_scrape - scr) * k * 3.0
-		ring_ph = fmod(ring_ph + (1870.0 + randf() * 300.0) / RATE, 1.0)
-		ph1 = fmod(ph1 + freq / RATE, 1.0)
-		ph2 = fmod(ph2 + freq * 0.5 / RATE, 1.0)
-		var saw := ph1 * 2.0 - 1.0
-		var sq := 1.0 if ph2 < 0.5 else -1.0
-		var e := saw * 0.6 + sq * 0.35
-		lp += (e - lp) * cut
-		var nz := randf() * 2.0 - 1.0
-		# pneu: ruído em "passa-banda" (diferença de dois passa-baixas)
-		bp1 += (nz - bp1) * 0.45
-		bp2 += (bp1 - bp2) * 0.12
-		var tire_s := (bp1 - bp2) * tire * 1.6
-		lp_n += (nz - lp_n) * (0.05 + nit * 0.15)
-		lp_b += (nz - lp_b) * 0.6
-		# raspar metal no muro: ruído agudo + um 'ring' metálico
-		lp_s += (nz - lp_s) * 0.35
-		var grind := ((nz - lp_s) * 1.4 + sin(ring_ph * TAU) * 0.35 * randf()) * scr
-		var s := lp * vol + tire_s + lp_n * nit * 1.4 + (nz - lp_b) * wind * 0.5 + grind
-		s = clampf(s, -1.0, 1.0)
-		buf[i] = Vector2(s, s)
-	gen.push_buffer(buf)
+	var rg := _range()
+	var s := clampf(speed01, 0.0, 1.25)
+	var gears := 5
+	var g := mini(gears - 1, int(s * gears * 0.999))
+	var frac := s * gears - g
+	# cada marcha sobe do meio da faixa até perto do corte; a 1ª sai da marcha lenta
+	var lo: float = rg[0] + (rg[1] - rg[0]) * (0.0 if g == 0 else 0.42)
+	var r := lerpf(lo, rg[1] * 0.93, frac)
+	if s < 0.08:
+		r = maxf(r, lerpf(rg[0], rg[1] * 0.7, throttle))   # parado: acelerador sobe o giro
+	if nitro:
+		r = minf(rg[1], r + (rg[1] - rg[0]) * 0.06)
+	if active and g > gear and s > 0.05:
+		play("shift", -10.0, randf_range(0.95, 1.05))
+		_shift_dip = 0.18
+	gear = g
+	t_rpm = r
+	throttle_s = throttle
+	t_eng_vol = (0.62 + 0.38 * throttle) if active else 0.0
+	t_loop["loop_skid"] = clampf(slip, 0.0, 1.0) * (1.0 if active else 0.0)
+	t_loop["loop_wind"] = clampf((s - 0.35) * 1.1, 0.0, 0.7) if active else 0.0
+	t_loop["loop_turbo"] = 0.75 if (active and nitro) else 0.0
+	if not active:
+		t_scrape = 0.0
 
 
-# ------------------------------------------------------------------ efeitos curtos
-func _wav(samples: PackedFloat32Array) -> AudioStreamWAV:
-	var data := PackedByteArray()
-	data.resize(samples.size() * 2)
-	for i in samples.size():
-		data.encode_s16(i * 2, int(clampf(samples[i], -1.0, 1.0) * 32000.0))
-	var w := AudioStreamWAV.new()
-	w.format = AudioStreamWAV.FORMAT_16_BITS
-	w.mix_rate = int(RATE)
-	w.stereo = false
-	w.data = data
-	return w
+## vitrine/menu: ronco do carro em exibição (rev 0 = marcha lenta .. 1 = corte); vol 0 desliga
+func menu_engine(kind: String, rev: float, vol: float) -> void:
+	menu_on = vol > 0.0
+	if kind != "":
+		set_engine(kind)
+	var rg := _range()
+	t_rpm = lerpf(rg[0], rg[1] * 0.95, clampf(rev, 0.0, 1.0))
+	throttle_s = clampf(rev * 1.4, 0.0, 1.0)
+	t_eng_vol = vol
+	for k in t_loop:
+		t_loop[k] = 0.0
 
 
-func _synth(dur: float, f: Callable) -> AudioStreamWAV:
-	var n := int(dur * RATE)
-	var out := PackedFloat32Array()
-	out.resize(n)
-	var st := {"lp": 0.0, "lp2": 0.0, "ph": 0.0}
-	for i in n:
-		out[i] = f.call(float(i) / RATE, float(i) / n, st)
-	return _wav(out)
+func _process(dt: float) -> void:
+	# rotação e volume do motor (suavizados), mistura das duas gravações mais próximas
+	rpm += (t_rpm - rpm) * minf(1.0, dt * 9.0)
+	eng_vol += (t_eng_vol - eng_vol) * minf(1.0, dt * 6.0)
+	_shift_dip = maxf(0.0, _shift_dip - dt)
+	if _lp:
+		_lp.cutoff_hz = lerpf(1400.0, 11000.0, clampf(throttle_s, 0.0, 1.0))
+	var n := eng_players.size()
+	if n > 0:
+		var v := eng_vol * (0.45 if _shift_dip > 0.0 else 1.0)
+		var w := PackedFloat32Array()
+		w.resize(n)
+		if n == 1 or rpm <= float(eng_rpms[0]):
+			w[0] = 1.0
+		elif rpm >= float(eng_rpms[n - 1]):
+			w[n - 1] = 1.0
+		else:
+			for i in n - 1:
+				var a := float(eng_rpms[i])
+				var b := float(eng_rpms[i + 1])
+				if rpm >= a and rpm <= b:
+					var t := (rpm - a) / (b - a)
+					w[i] = cos(t * PI * 0.5)
+					w[i + 1] = sin(t * PI * 0.5)
+					break
+		for i in n:
+			var p: AudioStreamPlayer = eng_players[i]
+			var on := w[i] * v > 0.003
+			p.stream_paused = not on
+			if on:
+				p.volume_db = linear_to_db(w[i] * v)
+				p.pitch_scale = clampf(rpm / float(eng_rpms[i]) * slow_k, 0.45, 2.2)
+	# loops: pneu, vento, turbo e raspada
+	t_loop["loop_scrape"] = t_scrape
+	for k in loops:
+		var p: AudioStreamPlayer = loops[k]
+		v_loop[k] = move_toward(float(v_loop[k]), float(t_loop[k]), dt * (6.0 if float(t_loop[k]) > float(v_loop[k]) else 3.0))
+		var lv: float = v_loop[k]
+		if lv > 0.004:
+			if not p.playing:
+				p.play()
+			p.volume_db = linear_to_db(lv)
+			match k:
+				"loop_skid":
+					p.pitch_scale = (0.92 + lv * 0.18) * slow_k
+				"loop_scrape":
+					p.pitch_scale = (0.85 + lv * 0.3) * slow_k
+				"loop_turbo":
+					p.pitch_scale = (0.8 + clampf(rpm / maxf(1.0, float(_range()[1])), 0.0, 1.0) * 0.5) * slow_k
+				_:
+					p.pitch_scale = slow_k
+		elif p.playing:
+			p.stop()
+	_step_engines3d(dt)
 
 
-func _build_shots() -> void:
-	# raio elétrico: estalo + zumbido serrilhado descendo
-	shots["zap"] = _synth(0.35, func(t, u, st):
-		var nz := randf() * 2.0 - 1.0
-		st.ph += lerpf(1400.0, 300.0, u) / RATE
-		var saw := 2.0 * fmod(st.ph, 1.0) - 1.0
-		var crack := nz * exp(-t * 40.0)
-		return (saw * 0.45 * (1.0 if randf() > 0.15 else -0.4) + crack * 0.9) * exp(-t * 7.0))
-	# lança-chamas: rajada de ar com ronco grave
-	shots["flame"] = _synth(0.3, func(t, u, st):
-		var nz := randf() * 2.0 - 1.0
-		st.lp += (nz - st.lp) * 0.12
-		st.ph += 70.0 / RATE
-		return (st.lp * 1.6 + sin(st.ph * TAU) * 0.25) * sin(u * PI))
-	shots["crash"] = _synth(1.1, func(t, u, st):
-		var nz := randf() * 2.0 - 1.0
-		st.lp += (nz - st.lp) * lerpf(0.6, 0.03, u)
-		st.ph += lerpf(90.0, 35.0, u) / RATE
-		var thump := sin(st.ph * TAU) * exp(-t * 6.0)
-		return (st.lp * 1.3 * exp(-t * 3.0) + thump * 0.9 + nz * 0.25 * exp(-t * 18.0)))
-	shots["bump"] = _synth(0.25, func(t, u, st):
-		var nz := randf() * 2.0 - 1.0
-		st.lp += (nz - st.lp) * 0.2
-		st.ph += lerpf(120.0, 60.0, u) / RATE
-		return (st.lp * 0.9 + sin(st.ph * TAU) * 0.8) * exp(-t * 16.0))
-	shots["scrape"] = _synth(0.15, func(t, u, st):
-		var nz := randf() * 2.0 - 1.0
-		st.lp += (nz - st.lp) * 0.7
-		return (nz - st.lp) * 0.6 * (1.0 - u))
-	shots["glass"] = _synth(0.6, func(t, u, st):
-		var nz := randf() * 2.0 - 1.0
-		st.lp += (nz - st.lp) * 0.5
-		var ting := sin(t * TAU * (2400.0 + 900.0 * sin(t * 40.0))) * 0.25
-		return ((nz - st.lp) * 0.8 + ting) * exp(-t * 7.0))
-	shots["metal"] = _synth(0.5, func(t, u, st):
-		return (sin(t * TAU * 310.0) * 0.4 + sin(t * TAU * 467.0) * 0.3 + sin(t * TAU * 893.0) * 0.2) * exp(-t * 9.0))
-	shots["whoosh"] = _synth(0.45, func(t, u, st):
-		var nz := randf() * 2.0 - 1.0
-		st.lp += (nz - st.lp) * lerpf(0.05, 0.6, u)
-		return st.lp * sin(u * PI) * 1.6)
-	shots["nitro"] = _synth(0.7, func(t, u, st):
-		var nz := randf() * 2.0 - 1.0
-		st.lp += (nz - st.lp) * lerpf(0.02, 0.5, minf(1.0, u * 2.0))
-		st.ph += lerpf(160.0, 520.0, u) / RATE
-		return (st.lp * 1.4 + sin(st.ph * TAU) * 0.25) * (1.0 - u))
-	shots["land"] = _synth(0.3, func(t, u, st):
-		st.ph += lerpf(80.0, 40.0, u) / RATE
-		var nz := randf() * 2.0 - 1.0
-		st.lp += (nz - st.lp) * 0.08
-		return (sin(st.ph * TAU) * 0.9 + st.lp) * exp(-t * 10.0))
-	shots["smash"] = _synth(0.2, func(t, u, st):
-		var nz := randf() * 2.0 - 1.0
-		st.lp += (nz - st.lp) * 0.35
-		return (st.lp + sin(t * TAU * lerpf(300.0, 150.0, u)) * 0.3) * exp(-t * 18.0))
-	shots["gun"] = _synth(0.12, func(t, u, st):
-		var nz := randf() * 2.0 - 1.0
-		st.lp += (nz - st.lp) * 0.55
-		st.ph += lerpf(180.0, 60.0, u) / RATE
-		var crack := nz * exp(-t * 120.0) * 0.8
-		return (st.lp * 1.1 * exp(-t * 38.0) + sin(st.ph * TAU) * 0.9 * exp(-t * 30.0) + crack))
-	shots["tink"] = _synth(0.18, func(t, u, st):
-		var ring := sin(t * TAU * 2350.0) * 0.5 + sin(t * TAU * 3720.0) * 0.3 + sin(t * TAU * 5130.0) * 0.15
-		var nz := randf() * 2.0 - 1.0
-		return (ring * exp(-t * 28.0) + nz * exp(-t * 200.0) * 0.6) * 0.7)
-	shots["rocket"] = _synth(0.7, func(t, u, st):
-		var nz := randf() * 2.0 - 1.0
-		st.lp += (nz - st.lp) * lerpf(0.4, 0.05, u)
-		st.ph += lerpf(300.0, 900.0, u) / RATE
-		return (st.lp * 1.3 + sin(st.ph * TAU) * 0.15) * (1.0 - u) * minf(1.0, t * 30.0))
-	shots["boom"] = _synth(0.9, func(t, u, st):
-		var nz := randf() * 2.0 - 1.0
-		st.lp += (nz - st.lp) * lerpf(0.5, 0.02, u)
-		st.ph += lerpf(70.0, 30.0, u) / RATE
-		return (st.lp * 1.4 * exp(-t * 3.5) + sin(st.ph * TAU) * exp(-t * 5.0) * 1.0))
-	shots["drop"] = _synth(0.25, func(t, u, st): return sin(t * TAU * lerpf(500.0, 200.0, u)) * 0.4 * (1.0 - u))
-	shots["splat"] = _synth(0.35, func(t, u, st):
-		var nz := randf() * 2.0 - 1.0
-		st.lp += (nz - st.lp) * 0.08
-		return st.lp * 2.0 * exp(-t * 8.0))
-	shots["pickup"] = _synth(0.3, func(t, u, st):
-		var f := 660.0 if t < 0.07 else (880.0 if t < 0.14 else 1320.0)
-		return (2.0 * absf(2.0 * fmod(t * f, 1.0) - 1.0) - 1.0) * 0.3 * (1.0 - u))
-	shots["splash"] = _synth(0.8, func(t, u, st):
-		var nz := randf() * 2.0 - 1.0
-		st.lp += (nz - st.lp) * lerpf(0.4, 0.05, u)
-		return st.lp * 1.5 * exp(-t * 3.0))
-	shots["beep"] = _synth(0.2, func(t, u, st): return (1.0 if fmod(t * 440.0, 1.0) < 0.5 else -1.0) * 0.3 * (1.0 - u))
-	shots["go"] = _synth(0.5, func(t, u, st): return (1.0 if fmod(t * 880.0, 1.0) < 0.5 else -1.0) * 0.3 * (1.0 - u))
-	shots["coin"] = _synth(0.35, func(t, u, st):
-		var f := 988.0 if t < 0.08 else 1318.0
-		return (1.0 if fmod(t * f, 1.0) < 0.5 else -1.0) * 0.18 * (1.0 - u))
-	shots["fanfare"] = _synth(0.7, func(t, u, st):
-		var notes := [659.0, 784.0, 988.0, 1318.0]
-		var f: float = notes[mini(3, int(t / 0.12))]
-		return (2.0 * absf(2.0 * fmod(t * f, 1.0) - 1.0) - 1.0) * 0.25 * (1.0 - u * 0.7))
-
-
+## efeito curto (uma das variações, sorteada)
 func play(name_: String, vol_db := 0.0, pitch := 1.0) -> void:
-	if not shots.has(name_):
+	var nm: String = ALIAS.get(name_, name_)
+	var cnt: int = SHOTS.get(nm, 0)
+	if cnt <= 0:
+		return
+	var st := _load("res://sfx/%s_%d.ogg" % [nm, randi() % cnt])
+	if st == null:
 		return
 	var p: AudioStreamPlayer = pool[pool_i]
 	pool_i = (pool_i + 1) % pool.size()
-	p.stream = shots[name_]
+	p.stream = st
 	p.volume_db = vol_db
-	p.pitch_scale = pitch * randf_range(0.94, 1.06)
+	p.pitch_scale = pitch * randf_range(0.95, 1.05) * slow_k
 	p.play()
+
+
+# ------------------------------------------------------------------ motores 3D (rivais e outros jogadores)
+## motor 3D preso ao carro: a gravação do motor dele numa rotação média, com o tom seguindo a velocidade
+func attach_engine(c: Car) -> void:
+	var s: String = ENGINE_OF.get(c.kind if not c.is_boss else "van", "b-i6r")
+	if c.is_boss:
+		s = "dsl"
+	if not ENGINES.has(s):
+		s = "b-i6r"
+	var rp: Array = ENGINES[s]
+	var ref: int = rp[clampi(rp.size() / 2 - 1, 0, rp.size() - 1)]
+	var p := AudioStreamPlayer3D.new()
+	p.stream = _load("res://sfx/engine/%s_%d.ogg" % [s, ref], true)
+	p.bus = "Efeitos"
+	p.unit_size = 9.0 if not c.is_boss else 16.0
+	p.max_distance = 90.0
+	p.max_db = -2.0
+	p.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+	p.panning_strength = 0.8
+	p.volume_db = -8.0
+	c.add_child(p)
+	p.play()
+	engines3d.append({"car": c, "p": p, "ref": float(ref), "set": s})
+
+
+func clear_engines3d() -> void:
+	for e in engines3d:
+		if is_instance_valid(e.p):
+			(e.p as Node).queue_free()
+	engines3d.clear()
+
+
+func _step_engines3d(_dt: float) -> void:
+	var keep: Array = []
+	for e in engines3d:
+		var c = e.car
+		if not is_instance_valid(c) or not is_instance_valid(e.p):
+			continue
+		keep.append(e)
+		var p: AudioStreamPlayer3D = e.p
+		var car: Car = c
+		if car.wrecked or not car.visible or not world_on:
+			p.stream_paused = true
+			continue
+		p.stream_paused = false
+		var rg: Array = RANGE.get(e.set, [float(ENGINES[e.set][0]), float(ENGINES[e.set][-1])])
+		var s := clampf(car.linear_velocity.length() / maxf(1.0, float(car.sp.vmax)), 0.0, 1.2)
+		var g := mini(4, int(s * 5.0 * 0.999))
+		var frac := s * 5.0 - g
+		var r := lerpf(rg[0] + (rg[1] - rg[0]) * (0.0 if g == 0 else 0.42), rg[1] * 0.93, frac)
+		p.pitch_scale = clampf(r / float(e.ref), 0.5, 2.0) * slow_k
+		p.volume_db = -11.0 + 6.0 * clampf(car.ctrl.throttle, 0.0, 1.0) + (3.0 if car.nitroing else 0.0)
+	engines3d = keep

@@ -29,6 +29,7 @@ var env: Environment
 var sky_mat: ProceduralSkyMaterial
 var sun: DirectionalLight3D
 var cam: Camera3D
+var ear: AudioListener3D   # ouvinte do som 3D: logo acima do carro, com a esquerda/direita da tela
 var hud: Hud
 var sfx: Sfx
 var fx: Fx
@@ -101,6 +102,7 @@ var flash := Color(1, 1, 1, 0)
 var race_t := 0.0
 var countdown := 0.0
 var last_beep := 4
+var ready_said := false
 var finished_n := 0   # rivais que já completaram todas as voltas
 var music: Music
 var lap_start := 0.0
@@ -214,6 +216,9 @@ func _ready() -> void:
 	add_child(cam)
 	cam.make_current()
 	cam.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF   # a câmera anda no _process
+	ear = AudioListener3D.new()
+	add_child(ear)
+	ear.make_current()
 
 	lib = (load("res://assets/minicars.glb") as PackedScene).instantiate()
 	_prep_materials(lib, {})
@@ -572,7 +577,7 @@ func buy_upgrade(k: String) -> void:
 	save.cash = int(save.cash) - price
 	save.up[k] = lvl + 1
 	_write_save()
-	sfx.play("pickup")
+	sfx.play("buy", -4.0)
 	hud.refresh_garage()
 
 
@@ -1373,6 +1378,12 @@ func _spawn_cars() -> void:
 		c.lap = 0
 	for c in humans + rivals:
 		c.freeze = true
+	# som: motor do seu carro (gravações por rotação) e motor 3D em cada um dos outros
+	sfx.set_engine(player.kind)
+	sfx.clear_engines3d()
+	for c in cars:
+		if c != player:
+			sfx.attach_engine(c)
 	if online:
 		online.on_spawned()
 
@@ -1510,6 +1521,7 @@ func _start_race_now() -> void:
 	var a0 := track.at(6.0)
 	fx.prewarm((a0.pos as Vector3) - (a0.up as Vector3) * 2.5, lib)
 	last_beep = 4
+	ready_said = false
 	hud.big(String(track.data.name).to_upper(), Color("#ffcf33"), Color("#c74200"))
 
 
@@ -1714,7 +1726,7 @@ func _add_meter(a: float) -> void:
 		if player.nitro_ch < player.nitro_cap + 1:
 			player.nitro_ch += 1
 			hud.popup("+1 NITRO", Color("#2ee6ff"))
-			sfx.play("coin", -6.0)
+			sfx.play("pickup", -6.0)
 
 
 func _shake(a: float) -> void:
@@ -2049,7 +2061,9 @@ func _rules(dt: float) -> void:
 				else:
 					big_for(c, "ÚLTIMA VOLTA!" if lap == LAPS - 1 else "VOLTA %d" % (lap + 1), Color("#ffcf33"), Color("#c74200"))
 					pop_for(c, "MUNIÇÃO E NITRO RECARREGADOS", Color("#2ee6ff"))
-					sfx.play("fanfare", -6.0)
+					sfx.play("pickup", -6.0)
+					if lap == LAPS - 1 and c == player:
+						sfx.play("v_final", -1.0)
 					fx.burst("confetti", c.global_position + Vector3.UP)
 	if mode != "race":
 		return
@@ -2492,11 +2506,17 @@ func _finish() -> void:
 	save.cash = int(save.cash) + prize
 	var key := str(track_idx)
 	var best: Dictionary = save.best.get(key, {})
+	var record := false
 	if not best.has("place") or place < int(best.place) or (place == int(best.place) and race_t < float(best.time)):
+		record = best.has("place")
 		save.best[key] = {"place": place, "time": race_t}
 	_write_save()
 	hud.big("VITÓRIA!" if place == 1 else "%dº LUGAR" % place, Color("#ffcf33"), Color("#c74200"))
-	sfx.play("fanfare")
+	sfx.play("fanfare", -3.0)
+	if place == 1:
+		sfx.play("v_win", -1.0)
+	elif record:
+		sfx.play("v_record", -1.0)
 	fx.burst("confetti", player.global_position + Vector3.UP)
 	_slowmo(0.35, 1.2)
 	get_tree().create_timer(2.0, true, false, true).timeout.connect(_show_results)
@@ -2588,15 +2608,19 @@ func _process(_delta: float) -> void:
 	if mode == "countdown":
 		countdown -= rdt
 		var n := int(ceil(countdown))
+		if last_beep == 4 and countdown < 3.9 and not ready_said:
+			ready_said = true
+			sfx.play("v_ready", -2.0)
 		if n < last_beep and n > 0 and n <= 3:
 			last_beep = n
 			hud.big(str(n), Color.WHITE, Color("#2e7dff"))
-			sfx.play("beep")
+			sfx.play("count%d" % n, -1.0)
+			sfx.play("warn", -14.0, 0.9)
 			_shake(0.1)
 		if countdown <= 0.0:
 			mode = "race"
 			hud.big("VAI!", Color("#7dff6a"), Color("#1f8a2a"))
-			sfx.play("go")
+			sfx.play("go", 0.0)
 			_shake(0.3)
 			zoom_kick += 4.0
 			for c in racers():
@@ -2625,6 +2649,7 @@ func _process(_delta: float) -> void:
 	var slip: float = 1.0 if (player.drifting or player.launch_t > 0.15) else clampf((absf(player.v_s) - 3.0) / 8.0, 0.0, 1.0)
 	if player.ctrl.brake > 0.0 and player.v_f > 10.0:
 		slip += 0.5
+	sfx.world_on = mode in ["race", "countdown", "finish"]
 	sfx.drive(clampf(sp01, 0.0, 1.3), player.ctrl.throttle, slip, player.nitroing, ts < 0.6, mode in ["race", "countdown", "finish"] and not player.wrecked)
 	_camera(rdt)
 	if multi and multi.split:
@@ -2943,6 +2968,7 @@ func _camera(rdt: float) -> void:
 	var off := Vector3(sin(cam_yaw) * cos(cam_pitch), sin(cam_pitch), cos(cam_yaw) * cos(cam_pitch)) * CAM_DIST
 	cam.global_position = cam_pos + off
 	cam.look_at(cam_pos, Vector3.UP)
+	ear.global_transform = Transform3D(cam.global_transform.basis, cam_pos + Vector3.UP * 7.0)
 	shake_t += rdt
 	trauma = maxf(0.0, trauma - rdt * 1.6)
 	var s := trauma * trauma

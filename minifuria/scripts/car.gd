@@ -1908,7 +1908,7 @@ func _engine_life(dt: float) -> void:
 		for s in ex_smoke:
 			game.fx.hit_light((s as Node3D).global_position, Color(1.0, 0.55, 0.15), 4.0, 3.0, 0.08)
 		if self == game.player:
-			game.sfx.play("gun", -16.0, 0.45)
+			game.sfx.play("backfire", -12.0)
 	_thr_prev = thr
 
 

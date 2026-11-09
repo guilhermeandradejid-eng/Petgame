@@ -115,7 +115,7 @@ func _warn(text: String) -> void:
 	for h in game.humans:
 		if h.local_idx >= 0 and h.global_position.distance_to(car.global_position) < 90.0:
 			game.pop_for(h, text, Color("#ff5a5a"))
-	game.sfx.play("beep", -4.0, 0.6)
+	game.sfx.play("warn", -4.0)
 
 
 # ------------------------------------------------------------------ BRUTUS
@@ -133,7 +133,7 @@ func _barrels() -> void:
 		var p: Vector3 = car.global_position - b.z * (car.sp.len * 0.55 + 1.5) + b.x * side * 2.6 + b.y * 1.2
 		var v: Vector3 = car.linear_velocity * 0.25 - b.z * 11.0 + b.x * side * 3.5
 		w.launch_barrel(car, p, v, b.y)
-	game.sfx.play("drop", -2.0, 0.6)
+	game.sfx.play("deploy", -2.0, 0.6)
 	_warn("BARRIS GIGANTES!")
 
 

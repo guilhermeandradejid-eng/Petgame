@@ -131,7 +131,7 @@ func _build() -> void:
 	var nav := VBoxContainer.new()
 	nav.add_theme_constant_override("separation", 10)
 	cols.add_child(nav)
-	for t in [["audio", "ÁUDIO"], ["video", "VÍDEO"], ["jogo", "JOGO"], ["controles", "CONTROLES"]]:
+	for t in [["audio", "ÁUDIO"], ["video", "VÍDEO"], ["jogo", "JOGO"], ["controles", "CONTROLES"], ["creditos", "CRÉDITOS"]]:
 		var b := hud._btn(t[1], nav, false, 250, 52)
 		b.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -196,6 +196,8 @@ func _show_tab(t: String) -> void:
 			_note("Direção TELA: você aponta para onde quer ir na tela. CARRO: esquerda/direita giram o carro (clássico).")
 		"controles":
 			_ctrl_table()
+		"creditos":
+			_credits()
 	hud._focus_first.call_deferred("config")
 
 
@@ -294,3 +296,22 @@ func _ctrl_table() -> void:
 			var l := UI.text(g, rows[i][j], 17, UI.HOT if i == 0 else (UI.TEXT if j == 0 else UI.MUTED))
 			l.add_theme_font_override("font", UI.display_it if i == 0 else (UI.body_bold if j == 0 else UI.body))
 	_note("Multijogador local: teclado WASD (E tiro · Q mina · Shift nitro · F especial · Espaço freio), teclado setas (. tiro · , mina · / nitro · L especial · Enter freio) e um controle por pessoa. Celular: analógico na tela e botões grandes.")
+
+
+## autores das músicas e dos sons (lista completa, arquivo por arquivo, em sfx/CREDITOS.txt)
+func _credits() -> void:
+	var r := _row("MÚSICA")
+	r.get_child(0).add_theme_color_override("font_color", UI.HOT)
+	_note("Loyalty Freak Music e HoliznaCC0 — CC0 (domínio público).")
+	r = _row("SONS (GRAVAÇÕES REAIS)")
+	r.get_child(0).add_theme_color_override("font_color", UI.HOT)
+	for t in [
+		"Motores gravados no engine-sim, turbo, batidas e raspadas: CryHam / Stunt Rally 3 — CC-BY 4.0.",
+		"Batidas de metal, terra e raspada: Halleck (freesound.org) — CC-BY 4.0. Água e lama: CGEffex — CC-BY 4.0. Turbo: shimsewn — CC-BY 4.0.",
+		"Motor elétrico: JotrainG — CC0.",
+		"Pneu cantando e pouso: Ya2 / Yorg — CC-BY-SA. Explosão: Michel Baradari — CC-BY 3.0.",
+		"Armas, explosões, estalos e vento: Red Eclipse Team — CC-BY-SA 4.0 (as versões editadas seguem a mesma licença).",
+		"Impactos, interface, fichas, vinhetas e narrador: Kenney (kenney.nl) — CC0. Arco e golpes: Battle Sound Effects (OpenGameArt) — CC0.",
+	]:
+		_note(t)
+	_note("Lista completa, arquivo por arquivo: sfx/CREDITOS.txt no código do jogo.")

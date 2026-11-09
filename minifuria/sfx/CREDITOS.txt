@@ -1,0 +1,85 @@
+Mini Fúria — créditos dos sons (pasta sfx/)
+=============================================
+
+Todos os sons do jogo são gravações reais de pacotes livres. Os arquivos daqui são versões EDITADAS
+(cortadas, com volume normalizado e, nos loops, emendadas sem costura) por tools/build_sfx.py.
+Cada arquivo derivado segue a licença do original. Nas licenças CC-BY-SA, as versões editadas são
+distribuídas com a mesma licença (CC-BY-SA 4.0).
+
+Licenças:
+  CC0       https://creativecommons.org/publicdomain/zero/1.0/
+  CC-BY 3.0 https://creativecommons.org/licenses/by/3.0/
+  CC-BY 4.0 https://creativecommons.org/licenses/by/4.0/
+  CC-BY-SA  https://creativecommons.org/licenses/by-sa/4.0/
+
+
+MOTORES  (engine/*.ogg)
+-----------------------
+engine/b-i6r_*, su-mid_*, su-sz_*, exh_*, tsu_*, gv8_*, ct-v8_*, v12d_*, v8f_*, dsl_*
+  Motores gravados no engine-sim em rotação fixa, por CryHam (Stunt Rally 3) — CC-BY 4.0
+  https://github.com/stuntrally/stuntrally3 (data/sounds/engines, veja _sounds.txt)
+  engine-sim: https://github.com/ange-yaghi/engine-sim
+engine/elec_4000
+  "Electric Train Motor Idle" por JotrainG — CC0 (via Stunt Rally 3, hover_r2.wav)
+  https://freesound.org/people/JotrainG/sounds/700034/
+
+
+LOOPS
+-----
+loop_skid    pneu cantando / freada: brake.ogg do Yorg, por Ya2 (Flavio Calva) — CC-BY-SA
+             https://github.com/cflavio/yorg
+loop_scrape  "metal screech and scraping" por Halleck — CC-BY 4.0 (via Stunt Rally 3, crash/screech.wav)
+             https://freesound.org/people/Halleck/sounds/121677/
+loop_wind    vento (ambience/wind.ogg) do Red Eclipse — CC-BY-SA 4.0
+             https://github.com/redeclipse/sounds
+loop_turbo   turbo4.wav por CryHam, feito de "fuchslienshroud.wav" de shimsewn — CC-BY 4.0
+             https://freesound.org/people/shimsewn/sounds/87606/
+
+
+CARRO
+-----
+crash_0..6, bump_0..3   batidas de metal montadas por CryHam (Stunt Rally 3, crash/02..12.wav) de gravações
+                        de Halleck — CC-BY 4.0
+                        https://freesound.org/people/Halleck/sounds/121668/ , 121665 , 121664 , 121685
+bump_4..6               Kenney "Impact Sounds" (impactPlate_medium) — CC0  https://kenney.nl/assets/impact-sounds
+metal_*                 Kenney "Impact Sounds" (impactMetal_heavy) — CC0
+glass_*                 Kenney "Impact Sounds" (impactGlass_heavy) — CC0
+smash_*                 Kenney "Impact Sounds" (impactWood_heavy, impactPunch_heavy) — CC0
+land_0                  landing.ogg do Yorg, por Ya2 (Flavio Calva) — CC-BY-SA
+land_1..3               "hit with dirt spray 1" por Halleck — CC-BY 4.0 (via Stunt Rally 3, hit/terrain*.wav)
+                        https://freesound.org/people/Halleck/sounds/121643/
+splash_*, splat_0       "large splashes" por CGEffex — CC-BY 4.0 (via Stunt Rally 3, fluids/)
+                        https://freesound.org/people/CGEffex/sounds/98335/
+shift_*                 gear_shift*.wav por CryHam (Stunt Rally 3), de batidas de Halleck — CC-BY 4.0
+nitro_*                 Kenney "Sci-fi Sounds" (thrusterFire) — CC0  https://kenney.nl/assets/sci-fi-sounds
+backfire_0              Red Eclipse (weapons/smallblastfar2.ogg) — CC-BY-SA 4.0
+whoosh_0                Red Eclipse (weapons/whizz.ogg) — CC-BY-SA 4.0
+whoosh_1..3             "Battle Sound Effects" (swish) — CC0  https://opengameart.org/content/battle-sound-effects
+
+
+ARMAS
+-----
+gun_*, rocket_0, plasma_0, rail_0, mortar_0, flame_0, emp_0, zap_*, boom_small_*, boom_0, boom_1,
+tink_0, tink_1
+                        Red Eclipse (weapons/: smg, rocket, plasma, rifle, grenade, flamer, plasma/vortex,
+                        bzap, bzzt, smallblast, mine/explode, explode, explode2, tink, ricochet)
+                        — CC-BY-SA 4.0 (Red Eclipse Team)  https://github.com/redeclipse/sounds
+boom_2                  "2 High Quality Explosions" por Michel Baradari — CC-BY 3.0 (via Yorg, crash_high_speed.ogg)
+                        https://opengameart.org/content/2-high-quality-explosions
+tink_2..4, deploy_*     Kenney "Impact Sounds" (impactMetal_light, impactTin_medium) — CC0
+laser_*, freeze_*       Kenney "Sci-fi Sounds" (laserLarge, forceField) — CC0
+harpoon_0               "Battle Sound Effects" (Bow) — CC0  https://opengameart.org/content/battle-sound-effects
+
+
+INTERFACE, NARRADOR E VINHETAS
+------------------------------
+click_*, ui_drop_*, pickup_*, error_*, warn_0
+                        Kenney "Interface Sounds" — CC0  https://kenney.nl/assets/interface-sounds
+buy_*                   Kenney "Casino Audio" (chips-stack) — CC0  https://kenney.nl/assets/casino-audio
+count3/2/1, go, v_ready, v_final, v_win, v_over, v_record
+                        Kenney "Voiceover Pack" — CC0  https://kenney.nl/assets/voiceover-pack
+fanfare_*               Kenney "Music Jingles" — CC0  https://kenney.nl/assets/music-jingles
+
+Os arquivos da Kenney e do OpenGameArt (CC0) foram obtidos pelo índice
+https://github.com/Mcamento8/open-game-sfx-index (que mantém a licença e a origem de cada som).
+Obrigado a todos os autores!
