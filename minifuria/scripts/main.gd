@@ -252,6 +252,7 @@ func _ready() -> void:
 	add_child(narrator)
 	narrator.setup(self)
 	narrator.enabled = float(settings.val("vol_narr")) > 0.001
+	narrator.lang = String(settings.val("narr_lang"))
 	loader = Loader.new()
 	hud.add_child(loader)
 	career = Career.new()

@@ -1146,9 +1146,10 @@ func set_results(title: String, tiles: Array, chips: Array, prize: int, total: i
 
 
 # ------------------------------------------------------------------ narrador: legenda animada
-## Caixa no alto da tela (abaixo das barras): rosto do personagem que fala (desenhado), nome e a fala
-## aparecendo letra a letra. A boca abre e fecha conforme o volume da voz (pico do barramento "Narrador").
-## ZECA TURBO: óculos escuros, topete e fone com microfone. TIA GRAXA: boné de mecânica, mancha de graxa.
+## Caixa no alto da tela (abaixo das barras): o rosto do DECIBEL (desenhado: cabeleira de roqueiro, bandana
+## vermelha, óculos escuros, cavanhaque, jaqueta de couro com tachas e microfone na mão), o nome e a fala em
+## português aparecendo letra a letra. A boca abre conforme o volume da voz (pico do barramento "Narrador")
+## e a cabeça balança no ritmo.
 const CAP_W := 560.0
 const CAP_H := 74.0
 var cap: Control
@@ -1193,14 +1194,14 @@ func _build_caption() -> void:
 	cap_text.add_theme_constant_override("line_spacing", -4)
 
 
-func caption(who: String, text: String, dur: float) -> void:
+func caption(who: String, text: String, dur: float, _spoken := "") -> void:
 	if cap == null:
 		return
 	cap_who = who
 	cap_dur = maxf(0.6, dur)
 	cap_life = 0.0
-	cap_name.text = "ZECA TURBO" if who == "z" else "TIA GRAXA  ·  RÁDIO"
-	cap_name.add_theme_color_override("font_color", UI.HOT if who == "z" else UI.INFO)
+	cap_name.text = "DECIBEL  ·  AO VIVO"
+	cap_name.add_theme_color_override("font_color", UI.HOT)
 	cap_text.text = text
 	cap_text.visible_ratio = 0.0
 	cap.visible = cur_screen in ["race", "results", "pause"] or cur_screen == "none"
@@ -1245,7 +1246,7 @@ func _step_caption(dt: float) -> void:
 
 
 func _draw_cap_box() -> void:
-	var col := UI.HOT if cap_who == "z" else UI.INFO
+	var col := UI.HOT
 	var sk := 10.0
 	var pts := PackedVector2Array([Vector2(sk, 0), Vector2(CAP_W, 0), Vector2(CAP_W - sk, CAP_H), Vector2(0, CAP_H)])
 	cap.draw_colored_polygon(PackedVector2Array([Vector2(sk + 4, 5), Vector2(CAP_W + 4, 5), Vector2(CAP_W - sk + 4, CAP_H + 5), Vector2(4, CAP_H + 5)]), Color(0, 0, 0, 0.35))
@@ -1257,59 +1258,47 @@ func _draw_cap_box() -> void:
 func _draw_cap_face() -> void:
 	var c := Vector2(43, 44)
 	var ci := cap_face
-	var ring := UI.HOT if cap_who == "z" else UI.INFO
-	ci.draw_circle(c, 38.0, ring)
-	ci.draw_circle(c, 34.0, Color(0.12, 0.1, 0.2))
-	var skin := Color("#f0b088") if cap_who == "z" else Color("#d99a72")
-	# pescoço/ombros
-	ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-20, 34), c + Vector2(20, 34), c + Vector2(26, 46), c + Vector2(-26, 46)]), Color("#e8452c") if cap_who == "z" else Color("#2a5fa8"))
+	ci.draw_circle(c, 38.0, UI.HOT)
+	ci.draw_circle(c, 34.0, Color(0.12, 0.08, 0.14))
+	var hair := Color("#1c1414")
+	var skin := Color("#e7a982")
+	# cabeleira de roqueiro (atrás do rosto, caindo nos ombros)
+	ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-25, -6), c + Vector2(-22, -24), c + Vector2(0, -30), c + Vector2(22, -24),
+		c + Vector2(26, -4), c + Vector2(28, 24), c + Vector2(19, 32), c + Vector2(-19, 32), c + Vector2(-28, 24)]), hair)
+	# jaqueta de couro com gola e tachas
+	ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-30, 46), c + Vector2(-24, 30), c + Vector2(-8, 26), c + Vector2(0, 36), c + Vector2(8, 26), c + Vector2(24, 30), c + Vector2(30, 46)]), Color("#141018"))
+	for sx: float in [-17.0, -11.0, 11.0, 17.0]:
+		ci.draw_circle(c + Vector2(sx, 34), 1.6, Color(0.85, 0.86, 0.9))
 	# rosto
-	ci.draw_circle(c + Vector2(0, 2), 22.0, skin)
-	var mouth_h := 2.0 + cap_mouth * 11.0
-	if cap_who == "z":
-		# topete
-		ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-22, -6), c + Vector2(-18, -20), c + Vector2(-4, -27), c + Vector2(14, -30), c + Vector2(24, -18), c + Vector2(20, -8), c + Vector2(4, -16), c + Vector2(-10, -12)]), Color("#3a2416"))
-		# fone (arco) e microfone
-		ci.draw_arc(c + Vector2(0, 0), 25.0, PI * 1.08, PI * 1.92, 16, Color(0.15, 0.15, 0.18), 4.0)
-		ci.draw_circle(c + Vector2(-24, 2), 5.0, Color(0.15, 0.15, 0.18))
-		ci.draw_line(c + Vector2(-24, 6), c + Vector2(-10, 16), Color(0.2, 0.2, 0.24), 2.5)
-		ci.draw_circle(c + Vector2(-9, 16), 3.2, Color(0.08, 0.08, 0.1))
-		# óculos escuros com brilho
-		ci.draw_rect(Rect2(c + Vector2(-17, -6), Vector2(14, 8)), Color(0.05, 0.05, 0.08))
-		ci.draw_rect(Rect2(c + Vector2(3, -6), Vector2(14, 8)), Color(0.05, 0.05, 0.08))
-		ci.draw_line(c + Vector2(-3, -3), c + Vector2(3, -3), Color(0.05, 0.05, 0.08), 2.0)
-		ci.draw_line(c + Vector2(-14, -4), c + Vector2(-10, -4), Color(1, 1, 1, 0.7), 1.5)
-		# bocão de narrador: lábios, dentes e língua
-		var m0 := c + Vector2(0, 12)
-		ci.draw_colored_polygon(_ellipse(m0, 9.0, mouth_h * 0.5 + 1.0), Color("#5a1414"))
-		if mouth_h > 4.0:
-			ci.draw_rect(Rect2(m0 + Vector2(-7, -mouth_h * 0.5), Vector2(14, minf(3.0, mouth_h * 0.3))), Color.WHITE)
-			ci.draw_colored_polygon(_ellipse(m0 + Vector2(0, mouth_h * 0.25), 5.0, mouth_h * 0.22), Color("#d9586a"))
-	else:
-		# cachos ruivos saindo do boné
-		for sx: float in [-1.0, 1.0]:
-			ci.draw_colored_polygon(_ellipse(c + Vector2(sx * 20.0, 0), 7.0, 11.0), Color("#c4552d"))
-			ci.draw_colored_polygon(_ellipse(c + Vector2(sx * 19.0, 10), 5.5, 7.0), Color("#a8441f"))
-		# boné de mecânica com aba
-		ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-22, -8), c + Vector2(-20, -22), c + Vector2(0, -28), c + Vector2(20, -22), c + Vector2(22, -8)]), Color("#2a5fa8"))
-		ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-4, -10), c + Vector2(30, -12), c + Vector2(28, -6), c + Vector2(-4, -6)]), Color("#1d4377"))
-		ci.draw_circle(c + Vector2(-2, -18), 3.0, Color("#ffcf33"))
-		# olhos (piscam) e mancha de graxa
-		var eh := 1.0 if cap_blink > 0.0 else 3.5
-		for sx: float in [-8.0, 8.0]:
-			ci.draw_colored_polygon(_ellipse(c + Vector2(sx, -1), 3.0, eh), Color(0.1, 0.08, 0.08))
-			# cílios
-			ci.draw_line(c + Vector2(sx + 2.5 * signf(sx), -4.5), c + Vector2(sx + 5.0 * signf(sx), -6.5), Color(0.1, 0.08, 0.08), 1.5)
-		# mancha de graxa na bochecha e bochechas rosadas
-		ci.draw_colored_polygon(_ellipse(c + Vector2(-13, 5), 4.0, 2.2), Color(0.22, 0.2, 0.19, 0.75))
-		ci.draw_colored_polygon(_ellipse(c + Vector2(13, 6), 3.5, 2.2), Color(0.95, 0.5, 0.45, 0.45))
-		# brincos
-		ci.draw_circle(c + Vector2(-22, 8), 2.2, Color("#ffcf33"))
-		ci.draw_circle(c + Vector2(22, 8), 2.2, Color("#ffcf33"))
-		# boca de lado (sorriso torto)
-		var m1 := c + Vector2(2, 12)
-		ci.draw_colored_polygon(_ellipse(m1, 7.0, mouth_h * 0.45 + 0.8), Color("#5a1414"))
-		ci.draw_line(m1 + Vector2(-7, -1), m1 + Vector2(9, -3), Color("#7a2a1e"), 1.5)
+	ci.draw_colored_polygon(_ellipse(c + Vector2(0, 2), 18.0, 21.0), skin)
+	# bandana vermelha com o nó do lado
+	ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-19, -9), c + Vector2(-17, -17), c + Vector2(0, -21), c + Vector2(17, -17), c + Vector2(19, -9), c + Vector2(0, -13)]), Color("#d7263d"))
+	ci.draw_circle(c + Vector2(-8, -15), 1.4, Color(1, 1, 1, 0.8))
+	ci.draw_circle(c + Vector2(7, -16), 1.4, Color(1, 1, 1, 0.8))
+	var sw := sin(t * 7.0) * 2.0
+	ci.draw_colored_polygon(PackedVector2Array([c + Vector2(17, -14), c + Vector2(27, -10 + sw), c + Vector2(25, -6 + sw), c + Vector2(17, -10)]), Color("#b81d31"))
+	# óculos escuros de aviador com brilho
+	for sx: float in [-8.0, 8.0]:
+		ci.draw_colored_polygon(_ellipse(c + Vector2(sx, -3), 7.0, 5.0), Color(0.05, 0.04, 0.07))
+	ci.draw_line(c + Vector2(-1, -5), c + Vector2(1, -5), Color(0.6, 0.6, 0.65), 1.5)
+	ci.draw_line(c + Vector2(-12, -5), c + Vector2(-8, -6), Color(1, 1, 1, 0.75), 1.5)
+	ci.draw_line(c + Vector2(4, -5), c + Vector2(8, -6), Color(1, 1, 1, 0.5), 1.2)
+	# bocão de roqueiro gritando: lábios, dentes, língua; cavanhaque embaixo
+	var mouth_h := 2.0 + cap_mouth * 13.0
+	var m0 := c + Vector2(0, 11)
+	ci.draw_colored_polygon(_ellipse(m0, 7.5 + cap_mouth * 2.0, mouth_h * 0.5 + 1.0), Color("#4a0f12"))
+	if mouth_h > 4.0:
+		ci.draw_rect(Rect2(m0 + Vector2(-6, -mouth_h * 0.5), Vector2(12, minf(3.0, mouth_h * 0.28))), Color.WHITE)
+		ci.draw_colored_polygon(_ellipse(m0 + Vector2(0, mouth_h * 0.28), 4.5, mouth_h * 0.2), Color("#d9586a"))
+	ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-5, 13 + mouth_h * 0.5), c + Vector2(5, 13 + mouth_h * 0.5), c + Vector2(2, 23 + mouth_h * 0.3), c + Vector2(-2, 23 + mouth_h * 0.3)]), hair)
+	# brinco de raio
+	ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-19, 6), c + Vector2(-17, 6), c + Vector2(-19, 10), c + Vector2(-17, 10), c + Vector2(-21, 15), c + Vector2(-20, 10), c + Vector2(-22, 10)]), Color("#ffcf33"))
+	# microfone na mão, na frente da boca
+	var mc := c + Vector2(15, 22)
+	ci.draw_line(mc, mc + Vector2(8, 16), Color(0.12, 0.12, 0.14), 5.0)
+	ci.draw_circle(mc, 5.5, Color(0.55, 0.56, 0.6))
+	ci.draw_circle(mc, 4.0, Color(0.32, 0.33, 0.37))
+	ci.draw_circle(mc + Vector2(-1.5, -1.5), 1.3, Color(1, 1, 1, 0.6))
 
 
 static func _ellipse(c: Vector2, rx: float, ry: float, n := 14) -> PackedVector2Array:

@@ -4,7 +4,7 @@ extends Node
 ## efeitos de tela, FPS), jogo (direção, tremor da câmera, vibração) e controles (referência).
 ## Fica salvo em save["cfg"] e é aplicado na hora.
 
-const DEFAULTS := {"vol_master": 0.9, "vol_music": 0.9, "vol_sfx": 0.9, "vol_voice": 1.0, "vol_narr": 1.0,
+const DEFAULTS := {"vol_master": 0.9, "vol_music": 0.9, "vol_sfx": 0.9, "vol_voice": 1.0, "vol_narr": 1.0, "narr_lang": "en",
 	"quality": "alta", "scale": 1.0, "fullscreen": false, "vsync": true, "screen_fx": true, "fps": false, "fps_cap": 120, "dyn_res": true,
 	"shake": 1.0, "vibration": true}
 const QUALITY := [["baixa", "BAIXA"], ["media", "MÉDIA"], ["alta", "ALTA"]]
@@ -72,6 +72,7 @@ func apply_all() -> void:
 	_set_bus("Voz", float(val("vol_voice")))
 	_set_bus("Narrador", float(val("vol_narr")))
 	if game.get("narrator"):
+		game.narrator.lang = String(val("narr_lang"))
 		game.narrator.enabled = float(val("vol_narr")) > 0.001
 		if not game.narrator.enabled:
 			game.narrator.stop()
@@ -194,7 +195,8 @@ func _show_tab(t: String) -> void:
 			_slider("vol_master", "VOLUME GERAL")
 			_slider("vol_music", "MÚSICA")
 			_slider("vol_sfx", "EFEITOS (MOTOR, TIROS, BATIDAS)")
-			_slider("vol_narr", "NARRADOR (ZECA TURBO E TIA GRAXA)")
+			_slider("vol_narr", "NARRADOR (DECIBEL)")
+			_choice("narr_lang", "NARRAÇÃO", [["en", "INGLÊS (CLÁSSICO)"], ["pt", "PORTUGUÊS"]])
 			_slider("vol_voice", "CHAT DE VOZ")
 			_note("O chat de voz liga no lobby online ou no menu de pausa.")
 		"video":
@@ -334,7 +336,7 @@ func _credits() -> void:
 		"Pneu cantando e pouso: Ya2 / Yorg — CC-BY-SA. Explosão: Michel Baradari — CC-BY 3.0.",
 		"Armas, explosões, estalos e vento: Red Eclipse Team — CC-BY-SA 4.0 (as versões editadas seguem a mesma licença).",
 		"Impactos, interface, fichas e vinhetas: Kenney (kenney.nl) — CC0. Arco e golpes: Battle Sound Effects (OpenGameArt) — CC0.",
-		"Narrador (Zeca Turbo e Tia Graxa): vozes geradas por IA com o Kokoro-82M (Apache 2.0, hexgrad) via kokoro-onnx (MIT).",
+		"Narrador Decibel: voz gerada por IA com o Kokoro-82M (Apache 2.0, hexgrad) via kokoro-onnx (MIT). Guitarra e prato da vinheta: amostras do Sonic Pi (freesound) — CC0.",
 	]:
 		_note(t)
 	_note("Lista completa, arquivo por arquivo: sfx/CREDITOS.txt no código do jogo.")

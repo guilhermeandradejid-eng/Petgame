@@ -82,4 +82,4 @@ Os arquivos da Kenney e do OpenGameArt (CC0) foram obtidos pelo índice
 https://github.com/Mcamento8/open-game-sfx-index (que mantém a licença e a origem de cada som).
 Obrigado a todos os autores!
 
-O narrador (Zeca Turbo e Tia Graxa) fica em voice/ (veja voice/CREDITOS.txt).
+O narrador Decibel fica em voice/ (veja voice/CREDITOS.txt).

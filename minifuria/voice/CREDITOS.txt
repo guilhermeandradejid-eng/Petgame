@@ -1,14 +1,23 @@
-Mini Fúria — narrador (pasta voice/)
-=====================================
+Mini Fúria — narrador DECIBEL (pasta voice/)
+=============================================
 
-ZECA TURBO (narrador) e TIA GRAXA (mecânica, pelo rádio) são personagens originais do jogo. O roteiro
-(as falas) está em tools/build_voice.py.
+DECIBEL é um locutor de arena no estilo rock and roll, personagem original do jogo. O roteiro (falas em
+inglês e em português) está em tools/build_voice.py.
 
-As vozes foram geradas por inteligência artificial com o Kokoro-82M (licença Apache 2.0, hexgrad),
-rodando pelo kokoro-onnx (licença MIT, thewh1teagle), vozes "pm_alex" (Zeca) e "pf_dora" (Tia Graxa).
+Voz gerada por inteligência artificial com o Kokoro-82M (licença Apache 2.0, hexgrad), rodando pelo
+kokoro-onnx (licença MIT, thewh1teagle): voz "am_fenrir" em inglês (voice/en) e "pm_santa" em português
+(voice/pt).
   https://github.com/hexgrad/kokoro
   https://github.com/thewh1teagle/kokoro-onnx
-Depois de geradas, as falas passam por efeitos (tom um pouco acima, som de alto-falante de estádio e eco
-curto no Zeca; filtro de rádio na Tia Graxa) e normalização de volume.
 
-Para gerar de novo: python tools/build_voice.py PASTA_DO_MODELO voice scripts/voice_lines.gd
+Vinhetas de rock por baixo das falas grandes: guitarra elétrica (guit_e_fifths, guit_e_slide) e prato de
+bateria (drum_cymbal_hard) do Sonic Pi, amostras do freesound em domínio público (CC0):
+  https://github.com/sonic-pi-net/sonic-pi (etc/samples)
+  guit_e_fifths  http://freesound.org/people/Sub-d/sounds/46990/
+  guit_e_slide   http://freesound.org/people/Suva/sounds/2410/
+  drum_cymbal_hard  http://www.freesound.org/people/menegass/sounds/100056/
+
+Efeitos aplicados: voz mais grave, equalização, saturação, compressão, voz dobrada, reverb de arena
+(convolução) e normalização de volume.
+
+Para gerar de novo: python tools/build_voice.py PASTA_DO_MODELO PASTA_DAS_AMOSTRAS voice scripts/voice_lines.gd

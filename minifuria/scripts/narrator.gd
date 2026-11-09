@@ -1,8 +1,9 @@
 class_name Narrator
 extends Node
-## Narrador da corrida: ZECA TURBO (empolgado, voz de estádio) e TIA GRAXA (mecânica sarcástica, pelo rádio).
-## Falas em voice/<chave>_<n>.ogg, geradas por tools/build_voice.py; o texto vai para a legenda animada do HUD
-## (Hud.caption), com os rostos dos dois mexendo a boca no ritmo da voz.
+## Narrador da corrida: DECIBEL, locutor de arena no estilo rock and roll (inglês por padrão, como nos jogos
+## de corrida clássicos; português nas configurações). Falas em voice/<idioma>/<chave>_<n>.ogg, geradas por
+## tools/build_voice.py com guitarra e reverb de arena; a legenda animada do HUD (Hud.caption) mostra a fala
+## em português e o rosto do Decibel mexendo a boca no ritmo da voz.
 ## Regras:
 ##   - uma fala por vez; prioridade maior fura a fila (contagem e fim de corrida falam na hora);
 ##   - cada tipo de fala tem intervalo mínimo (não repete "ultrapassou" a cada carro);
@@ -18,6 +19,7 @@ const IDLE_AFTER := 20.0
 var game: Node
 var player: AudioStreamPlayer
 var enabled := true
+var lang := "en"
 var cur_prio := -1
 var last_t := {}
 var last_n := {}
@@ -90,7 +92,7 @@ func _play(key: String, prio: int, side: float) -> float:
 	var n := randi() % lines.size()
 	if lines.size() > 1 and n == int(last_n.get(key, -1)):
 		n = (n + 1 + randi() % (lines.size() - 1)) % lines.size()
-	var st := load("res://voice/%s_%d.ogg" % [key, n]) as AudioStream
+	var st := load("res://voice/%s/%s_%d.ogg" % [lang, key, n]) as AudioStream
 	if st == null:
 		return 0.0
 	last_n[key] = n
@@ -100,12 +102,14 @@ func _play(key: String, prio: int, side: float) -> float:
 	side_key = ("g_" + key) if (side > 0.0 and randf() < side and VoiceLines.LINES.has("g_" + key)) else ""
 	player.stream = st
 	player.play()
+	# [legenda em português, fala em inglês, duração em inglês, duração em português]
 	var ln: Array = lines[n]
+	var dur := float(ln[2] if lang == "en" else ln[3])
 	if game and game.auto_test:
-		print("NARR t=%.1f %s: %s" % [float(game.race_t), key, String(ln[1])])
+		print("NARR t=%.1f %s: %s" % [float(game.race_t), key, String(ln[1] if lang == "en" else ln[0])])
 	if game and game.hud:
-		game.hud.caption(String(ln[0]), String(ln[1]), float(ln[2]))
-	return float(ln[2])
+		game.hud.caption("d", String(ln[0]), dur, String(ln[1]) if lang == "en" else "")
+	return dur
 
 
 func _on_done() -> void:

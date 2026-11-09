@@ -242,18 +242,16 @@ Todos os efeitos são **gravações reais** de pacotes livres (CC0, CC-BY e CC-B
 
 Para montar a pasta `sfx/` de novo: clone as fontes listadas no começo de `tools/build_sfx.py` e rode `python3 tools/build_sfx.py FONTES sfx` (precisa de `ffmpeg` e `numpy`).
 
-## Narrador: Zeca Turbo e Tia Graxa
+## Narrador: DECIBEL, locutor de arena rock and roll
 
-Uma dupla de personagens originais comenta a corrida, com humor e muita empolgação:
-- **ZECA TURBO**, o narrador, exagerado e com voz de estádio (alto-falante, compressão e um eco curto de arquibancada).
-- **TIA GRAXA**, a mecânica sarcástica que responde pelo rádio de vez em quando ("Eu cobro por peça, viu?").
+Locutor de estádio no estilo dos jogos de corrida clássicos, personagem original: falas curtas, gritadas, cheias de gíria de rock ("Number one, baby!", "Boom! Scrap metal!", "Final lap! Rock and roll!"). **Em inglês por padrão**, com a legenda em português na tela; **Configurações > Áudio > NARRAÇÃO** troca para a versão em português.
 
-São **113 falas** em português (`tools/build_voice.py` tem o roteiro): abertura da corrida, contagem ("Três! Dois! Um! Acelera!"), largada perfeita, ultrapassagens, liderança, ser ultrapassado, destruir um rival, ser destruído, cair da pista, pulão, drift longo, nitro, carro quase destruído, última volta, vitória, pódio, derrota, chegada de cada chefe, ataques do chefe, chefe derrotado e comentários quando a corrida fica quieta. As vozes foram geradas por IA com o **Kokoro-82M** (Apache 2.0) e tratadas com efeitos (créditos em `voice/CREDITOS.txt`).
-
-- **Legenda animada** no alto da tela: o rosto de quem fala (desenhado: o Zeca de óculos escuros, topete e fone; a Tia Graxa de boné, cachos e graxa na bochecha), com a **boca mexendo no ritmo da voz** e o texto aparecendo letra a letra.
-- **Sem falar demais**: uma fala por vez; contagem e fim de corrida furam a fila; cada tipo de fala tem intervalo mínimo; as variações não se repetem em seguida. Enquanto alguém fala, a música e os efeitos abaixam um pouco.
-- Na largada, o Zeca abre a corrida (sempre nas corridas de chefe; nas outras, em metade das vezes) e a contagem espera ele terminar.
-- **Configurações > Áudio > NARRADOR** ajusta o volume (zero desliga a narração e a legenda).
+- **92 falas em cada idioma** (`tools/build_voice.py` tem o roteiro): abertura, contagem, largada perfeita, liderança, ultrapassar e ser ultrapassado, destruir e ser destruído, queda, pulão, drift, nitro, carro quase destruído, última volta, vitória, pódio, derrota, entrada de cada chefe, ataques do chefe, chefe derrotado e comentários quando a corrida fica quieta.
+- **Voz**: gerada por IA com o Kokoro-82M (Apache 2.0), voz `am_fenrir` em inglês (a mais expressiva das masculinas: ~4,5 semitons de variação de entonação, contra ~2,7 da voz da versão anterior) e `pm_santa` em português.
+- **Som de arena**: voz mais grave, equalização com corpo e presença, saturação, compressão forte, voz dobrada, reverb de arena por convolução e, nos momentos grandes (abertura, chefe, liderança, última volta, vitória, destruição), **guitarra elétrica de verdade** (acorde em quintas, slide) ou prato de bateria antes da voz, abaixando por baixo dela. Guitarra e prato: amostras CC0 do Sonic Pi.
+- **Legenda animada** no alto da tela: o rosto do Decibel (cabeleira, bandana vermelha, óculos escuros, cavanhaque, jaqueta de couro com tachas e microfone), com a **boca abrindo no ritmo da voz** e a fala em português aparecendo letra a letra.
+- **Sem falar demais**: uma fala por vez; contagem e fim de corrida furam a fila; cada tipo de fala tem intervalo mínimo; as variações não se repetem em seguida. Enquanto ele fala, a música e os efeitos abaixam um pouco. Na largada, o Decibel abre a corrida (sempre nas corridas de chefe; nas outras, em metade das vezes) e a contagem espera ele terminar.
+- **Configurações > Áudio > NARRADOR** ajusta o volume (zero desliga a voz e a legenda).
 
 ## Cenário do Céu e do Pântano
 
