@@ -184,7 +184,7 @@ Os carros foram refeitos do zero (`build_car2` em `blender/build_assets.py`):
 
 ## Desempenho (até 120 FPS) e acabamento visual
 
-Medido numa corrida com 8 carros (`--autotest --perf` imprime chamadas de desenho, objetos, triângulos e memória; `--perfdump` mostra de onde vêm):
+Medido numa corrida com 8 carros (`--autotest --perf` imprime chamadas de desenho, objetos, triângulos, memória e o tempo de física por parte; `--perfdump` mostra de onde vêm os desenhos). No mesmo momento da corrida na Trilha do Bosque: **~1.890 → ~640 chamadas de desenho** e ~2.200 → ~1.000 objetos. O código do jogo gasta ~1,5 ms por passo de física (carros, IA e armas somados).
 
 - **Cenário em lotes**: árvores, pedras, prédios, placas, postes, juncos, nuvens, ilhas e contêineres viram MultiMeshes por tipo e área de 128 m. Eram ~360 malhas e ~1.100 superfícies desenhadas uma a uma (e de novo para a sombra); ficaram 55 malhas.
 - **Raio-X só quando precisa**: a silhueta dos carros escondidos era uma camada extra em todas as peças o tempo todo (cada carro desenhado duas vezes). Agora um raio do carro até a câmera liga a silhueta só quando um trecho de pista está na frente, e ela desliga 0,3 s depois de o carro aparecer (sem piscar na beira do viaduto).
