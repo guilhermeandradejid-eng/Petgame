@@ -141,8 +141,11 @@ void fragment() {
 		float detail = 0.0;
 		if (sub < 0.5) {
 			// TREMOR: rachaduras que se espalham do centro e brilham mais perto do golpe
-			vec3 v = voronoi(m * 0.6);
-			float crack = smoothstep(0.07, 0.0, v.y) * smoothstep(arm * 1.05 + 0.05, arm * 1.05 - 0.1, r);
+			// células tortas (ruído desloca o voronoi) e rachaduras radiais saindo do centro
+			vec2 wq = m * 0.42 + vec2(fbm(m * 0.7), fbm(m * 0.7 + 5.3)) * 1.6;
+			vec3 v = voronoi(wq);
+			float radial = smoothstep(0.035, 0.0, abs(fract(ang / 6.2831853 * 7.0 + (fbm(m * 0.45) - 0.5) * 0.5) - 0.5) * r * 2.0) * step(0.12, r);
+			float crack = max(smoothstep(0.045, 0.0, v.y) * step(0.35, hash(floor(wq) + 3.0)), radial) * smoothstep(arm * 1.05 + 0.05, arm * 1.05 - 0.1, r);
 			detail = crack * (0.6 + arm * 1.2);
 			arrows *= 0.7;
 		} else if (sub < 1.5) {
