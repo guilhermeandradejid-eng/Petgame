@@ -128,6 +128,9 @@ var post_lines := 0.0
 var wrong_t := 0.0
 var steer_testing := false
 var test_zoom := 0.0
+var trailer := false        # --trailer: gravação limpa para o trailer (sem HUD, música e narrador; momentos de ação no log)
+var trailer_hud := false    # --trailerhud: igual, mas mantém os avisos grandes (contagem, TAKEDOWN...)
+var cam_yaw_off := 0.0      # --camyaw=graus: gira a câmera isométrica (variedade de ângulos no trailer)
 var cam_yaw := CAM_YAW
 var cam_pitch := CAM_PITCH
 var cam_mode := ""
@@ -173,6 +176,10 @@ func _ready() -> void:
 			track_idx = int(a.substr(8))
 		if a.begins_with("--zoom="):
 			test_zoom = float(a.substr(7))
+		if a.begins_with("--camyaw="):
+			cam_yaw_off = deg_to_rad(float(a.substr(9)))
+	trailer_hud = "--trailerhud" in args
+	trailer = trailer_hud or "--trailer" in args
 
 	env = Environment.new()
 	var sky := Sky.new()
@@ -253,6 +260,9 @@ func _ready() -> void:
 	narrator.setup(self)
 	narrator.enabled = float(settings.val("vol_narr")) > 0.001
 	narrator.lang = settings.narr_lang()
+	if trailer:
+		AudioServer.set_bus_mute(AudioServer.get_bus_index("Musica"), true)
+		narrator.enabled = false
 	loader = Loader.new()
 	hud.add_child(loader)
 	career = Career.new()
@@ -281,6 +291,9 @@ func _ready() -> void:
 				if a.begins_with("--spec="):
 					kt.eq = a.substr(7)
 		var tr: int = Career.WORLDS[wi].boss_track if bs else int(Career.WORLDS[wi].tracks[0])
+		for a in args:
+			if a.begins_with("--track=") and not bs:
+				tr = int(a.substr(8))
 		career.event = {"world": wi, "track": tr, "boss": bs}
 		track_idx = tr
 	multi = Multi.new()
@@ -311,10 +324,55 @@ func _ready() -> void:
 		_steer_test()
 	elif "--uishot" in args:
 		_ui_shots()
+	elif "--trailerui" in args:
+		_trailer_ui()
 	elif "--server" in args or "--netclient" in args:
 		pass   # servidor/cliente de teste: o módulo online cuida
 	elif auto_test:
 		start_race()
+
+
+## trailer: vitrine do menu (logo + desfile dos carros), garagem e carreira, gravadas com o --write-movie
+func _trailer_ui() -> void:
+	hud.show_screen("menu")
+	for k in 200:
+		await get_tree().process_frame
+	print("TEV %d ui_garage" % Engine.get_frames_drawn())
+	hud.show_screen("garage")
+	for k in 100:
+		await get_tree().process_frame
+	hud.garage_ui._car_view("falcao")
+	for k in 80:
+		await get_tree().process_frame
+	print("TEV %d ui_career" % Engine.get_frames_drawn())
+	save.career.points[0] = 22
+	career.open_world(0)
+	for k in 80:
+		await get_tree().process_frame
+	get_tree().quit()
+
+
+## trailer: momento de ação visível na tela (o editor do trailer usa para escolher os cortes)
+func tev(kind: String, pos: Vector3) -> void:
+	if trailer and _on_screen(pos):
+		print("TEV %d %s" % [Engine.get_frames_drawn(), kind])
+
+
+## trailer: esconde o HUD (ou só as placas e botões) e o painel de cada jogador na tela dividida
+func _trailer_hide() -> void:
+	hud.touch.visible = false
+	if hud.cap:
+		hud.cap.visible = false
+	if trailer_hud:
+		for nd in hud.race_nodes:
+			(nd as CanvasItem).visible = false
+	else:
+		hud.root.visible = false
+	if multi and multi.split:
+		for c in multi.cells:
+			for ch in (c.root as Node).get_children():
+				if not ch is SubViewportContainer and ch is CanvasItem:
+					(ch as CanvasItem).visible = false
 
 
 func _steer_test() -> void:
@@ -1698,6 +1756,7 @@ func _on_died(c: Car, killer: Car) -> void:
 			narrator.say("kill", 2, 1.0, 0.35)
 	c.set_meta("fell", false)
 	c.wreck(28.0, (c.global_position - from).normalized(), not fell)
+	tev("wreck", c.global_position)
 	if _on_screen(c.global_position):
 		fx.explosion(c.global_position, big)
 		sfx.play("crash", 0.0 if big else -5.0)
@@ -1806,6 +1865,7 @@ func _on_landed(c: Car, air: float, impact: float) -> void:
 	if air > 0.6 and mode == "race":
 		var pts := int(air * 150)
 		hud.popup("PULÃO %.1fs" % air, Color("#7dff6a"), "+%d" % pts)
+		tev("air", player.global_position)
 		if air > 1.0:
 			narrator.say("air", 1, 0.75)
 		stats.score += pts
@@ -2758,8 +2818,10 @@ func _process(_delta: float) -> void:
 	var rdt := minf(0.05, (now - _last_us) / 1e6)
 	_last_us = now
 	if auto_test:
-		rdt = 1.0 / 60.0
+		rdt = 1.0 / 60.0 if not trailer else _delta
 	real += rdt
+	if trailer:
+		_trailer_hide()
 	if Input.is_action_just_pressed("pause"):
 		pause(mode != "paused")
 	if mode == "race" and locals.size() > 1:
@@ -3113,7 +3175,7 @@ func _camera(rdt: float) -> void:
 	if mode == "menu":
 		target = track.at(fmod(real * 18.0, track.length)).pos
 	var cm := _cam_mode(rdt) if mode != "shots" else ""
-	var want_yaw := CAM_YAW
+	var want_yaw := CAM_YAW + cam_yaw_off
 	var want_pitch := CAM_PITCH
 	var follow := 3.0 if p.wrecked else 4.5
 	var extra := 0.0

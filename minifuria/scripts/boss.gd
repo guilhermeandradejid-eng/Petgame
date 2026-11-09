@@ -122,6 +122,7 @@ func _physics_process(dt: float) -> void:
 func _warn(text: String) -> void:
 	if game.auto_test:
 		print("BOSSATK %s t=%.1f %s" % [car.kind, game.race_t, text])
+	game.tev("boss", car.global_position)
 	for h in game.humans:
 		if h.local_idx >= 0 and h.global_position.distance_to(car.global_position) < 90.0:
 			game.pop_for(h, text, Color("#ff5a5a"))

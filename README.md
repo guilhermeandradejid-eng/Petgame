@@ -73,6 +73,15 @@ O jogo inteiro (menus, HUD, avisos, garagem, carreira, online, configurações, 
 - O narrador fala no idioma do jogo (ou no escolhido em **Configurações > Áudio > VOZ DO NARRADOR**) e a legenda acompanha o idioma do jogo.
 - `--lang=en` / `--lang=pt` na linha de comando força o idioma (testes e trailers).
 
+## Trailers (inglês e português)
+
+Dois trailers curtos (~40 s, 1080p) montados só com cenas do próprio jogo, narração do Decibel e a faixa "GIGA METAL" (Loyalty Freak Music, CC0), com cortes no ritmo da música (142 BPM: o "GO!/VAI!" da largada cai exatamente na entrada da banda).
+
+1. **Gravação** com o Movie Maker do Godot (`--write-movie cena.avi --fixed-fps 30`): `--trailer` grava a corrida sem HUD, sem música e sem narrador, com a câmera mais próxima (`--zoom=`) e girada (`--camyaw=`); cada momento de ação visível (carro destruído, ataque de chefe, pulão) vai para o log como `TEV quadro tipo`. `--trailerhud` mantém só os avisos grandes (contagem, GO!) e `--trailerui` passeia pelo menu e pela garagem; essas duas são gravadas em cada idioma (`--lang=`).
+2. **Cartões** no visual do jogo: `tools/trailer_cards.gd` (PNG transparentes: 26 pistas, 10 carros armados, 6 chefes, 4 jogadores na mesma tela, garagem e o logo).
+3. **Narração**: `tools/trailer_voice.py` (mesma voz e tratamento das falas do jogo).
+4. **Montagem**: `tools/make_trailer.py` dá nota a cada quadro das gravações (movimento, clarões de explosão e eventos do log), escolhe os melhores trechos sem repetir, corta a cada 1 ou 2 batidas, aplica "soco" de zoom e clarão nos cortes, cartões que entram com impacto, abaixa a música sob a narração e grava o MP4 (H.264 + AAC).
+
 Referências de game design: **Rock n' Roll Racing** (armas e nitro limitados que recarregam a cada volta, dinheiro por colocação e por rival destruído, upgrades na garagem), **Hot Wheels Unleashed / Trackmania** (loopings, espirais, rampas, boosters antes dos elementos) e **Burnout** (takedowns, batidas e destruição). Só os carros da corrida ficam na pista (sem trânsito).
 
 ![carros e props modelados no Blender](minifuria/assets/preview.png)
