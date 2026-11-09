@@ -814,9 +814,22 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		_contacts.append([state.get_contact_collider_object(i), state.get_contact_local_position(i), state.get_contact_local_normal(i)])
 
 
+## medição de tempo (teste --perf): microssegundos gastos no passo de física dos carros e nos visuais
+static var prof_us := 0
+static var prof_vis_us := 0
+
+
 func _physics_process(dt: float) -> void:
+	var t0 := Time.get_ticks_usec()
+	_phys(dt)
+	prof_us += Time.get_ticks_usec() - t0
+
+
+func _phys(dt: float) -> void:
 	game_time += dt
+	var tv := Time.get_ticks_usec()
 	_visuals(dt)
+	prof_vis_us += Time.get_ticks_usec() - tv
 	_dent_cd = maxf(0.0, _dent_cd - dt)
 	flash_t = maxf(0.0, flash_t - dt)
 	fire_cd = maxf(0.0, fire_cd - dt)

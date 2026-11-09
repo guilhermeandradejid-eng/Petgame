@@ -5,7 +5,7 @@ extends Node
 ## Fica salvo em save["cfg"] e é aplicado na hora.
 
 const DEFAULTS := {"vol_master": 0.9, "vol_music": 0.9, "vol_sfx": 0.9, "vol_voice": 1.0,
-	"quality": "alta", "scale": 1.0, "fullscreen": false, "vsync": true, "screen_fx": true, "fps": false, "fps_cap": 120,
+	"quality": "alta", "scale": 1.0, "fullscreen": false, "vsync": true, "screen_fx": true, "fps": false, "fps_cap": 120, "dyn_res": true,
 	"shake": 1.0, "vibration": true}
 const QUALITY := [["baixa", "BAIXA"], ["media", "MÉDIA"], ["alta", "ALTA"]]
 const FPS_CAPS := [[30, "30"], [60, "60"], [90, "90"], [120, "120"], [0, "SEM LIMITE"]]
@@ -83,7 +83,8 @@ func apply_all() -> void:
 			RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_LOW)
 		_:
 			game.sun.shadow_enabled = true
-			vp.msaa_3d = Viewport.MSAA_4X
+			# celular: 4x em resolução nativa pesa demais; 2x já limpa as bordas
+			vp.msaa_3d = Viewport.MSAA_2X if OS.has_feature("mobile") else Viewport.MSAA_4X
 			RenderingServer.directional_shadow_atlas_set_size(2048, true)
 			RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH)
 	vp.scaling_3d_scale = clampf(float(val("scale")), 0.5, 1.0)
@@ -199,6 +200,8 @@ func _show_tab(t: String) -> void:
 				_choice("fullscreen", "TELA CHEIA", [[false, "NÃO"], [true, "SIM"]])
 			_choice("vsync", "VSYNC (SEM CORTES NA IMAGEM)", [[true, "LIGADO"], [false, "DESLIGADO"]])
 			_choice("fps_cap", "TAXA DE QUADROS (FPS)", FPS_CAPS)
+			_choice("dyn_res", "RESOLUÇÃO DINÂMICA", [[true, "LIGADA"], [false, "DESLIGADA"]])
+			_note("Na corrida, se a placa de vídeo não der conta da taxa escolhida, o 3D baixa a resolução aos poucos (até 70%) e volta quando sobra folga.")
 			_note("120 FPS precisa de tela de 120 Hz (celulares e monitores rápidos). Nos menus o jogo segura em 60 para poupar bateria.")
 			_choice("screen_fx", "EFEITOS DE TELA (BORRÃO, ABERRAÇÃO, LINHAS)", [[true, "LIGADOS"], [false, "DESLIGADOS"]])
 			_choice("fps", "MOSTRAR FPS", [[false, "NÃO"], [true, "SIM"]])

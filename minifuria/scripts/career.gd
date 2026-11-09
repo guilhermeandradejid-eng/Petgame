@@ -275,7 +275,9 @@ func boss_open(i: int) -> bool:
 ## próxima corrida da carreira na ordem (depois de uma vitória): {} quando já venceu tudo
 func next_event() -> Dictionary:
 	var s: Dictionary = game.save
-	for i in WORLDS.size():
+	# segue do mundo atual para frente (nunca volta para um mundo anterior)
+	var start := int(event.world) if not event.is_empty() else 0
+	for i in range(start, WORLDS.size()):
 		if not world_open(i):
 			break
 		var w: Dictionary = WORLDS[i]

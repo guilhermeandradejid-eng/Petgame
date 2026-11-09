@@ -182,6 +182,24 @@ Os carros foram refeitos do zero (`build_car2` em `blender/build_assets.py`):
 - **Shaders pré-aquecidos**: na contagem regressiva, cada efeito (explosões, nitro e calor, foguete, mina, graxa, confete, fachos, raio-X) é desenhado uma vez escondido sob a largada. Sem isso, na web a primeira explosão, nitro ou foguete compilava o shader na hora e travava.
 - **Pós-processamento mais leve**: o blur e a aberração só fazem as amostras extras quando estão ativos, e o lens flare usa no máximo 8 fontes.
 
+## Desempenho (até 120 FPS) e acabamento visual
+
+Medido numa corrida com 8 carros (`--autotest --perf` imprime chamadas de desenho, objetos, triângulos e memória; `--perfdump` mostra de onde vêm):
+
+- **Cenário em lotes**: árvores, pedras, prédios, placas, postes, juncos, nuvens, ilhas e contêineres viram MultiMeshes por tipo e área de 128 m. Eram ~360 malhas e ~1.100 superfícies desenhadas uma a uma (e de novo para a sombra); ficaram 55 malhas.
+- **Raio-X só quando precisa**: a silhueta dos carros escondidos era uma camada extra em todas as peças o tempo todo (cada carro desenhado duas vezes). Agora um raio do carro até a câmera liga a silhueta só quando um trecho de pista está na frente, e ela desliga 0,3 s depois de o carro aparecer (sem piscar na beira do viaduto).
+- **Sombra dos carros numa chamada**: as ~50 peças de cada carro deixaram de projetar sombra uma a uma. Uma malha invisível juntando tudo projeta a sombra (a torre da arma, que gira, mantém a sombra própria) e é refeita quando uma peça cai ou o carro é consertado. Sombras dos carros: ~440 → ~100 desenhos.
+- **Luzes**: clarão de tiro, faísca da mureta e mina só existem enquanto acesas (cada luz redesenha o que ilumina). À noite, só o seu carro tem farol de verdade; os rivais ficam com os fachos.
+- **Partículas paradas** escondidas até serem usadas.
+- **Taxa de quadros** (Configurações > Vídeo): 30, 60, 90, 120 ou sem limite (padrão 120; precisa de tela de 120 Hz). Nos menus fica em 60 para poupar bateria. No Android o limite também escolhe a taxa da tela (frame pacing).
+- **Resolução dinâmica**: na corrida, o jogo mede o tempo da placa de vídeo. Se passar de 85% do orçamento do quadro, o 3D desce 5% de resolução (até 70%); se sobrar folga, volta. No celular o MSAA fica em 2x.
+
+Acabamento visual:
+- **Pilares atravessando o asfalto**: o topo do pilar seguia a altura do centro da pista. Em curva inclinada, o lado de dentro fica mais baixo, e 176 pilares em 21 pistas furavam o asfalto (até 76 cm). Agora o topo segue a parte de baixo da pista no ponto do pilar, e o validador (`tools/validate_tracks.gd`) confere que nenhum pilar cruza asfalto.
+- **Pontos acesos na pista**: o disco brilhante embaixo de cada item (verde = munição) ficava no asfalto depois de o item ser pego. Agora some e volta junto com ele.
+- **Cintilação**: as texturas dos materiais (borracha, metais, couro...) não tinham mipmaps e "chiavam" nos carros pequenos em movimento; agora têm (e as de cor/rugosidade são comprimidas). O brilho do sol na pintura ficou mais largo e menos estourado, e as faixas de luz do vidro mais suaves (pontos finíssimos acendiam e apagavam de um quadro para o outro).
+- **Sobreposição errada**: o clarão de tiro ignorava a profundidade e aparecia por cima de viadutos; agora respeita. Marcas de pneu e o brilho dos itens subiram alguns centímetros (não afundam no asfalto em lombadas), e os juncos do pântano ficam longe da mureta.
+
 ## Largada, voltas e fim da corrida
 
 - **Contagem**: o nome da pista aparece por ~1 s e depois 3, 2, 1, VAI!. O aviso grande ficava fora da tela, porque com âncora no centro a `position` virava posição absoluta; agora usa offsets. Cada aviso também cancela a animação do anterior.

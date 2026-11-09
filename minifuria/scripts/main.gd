@@ -635,7 +635,7 @@ func _refl(kind: String) -> ShaderMaterial:
 				m.set_shader_parameter("glint", 1.3)
 				m.set_shader_parameter("streaks", 1.5)
 				m.set_shader_parameter("streak_freq", 0.6)
-				m.set_shader_parameter("streak_w", 0.16)
+				m.set_shader_parameter("streak_w", 0.22)
 			"chrome":
 				m.set_shader_parameter("strength", 0.55)
 				m.set_shader_parameter("f0", 0.55)
@@ -1086,9 +1086,10 @@ func _swamp_decor(rng: RandomNumberGenerator, mn: Vector2, mx: Vector2) -> void:
 		for sg: float in [-1.0, 1.0]:
 			if rng.randf() < 0.45:
 				continue
-			var off := track.WALL + rng.randf_range(1.5, 6.0)
+			# a moita tem até 1,4 m de raio: longe o bastante da mureta para não invadir o acostamento
+			var off := track.WALL + rng.randf_range(2.4, 6.5)
 			var pp: Vector3 = track.P[i] + track.L[i] * sg * off
-			if track.clearance_xz(pp) < track.WALL + 1.0:
+			if track.clearance_xz(pp) < track.WALL + 2.2:
 				continue
 			_batch_prop("prop_reeds", Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(1.0, 1.7)), Vector3(pp.x, float(theme.gy) - 0.1, pp.z)))
 	var ff := CPUParticles3D.new()
@@ -1813,14 +1814,26 @@ func _on_screen(p: Vector3) -> bool:
 
 
 # ------------------------------------------------------------------ física e regras
+var _prof := {"ticks": 0, "ai": 0, "wpn": 0, "main": 0}
+
+
 func _physics_process(dt: float) -> void:
+	var t0 := Time.get_ticks_usec()
+	_phys(dt)
+	_prof.main += Time.get_ticks_usec() - t0
+	_prof.ticks += 1
+
+
+func _phys(dt: float) -> void:
 	if mode == "paused":
 		return
 	time_g += dt
+	var ta := Time.get_ticks_usec()
 	for c in cars:
 		c.game_time = time_g
 		if c.role != "player" and not c.wrecked and not c.net_remote:
 			c.ai(track, self, dt)
+	_prof.ai += Time.get_ticks_usec() - ta
 	if online:
 		online.physics(dt)
 	for lp in locals:
@@ -1853,7 +1866,9 @@ func _physics_process(dt: float) -> void:
 				pc.ctrl.fire = false
 				pc.ctrl.drop = false
 	if mode in ["race", "finish"]:
+		var tw := Time.get_ticks_usec()
 		weapons.update(dt)
+		_prof.wpn += Time.get_ticks_usec() - tw
 	for c in cars:
 		if c.wrecked or not c.on_ground or time_g < c.pad_t:
 			continue
@@ -2439,6 +2454,13 @@ func _xray_step() -> void:
 			var from := c.global_position + c.global_transform.basis.y * 0.9 + back * 3.0   # 3 m: a mureta ao lado não conta
 			var q := PhysicsRayQueryParameters3D.create(from, from + back * 80.0, 1)
 			on = not space.intersect_ray(q).is_empty()
+		# liga na hora; desliga só depois de 0,3 s à vista (sem piscar na beirada de um viaduto)
+		if on:
+			xr.seen_t = 0.0
+		elif bool(xr.on):
+			xr.seen_t = float(xr.get("seen_t", 0.0)) + 0.016 * cars.size() / 2.0
+			if float(xr.seen_t) < 0.3:
+				on = true
 		if on != bool(xr.on):
 			xr.on = on
 			for mi in xr.meshes:
@@ -2755,6 +2777,7 @@ func _process(_delta: float) -> void:
 		slip += 0.5
 	sfx.world_on = mode in ["race", "countdown", "finish"]
 	_xray_step()
+	_dyn_res(rdt)
 	if settings:
 		var want_fps: int = settings.fps_cap(mode in ["race", "countdown", "finish"])
 		if Engine.max_fps != want_fps and not auto_test:
@@ -2792,6 +2815,12 @@ func _process(_delta: float) -> void:
 			Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME) / 1000, Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0,
 			Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0, Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / 1048576.0,
 			Performance.get_monitor(Performance.OBJECT_NODE_COUNT), Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT)])
+		var tk := maxf(1.0, float(_prof.ticks))
+		print("PERFCPU process=%.2fms physics=%.2fms | por passo: carros=%.2fms (visuais %.2f) ia=%.2fms armas=%.2fms main=%.2fms" % [Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0,
+			Car.prof_us / tk / 1000.0, Car.prof_vis_us / tk / 1000.0, _prof.ai / tk / 1000.0, _prof.wpn / tk / 1000.0, _prof.main / tk / 1000.0])
+		_prof = {"ticks": 0, "ai": 0, "wpn": 0, "main": 0}
+		Car.prof_us = 0
+		Car.prof_vis_us = 0
 	if auto_test and "--musicdbg" in OS.get_cmdline_user_args():
 		for nm in ["Musica", "Efeitos", "Master"]:
 			var bi := AudioServer.get_bus_index(nm)
@@ -3184,3 +3213,49 @@ func _perf_dump() -> void:
 			stack.append([ch, g])
 	for g in groups:
 		print("PERFDUMP ", g, " ", groups[g])
+
+
+# ------------------------------------------------------------------ resolução dinâmica
+## Mede o tempo da placa de vídeo por quadro (consulta de tempo do OpenGL). Se ele passa de 85% do
+## orçamento da taxa de quadros (ex.: 8,3 ms em 120 FPS), o 3D desce 5% de resolução (até 70%); se fica
+## abaixo de 55%, sobe de volta até a resolução escolhida. Sem medição de GPU no aparelho, não mexe.
+var _dr := {"on": false, "acc": 0.0, "n": 0, "t": 0.0}
+
+
+func _dyn_res(rdt: float) -> void:
+	if settings == null or auto_test:
+		return
+	var vp := get_viewport()
+	var max_s := clampf(float(settings.val("scale")), 0.5, 1.0)
+	var racing := mode in ["race", "countdown", "finish"]
+	if not bool(settings.val("dyn_res")) or not racing:
+		if not is_equal_approx(vp.scaling_3d_scale, max_s):
+			vp.scaling_3d_scale = max_s
+		return
+	var rid := vp.get_viewport_rid()
+	if not _dr.on:
+		_dr.on = true
+		RenderingServer.viewport_set_measure_render_time(rid, true)
+		return
+	var gpu := RenderingServer.viewport_get_measured_render_time_gpu(rid)
+	if gpu <= 0.0:
+		return
+	_dr.acc = float(_dr.acc) + gpu
+	_dr.n = int(_dr.n) + 1
+	_dr.t = float(_dr.t) + rdt
+	if float(_dr.t) < 0.5:
+		return
+	var avg := float(_dr.acc) / maxf(1.0, float(_dr.n))
+	_dr.acc = 0.0
+	_dr.n = 0
+	_dr.t = 0.0
+	var cap: int = settings.fps_cap(true)
+	var hz := DisplayServer.screen_get_refresh_rate()
+	var want := float(cap if cap > 0 else 240)
+	if bool(settings.val("vsync")) and hz > 1.0:
+		want = minf(want, hz)
+	var budget := 1000.0 / want
+	if avg > budget * 0.85 and vp.scaling_3d_scale > 0.71:
+		vp.scaling_3d_scale = maxf(0.7, vp.scaling_3d_scale - 0.05)
+	elif avg < budget * 0.55 and vp.scaling_3d_scale < max_s - 0.01:
+		vp.scaling_3d_scale = minf(max_s, vp.scaling_3d_scale + 0.05)

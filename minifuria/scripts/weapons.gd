@@ -63,7 +63,7 @@ func setup(game_: Node, fx_: Fx, sfx_: Sfx, lib_: Node3D) -> void:
 	smat.albedo_texture = fx.star_tex
 	smat.albedo_color = Color(3.5, 2.6, 1.2, 1.0)
 	smat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	smat.no_depth_test = true
+	# com teste de profundidade: o clarão de quem atira debaixo de um viaduto não aparece por cima dele
 	var cmat := tmat.duplicate() as StandardMaterial3D
 	cmat.albedo_color = Color(4.0, 2.2, 0.6, 1.0)
 	var cmesh := fx._streak_mesh(0.5, 1.0)
@@ -289,7 +289,7 @@ func _muzzle_flash(pos: Vector3, aim: Vector3, big := false) -> void:
 	var cb: Basis = game.cam.global_basis
 	var s := randf_range(0.55, 0.95) * (1.6 if big else 1.0)
 	var star: MeshInstance3D = f.q
-	star.global_transform = Transform3D(cb.rotated(cb.z, randf() * TAU).scaled(Vector3(s, s, s)), pos)
+	star.global_transform = Transform3D(cb.rotated(cb.z, randf() * TAU).scaled(Vector3(s, s, s)), pos + cb.z * 0.6)
 	star.visible = true
 	var cone: MeshInstance3D = f.cone
 	var x := aim.cross(Vector3.UP if absf(aim.y) < 0.95 else Vector3.RIGHT).normalized()

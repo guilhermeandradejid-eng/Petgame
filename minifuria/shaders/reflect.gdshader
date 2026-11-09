@@ -35,12 +35,14 @@ void fragment() {
 	env = mix(env, env * tint, tint_amt);
 	vec3 L = normalize(sun_dir);
 	float sd = max(dot(R, L), 0.0);
-	float sun = pow(sd, 380.0) * 7.0 + pow(sd, 28.0) * 0.18;
+	// brilho do sol mais largo e menos estourado: em carro pequeno e facetado, um ponto finíssimo e 7x mais
+	// forte acendia e apagava de um quadro para o outro (cintilação)
+	float sun = pow(sd, 150.0) * 2.6 + pow(sd, 28.0) * 0.18;
 	vec3 col = env * fres * strength + sun_col * sun * glint * (1.0 - night * 0.7);
 	if (streaks > 0.0) {
 		vec3 wp = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
 		float u = dot(wp, vec3(0.21, 0.13, 0.17)) + dot(N, vec3(0.3, 0.0, 0.2));
-		float b = fract(u * streak_freq);
+		float b = fract(u * streak_freq * 0.8);
 		float s1 = smoothstep(0.0, streak_w * 0.25, b) * smoothstep(streak_w, streak_w * 0.55, b);
 		float s2 = smoothstep(streak_w * 1.55, streak_w * 1.7, b) * smoothstep(streak_w * 2.1, streak_w * 1.85, b);
 		// só nas faces viradas para cima/para a câmera (onde um reflexo de céu faria sentido)

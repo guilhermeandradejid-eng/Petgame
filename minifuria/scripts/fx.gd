@@ -314,12 +314,27 @@ func _pool(name_: String, count: int, maker: Callable) -> void:
 		var p: Node3D = maker.call()
 		add_child(p)
 		pools[name_].append(p)
+		# partícula parada fica escondida (não entra no desenho nem na seleção de visíveis); aparece ao ser usada
+		if p is CPUParticles3D and (p as CPUParticles3D).one_shot:
+			var cp := p as CPUParticles3D
+			cp.visible = false
+			cp.finished.connect(_pool_done.bind(cp))
+
+
+func _pool_done(cp: CPUParticles3D) -> void:
+	var sub := cp.get_node_or_null("Streamers") as CPUParticles3D
+	if sub and sub.emitting:
+		sub.finished.connect(func(): cp.visible = cp.emitting, CONNECT_ONE_SHOT)
+		return
+	cp.visible = false
 
 
 func _next(name_: String) -> Node3D:
 	var arr: Array = pools[name_]
 	var i: int = pool_i[name_]
 	pool_i[name_] = (i + 1) % arr.size()
+	if arr[i] is CPUParticles3D:
+		(arr[i] as Node3D).visible = true
 	return arr[i]
 
 
