@@ -8,10 +8,10 @@ github.com/thewh1teagle/kokoro-onnx/releases (model-files-v1.0: kokoro-v1.0.fp16
   - português (opção nas configurações): voz pm_santa.
 Cada fala tem o texto em inglês (falado) e em português (legenda na tela; e a fala da versão em português).
 
-Som de "locutor de estádio de rock": voz 1,5 semitom mais grave, equalização com corpo e presença, saturação
-(aspereza), compressão forte, uma segunda voz levemente desafinada por baixo (voz "maior"), reverb de arena
-por convolução e, nos momentos grandes, guitarra elétrica de verdade (acorde em quintas, slide) ou prato de
-bateria entrando antes da voz e abaixando por baixo dela. Guitarra e prato: amostras CC0 do Sonic Pi
+Tratamento LIMPO (a versão anterior soava robótica: a mudança de tom por esticamento de tempo e a voz
+dobrada criavam o "chiado metálico"): a voz sai como o modelo gera, só com equalização leve, compressão suave
+e uma ambiência curta de sala; nos momentos grandes, guitarra elétrica de verdade (acorde em quintas, slide)
+ou prato de bateria entra antes da voz e abaixa por baixo dela. Guitarra e prato: amostras CC0 do Sonic Pi
 (github.com/sonic-pi-net/sonic-pi, etc/samples: guit_e_fifths, guit_e_slide, drum_cymbal_hard).
 
 Uso:
@@ -163,7 +163,9 @@ for _k in LINES:
     if _k.startswith("boss_") and _k not in ("boss_attack", "boss_beaten"):
         STING[_k] = "fifths"
 
-VOICE = {"en": ("am_fenrir", 1.04, "en-us", -1.5), "pt": ("pm_santa", 1.06, "pt-br", -1.0)}
+# voz, velocidade, idioma (velocidade 1.0: acelerar o modelo também deixa a voz mais artificial)
+VOICE = {"en": ("am_fenrir", 1.0, "en-us"), "pt": ("pm_santa", 1.0, "pt-br")}
+MODEL = "kokoro-v1.0.onnx"   # precisão completa (a versão fp16 tem um pouco mais de artefato)
 
 
 def dec(path):
@@ -197,39 +199,28 @@ def conv(x, ir):
     return np.fft.irfft(np.fft.rfft(x, m) * np.fft.rfft(ir, m), m)[:n].astype(np.float32)
 
 
-def arena_ir():
+def room_ir():
+    # ambiência curta (sala grande), sem eco marcado: só dá corpo à voz
     rng = np.random.default_rng(7)
-    n = int(1.7 * SR)
+    n = int(0.45 * SR)
     t = np.arange(n) / SR
-    ir = rng.standard_normal(n).astype(np.float32) * np.exp(-t / 0.42)
-    # escurece a cauda (ar absorve os agudos) com média móvel crescente
-    k = np.ones(9) / 9.0
-    ir = np.convolve(ir, k, mode="same")
-    ir[: int(0.03 * SR)] = 0.0   # pré-atraso
-    for d, g in [(0.031, 0.5), (0.047, 0.38), (0.071, 0.3), (0.103, 0.22)]:
-        ir[int(d * SR)] += g * 4.0
+    ir = rng.standard_normal(n).astype(np.float32) * np.exp(-t / 0.12)
+    ir = np.convolve(ir, np.ones(11) / 11.0, mode="same")
+    ir[: int(0.012 * SR)] = 0.0
     return ir / np.sqrt(np.sum(ir ** 2))
 
 
-IR = arena_ir()
+IR = room_ir()
 
 
-def voice_fx(x, sr, semis):
-    f = 2 ** (semis / 12.0)
-    chain = ("asetrate=%d,atempo=%.5f,aresample=%d,highpass=f=90,bass=g=3:f=180:w=0.8,"
-             "equalizer=f=3200:t=o:w=1.2:g=4,lowpass=f=9500,volume=7dB,asoftclip=type=atan:oversample=4,volume=-5dB,"
-             "acompressor=threshold=-18dB:ratio=4:attack=3:release=120:makeup=4" % (int(sr * f), 1.0 / f, sr))
+def voice_fx(x, sr):
+    chain = ("aresample=%d,highpass=f=80,equalizer=f=3000:t=o:w=1.0:g=2.5,"
+             "acompressor=threshold=-20dB:ratio=2.5:attack=5:release=150:makeup=3" % SR)
     y = trim(ff(x, sr, chain))
-    # voz dobrada: cópia 17 ms depois, 7 centésimos de semitom acima, por baixo
-    idx = np.arange(len(y)) * 1.004
-    dbl = np.interp(idx, np.arange(len(y)), y).astype(np.float32)
-    d = int(0.017 * SR)
-    y2 = y.copy()
-    y2[d:] += dbl[:-d] * 0.35
-    wet = conv(y2, IR)
+    wet = conv(y, IR)
     out = np.zeros(len(wet), dtype=np.float32)
-    out[: len(y2)] += y2
-    out += wet * 0.22
+    out[: len(y)] += y
+    out += wet * 0.1
     return out
 
 
@@ -287,7 +278,7 @@ def gd(s):
 def main():
     model_dir, smp_dir, out_dir, gd_out = sys.argv[1:5]
     from kokoro_onnx import Kokoro
-    k = Kokoro(os.path.join(model_dir, "kokoro-v1.0.fp16.onnx"), os.path.join(model_dir, "voices-v1.0.bin"))
+    k = Kokoro(os.path.join(model_dir, MODEL), os.path.join(model_dir, "voices-v1.0.bin"))
     smp = {"fifths": dec(os.path.join(smp_dir, "guit_e_fifths.flac")), "slide": dec(os.path.join(smp_dir, "guit_e_slide.flac")),
            "crash": dec(os.path.join(smp_dir, "drum_cymbal_hard.flac"))}
     rows = []
@@ -297,9 +288,9 @@ def main():
         for n, (en, pt) in enumerate(lines):
             durs = {}
             for lang, text in (("en", en), ("pt", pt)):
-                voice, speed, code, semis = VOICE[lang]
+                voice, speed, code = VOICE[lang]
                 s, sr = k.create(text, voice=voice, speed=speed, lang=code)
-                v = voice_fx(np.asarray(s, dtype=np.float32), sr, semis)
+                v = voice_fx(np.asarray(s, dtype=np.float32), sr)
                 if key in STING:
                     v = mix_sting(v, STING[key], smp)
                 v = level(v)

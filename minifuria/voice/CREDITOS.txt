@@ -17,7 +17,7 @@ bateria (drum_cymbal_hard) do Sonic Pi, amostras do freesound em domínio públi
   guit_e_slide   http://freesound.org/people/Suva/sounds/2410/
   drum_cymbal_hard  http://www.freesound.org/people/menegass/sounds/100056/
 
-Efeitos aplicados: voz mais grave, equalização, saturação, compressão, voz dobrada, reverb de arena
-(convolução) e normalização de volume.
+Tratamento leve (para não soar robótico): equalização, compressão suave, ambiência curta de sala e
+normalização de volume. Modelo em precisão completa (kokoro-v1.0.onnx).
 
 Para gerar de novo: python tools/build_voice.py PASTA_DO_MODELO PASTA_DAS_AMOSTRAS voice scripts/voice_lines.gd
