@@ -52,7 +52,7 @@ LOADER = """<style>
 #mf .err{margin-top:16px;font:600 15px system-ui,sans-serif;color:#ff7a7a;text-align:center;padding:0 20px}
 </style>
 <div id="mf"><div class="lines"></div>
-<div class="ttl">MINI <b>FÚRIA</b></div><div class="chk"></div>
+<div class="ttl">WRECK 'N' <b>ROLL</b></div><div class="chk"></div>
 <div class="road"><div class="dash"></div><div class="car"><span class="puff"></span><span class="puff"></span><span class="puff"></span>
 <div class="cimg"><img src="load_car.png" width="200" height="93"><img class="whl" src="load_wheel.png" style="left:124.8px;top:40.6px;width:24.3px;height:24.3px"><img class="whl" src="load_wheel.png" style="left:50.1px;top:39.3px;width:25.7px;height:25.7px"></div></div></div>
 <div class="lbl" id="mf-lbl">BAIXANDO A PISTA 0%</div><div class="bar"><div id="mf-bar"></div></div>
@@ -165,7 +165,7 @@ def main(src: str, dst: str) -> None:
     html = open(os.path.join(src, "index.html"), encoding="utf-8").read()
     style = re.search(r"<style>(.*?)</style>", html, re.S).group(1)
     body = re.search(r"<body>(.*)</body>", html, re.S).group(1)
-    page = ("<title>Mini Fúria</title>\n<style>:root{color-scheme:dark}html,body{height:100%%;background:#0f0d1c}%s</style>\n%s\n%s\n%s"
+    page = ("<title>Wreck 'n' Roll</title>\n<style>:root{color-scheme:dark}html,body{height:100%%;background:#0f0d1c}%s</style>\n%s\n%s\n%s"
             % (style, SHIM % (str(parts), str(packs), len(wasm) + len(pck)), body, LOADER))
     # versão "fragmento" (para hosts que montam o <html>) e versão completa (GitHub Pages, itch.io)
     open(os.path.join(dst, "fragment.html"), "w", encoding="utf-8").write(page)

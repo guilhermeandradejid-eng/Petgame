@@ -782,7 +782,7 @@ func _money(v: int) -> String:
 	var t := str(absi(v))
 	var out := ""
 	while t.length() > 3:
-		out = "." + t.right(3) + out
+		out = ("," if Lang.en() else ".") + t.right(3) + out
 		t = t.left(t.length() - 3)
 	return ("-" if v < 0 else "") + t + out
 
@@ -1042,7 +1042,7 @@ static func draw_badge(ci: Control, v: float, pv: float) -> void:
 	if pv > v + 0.01:
 		var t2 := "+%d" % int(round((pv - v) * 10.0))
 		ci.draw_string(UI.display, c + Vector2(-12 * k, 30 * k), t2, HORIZONTAL_ALIGNMENT_LEFT, -1, int(12 * k), UI.OK)
-	var l := "NOTA"
+	var l := Lang.t("NOTA")
 	var fs2 := int(10 * k)
 	var w2 := UI.body_bold.get_string_size(l, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2).x
 	ci.draw_string(UI.body_bold, c + Vector2(-w2 * 0.5, -14 * k), l, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2, UI.MUTED)

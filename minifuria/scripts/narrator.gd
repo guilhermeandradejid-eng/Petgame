@@ -1,9 +1,9 @@
 class_name Narrator
 extends Node
-## Narrador da corrida: DECIBEL, locutor de arena no estilo rock and roll (inglês por padrão, como nos jogos
-## de corrida clássicos; português nas configurações). Falas em voice/<idioma>/<chave>_<n>.ogg, geradas por
-## tools/build_voice.py com guitarra e reverb de arena; a legenda animada do HUD (Hud.caption) mostra a fala
-## em português e o rosto do Decibel mexendo a boca no ritmo da voz.
+## Narrador da corrida: DECIBEL, locutor de arena no estilo rock and roll (fala no idioma do jogo ou no que
+## for escolhido nas configurações). Falas em voice/<idioma>/<chave>_<n>.ogg, geradas por tools/build_voice.py
+## com vinheta de guitarra; a legenda animada do HUD (Hud.caption) mostra a fala no idioma do jogo e o rosto
+## do Decibel mexendo a boca no ritmo da voz.
 ## Regras:
 ##   - uma fala por vez; prioridade maior fura a fila (contagem e fim de corrida falam na hora);
 ##   - cada tipo de fala tem intervalo mínimo (não repete "ultrapassou" a cada carro);
@@ -102,13 +102,14 @@ func _play(key: String, prio: int, side: float) -> float:
 	side_key = ("g_" + key) if (side > 0.0 and randf() < side and VoiceLines.LINES.has("g_" + key)) else ""
 	player.stream = st
 	player.play()
-	# [legenda em português, fala em inglês, duração em inglês, duração em português]
+	# [fala em português, fala em inglês, duração em inglês, duração em português]
 	var ln: Array = lines[n]
 	var dur := float(ln[2] if lang == "en" else ln[3])
 	if game and game.auto_test:
 		print("NARR t=%.1f %s: %s" % [float(game.race_t), key, String(ln[1] if lang == "en" else ln[0])])
 	if game and game.hud:
-		game.hud.caption("d", String(ln[0]), dur, String(ln[1]) if lang == "en" else "")
+		# legenda no idioma do jogo (que pode ser diferente do da voz)
+		game.hud.caption("d", String(ln[1] if Lang.en() else ln[0]), dur)
 	return dur
 
 

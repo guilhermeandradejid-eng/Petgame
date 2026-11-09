@@ -1,4 +1,4 @@
-Mini Fúria — narrador DECIBEL (pasta voice/)
+Wreck 'n' Roll — narrador DECIBEL (pasta voice/)
 =============================================
 
 DECIBEL é um locutor de arena no estilo rock and roll, personagem original do jogo. O roteiro (falas em

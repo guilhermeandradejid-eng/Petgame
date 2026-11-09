@@ -1,5 +1,5 @@
 extends Node
-## Cena de abertura: mostra o carregamento FÚRIA (carrinho andando) enquanto a cena do jogo, os modelos e a
+## Cena de abertura: mostra o carregamento (carrinho andando) enquanto a cena do jogo, os modelos e a
 ## trilha são carregados em segundo plano; depois entrega para o jogo e some suavemente.
 
 const MAIN := "res://scenes/main.tscn"
@@ -22,7 +22,8 @@ func _ready() -> void:
 	add_child(layer)
 	loader = Loader.new()
 	layer.add_child(loader)
-	loader.show_for("MINI FÚRIA", "LIGANDO OS MOTORES")
+	Lang.setup(Lang.saved_code())
+	loader.show_for("WRECK 'N' ROLL", "LIGANDO OS MOTORES")
 	ResourceLoader.load_threaded_request(MAIN)
 	for p in WARM:
 		if ResourceLoader.exists(p):

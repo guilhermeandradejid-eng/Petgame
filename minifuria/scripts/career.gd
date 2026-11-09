@@ -644,7 +644,7 @@ func apply_result(place: int, beat_boss: bool) -> Array:
 					if int(SHOP[k].world) == wi + 1:
 						lines.append("NOVO CARRO: %s" % SHOP[k].name)
 			elif first:
-				lines.append("CAMPEÃO DA FÚRIA!")
+				lines.append("CAMPEÃO DO WRECK 'N' ROLL!")
 		else:
 			lines.append("O CHEFE CHEGOU ANTES")
 	else:

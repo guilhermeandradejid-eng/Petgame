@@ -426,8 +426,8 @@ func _refresh_lobby() -> void:
 		var p: Dictionary = profiles.get(id, {})
 		var nm: String = String(p.get("name", net.room.members[id]))
 		var car: String = CAR_NAMES.get(String(p.get("car", "")), "...")
-		lines.append("%s%s  ·  %s%s%s" % ["[ANFITRIÃO] " if id == int(net.room.host) else "", nm, car,
-			"  (você)" if id == net.my_id else "", "  · FALANDO" if voice.is_talking(id) else ""])
+		lines.append("%s%s  ·  %s%s%s" % [tr("[ANFITRIÃO] ") if id == int(net.room.host) else "", nm, tr(car),
+			tr("  (você)") if id == net.my_id else "", tr("  · FALANDO") if voice.is_talking(id) else ""])
 	lobby_list.text = "\n".join(lines) + "\n%d/%d pessoas · ping %d ms" % [ids.size(), int(net.room.max), int(net.ping_ms)]
 	car_l.text = CAR_NAMES.get(my_car, my_car)
 	if hud.show3d and Car.LOADOUT.has(my_car):

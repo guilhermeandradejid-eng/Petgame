@@ -1,5 +1,5 @@
 """
-Mini Fúria: modelagem procedural dos assets no Blender.
+Wreck 'n' Roll: modelagem procedural dos assets no Blender.
 
 Gera todos os carros (em peças destrutíveis) e props low-poly e exporta para ../assets/minicars.glb (projeto Godot).
 

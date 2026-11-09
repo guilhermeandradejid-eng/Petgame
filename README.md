@@ -61,9 +61,17 @@ Teclado: `J` liga o pulo, espaço freia ou usa a habilidade, `Esc` pausa.
 
 ---
 
-# Mini Fúria (Godot 4)
+# Wreck 'n' Roll (Godot 4)
 
-Corrida isométrica de **combate** com mini carros, feita em **Godot 4.7** (renderizador Compatibility, roda no navegador e no celular). Projeto em [`minifuria/`](minifuria/): abra o `project.godot` no Godot.
+Corrida isométrica de **combate** com mini carros, feita em **Godot 4.7** (renderizador Compatibility, roda no navegador e no celular). Projeto em [`minifuria/`](minifuria/): abra o `project.godot` no Godot. O jogo se chamava *Mini Fúria*; o nome novo, em inglês, funciona nos dois idiomas e combina com o narrador de rock ("rock and roll... and wreck 'n' roll!"). A pasta, o pacote Android (`com.minifuria.jogo`) e o arquivo de save continuam com o nome antigo para não perder o progresso de quem já joga; no PC o save da pasta antiga é copiado sozinho na primeira vez.
+
+## Idiomas (inglês e português)
+
+O jogo inteiro (menus, HUD, avisos, garagem, carreira, online, configurações, dicas e legendas do narrador) está em **inglês e português**. Na primeira vez segue o idioma do aparelho (português → português; qualquer outro → inglês); depois troca no botão de globo do menu ou em **Configurações > Jogo > IDIOMA · LANGUAGE**, na hora, sem reiniciar.
+
+- `scripts/lang.gd`: o texto em português escrito no código é a chave; a tabela `EN` tem as frases e `FMT` os textos montados ("VOLTA %d" → "LAP {0}", "%s destruiu %s" → "{0} wrecked {1}"). Um `Translation` próprio (`lang_tr.gd`) entrega a tradução ao Godot, então todo Label e botão se traduz sozinho, inclusive textos montados com números e nomes (os formatos viram expressões regulares e os nomes capturados são traduzidos de novo) e textos com várias partes ("MUNDO 2 · DUNAS ALTAS" → "WORLD 2 · HIGH DUNES"). Em inglês, "1º" vira "1st" e o dinheiro usa vírgula de milhar.
+- O narrador fala no idioma do jogo (ou no escolhido em **Configurações > Áudio > VOZ DO NARRADOR**) e a legenda acompanha o idioma do jogo.
+- `--lang=en` / `--lang=pt` na linha de comando força o idioma (testes e trailers).
 
 Referências de game design: **Rock n' Roll Racing** (armas e nitro limitados que recarregam a cada volta, dinheiro por colocação e por rival destruído, upgrades na garagem), **Hot Wheels Unleashed / Trackmania** (loopings, espirais, rampas, boosters antes dos elementos) e **Burnout** (takedowns, batidas e destruição). Só os carros da corrida ficam na pista (sem trânsito).
 
@@ -244,12 +252,12 @@ Para montar a pasta `sfx/` de novo: clone as fontes listadas no começo de `tool
 
 ## Narrador: DECIBEL, locutor de arena rock and roll
 
-Locutor de estádio no estilo dos jogos de corrida clássicos, personagem original: falas curtas, gritadas, cheias de gíria de rock ("Number one, baby!", "Boom! Scrap metal!", "Final lap! Rock and roll!"). **Em inglês por padrão**, com a legenda em português na tela; **Configurações > Áudio > NARRAÇÃO** troca para a versão em português.
+Locutor de estádio no estilo dos jogos de corrida clássicos, personagem original: falas curtas, gritadas, cheias de gíria de rock ("Number one, baby!", "Boom! Scrap metal!", "Final lap! Rock and roll!"). Fala no idioma do jogo (inglês ou português) e a legenda segue o idioma do jogo; **Configurações > Áudio > VOZ DO NARRADOR** permite, por exemplo, jogar em português ouvindo o Decibel em inglês. O nome do jogo tem pronúncia ajustada em cada voz (em português ele fala "Réquen Rôu").
 
 - **92 falas em cada idioma** (`tools/build_voice.py` tem o roteiro): abertura, contagem, largada perfeita, liderança, ultrapassar e ser ultrapassado, destruir e ser destruído, queda, pulão, drift, nitro, carro quase destruído, última volta, vitória, pódio, derrota, entrada de cada chefe, ataques do chefe, chefe derrotado e comentários quando a corrida fica quieta.
 - **Voz**: gerada por IA com o Kokoro-82M (Apache 2.0) em precisão completa: voz `am_fenrir` em inglês (a mais expressiva das masculinas, escolhida numa comparação de quatro vozes) e `pm_santa` em português.
 - **Som limpo**: a primeira versão "de arena" soava robótica (a mudança de tom por esticamento e a voz dobrada criavam um chiado metálico). Agora a voz sai como o modelo gera, na velocidade normal, só com equalização leve, compressão suave e uma ambiência curta. Nos momentos grandes (abertura, chefe, liderança, última volta, vitória, destruição) entra **guitarra elétrica de verdade** (acorde em quintas, slide) ou prato de bateria antes da voz, abaixando por baixo dela. Guitarra e prato: amostras CC0 do Sonic Pi.
-- **Legenda animada** no alto da tela: o rosto do Decibel (cabeleira, bandana vermelha, óculos escuros, cavanhaque, jaqueta de couro com tachas e microfone), com a **boca abrindo no ritmo da voz** e a fala em português aparecendo letra a letra.
+- **Legenda animada** no alto da tela: o rosto do Decibel (cabeleira, bandana vermelha, óculos escuros, cavanhaque, jaqueta de couro com tachas e microfone), com a **boca abrindo no ritmo da voz** e a fala aparecendo letra a letra.
 - **Sem falar demais**: uma fala por vez; contagem e fim de corrida furam a fila; cada tipo de fala tem intervalo mínimo; as variações não se repetem em seguida. Enquanto ele fala, a música e os efeitos abaixam um pouco. Na largada, o Decibel abre a corrida (sempre nas corridas de chefe; nas outras, em metade das vezes) e a contagem espera ele terminar.
 - **Configurações > Áudio > NARRADOR** ajusta o volume (zero desliga a voz e a legenda).
 
@@ -473,7 +481,7 @@ No lobby (ou no menu de pausa): **VOZ: DESLIGADA → MICROFONE ABERTO → APERTE
 ### Servidor de salas
 O jogo precisa de um servidor de salas (ele só repassa mensagens; quem simula são os jogadores). Opções:
 1. **Rede local, sem instalar nada**: no PC ou Android, **HOSPEDAR AQUI** abre o servidor dentro do jogo e mostra o endereço (`ws://192.168.x.x:9080`) para os outros digitarem.
-2. **Servidor dedicado com o próprio jogo**: `MiniFuria.exe --headless -- --server --port=9080` (ou `godot --headless --path minifuria -- --server`). Com `--cert=cert.pem --key=key.pem` ele já serve `wss://`.
+2. **Servidor dedicado com o próprio jogo**: `WrecknRoll.exe --headless -- --server --port=9080` (ou `godot --headless --path minifuria -- --server`). Com `--cert=cert.pem --key=key.pem` ele já serve `wss://`.
 3. **Na internet, de graça ou barato (recomendado)**: `minifuria/server/` tem a mesma coisa em Node.js (`relay.js`, ~150 linhas, com Dockerfile). Hospede no Render, Fly.io, Railway, etc.: elas dão HTTPS, então o endereço vira `wss://seu-app...`. **A versão web do jogo só consegue conectar em `wss://`** (página https). Para PC/Android, `ws://ip:porta` também funciona (abra a porta 9080 no roteador se for pela internet).
 
 Protocolo: JSON para salas (`hello`, `list`, `create`, `join`, `leave`, `lock`, `room`) e binário `[tipo][remetente][dados]` para estado dos carros (tipo 1) e voz (tipo 2). Está documentado no topo de `scripts/net_server.gd`.
@@ -503,7 +511,7 @@ Ferramentas: `godot --headless -s res://tools/validate_tracks.gd` confere raio m
 ## PC (Windows e Linux)
 
 Presets **Windows** e **Linux** no `export_presets.cfg` geram um executável único (dados embutidos):
-`godot --headless --path minifuria --export-release "Windows" build/pc/MiniFuria.exe` (e `"Linux" build/pc/MiniFuria.x86_64`). Suportam controle (XInput/SDL: Xbox, PlayStation, Switch Pro e genéricos), tela dividida, online e voz. O ícone do .exe precisa do `rcedit` configurado no editor; sem ele, fica o ícone padrão.
+`godot --headless --path minifuria --export-release "Windows" build/pc/WrecknRoll.exe` (e `"Linux" build/pc/WrecknRoll.x86_64`). Suportam controle (XInput/SDL: Xbox, PlayStation, Switch Pro e genéricos), tela dividida, online e voz. O ícone do .exe precisa do `rcedit` configurado no editor; sem ele, fica o ícone padrão.
 
 ## APK para Android
 

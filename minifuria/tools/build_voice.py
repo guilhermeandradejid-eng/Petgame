@@ -1,5 +1,5 @@
 """
-Mini Fúria: gera as falas do narrador DECIBEL (pasta voice/), locutor de arena no estilo rock and roll.
+Wreck 'n' Roll: gera as falas do narrador DECIBEL (pasta voice/), locutor de arena no estilo rock and roll.
 
 Voz sintetizada por IA: Kokoro-82M (Apache 2.0, hexgrad) via kokoro-onnx (MIT). Arquivos do modelo em
 github.com/thewh1teagle/kokoro-onnx/releases (model-files-v1.0: kokoro-v1.0.fp16.onnx e voices-v1.0.bin).
@@ -17,6 +17,7 @@ ou prato de bateria entra antes da voz e abaixa por baixo dela. Guitarra e prato
 Uso:
     pip install kokoro-onnx soundfile        (e ffmpeg no sistema)
     python tools/build_voice.py PASTA_DO_MODELO PASTA_DAS_AMOSTRAS voice scripts/voice_lines.gd
+    ONLY=intro,go python tools/build_voice.py ...   (refaz só essas chaves e mantém as outras no .gd)
 """
 import os
 import subprocess
@@ -29,8 +30,8 @@ SR = 44100
 # chave: [(inglês falado, português), ...]
 LINES = {
     "intro": [
-        ("Welcome to Mini Fury! Tonight, somebody goes home in a bucket!", "Bem-vindos à Mini Fúria! Hoje alguém volta pra casa num balde!"),
-        ("Crank it up! It's time to rock and roll... and wreck and roll!", "Aumenta o som! Hora do rock and roll... e do pancadão sobre rodas!"),
+        ("Welcome to Wreck 'n' Roll! Tonight, somebody goes home in a bucket!", "Bem-vindos ao Wreck 'n' Roll! Hoje alguém volta pra casa num balde!"),
+        ("Crank it up! It's time to rock and roll... and wreck 'n' roll!", "Aumenta o som! Hora do rock and roll... e do Wreck 'n' Roll!"),
         ("No rules! No brakes! No mercy! Let's ride!", "Sem regras! Sem freio! Sem piedade! Bora!"),
         ("The crowd is screaming, the engines are screaming, and soon, the drivers will be screaming!", "A galera grita, os motores gritam... e daqui a pouco os pilotos também!"),
         ("Ladies and gentlemen, lock and load! This is gonna be loud!", "Senhoras e senhores, armas carregadas! Isso vai ser barulhento!"),
@@ -271,6 +272,23 @@ def encode(x, out):
                     "-c:a", "libvorbis", "-q:a", "4", out], input=np.clip(x, -1, 1).astype(np.float32).tobytes(), check=True)
 
 
+# pronúncia: o texto da legenda fica igual; só o que a voz lê muda
+SAY_TEXT = {"pt": [("Wreck 'n' Roll", "Réquen Rôu"), ("rock and roll", "róquen rôu"), ("Rock and roll", "Róquen rôu")]}
+SAY_PHON = {"en": [("ɹˈɛk ˈɛn ɹˈoʊl", "ɹˈɛk ən ɹˈoʊl")]}
+
+
+def speak(k, text, lang):
+    """voz crua do Kokoro com as correções de pronúncia do título"""
+    voice, speed, code = VOICE[lang]
+    for a, b in SAY_TEXT.get(lang, []):
+        text = text.replace(a, b)
+    ph = k.tokenizer.phonemize(text, code)
+    for a, b in SAY_PHON.get(lang, []):
+        ph = ph.replace(a, b)
+    s, sr = k.create(ph, voice=voice, speed=speed, lang=code, is_phonemes=True)
+    return np.asarray(s, dtype=np.float32), sr
+
+
 def gd(s):
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
@@ -281,16 +299,24 @@ def main():
     k = Kokoro(os.path.join(model_dir, MODEL), os.path.join(model_dir, "voices-v1.0.bin"))
     smp = {"fifths": dec(os.path.join(smp_dir, "guit_e_fifths.flac")), "slide": dec(os.path.join(smp_dir, "guit_e_slide.flac")),
            "crash": dec(os.path.join(smp_dir, "drum_cymbal_hard.flac"))}
+    only = [x for x in os.environ.get("ONLY", "").split(",") if x]
+    old = {}
+    if only and os.path.exists(gd_out):
+        for ln in open(gd_out, encoding="utf-8"):
+            if ln.startswith('\t"'):
+                old[ln.split('"')[1]] = ln.rstrip("\n")
     rows = []
     total = 0.0
     for key, lines in LINES.items():
+        if only and key not in only and key in old:
+            rows.append(old[key])
+            continue
         items = []
         for n, (en, pt) in enumerate(lines):
             durs = {}
             for lang, text in (("en", en), ("pt", pt)):
-                voice, speed, code = VOICE[lang]
-                s, sr = k.create(text, voice=voice, speed=speed, lang=code)
-                v = voice_fx(np.asarray(s, dtype=np.float32), sr)
+                s, sr = speak(k, text, lang)
+                v = voice_fx(s, sr)
                 if key in STING:
                     v = mix_sting(v, STING[key], smp)
                 v = level(v)

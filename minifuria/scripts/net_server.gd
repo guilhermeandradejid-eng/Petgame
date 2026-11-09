@@ -1,6 +1,6 @@
 class_name NetServer
 extends Node
-## Servidor de salas do Mini Fúria (WebSocket). Não simula a corrida: guarda as salas, repassa mensagens
+## Servidor de salas do Wreck 'n' Roll (WebSocket). Não simula a corrida: guarda as salas, repassa mensagens
 ## entre quem está na mesma sala e escolhe o anfitrião (quem simula a IA). Roda:
 ##   • dedicado:  godot --headless --path minifuria -- --server --port=9080   (ou o executável do jogo com os mesmos argumentos)
 ##   • no próprio jogo (PC/Android): botão "HOSPEDAR AQUI" no menu online (rede local)
@@ -160,7 +160,7 @@ func _handle(id: int, d: Dictionary) -> void:
 		"create":
 			_leave(id)
 			var code := _code()
-			rooms[code] = {"name": String(d.get("name", cl.name + "'s sala")).left(24), "host": id, "members": [id],
+			rooms[code] = {"name": String(d.get("name", "Sala de " + cl.name)).left(24), "host": id, "members": [id],
 				"max": clampi(int(d.get("max", MAX_ROOM)), 2, MAX_ROOM), "open": true}
 			cl.room = code
 			_joined(id, code)

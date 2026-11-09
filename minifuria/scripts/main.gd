@@ -1,5 +1,5 @@
 extends Node3D
-## Mini Fúria: corrida isométrica de combate com mini carros.
+## Wreck 'n' Roll: corrida isométrica de combate com mini carros.
 ## Fluxo: menu -> escolha da pista -> garagem (carro, armas, nitro, upgrades) -> corrida -> resultado ($).
 
 const LAPS := 3
@@ -252,7 +252,7 @@ func _ready() -> void:
 	add_child(narrator)
 	narrator.setup(self)
 	narrator.enabled = float(settings.val("vol_narr")) > 0.001
-	narrator.lang = String(settings.val("narr_lang"))
+	narrator.lang = settings.narr_lang()
 	loader = Loader.new()
 	hud.add_child(loader)
 	career = Career.new()
@@ -559,6 +559,11 @@ func _setup_input() -> void:
 func _load_save() -> void:
 	save = {"cash": 800, "car": "faisca", "front": "mg", "rear": "mine", "nitro": "short", "steer": "tela",
 		"up": {"engine": 0, "armor": 0, "ammo": 0, "nitro": 0, "tires": 0}, "best": {}}
+	# o jogo se chamava "Mini Fúria": no PC a pasta de dados mudou junto com o nome; traz o save antigo
+	if not FileAccess.file_exists(SAVE_PATH):
+		var old := OS.get_user_data_dir().get_base_dir().path_join("Mini Fúria").path_join("minifuria.json")
+		if FileAccess.file_exists(old):
+			DirAccess.copy_absolute(old, ProjectSettings.globalize_path(SAVE_PATH))
 	if FileAccess.file_exists(SAVE_PATH):
 		var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
 		var d = JSON.parse_string(f.get_as_text())
@@ -1620,6 +1625,22 @@ func pause(on: bool) -> void:
 		music.set_paused(false)
 
 
+## idioma trocado: Labels e botões se traduzem sozinhos; aqui se refaz o que é montado ou desenhado à mão
+func on_lang_changed() -> void:
+	if hud == null:
+		return
+	if hud.lang_b:
+		hud.lang_b.text = "EN" if Lang.en() else "PT"
+	if career == null:
+		return
+	if hud.menu_cash and hud.garage_ui:
+		hud.menu_cash.text = hud.garage_ui._money(int(save.cash))
+	hud.refresh_garage()
+	for c in [hud.info, hud.status, hud.minimap]:
+		if c:
+			(c as Control).queue_redraw()
+
+
 func toggle_steer() -> void:
 	save.steer = "carro" if String(save.get("steer", "tela")) == "tela" else "tela"
 	_write_save()
@@ -2679,7 +2700,7 @@ func _show_results() -> void:
 		for i in order.size():
 			var c: Car = order[i]
 			var tm: String = _fmt(float(c.get_meta("fin_t", 0.0))) if c.get_meta("done", false) else "não terminou"
-			rows.append("%dº  %s%s   %s   ·   %d destruídos" % [i + 1, c.display_name, "  (você)" if c.local_idx >= 0 and locals.size() == 1 else "", tm, int(c.get_meta("kills", 0))])
+			rows.append("%dº  %s%s   %s   ·   %d destruídos" % [i + 1, tr(c.display_name), tr("  (você)") if c.local_idx >= 0 and locals.size() == 1 else "", tm, int(c.get_meta("kills", 0))])
 		if locals.size() > 1:
 			hud.res_title.text = "%s VENCEU!" % (order[0] as Car).display_name
 		hud.set_results(hud.res_title.text, [], [], int(stats.prize), int(save.cash))

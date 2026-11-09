@@ -1,5 +1,5 @@
 """
-Mini Fúria: monta a biblioteca de sons REAIS do jogo (minifuria/sfx/) a partir de pacotes livres.
+Wreck 'n' Roll: monta a biblioteca de sons REAIS do jogo (minifuria/sfx/) a partir de pacotes livres.
 
 Fontes (veja sfx/CREDITOS.txt para autores e licenças de cada arquivo):
   - Stunt Rally 3 (github.com/stuntrally/stuntrally3, data/sounds): motores gravados no engine-sim em rotações

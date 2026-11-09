@@ -3,8 +3,8 @@ config_version=5
 
 [application]
 
-config/name="Mini Fúria"
-config/description="Corrida isométrica de mini carros com batidas, destruição e nitro."
+config/name="Wreck 'n' Roll"
+config/description="Corrida isométrica de combate com mini carros: batidas, armas, destruição e nitro."
 run/main_scene="res://scenes/boot.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icons/icon.png"
@@ -47,3 +47,7 @@ lights_and_shadows/directional_shadow/size=2048
 
 general/default_playback_type.web=0
 driver/enable_input=true
+
+[internationalization]
+
+locale/fallback="pt_BR"

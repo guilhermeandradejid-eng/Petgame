@@ -339,7 +339,7 @@ func _draw_info() -> void:
 	c.draw_colored_polygon(PackedVector2Array([Vector2(sk, 0), Vector2(sk + 8, 0), Vector2(8, ph), Vector2(0, ph)]), UI.BAD if first else UI.HOT)
 	var pl := "%d" % int(_ri.place)
 	var w := _outlined(c, UI.display_it, Vector2(24, 62), pl, 56, UI.INK if first else Color.WHITE, 0 if first else 6)
-	_outlined(c, UI.display_it, Vector2(26 + w, 40), "º", 22, UI.INK if first else UI.HOT, 0 if first else 4)
+	_outlined(c, UI.display_it, Vector2(26 + w, 40), Lang.ord_suffix(int(_ri.place)), 22, UI.INK if first else UI.HOT, 0 if first else 4)
 	_outlined(c, UI.display_it, Vector2(30 + w, 64), "/%d" % int(_ri.n), 16, Color(0.03, 0.02, 0.07, 0.7) if first else UI.MUTED, 0 if first else 4)
 	# volta, tempo e velocidade
 	var x0 := pw + sk + 14.0
@@ -548,7 +548,7 @@ func _draw_boss() -> void:
 	var W := boss_bar.size.x
 	var u := clampf(b.health / b.max_health, 0.0, 1.0)
 	Icon.paint(boss_bar, "skull", Rect2(2, 2, 26, 26), UI.BAD)
-	_outlined(boss_bar, UI.display_it, Vector2(36, 20), b.display_name + ("  · DESTRUÍDO" if b.wrecked else ""), 16, UI.BAD, 5)
+	_outlined(boss_bar, UI.display_it, Vector2(36, 20), Lang.t(b.display_name + ("  · DESTRUÍDO" if b.wrecked else "")), 16, UI.BAD, 5)
 	boss_bar.draw_colored_polygon(PackedVector2Array([Vector2(46, 26), Vector2(W, 26), Vector2(W - 10, 46), Vector2(36, 46)]), Color(0.03, 0.02, 0.07, 0.6))
 	_seg_bar(boss_bar, Rect2(38, 28, W - 44, 16), 30, u, UI.BAD.lerp(UI.HOT, 1.0 - u))
 
@@ -615,6 +615,7 @@ func _draw_status() -> void:
 
 
 func _text(c: Control, s: String, pos: Vector2, fs: int, center: bool, right := false, col := Color.WHITE) -> void:
+	s = Lang.t(s)
 	var tw := font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	var p := pos
 	if center:
@@ -706,10 +707,11 @@ func _build_menu() -> void:
 	v.add_theme_constant_override("separation", 10)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	m.add_child(v)
-	var logo := UI.title(v, "MINI", 72, UI.TEXT)
+	var logo := UI.title(v, "WRECK 'N'", 64, UI.TEXT)
 	logo.label_settings.shadow_color = UI.BAD
 	logo.add_theme_constant_override("line_spacing", -14)
-	UI.title(v, "FÚRIA", 96, UI.HOT)
+	var logo2 := UI.title(v, "ROLL", 116, UI.HOT)
+	logo2.add_theme_constant_override("line_spacing", -22)
 	UI.checker(v, 340, 12)
 	var sp := Control.new()
 	sp.custom_minimum_size = Vector2(0, 14)
@@ -735,6 +737,11 @@ func _build_menu() -> void:
 		ex.tooltip_text = "Sair"
 		ex.pressed.connect(func(): get_tree().quit())
 		row.add_child(ex)
+	# idioma: troca na hora entre inglês e português
+	lang_b = UI.icon_button("EN" if Lang.en() else "PT", "globe", false, 18, 124, 56)
+	lang_b.tooltip_text = "IDIOMA · LANGUAGE"
+	lang_b.pressed.connect(func(): game.settings.toggle_lang())
+	row.add_child(lang_b)
 	menu_anim = v.get_children()
 	# dinheiro e nome do carro (canto direito)
 	var tr := HBoxContainer.new()
@@ -808,6 +815,7 @@ func _build_menu() -> void:
 
 
 var menu_cash: Label
+var lang_b: Button
 var menu_car: Label
 var menu_info: Control
 var menu_tag: Label
@@ -1194,7 +1202,7 @@ func _build_caption() -> void:
 	cap_text.add_theme_constant_override("line_spacing", -4)
 
 
-func caption(who: String, text: String, dur: float, _spoken := "") -> void:
+func caption(who: String, text: String, dur: float) -> void:
 	if cap == null:
 		return
 	cap_who = who

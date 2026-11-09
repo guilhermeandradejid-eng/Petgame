@@ -1,10 +1,10 @@
 class_name Settings
 extends Node
 ## Configurações: áudio (geral, música, efeitos, voz), vídeo (qualidade, resolução 3D, tela cheia, VSync,
-## efeitos de tela, FPS), jogo (direção, tremor da câmera, vibração) e controles (referência).
+## efeitos de tela, FPS), jogo (idioma, direção, tremor da câmera, vibração) e controles (referência).
 ## Fica salvo em save["cfg"] e é aplicado na hora.
 
-const DEFAULTS := {"vol_master": 0.9, "vol_music": 0.9, "vol_sfx": 0.9, "vol_voice": 1.0, "vol_narr": 1.0, "narr_lang": "en",
+const DEFAULTS := {"vol_master": 0.9, "vol_music": 0.9, "vol_sfx": 0.9, "vol_voice": 1.0, "vol_narr": 1.0, "narr_lang": "auto", "lang": "",
 	"quality": "alta", "scale": 1.0, "fullscreen": false, "vsync": true, "screen_fx": true, "fps": false, "fps_cap": 120, "dyn_res": true,
 	"shake": 1.0, "vibration": true}
 const QUALITY := [["baixa", "BAIXA"], ["media", "MÉDIA"], ["alta", "ALTA"]]
@@ -24,6 +24,15 @@ func setup(g: Node, h: Hud) -> void:
 	game = g
 	hud = h
 	var cfg: Dictionary = g.save.get("cfg", {})
+	# idioma: na primeira vez segue o aparelho; a narração passa a acompanhar o idioma do jogo
+	if String(cfg.get("lang", "")) not in ["en", "pt"]:
+		cfg["lang"] = Lang.default_code()
+		cfg["narr_lang"] = "auto"
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--lang="):
+			cfg["lang"] = "en" if a.substr(7) == "en" else "pt"
+		if a.begins_with("--narrlang="):
+			cfg["narr_lang"] = a.substr(11)
 	for k in DEFAULTS:
 		if not cfg.has(k):
 			cfg[k] = DEFAULTS[k]
@@ -71,8 +80,13 @@ func apply_all() -> void:
 	_set_bus("Efeitos", float(val("vol_sfx")))
 	_set_bus("Voz", float(val("vol_voice")))
 	_set_bus("Narrador", float(val("vol_narr")))
+	var lg := String(val("lang"))
+	if Lang.code != lg or not Lang.ready():
+		Lang.setup(lg)
+		if game.has_method("on_lang_changed"):
+			game.on_lang_changed()
 	if game.get("narrator"):
-		game.narrator.lang = String(val("narr_lang"))
+		game.narrator.lang = narr_lang()
 		game.narrator.enabled = float(val("vol_narr")) > 0.001
 		if not game.narrator.enabled:
 			game.narrator.stop()
@@ -105,6 +119,16 @@ func apply_all() -> void:
 	Engine.max_fps = fps_cap(true)
 
 
+## idioma da narração: o do jogo (auto) ou um escolhido
+func narr_lang() -> String:
+	var n := String(val("narr_lang"))
+	return n if n in ["en", "pt"] else String(val("lang"))
+
+
+func toggle_lang() -> void:
+	_put("lang", "pt" if Lang.en() else "en")
+
+
 ## limite de quadros: o escolhido na corrida; nos menus no máximo 60 (a vitrine não precisa de 120 e o
 ## celular economiza bateria). No Android o limite também escolhe a taxa da tela (frame pacing).
 func fps_cap(racing: bool) -> int:
@@ -125,6 +149,8 @@ func _put(k: String, v) -> void:
 		return
 	apply_all()
 	game._write_save()
+	if k == "lang" and scr.visible:
+		_show_tab.call_deferred(tab)
 
 
 # ------------------------------------------------------------------ tela
@@ -196,7 +222,7 @@ func _show_tab(t: String) -> void:
 			_slider("vol_music", "MÚSICA")
 			_slider("vol_sfx", "EFEITOS (MOTOR, TIROS, BATIDAS)")
 			_slider("vol_narr", "NARRADOR (DECIBEL)")
-			_choice("narr_lang", "NARRAÇÃO", [["en", "INGLÊS (CLÁSSICO)"], ["pt", "PORTUGUÊS"]])
+			_choice("narr_lang", "VOZ DO NARRADOR", [["auto", "IGUAL AO JOGO"], ["en", "ENGLISH"], ["pt", "PORTUGUÊS"]])
 			_slider("vol_voice", "CHAT DE VOZ")
 			_note("O chat de voz liga no lobby online ou no menu de pausa.")
 		"video":
@@ -214,6 +240,7 @@ func _show_tab(t: String) -> void:
 			_choice("screen_fx", "EFEITOS DE TELA (BORRÃO, ABERRAÇÃO, LINHAS)", [[true, "LIGADOS"], [false, "DESLIGADOS"]])
 			_choice("fps", "MOSTRAR FPS", [[false, "NÃO"], [true, "SIM"]])
 		"jogo":
+			_choice("lang", "IDIOMA · LANGUAGE", [["en", "ENGLISH"], ["pt", "PORTUGUÊS"]])
 			_steer_row()
 			_slider("shake", "TREMOR DA CÂMERA", 0.0, 1.0, 0.05)
 			_choice("vibration", "VIBRAÇÃO (CELULAR E CONTROLE)", [[true, "LIGADA"], [false, "DESLIGADA"]])
@@ -298,7 +325,7 @@ func _note(t: String) -> void:
 
 func _ctrl_table() -> void:
 	var rows := [
-		["", "TECLADO", "CONTROLE"],
+		["", "TECLADO", Lang.pick("CONTROLE", "CONTROLLER")],
 		["Dirigir", "Setas / WASD", "Analógico esquerdo / direcional"],
 		["Acelerar", "automático (modo TELA) · ↑", "A ou RT"],
 		["Freio / ré", "B ou C", "B ou LT"],

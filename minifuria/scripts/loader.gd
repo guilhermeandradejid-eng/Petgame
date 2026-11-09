@@ -19,7 +19,7 @@ const TIPS := [
 var progress := 0.0
 var shown := 0.0
 var t := 0.0
-var title := "MINI FÚRIA"
+var title := "WRECK 'N' ROLL"
 var sub := "CARREGANDO"
 var tip := ""
 var puffs: Array = []
@@ -111,9 +111,10 @@ func _draw() -> void:
 	_draw_car(cp, bounce)
 	# título e progresso (barra inclinada que o carrinho "percorre")
 	var f: Font = UI.display_it
-	var tw := f.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 52).x
-	draw_string_outline(f, Vector2((vs.x - tw) * 0.5, vs.y * 0.3), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 52, 10, UI.INK)
-	draw_string(f, Vector2((vs.x - tw) * 0.5, vs.y * 0.3), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 52, UI.HOT)
+	var ttl := Lang.t(title)
+	var tw := f.get_string_size(ttl, HORIZONTAL_ALIGNMENT_LEFT, -1, 52).x
+	draw_string_outline(f, Vector2((vs.x - tw) * 0.5, vs.y * 0.3), ttl, HORIZONTAL_ALIGNMENT_LEFT, -1, 52, 10, UI.INK)
+	draw_string(f, Vector2((vs.x - tw) * 0.5, vs.y * 0.3), ttl, HORIZONTAL_ALIGNMENT_LEFT, -1, 52, UI.HOT)
 	var bw := minf(520.0, vs.x * 0.7)
 	var bx := (vs.x - bw) * 0.5
 	var by := vs.y * 0.78
@@ -122,12 +123,13 @@ func _draw() -> void:
 	var fw := bw * clampf(shown, 0.0, 1.0)
 	if fw > 2.0:
 		draw_colored_polygon(PackedVector2Array([Vector2(bx + sk, by), Vector2(bx + fw + sk, by), Vector2(bx + fw, by + 14), Vector2(bx, by + 14)]), UI.HOT)
-	var s2 := "%s  %d%%" % [sub, int(shown * 100.0)]
+	var s2 := "%s  %d%%" % [Lang.t(sub), int(shown * 100.0)]
 	var sw := f.get_string_size(s2, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
 	draw_string(f, Vector2((vs.x - sw) * 0.5, by - 12), s2, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, UI.TEXT)
 	var bf: Font = UI.body_it
-	var tw2 := bf.get_string_size(tip, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
-	draw_string(bf, Vector2((vs.x - tw2) * 0.5, by + 50), tip, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, UI.MUTED)
+	var tp := Lang.t(tip)
+	var tw2 := bf.get_string_size(tp, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x
+	draw_string(bf, Vector2((vs.x - tw2) * 0.5, by + 50), tp, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, UI.MUTED)
 
 
 ## carro de verdade do jogo (sprite renderizado do modelo 3D) com as rodas girando por cima
