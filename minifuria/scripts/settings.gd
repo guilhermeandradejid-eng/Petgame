@@ -4,7 +4,7 @@ extends Node
 ## efeitos de tela, FPS), jogo (direção, tremor da câmera, vibração) e controles (referência).
 ## Fica salvo em save["cfg"] e é aplicado na hora.
 
-const DEFAULTS := {"vol_master": 0.9, "vol_music": 0.75, "vol_sfx": 0.9, "vol_voice": 1.0,
+const DEFAULTS := {"vol_master": 0.9, "vol_music": 0.9, "vol_sfx": 0.9, "vol_voice": 1.0,
 	"quality": "alta", "scale": 1.0, "fullscreen": false, "vsync": true, "screen_fx": true, "fps": false,
 	"shake": 1.0, "vibration": true}
 const QUALITY := [["baixa", "BAIXA"], ["media", "MÉDIA"], ["alta", "ALTA"]]

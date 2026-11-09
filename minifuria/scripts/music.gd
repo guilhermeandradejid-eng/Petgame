@@ -25,7 +25,7 @@ var _rng := RandomNumberGenerator.new()
 var _want_key := ""
 var _cache := {}
 var _cur_key := ""
-var volume_db := -9.0
+var volume_db := 0.0   # as faixas já vêm normalizadas (~-17 dB); os efeitos ficam um pouco abaixo (sfx.gd)
 var now_text := ""   # "♪ faixa — artista" da música de arquivo que está tocando (crédito na tela)
 
 ## Créditos das faixas incluídas (todas CC0 / domínio público — uso comercial livre; crédito por cortesia)

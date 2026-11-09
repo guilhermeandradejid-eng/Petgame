@@ -1268,6 +1268,9 @@ func hazard(kind: String, owner: Car, pos: Vector3, r: float, delay: float, dur:
 	m.shader = load("res://shaders/telegraph.gdshader")
 	m.set_shader_parameter("col", extra.get("col", Color(1.0, 0.2, 0.1)))
 	m.set_shader_parameter("mode", {"fire": 1.0, "spikewall": 2.0, "lane": 2.0, "laser": 2.0, "mud": 3.0, "ice": 4.0}.get(kind, 0.0))
+	m.set_shader_parameter("sub", {"quake": 0.0, "meteor": 1.0, "emp": 2.0}.get(kind, 3.0))
+	m.set_shader_parameter("size", Vector2(r, float(extra.get("rz", r))))
+	m.set_shader_parameter("seed", randf() * 10.0)
 	if is_instance_valid(owner) and not owner.is_boss:
 		h["player_item"] = true
 	mi.material_override = m
@@ -1291,6 +1294,9 @@ func _step_hazards(dt: float) -> void:
 		var arm := clampf(float(h.t) / maxf(float(h.delay), 0.01), 0.0, 1.0)
 		m.set_shader_parameter("arm", arm)
 		m.set_shader_parameter("tt", h.t)
+		# depois do golpe o desenho some aos poucos (as rachaduras do tremor ficam um instante)
+		var left := float(h.delay) + float(h.dur) - float(h.t)
+		m.set_shader_parameter("life", clampf(left / minf(0.5, maxf(float(h.dur), 0.05)), 0.0, 1.0))
 		var pos: Vector3 = h.pos
 		if not h.done and h.t >= h.delay:
 			h.done = true

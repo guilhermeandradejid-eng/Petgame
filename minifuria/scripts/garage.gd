@@ -377,7 +377,7 @@ func _build_parts(stack: Control) -> Control:
 	buy_b = Button.new()
 	buy_b.custom_minimum_size = Vector2(138, 50)
 	_style_buy(buy_b)
-	buy_b.pressed.connect(func(): _buy(sel_up))
+	buy_b.pressed.connect(func(): _ask_up(sel_up))
 	dh.add_child(buy_b)
 	return grid
 
@@ -417,7 +417,7 @@ func _build_arsenal(stack: Control) -> Control:
 	wb.custom_minimum_size = Vector2(368, 132)
 	for st in ["normal", "hover", "focus", "pressed", "disabled"]:
 		wb.add_theme_stylebox_override(st, _card_style(st != "normal" and st != "disabled"))
-	wb.pressed.connect(func(): game.equip("front", "atk"))
+	wb.pressed.connect(_ask_weapon)
 	wb.focus_entered.connect(func(): room.set_focus("wpn"))
 	v.add_child(wb)
 	var th := TextureRect.new()
@@ -470,7 +470,7 @@ func _build_arsenal(stack: Control) -> Control:
 		b.custom_minimum_size = Vector2(117, 112)
 		for st in ["normal", "hover", "focus", "pressed", "disabled"]:
 			b.add_theme_stylebox_override(st, _card_style(st != "normal" and st != "disabled"))
-		b.pressed.connect(func(): game.equip("special", spk))
+		b.pressed.connect(_special_pressed.bind(spk))
 		srow.add_child(b)
 		var ic2 := Icon.make(spk, 40, UI.INFO)
 		ic2.position = Vector2(38, 10)
@@ -595,8 +595,10 @@ func _car_view(k: String) -> void:
 	refresh()
 
 
+## tocar/clicar num cartão só escolhe; comprar sempre passa pela caixa de confirmação.
+## No controle, apertar A no cartão já escolhido abre a confirmação.
 func _car_pressed(k: String) -> void:
-	if view_kind != k:
+	if view_kind != k or hud.pointer_recent():
 		_car_view(k)
 	elif not game.career.owned(k):
 		_action()
@@ -611,25 +613,68 @@ func _part_sel(k: String) -> void:
 
 
 func _part_pressed(k: String) -> void:
-	if sel_up != k:
+	if sel_up != k or hud.pointer_recent():
 		_part_sel(k)
 	else:
-		_buy(k)
+		_ask_up(k)
 
 
-func _buy(k: String) -> void:
+## sem dinheiro: avisa quanto falta (e não abre a caixa)
+func _short(price: int) -> bool:
+	if int(game.save.cash) >= price:
+		return false
+	hud.popup("Faltam $%d" % (price - int(game.save.cash)), Color("#ff7a7a"))
+	game.sfx.play("error", -8.0)
+	return true
+
+
+func _ask_up(k: String) -> void:
 	if k == "" or not _can_up(k):
 		return
 	var lvl := int(game.save.up.get(k, 0))
 	if lvl >= 3:
 		return
 	var price: int = game.upgrade_price(k)
-	if int(game.save.cash) < price:
-		hud.popup("Faltam $%d" % (price - int(game.save.cash)), Color("#ff7a7a"))
-		game.sfx.play("error", -8.0)
+	if _short(price):
+		return
+	var lo: Array = Car.LOADOUT[String(game.save.car)]
+	hud.confirm_buy(_up_name(k, lo), "NÍVEL %d DE 3" % (lvl + 1), price, _buy.bind(k))
+
+
+func _buy(k: String) -> void:
+	if k == "" or not _can_up(k):
+		return
+	var lvl := int(game.save.up.get(k, 0))
+	if lvl >= 3 or _short(game.upgrade_price(k)):
 		return
 	game.buy_upgrade(k)
 	room.flash()
+
+
+func _ask_weapon() -> void:
+	var ck := String(game.save.car)
+	if game.career.has_front(ck) or not game.career.owned(ck):
+		return
+	var price: int = game.career.weapon_price(ck)
+	if _short(price):
+		return
+	hud.confirm_buy(String(Car.FRONT[String(Car.LOADOUT[ck][0])].name), "ARMA DE ATAQUE", price, func():
+		game.equip("front", "atk")
+		room.flash())
+
+
+## especial: o que já é seu equipa/desequipa direto; comprar pede confirmação
+func _special_pressed(spk: String) -> void:
+	var ck := String(game.save.car)
+	if not game.career.active() or game.career.owns_special(ck, spk):
+		game.equip("special", spk)
+		return
+	var price: int = game.career.special_price(spk)
+	if _short(price):
+		return
+	hud.confirm_buy(String(Car.SPECIAL[spk].label), "ESPECIAL", price, func():
+		game.equip("special", spk)
+		room.flash())
 
 
 func _action() -> void:
@@ -637,6 +682,17 @@ func _action() -> void:
 	if game.career.owned(k):
 		game.start_race()
 		return
+	if game.career.available(k):
+		var price := int(Career.SHOP[k].price)
+		if _short(price):
+			return
+		hud.confirm_buy(String(Career.SHOP[k].name), "NOVO CARRO", price, _buy_car.bind(k))
+		return
+	hud.popup("Disponível no MUNDO %d" % (int(Career.SHOP[k].world) + 1), Color("#ff7a7a"))
+	game.sfx.play("error", -8.0)
+
+
+func _buy_car(k: String) -> void:
 	var msg: String = game.career.pick_car(k)
 	if msg != "":
 		hud.popup(msg, Color("#ff7a7a"))

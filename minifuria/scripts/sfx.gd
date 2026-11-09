@@ -28,6 +28,10 @@ const ENGINE_OF := {"faisca": "b-i6r", "vespa": "su-mid", "zefiro": "elec", "tro
 ## faixa de rotação usada (marcha lenta .. corte) por série
 const RANGE := {"dsl": [500.0, 2350.0], "elec": [2200.0, 7600.0], "gv8": [1000.0, 6000.0], "ct-v8": [1000.0, 7000.0]}
 
+## mixagem: motor do jogador e dos rivais um pouco abaixo, para a música aparecer por cima no celular
+const ENG_GAIN := 0.62
+const SHOT_DB := -4.0   # efeitos curtos (tiros, batidas): abaixo da música
+const LOOP_DB := -3.0   # pneu, vento, turbo, raspada
 var muted := false
 var pool: Array = []
 var pool_i := 0
@@ -204,7 +208,7 @@ func _process(dt: float) -> void:
 		_lp.cutoff_hz = lerpf(1400.0, 11000.0, clampf(throttle_s, 0.0, 1.0))
 	var n := eng_players.size()
 	if n > 0:
-		var v := eng_vol * (0.45 if _shift_dip > 0.0 else 1.0)
+		var v := eng_vol * ENG_GAIN * (0.45 if _shift_dip > 0.0 else 1.0)
 		var w := PackedFloat32Array()
 		w.resize(n)
 		if n == 1 or rpm <= float(eng_rpms[0]):
@@ -236,7 +240,7 @@ func _process(dt: float) -> void:
 		if lv > 0.004:
 			if not p.playing:
 				p.play()
-			p.volume_db = linear_to_db(lv)
+			p.volume_db = linear_to_db(lv) + LOOP_DB
 			match k:
 				"loop_skid":
 					p.pitch_scale = (0.92 + lv * 0.18) * slow_k
@@ -263,7 +267,7 @@ func play(name_: String, vol_db := 0.0, pitch := 1.0) -> void:
 	var p: AudioStreamPlayer = pool[pool_i]
 	pool_i = (pool_i + 1) % pool.size()
 	p.stream = st
-	p.volume_db = vol_db
+	p.volume_db = vol_db + SHOT_DB
 	p.pitch_scale = pitch * randf_range(0.95, 1.05) * slow_k
 	p.play()
 
@@ -283,7 +287,7 @@ func attach_engine(c: Car) -> void:
 	p.bus = "Efeitos"
 	p.unit_size = 9.0 if not c.is_boss else 16.0
 	p.max_distance = 90.0
-	p.max_db = -2.0
+	p.max_db = -6.0
 	p.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
 	p.panning_strength = 0.8
 	p.volume_db = -8.0
@@ -318,5 +322,5 @@ func _step_engines3d(_dt: float) -> void:
 		var frac := s * 5.0 - g
 		var r := lerpf(rg[0] + (rg[1] - rg[0]) * (0.0 if g == 0 else 0.42), rg[1] * 0.93, frac)
 		p.pitch_scale = clampf(r / float(e.ref), 0.5, 2.0) * slow_k
-		p.volume_db = -11.0 + 6.0 * clampf(car.ctrl.throttle, 0.0, 1.0) + (3.0 if car.nitroing else 0.0)
+		p.volume_db = -18.0 + 5.0 * clampf(car.ctrl.throttle, 0.0, 1.0) + (2.0 if car.nitroing else 0.0)
 	engines3d = keep

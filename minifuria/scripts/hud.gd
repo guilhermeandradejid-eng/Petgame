@@ -143,6 +143,7 @@ func refresh_steer() -> void:
 
 
 func show_screen(name_: String) -> void:
+	close_confirm()
 	if game and steer_btns.size() > 0:
 		refresh_steer()
 	if name_ != "race" and wrong_l:
@@ -372,6 +373,124 @@ func popup(text: String, col: Color, sub := "") -> void:
 		var c := pops.get_child(0)
 		pops.remove_child(c)
 		c.queue_free()
+
+
+# ------------------------------------------------------------------ confirmação de compra
+var _confirm_box: Control
+var _confirm_prev: Control
+var _ptr_ms := -100000
+
+
+func _input(ev: InputEvent) -> void:
+	if (ev is InputEventMouseButton or ev is InputEventScreenTouch) and ev.is_pressed():
+		_ptr_ms = Time.get_ticks_msec()
+	if _confirm_box and ev.is_action_pressed("ui_cancel"):
+		close_confirm()
+		get_viewport().set_input_as_handled()
+
+
+## o último clique/toque foi agora há pouco? (aí tocar num cartão só seleciona; a compra pede confirmação)
+func pointer_recent() -> bool:
+	return Time.get_ticks_msec() - _ptr_ms < 700
+
+
+## caixa "COMPRAR?": nome, detalhe, preço e saldo depois; só compra no botão COMPRAR
+func confirm_buy(what: String, sub: String, price: int, on_yes: Callable) -> void:
+	close_confirm()
+	var fo := get_viewport().gui_get_focus_owner()
+	_confirm_prev = fo if fo is Control else null
+	var bg := Control.new()
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_STOP
+	root.add_child(bg)
+	var dim := ColorRect.new()
+	dim.color = Color(0.02, 0.01, 0.06, 0.74)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.gui_input.connect(func(e: InputEvent):
+		if (e is InputEventMouseButton or e is InputEventScreenTouch) and e.is_pressed():
+			close_confirm())
+	bg.add_child(dim)
+	var cc := CenterContainer.new()
+	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.add_child(cc)
+	var pc := PanelContainer.new()
+	var sb := UI.panel_box(UI.HOT)
+	sb.content_margin_left = 34
+	sb.content_margin_right = 34
+	sb.content_margin_top = 22
+	sb.content_margin_bottom = 24
+	pc.add_theme_stylebox_override("panel", sb)
+	pc.custom_minimum_size = Vector2(540, 0)
+	cc.add_child(pc)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	pc.add_child(v)
+	var q := UI.text(v, "COMPRAR?", 16, UI.MUTED)
+	q.add_theme_font_override("font", UI.display_it)
+	q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UI.title(v, what.to_upper(), 34, UI.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	if sub != "":
+		var sl := UI.text(v, sub, 16, UI.INFO)
+		sl.add_theme_font_override("font", UI.display_it)
+		sl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var pr := HBoxContainer.new()
+	pr.alignment = BoxContainer.ALIGNMENT_CENTER
+	pr.add_theme_constant_override("separation", 10)
+	v.add_child(pr)
+	var ic := Icon.make("coin", 36, UI.OK)
+	ic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pr.add_child(ic)
+	UI.title(pr, "$" + garage_ui._money(price), 42, UI.OK)
+	var cash := int(game.save.cash)
+	var bal := UI.text(v, "SALDO  $%s  →  $%s" % [garage_ui._money(cash), garage_ui._money(cash - price)], 15, UI.MUTED)
+	bal.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(0, 6)
+	v.add_child(gap)
+	var h := HBoxContainer.new()
+	h.alignment = BoxContainer.ALIGNMENT_CENTER
+	h.add_theme_constant_override("separation", 14)
+	v.add_child(h)
+	var no := UI.icon_button("CANCELAR", "back", false, 18, 210, 58)
+	h.add_child(no)
+	var yes := UI.icon_button("COMPRAR", "coin", true, 22, 250, 58)
+	h.add_child(yes)
+	no.pressed.connect(func():
+		game.sfx.play("click", -14.0)
+		close_confirm())
+	yes.pressed.connect(func():
+		close_confirm()
+		on_yes.call())
+	# o foco do controle fica preso nos dois botões enquanto a caixa está aberta
+	for b in [no, yes]:
+		(b as Control).focus_neighbor_top = (b as Control).get_path()
+		(b as Control).focus_neighbor_bottom = (b as Control).get_path()
+	no.focus_neighbor_left = no.get_path()
+	no.focus_neighbor_right = yes.get_path()
+	yes.focus_neighbor_left = no.get_path()
+	yes.focus_neighbor_right = yes.get_path()
+	_confirm_box = bg
+	game.sfx.play("warn", -16.0, 1.2)
+	pc.modulate.a = 0.0
+	pc.scale = Vector2(0.88, 0.88)
+	(func():
+		pc.pivot_offset = pc.size * 0.5
+		var tw := pc.create_tween().set_parallel()
+		tw.tween_property(pc, "modulate:a", 1.0, 0.12)
+		tw.tween_property(pc, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		yes.grab_focus()).call_deferred()
+
+
+func close_confirm() -> void:
+	if _confirm_box == null:
+		return
+	if is_instance_valid(_confirm_box):
+		_confirm_box.queue_free()
+	_confirm_box = null
+	if _confirm_prev and is_instance_valid(_confirm_prev) and _confirm_prev.is_visible_in_tree():
+		_confirm_prev.grab_focus()
+	_confirm_prev = null
 
 
 func killfeed(text: String, col: Color) -> void:
@@ -962,14 +1081,18 @@ func _build_results() -> void:
 	var nb := UI.icon_button("PRÓXIMA", "play", true, 24, 280, 66)
 	nb.pressed.connect(func(): game.next_track())
 	row.add_child(nb)
+	res_next = nb
 	var gb := UI.icon_button("GARAGEM", "wrench", false, 18, 220, 58)
 	gb.pressed.connect(func(): show_screen("garage"))
 	row.add_child(gb)
 	var rb := UI.icon_button("DE NOVO", "flag", false, 18, 220, 58)
 	rb.pressed.connect(func(): game.start_race())
 	row.add_child(rb)
+	res_retry = rb
 
 
+var res_next: Button
+var res_retry: Button
 var res_tiles: HBoxContainer
 var res_chips: HBoxContainer
 var res_total: Label

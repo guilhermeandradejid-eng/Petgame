@@ -249,8 +249,56 @@ func world_open(i: int) -> bool:
 	return i <= int(game.save.career.unlocked)
 
 
+## as corridas de cada mundo vêm em ORDEM: 1, 2, 3, 4 e o chefe. Para liberar a próxima, chegue no pódio.
+const PODIUM := 3
+
+
+## quantas corridas do mundo já foram vencidas em ordem (pódio), 0..4
+func stage(i: int) -> int:
+	var n := 0
+	for t in WORLDS[i].tracks:
+		var b: Dictionary = game.save.career.best.get(str(t), {})
+		if not b.has("place") or int(b.place) > PODIUM:
+			break
+		n += 1
+	return n
+
+
+func track_open(i: int, t: int) -> bool:
+	return (WORLDS[i].tracks as Array).find(t) <= stage(i)
+
+
 func boss_open(i: int) -> bool:
-	return int(game.save.career.points[i]) >= int(WORLDS[i].need)
+	return stage(i) >= (WORLDS[i].tracks as Array).size() or bool(game.save.career.beaten[i])
+
+
+## próxima corrida da carreira na ordem (depois de uma vitória): {} quando já venceu tudo
+func next_event() -> Dictionary:
+	var s: Dictionary = game.save
+	for i in WORLDS.size():
+		if not world_open(i):
+			break
+		var w: Dictionary = WORLDS[i]
+		var st := stage(i)
+		if st < (w.tracks as Array).size():
+			return {"world": i, "track": int(w.tracks[st]), "boss": false}
+		if not bool(s.career.beaten[i]):
+			return {"world": i, "track": int(w.boss_track), "boss": true}
+	return {}
+
+
+## a corrida que acabou liberou a seguinte? (pódio na corrida da vez, ou chefe vencido)
+func advanced() -> bool:
+	return not event.is_empty() and next_event().hash() != event.hash()
+
+
+## vai direto para a próxima corrida (garagem antes da largada); sem próxima, volta ao mapa
+func go_next() -> void:
+	var nx := next_event()
+	if nx.is_empty():
+		open()
+		return
+	choose(int(nx.world), int(nx.track), bool(nx.boss))
 
 
 # ------------------------------------------------------------------ telas
@@ -358,7 +406,7 @@ func open() -> void:
 		pc.add_child(th)
 		hud.show3d.thumb("boss:%d" % i, th)
 		if open_:
-			_points_bar(pc, Vector2(20, 166), 330, int(s.career.points[i]), int(w.need), c, beaten)
+			_points_bar(pc, Vector2(20, 166), 330, stage(i), (w.tracks as Array).size(), c, beaten)
 		else:
 			var lk := Icon.make("lock", 34, Color(1, 1, 1, 0.45))
 			lk.position = Vector2(236, 160)
@@ -407,13 +455,13 @@ func open_world(i: int) -> void:
 	tt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(Icon.make("coin", 30, UI.OK))
 	UI.title(top, hud.garage_ui._money(int(s.cash)), 30, UI.OK)
-	var pts: int = s.career.points[i]
-	var need: int = w.need
+	var st := stage(i)
+	var nt: int = (w.tracks as Array).size()
 	var prow := Control.new()
 	prow.custom_minimum_size = Vector2(0, 26)
 	world_box.add_child(prow)
-	_points_bar(prow, Vector2(0, 0), 560, pts, need, c, bool(s.career.beaten[i]))
-	var pl := UI.title(prow, "%d / %d" % [mini(pts, need), need], 18, UI.TEXT)
+	_points_bar(prow, Vector2(0, 0), 560, st, nt, c, bool(s.career.beaten[i]))
+	var pl := UI.title(prow, ("CORRIDA %d DE %d" % [st + 1, nt]) if st < nt else ("CAMPEÃO" if bool(s.career.beaten[i]) else "CHEFE"), 18, UI.TEXT)
 	pl.position = Vector2(580, -2)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
@@ -467,7 +515,7 @@ func open_world(i: int) -> void:
 	pr.add_child(Icon.make("coin", 22, UI.OK))
 	var prl := UI.title(pr, hud.garage_ui._money(int(BOSS_PRIZE[i])), 20, UI.OK)
 	prl.label_settings.outline_size = 4
-	var bb := UI.icon_button("ENFRENTAR" if boss_open(i) else "%d PONTOS" % need, "skull" if boss_open(i) else "lock", boss_open(i), 22, 300, 60)
+	var bb := UI.icon_button("ENFRENTAR" if boss_open(i) else "VENÇA AS 4", "skull" if boss_open(i) else "lock", boss_open(i), 22, 300, 60)
 	bb.disabled = not boss_open(i)
 	bb.pressed.connect(func(): choose(i, int(w.boss_track), true))
 	bh.add_child(bb)
@@ -495,7 +543,27 @@ func _track_card(t: int, wi: int, boss: bool) -> Button:
 	for st in ["hover", "focus", "pressed"]:
 		b.add_theme_stylebox_override(st, sh)
 	b.tooltip_text = String(d.desc)
+	var open_ := boss or track_open(wi, t)
+	b.disabled = not open_
+	b.add_theme_stylebox_override("disabled", UI.box(c1.darkened(0.5), Color(1, 1, 1, 0.12), 2, 0.06, 5, Color(0, 0, 0, 0.5), 10))
 	b.pressed.connect(func(): choose(wi, t, boss))
+	var num := UI.title(b, str((WORLDS[wi].tracks as Array).find(t) + 1), 22, Color(th.curb[0]) if open_ else Color(1, 1, 1, 0.25))
+	num.position = Vector2(196, 120)
+	if not open_:
+		var lk := Icon.make("lock", 46, Color(1, 1, 1, 0.5))
+		lk.position = Vector2(64, 38)
+		b.add_child(lk)
+		b.modulate = Color(0.6, 0.6, 0.7)
+	elif not boss and (WORLDS[wi].tracks as Array).find(t) == stage(wi):
+		var nx := UI.text(b, "PRÓXIMA", 13, UI.INK)
+		nx.add_theme_font_override("font", UI.display_it)
+		var nb := StyleBoxFlat.new()
+		nb.bg_color = UI.HOT
+		nb.set_corner_radius_all(6)
+		nb.content_margin_left = 8
+		nb.content_margin_right = 8
+		nx.add_theme_stylebox_override("normal", nb)
+		nx.position = Vector2(150, 8)
 	var art := Control.new()
 	art.position = Vector2(20, 10)
 	art.size = Vector2(170, 108)
@@ -579,11 +647,17 @@ func apply_result(place: int, beat_boss: bool) -> Array:
 			lines.append("O CHEFE CHEGOU ANTES")
 	else:
 		var pts: int = POINTS[mini(place - 1, POINTS.size() - 1)]
-		var before: int = s.career.points[wi]
-		s.career.points[wi] = before + pts
-		lines.append("+%d PONTOS" % pts)
-		lines.append("MUNDO %d · %d / %d" % [wi + 1, mini(int(s.career.points[wi]), int(w.need)), int(w.need)])
-		if before < int(w.need) and int(s.career.points[wi]) >= int(w.need):
+		s.career.points[wi] = int(s.career.points[wi]) + pts
+		var nt: int = (w.tracks as Array).size()
+		var j: int = (w.tracks as Array).find(int(event.track))
+		var st := stage(wi)
+		if place > PODIUM:
+			if j >= st:
+				lines.append("CHEGUE NO PÓDIO PARA AVANÇAR")
+		elif j == st - 1 and st < nt:
+			lines.append("CORRIDA %d LIBERADA" % (st + 1))
+		elif j == st - 1 and st == nt and not bool(s.career.beaten[wi]):
 			lines.append("CHEFE LIBERADO!")
+		lines.append("MUNDO %d · %d / %d" % [wi + 1, st, nt])
 	game._write_save()
 	return lines

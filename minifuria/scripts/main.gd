@@ -103,6 +103,7 @@ var race_t := 0.0
 var countdown := 0.0
 var last_beep := 4
 var ready_said := false
+var _mdbg := {}
 var finished_n := 0   # rivais que já completaram todas as voltas
 var music: Music
 var lap_start := 0.0
@@ -454,7 +455,7 @@ func _ui_shots() -> void:
 				last_phase = ph
 		get_tree().quit()
 		return
-	for scr in ["menu", "tracks", "garage", "local", "online", "config", "config2", "config3", "pause", "career", "world", "garage2", "garage3", "garage4", "garage5", "results"]:
+	for scr in ["menu", "tracks", "garage", "local", "online", "config", "config2", "config3", "buyconfirm", "pause", "career", "world", "garage2", "garage3", "garage4", "garage5", "results"]:
 		if only != "" and not scr in only.split(","):
 			continue
 		if scr == "garage3":
@@ -485,6 +486,9 @@ func _ui_shots() -> void:
 			settings._show_tab("video")
 		elif scr == "config3":
 			settings._show_tab("creditos")
+		elif scr == "buyconfirm":
+			hud.show_screen("garage")
+			hud.confirm_buy("MOTOR", "NÍVEL 2 DE 3", 1800, func(): pass)
 		elif scr == "local":
 			multi.open_join()
 			multi.slots = [{"dev": "kbA", "car": "faisca"}, {"dev": "joy0", "car": "vespa"}]
@@ -1456,7 +1460,7 @@ func to_menu_mp() -> void:
 
 func next_track() -> void:
 	if career.active():
-		career.open_world(int(career.event.world))
+		career.go_next()   # carreira em ordem: direto para a próxima corrida (garagem antes da largada)
 		return
 	load_track((track_idx + 1) % TrackData.TRACKS.size())
 	hud.show_screen("garage")
@@ -1514,7 +1518,7 @@ func _start_race_now() -> void:
 	hud.touch.icons = {"fire": "atk" if player.front_type != "none" else "lock", "drop": "rear", "nitro": player.nitro_type,
 		"brake": "brake", "special": player.special_type}
 	mode = "countdown"
-	if not auto_test:
+	if not auto_test or "--music" in OS.get_cmdline_user_args():
 		music.play_track(track_idx, String(track.data.theme), boss != null)
 		if music.now_text != "":
 			hud.killfeed("♪ " + music.now_text, Color(1.0, 0.85, 0.45))
@@ -2533,6 +2537,9 @@ func _show_results() -> void:
 	if mode != "finish":
 		return
 	hud.res_title.text = "VITÓRIA!" if place == 1 else "%dº LUGAR" % place
+	hud.res_next.visible = true
+	hud.res_next.text = "PRÓXIMA"
+	hud.res_retry.text = "DE NOVO"
 	if is_mp():
 		var order := standings()
 		var rows: Array = []
@@ -2552,11 +2559,35 @@ func _show_results() -> void:
 		["han", "%.1fs" % float(stats.best_drift), "MAIOR DRIFT"], ["jump", "%.1fs" % float(stats.air), "MAIOR PULO"]]
 	hud.res_list.text = ""
 	hud.set_results(hud.res_title.text, tiles, career_lines, int(stats.prize), int(save.cash))
+	# carreira: com pódio, o botão principal leva à corrida seguinte; sem pódio, a escolha é tentar de novo
+	var retry_focus := false
+	hud.res_next.visible = true
+	hud.res_next.text = "PRÓXIMA"
+	hud.res_retry.text = "DE NOVO"
+	if career.active():
+		var nx := career.next_event()
+		if career.advanced():
+			if nx.is_empty():
+				hud.res_next.text = "CARREIRA"
+			elif bool(nx.boss):
+				hud.res_next.text = "ENFRENTAR CHEFE"
+			elif int(nx.world) != int(career.event.world):
+				hud.res_next.text = "PRÓXIMO MUNDO"
+			else:
+				hud.res_next.text = "PRÓXIMA CORRIDA"
+		else:
+			hud.res_next.visible = false
+			hud.res_retry.text = "TENTAR DE NOVO"
+			retry_focus = true
 	if career_lines.size() > 0:
 		if auto_test:
 			print("CAREER ", career_lines, " unlocked=", save.career.unlocked)
 	hud.show_screen("results")
+	if retry_focus:
+		hud.res_retry.grab_focus.call_deferred()
 	if auto_test:
+		if career.active():
+			print("NEXT ", career.next_event(), " advanced=", career.advanced(), " button=", hud.res_next.text if hud.res_next.visible else "-")
 		get_tree().quit()
 
 
@@ -2676,6 +2707,16 @@ func _process(_delta: float) -> void:
 			print("CAMSHOT ", cam_mode, " ", fr / 40)
 	elif auto_test:
 		stats.erase("cam_loop"); stats.erase("cam_twist"); stats.erase("cam_helix"); stats.erase("cam_air")
+	if auto_test and "--musicdbg" in OS.get_cmdline_user_args():
+		for nm in ["Musica", "Efeitos", "Master"]:
+			var bi := AudioServer.get_bus_index(nm)
+			var lv := db_to_linear(AudioServer.get_bus_peak_volume_left_db(bi, 0))
+			_mdbg[nm] = float(_mdbg.get(nm, 0.0)) + lv * lv
+		_mdbg["n"] = int(_mdbg.get("n", 0)) + 1
+		if fmod(real, 4.0) < rdt:
+			var n := maxf(1.0, float(_mdbg.n))
+			print("MIXDBG t=%.0f %s musica=%.1f efeitos=%.1f master=%.1f" % [real, mode, linear_to_db(sqrt(float(_mdbg.get("Musica", 0.0)) / n)), linear_to_db(sqrt(float(_mdbg.get("Efeitos", 0.0)) / n)), linear_to_db(sqrt(float(_mdbg.get("Master", 0.0)) / n))])
+			_mdbg = {}
 	if auto_test and test_shots.size() > 0 and real > float(test_shots[0]):
 		var img := get_viewport().get_texture().get_image()
 		img.save_png("user://shot_t%d_%s.png" % [track_idx, test_shots[0]])
@@ -3006,9 +3047,7 @@ func _hud() -> void:
 	var p := player
 	hud.set_race_info({"place": place, "n": racers().size(), "lap": clampi(p.lap + 1, 1, LAPS), "laps": LAPS, "time": _fmt(race_t),
 		"spd": int(p.linear_velocity.length() * 3.6 * 1.25), "kills": int(stats.get("kills", 0)), "cash": int(save.cash)})
-	hud.boss_bar.visible = boss != null and mode in ["race", "countdown", "finish"] and not (multi and multi.split)
-	if hud.boss_bar.visible:
-		hud.boss_bar.queue_redraw()
+	hud.boss_bar.visible = false   # sem barra de vida do chefe: a disputa é chegar na frente dele
 	var tc := hud.touch
 	tc.counts["fire"] = str(p.ammo_f)
 	tc.counts["drop"] = str(p.ammo_r)
