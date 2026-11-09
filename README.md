@@ -61,25 +61,31 @@ Teclado: `J` liga o pulo, espaço freia ou usa a habilidade, `Esc` pausa.
 
 ## Kael — herói JRPG 3D (hack and slash)
 
-Personagem 3D em estilo JRPG, modelado, rigado e animado no **Blender** de forma 100% procedural
-(`hero/blender/build_hero.py`), pronto para um jogo de hack and slash.
+Personagem 3D em estilo anime/JRPG, modelado, rigado e animado no **Blender** por script
+(`hero/blender/build_hero.py`), com um visualizador jogável em Three.js.
 
-- `hero/hero.glb` — malha com skin (30 ossos) + 7 animações a 30 fps: `Idle`, `Run`, `Attack1`, `Attack2`,
-  `Attack3` (combo de 3 golpes), `Dash` e `Hit`.
-- `hero/blender/hero.blend` — cena do Blender com toon shading, contorno e um clipe por faixa NLA.
-- `hero/index.html` — visualizador Three.js com cel shading, rastro da espada e máquina de estados de combo
-  (J ataca, W corre, Espaço esquiva, H leva dano).
-- `hero/preview/` — renders feitos no Blender (EEVEE).
+- `hero/hero.glb` — malha com skin (~16 mil polígonos, 51 ossos, rosto texturizado com 4 expressões) e 7 animações
+  a 60 fps: `Idle`, `Run`, `Attack1`, `Attack2`, `Attack3` (combo que encadeia pose a pose), `Dash` e `Hit`.
+  Ataques e esquiva têm *root motion* no osso `root`.
+- `hero/hero.meta.json` — eventos dos clipes (quadro do acerto, janelas de cancelamento), deslocamento da raiz,
+  correntes de ossos de mola, colisores e paleta do shader toon.
+- `hero/blender/hero.blend` — cena do Blender com shader toon, contorno e um clipe por faixa NLA.
+- `hero/index.html` — visualizador jogável: mover (WASD / direcional na tela), atacar (J), esquivar (Espaço),
+  levar dano (H). Tem cel shading com contorno, cabelo/cachecol/casaco com física em tempo real, rastro da espada,
+  hit-stop e bonecos de treino.
+- `hero/preview/` — renders do Blender (ficha do personagem, poses, reel) e um vídeo de gameplay a 60 fps.
+- `hero/ANIMATION.md` — a pesquisa de referência (tempos do Genshin Impact, princípios de animação de combate) e
+  como ela foi aplicada.
 
 Para regenerar tudo (Blender 4.4+ ou o módulo `bpy` do pip):
 
 ```
-blender -b -P hero/blender/build_hero.py -- --render full
-# ou: pip install bpy && python3 hero/blender/build_hero.py --render full
+blender -b -P hero/blender/build_hero.py -- --sheet --reel
+# ou: pip install bpy && python3 hero/blender/build_hero.py --sheet --reel
 ```
 
 Para ver no navegador: `python3 -m http.server` na raiz e abra `/hero/`.
 
-As animações são poses-chave com splines (ataques) e ciclos procedurais (idle/corrida), resolvidas por um
-mini solver FK/IK e assadas quadro a quadro; cachecol, rabo de cavalo e abas do casaco usam simulação de corda
-(verlet) para o movimento secundário.
+O código fica em `hero/blender/kael/`: `model.py` (corpo, rosto, cabelo em mechas, roupa, espada), `facetex.py`
+(textura do rosto desenhada por código), `rig.py` (solver de poses com IK e ossos de mola), `anim.py` (os clipes),
+`look.py` (materiais e render).

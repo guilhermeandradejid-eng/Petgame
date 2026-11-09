@@ -1,3 +1,6 @@
 hero/preview/frames/
+hero/preview/reel/
+hero/preview/sheet/
+hero/blender/diag.json
 __pycache__/
 *.blend1
