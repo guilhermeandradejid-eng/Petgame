@@ -158,7 +158,7 @@ func show_screen(name_: String) -> void:
 	var racing := name_ == "race" or name_ == "pause"
 	for nd in race_nodes:
 		nd.visible = racing and not (nd as Node).get_meta("split_hide", false)
-	touch.visible = name_ == "race" and not touch.get_meta("split_hide", false)
+	touch.show_if(name_ == "race" and not touch.get_meta("split_hide", false))
 	if name_ == "tracks":
 		_refresh_tracks()
 	if extra_screens.has(name_) or name_ in ["menu", "tracks", "garage", "pause", "results"]:
@@ -182,13 +182,21 @@ func _focus_first(name_: String) -> void:
 	var fo := get_viewport().gui_get_focus_owner()
 	if fo and scr.is_ancestor_of(fo) and fo.is_visible_in_tree():
 		return
+	# primeiro botão que não seja o VOLTAR (com controle, abrir uma tela já deixa o primeiro item escolhido)
+	var back: Control = null
 	var stack: Array = [scr]
 	while stack.size() > 0:
 		var nd: Node = stack.pop_front()
 		if nd is BaseButton and (nd as Control).is_visible_in_tree() and (nd as Control).focus_mode != Control.FOCUS_NONE and not (nd as BaseButton).disabled:
-			(nd as Control).grab_focus()
-			return
+			if nd is Button and (nd as Button).text == "VOLTAR":
+				if back == null:
+					back = nd
+			else:
+				(nd as Control).grab_focus()
+				return
 		stack.append_array(nd.get_children())
+	if back:
+		back.grab_focus()
 
 
 # ------------------------------------------------------------------ HUD da corrida
@@ -390,6 +398,24 @@ func _input(ev: InputEvent) -> void:
 	if _confirm_box and ev.is_action_pressed("ui_cancel"):
 		close_confirm()
 		get_viewport().set_input_as_handled()
+	elif ev.is_action_pressed("ui_cancel") and not ev is InputEventKey:
+		# B do controle = VOLTAR da tela aberta (no teclado o Esc continua sendo a pausa)
+		var scr: Control = extra_screens.get(cur_screen, {"tracks": tracks_s, "garage": garage}.get(cur_screen))
+		if scr and scr.visible:
+			var b := _find_back(scr)
+			if b:
+				b.pressed.emit()
+				get_viewport().set_input_as_handled()
+
+
+func _find_back(n: Node) -> Button:
+	for c in n.get_children():
+		if c is Button and (c as Button).is_visible_in_tree() and (c as Button).text == "VOLTAR":
+			return c
+		var r := _find_back(c)
+		if r:
+			return r
+	return null
 
 
 ## o último clique/toque foi agora há pouco? (aí tocar num cartão só seleciona; a compra pede confirmação)

@@ -179,8 +179,8 @@ const EN := {
 	"VOZ DO NARRADOR": "ANNOUNCER LANGUAGE", "IGUAL AO JOGO": "SAME AS THE GAME", "CHAT DE VOZ": "VOICE CHAT",
 	"O chat de voz liga no lobby online ou no menu de pausa.": "Voice chat is switched on in the online lobby or the pause menu.",
 	"QUALIDADE GRÁFICA": "GRAPHICS QUALITY",
-	"Baixa: sem sombras e sem antisserrilhado (celulares simples). Média: sombras e MSAA 2x. Alta: sombras suaves e MSAA 4x.":
-		"Low: no shadows and no anti-aliasing (basic phones). Medium: shadows and 2x MSAA. High: soft shadows and 4x MSAA.",
+	"Baixa: sem sombras e sem antisserrilhado (celulares simples). Média: sombras e MSAA 2x. Alta: sombras suaves e MSAA 4x. Ultra (PC): MSAA 8x e sombras em dobro de nitidez.":
+		"Low: no shadows and no anti-aliasing (basic phones). Medium: shadows and 2x MSAA. High: soft shadows and 4x MSAA. Ultra (PC): 8x MSAA and twice-as-sharp shadows.",
 	"RESOLUÇÃO 3D": "3D RESOLUTION",
 	"Menos de 100% desenha o 3D menor e amplia: mais FPS, imagem mais suave.": "Below 100% renders the 3D smaller and scales it up: more FPS, softer image.",
 	"TELA CHEIA": "FULLSCREEN", "NÃO": "NO", "SIM": "YES", "VSYNC (SEM CORTES NA IMAGEM)": "VSYNC (NO SCREEN TEARING)",
@@ -213,8 +213,8 @@ const EN := {
 		"Weapons, explosions, clicks and wind: Red Eclipse Team — CC-BY-SA 4.0 (the edited versions keep the same license).",
 	"Impactos, interface, fichas e vinhetas: Kenney (kenney.nl) — CC0. Arco e golpes: Battle Sound Effects (OpenGameArt) — CC0.":
 		"Impacts, interface, chips and jingles: Kenney (kenney.nl) — CC0. Bow and swishes: Battle Sound Effects (OpenGameArt) — CC0.",
-	"Narrador Decibel: voz gerada por IA com o Kokoro-82M (Apache 2.0, hexgrad) via kokoro-onnx (MIT). Guitarra e prato da vinheta: amostras do Sonic Pi (freesound) — CC0.":
-		"Decibel the announcer: AI-generated voice made with Kokoro-82M (Apache 2.0, hexgrad) via kokoro-onnx (MIT). Stinger guitar and cymbal: Sonic Pi samples (freesound) — CC0.",
+	"Narrador Decibel: voz gerada por IA com o Chatterbox Multilingual (Resemble AI, MIT), conferida com o Whisper (MIT). Guitarra e prato da vinheta: amostras do Sonic Pi (freesound) — CC0.":
+		"Decibel the announcer: AI-generated voice made with Chatterbox Multilingual (Resemble AI, MIT), checked with Whisper (MIT). Stinger guitar and cymbal: Sonic Pi samples (freesound) — CC0.",
 	"Lista completa, arquivo por arquivo: sfx/CREDITOS.txt no código do jogo.": "Full list, file by file: sfx/CREDITOS.txt in the game's source.",
 	# --- pistas e temas
 	"Cidade Neon": "Neon City", "Céu": "Sky", "Pântano": "Swamp", "Estação Lunar": "Moon Base", "Parque": "Park",

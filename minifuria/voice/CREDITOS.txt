@@ -4,11 +4,13 @@ Wreck 'n' Roll — narrador DECIBEL (pasta voice/)
 DECIBEL é um locutor de arena no estilo rock and roll, personagem original do jogo. O roteiro (falas em
 inglês e em português) está em tools/build_voice.py.
 
-Voz gerada por inteligência artificial com o Kokoro-82M (licença Apache 2.0, hexgrad), rodando pelo
-kokoro-onnx (licença MIT, thewh1teagle): voz "am_fenrir" em inglês (voice/en) e "pm_santa" em português
-(voice/pt).
+Voz gerada por inteligência artificial com o Chatterbox Multilingual (licença MIT, Resemble AI), com
+controle de emoção (exaggeration 0,85, cfg 0,3) e conferida pelo Whisper "small" via faster-whisper (MIT).
+O timbre vem de trechos de referência sintéticos (tools/decibel_ref_en.wav e decibel_ref_pt.wav, feitos com
+as vozes "am_fenrir" e "pm_santa" do Kokoro-82M, Apache 2.0): nenhuma voz de pessoa real foi clonada.
+Roteiro e gerador: tools/build_voice.py (falas) e tools/build_voice_cb.py (voz).
+  https://huggingface.co/ResembleAI/chatterbox
   https://github.com/hexgrad/kokoro
-  https://github.com/thewh1teagle/kokoro-onnx
 
 Vinhetas de rock por baixo das falas grandes: guitarra elétrica (guit_e_fifths, guit_e_slide) e prato de
 bateria (drum_cymbal_hard) do Sonic Pi, amostras do freesound em domínio público (CC0):

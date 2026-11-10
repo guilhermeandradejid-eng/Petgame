@@ -39,7 +39,7 @@ LINES = {
     ],
     "count3": [("Three!", "Três!")],
     "count2": [("Two!", "Dois!")],
-    "count1": [("One!", "Um!")],
+    "count1": [("Aaand... ONE!", "E um!")],
     "go": [("Go, go, go!", "Vai, vai, vai!"), ("Rock and roll!", "Rock and roll!")],
     "perfect_start": [("What a launch!", "Que largada!"), ("Out of the gate like a cannonball!", "Saiu que nem bala de canhão!")],
     "lead": [

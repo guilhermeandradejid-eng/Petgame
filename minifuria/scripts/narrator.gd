@@ -2,19 +2,21 @@ class_name Narrator
 extends Node
 ## Narrador da corrida: DECIBEL, locutor de arena no estilo rock and roll (fala no idioma do jogo ou no que
 ## for escolhido nas configurações). Falas em voice/<idioma>/<chave>_<n>.ogg, geradas por tools/build_voice.py
-## com vinheta de guitarra; a legenda animada do HUD (Hud.caption) mostra a fala no idioma do jogo e o rosto
-## do Decibel mexendo a boca no ritmo da voz.
+## (voz com controle de emoção, gravada "gritando" como locutor de arena). Sem legenda na tela.
 ## Regras:
 ##   - uma fala por vez; prioridade maior fura a fila (contagem e fim de corrida falam na hora);
 ##   - cada tipo de fala tem intervalo mínimo (não repete "ultrapassou" a cada carro);
 ##   - a variação é sorteada sem repetir a última;
-##   - algumas falas do Zeca ganham resposta da Tia Graxa pelo rádio;
-##   - corrida quieta por muito tempo: o Zeca solta um comentário;
+##   - no máximo uma fala comum a cada 11 s (só os momentos grandes: liderança, destruir, ser destruído...);
+##   - corrida quieta por muito tempo (45 s): um comentário;
 ##   - enquanto alguém fala, a música e os efeitos abaixam um pouco.
 
 const COOLDOWN := {"overtake": 8.0, "overtaken": 8.0, "lead": 12.0, "kill": 5.0, "killed": 5.0, "fall": 5.0,
 	"air": 10.0, "drift": 12.0, "nitro": 22.0, "lowhp": 30.0, "boss_attack": 12.0, "perfect_start": 5.0}
-const IDLE_AFTER := 20.0
+const IDLE_AFTER := 45.0
+## intervalo mínimo entre falas comuns (contagem, largada, volta final e fim de corrida não esperam):
+## o Decibel comenta os momentos grandes e fica quieto no resto
+const GAP := 11.0
 
 var game: Node
 var player: AudioStreamPlayer
@@ -29,6 +31,7 @@ var quiet_t := 0.0
 var _amp: Array = []   # AudioEffectAmplify em Musica e Efeitos (abaixa durante a fala)
 var _duck := 0.0
 var _gap_t := 0.0
+var _last_any := -99.0
 
 
 func setup(g: Node) -> void:
@@ -68,6 +71,8 @@ func say(key: String, prio := 1, chance := 1.0, side := 0.0) -> float:
 		return 0.0
 	if _now() - float(last_t.get(key, -99.0)) < float(COOLDOWN.get(key, 2.0)):
 		return 0.0
+	if prio < 3 and _now() - _last_any < GAP:
+		return 0.0
 	if player.playing or _gap_t > 0.0:
 		if prio >= 5 or prio > cur_prio + 1:
 			side_key = ""
@@ -97,6 +102,7 @@ func _play(key: String, prio: int, side: float) -> float:
 		return 0.0
 	last_n[key] = n
 	last_t[key] = _now()
+	_last_any = _now()
 	cur_prio = prio
 	quiet_t = 0.0
 	side_key = ("g_" + key) if (side > 0.0 and randf() < side and VoiceLines.LINES.has("g_" + key)) else ""
@@ -107,9 +113,7 @@ func _play(key: String, prio: int, side: float) -> float:
 	var dur := float(ln[2] if lang == "en" else ln[3])
 	if game and game.auto_test:
 		print("NARR t=%.1f %s: %s" % [float(game.race_t), key, String(ln[1] if lang == "en" else ln[0])])
-	if game and game.hud:
-		# legenda no idioma do jogo (que pode ser diferente do da voz)
-		game.hud.caption("d", String(ln[1] if Lang.en() else ln[0]), dur)
+	# sem legenda na tela: a voz basta
 	return dur
 
 

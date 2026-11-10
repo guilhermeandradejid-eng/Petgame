@@ -186,9 +186,8 @@ def plan(lang, rec, narr_d):
         t = t1
         k += 1
     cards.append((bt(2) + 0.05, bt(2) + 2.6, "tracks"))
-    voice.append((bt(2) + 0.25, "n2"))
     cards.append((bt(16), bt(16) + 2.6, "weapons"))
-    voice.append((bt(16) + 0.15, "n3"))
+    voice.append((bt(16) + 0.15, "n3"))   # narração enxuta: abertura, armas, chefes e o nome no fim
     # B) chefes: trechos de 4 batidas (dá tempo de ver o ataque)
     t = bt(32)
     for i, bnm in enumerate(bosses):
@@ -207,7 +206,6 @@ def plan(lang, rec, narr_d):
     if pick:
         add(t0, t1, pick[0], pick[1], fx="flash")
     cards.append((t0 + 0.05, t1 - 0.1, "multi"))
-    voice.append((t0 + 0.15, "n5"))
     # D) garagem e menu (no idioma do trailer)
     ui = "ui_" + lang
     ev = dict((k2, f) for f, k2 in events(os.path.join(rec, ui + ".log")))
@@ -215,7 +213,6 @@ def plan(lang, rec, narr_d):
     add(bt(56), bt(60), ui, 70, fx="flash")          # menu: logo e o carro na vitrine
     add(bt(60), bt(64), ui, g0 + 40, fx="punch")     # garagem
     cards.append((bt(60) + 0.05, bt(64) - 0.1, "garage"))   # o menu aparece limpo (já tem o logo)
-    voice.append((bt(60) + 0.1, "n6"))
     # E) final frenético: um corte por batida, os maiores clarões
     t = bt(64)
     order = ["r_dunes", "b_emperor", "r_neon", "b_brutus", "r_dunes", "b_blackout", "r_neon", "r_dunes"]

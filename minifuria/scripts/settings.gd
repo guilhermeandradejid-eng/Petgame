@@ -7,7 +7,7 @@ extends Node
 const DEFAULTS := {"vol_master": 0.9, "vol_music": 0.9, "vol_sfx": 0.9, "vol_voice": 1.0, "vol_narr": 1.0, "narr_lang": "auto", "lang": "",
 	"quality": "alta", "scale": 1.0, "fullscreen": false, "vsync": true, "screen_fx": true, "fps": false, "fps_cap": 120, "dyn_res": true,
 	"shake": 1.0, "vibration": true}
-const QUALITY := [["baixa", "BAIXA"], ["media", "MÉDIA"], ["alta", "ALTA"]]
+const QUALITY := [["baixa", "BAIXA"], ["media", "MÉDIA"], ["alta", "ALTA"], ["ultra", "ULTRA"]]
 const FPS_CAPS := [[30, "30"], [60, "60"], [90, "90"], [120, "120"], [0, "SEM LIMITE"]]
 
 var game: Node
@@ -38,6 +38,13 @@ func setup(g: Node, h: Hud) -> void:
 			cfg[k] = DEFAULTS[k]
 	if OS.get_name() in ["Android", "iOS", "Web"]:
 		cfg.erase("fullscreen")
+	# PC: qualidade máxima e resolução 3D cheia (a resolução dinâmica, feita para o celular, baixava o 3D até
+	# 70% para tentar manter 120 FPS e a imagem ficava borrada no monitor)
+	if is_desktop() and int(cfg.get("pc_rev", 0)) < 1:
+		cfg["pc_rev"] = 1
+		cfg["quality"] = "ultra"
+		cfg["dyn_res"] = false
+		cfg["scale"] = 1.0
 	g.save.cfg = cfg
 	_buses()
 	_build()
@@ -46,6 +53,10 @@ func setup(g: Node, h: Hud) -> void:
 	fps_l.offset_left = -110
 	fps_l.offset_top = -26
 	apply_all()
+
+
+static func is_desktop() -> bool:
+	return OS.get_name() in ["Windows", "Linux", "macOS", "FreeBSD"] or (OS.get_name() == "Web" and not OS.has_feature("web_android") and not OS.has_feature("web_ios"))
 
 
 func cfg() -> Dictionary:
@@ -101,6 +112,12 @@ func apply_all() -> void:
 			vp.msaa_3d = Viewport.MSAA_2X
 			RenderingServer.directional_shadow_atlas_set_size(1024, true)
 			RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_LOW)
+		"ultra":
+			# PC: bordas lisas, sombras nítidas e texturas do chão firmes em ângulo
+			game.sun.shadow_enabled = true
+			vp.msaa_3d = Viewport.MSAA_2X if OS.has_feature("mobile") else Viewport.MSAA_8X
+			RenderingServer.directional_shadow_atlas_set_size(2048 if OS.has_feature("mobile") else 4096, true)
+			RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_ULTRA)
 		_:
 			game.sun.shadow_enabled = true
 			# celular: 4x em resolução nativa pesa demais; 2x já limpa as bordas
@@ -108,6 +125,7 @@ func apply_all() -> void:
 			RenderingServer.directional_shadow_atlas_set_size(2048, true)
 			RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH)
 	vp.scaling_3d_scale = clampf(float(val("scale")), 0.5, 1.0)
+	vp.anisotropic_filtering_level = Viewport.ANISOTROPY_16X if String(val("quality")) in ["alta", "ultra"] else Viewport.ANISOTROPY_4X
 	if cfg().has("fullscreen") and DisplayServer.get_name() != "headless":
 		var want := DisplayServer.WINDOW_MODE_FULLSCREEN if bool(val("fullscreen")) else DisplayServer.WINDOW_MODE_WINDOWED
 		if DisplayServer.window_get_mode() != want and not (want == DisplayServer.WINDOW_MODE_WINDOWED and DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MAXIMIZED):
@@ -227,7 +245,7 @@ func _show_tab(t: String) -> void:
 			_note("O chat de voz liga no lobby online ou no menu de pausa.")
 		"video":
 			_choice("quality", "QUALIDADE GRÁFICA", QUALITY)
-			_note("Baixa: sem sombras e sem antisserrilhado (celulares simples). Média: sombras e MSAA 2x. Alta: sombras suaves e MSAA 4x.")
+			_note("Baixa: sem sombras e sem antisserrilhado (celulares simples). Média: sombras e MSAA 2x. Alta: sombras suaves e MSAA 4x. Ultra (PC): MSAA 8x e sombras em dobro de nitidez.")
 			_slider("scale", "RESOLUÇÃO 3D", 0.5, 1.0, 0.05)
 			_note("Menos de 100% desenha o 3D menor e amplia: mais FPS, imagem mais suave.")
 			if cfg().has("fullscreen"):
@@ -363,7 +381,7 @@ func _credits() -> void:
 		"Pneu cantando e pouso: Ya2 / Yorg — CC-BY-SA. Explosão: Michel Baradari — CC-BY 3.0.",
 		"Armas, explosões, estalos e vento: Red Eclipse Team — CC-BY-SA 4.0 (as versões editadas seguem a mesma licença).",
 		"Impactos, interface, fichas e vinhetas: Kenney (kenney.nl) — CC0. Arco e golpes: Battle Sound Effects (OpenGameArt) — CC0.",
-		"Narrador Decibel: voz gerada por IA com o Kokoro-82M (Apache 2.0, hexgrad) via kokoro-onnx (MIT). Guitarra e prato da vinheta: amostras do Sonic Pi (freesound) — CC0.",
+		"Narrador Decibel: voz gerada por IA com o Chatterbox Multilingual (Resemble AI, MIT), conferida com o Whisper (MIT). Guitarra e prato da vinheta: amostras do Sonic Pi (freesound) — CC0.",
 	]:
 		_note(t)
 	_note("Lista completa, arquivo por arquivo: sfx/CREDITOS.txt no código do jogo.")

@@ -259,16 +259,26 @@ Todos os efeitos são **gravações reais** de pacotes livres (CC0, CC-BY e CC-B
 
 Para montar a pasta `sfx/` de novo: clone as fontes listadas no começo de `tools/build_sfx.py` e rode `python3 tools/build_sfx.py FONTES sfx` (precisa de `ffmpeg` e `numpy`).
 
+## Revisão para PC (v1.23)
+
+- **Qualidade**: no PC o jogo começa em **ULTRA** (MSAA 8x, sombras 4096 com filtro suave máximo, filtro anisotrópico 16x) e com a **resolução dinâmica desligada** — ela foi feita para o celular e, no monitor, baixava o 3D até 70% para tentar segurar 120 FPS, deixando a imagem borrada. Se ligada no PC, nunca desce de 85%.
+- **Controles de toque** só aparecem com tela de toque: no PC ficam escondidos até alguém tocar na tela e somem de novo ao usar teclado ou controle.
+- **Menus no controle**: A confirma e B volta em qualquer tela (o mapa padrão não trazia os botões do controle); ao abrir uma tela o foco vai para o primeiro item, não para o VOLTAR.
+- **Teclado**: as teclas são 0 ou 1, então a direção pedida pulava de uma vez e o drift automático entrava quase sempre. Com teclado/direcional a direção gira aos poucos (3,4 rad/s) e o drift automático só entra numa curva forte sustentada (o botão de drift continua igual).
+- **Assistente de rampa** mais leve: ainda alinha o carro com a pista e garante o embalo mínimo, mas quem chega rápido (nitro) perde no máximo 12% da velocidade (antes podia perder bem mais).
+
+## Cenário de arena (inspirado no Motor Rock)
+
+`scripts/arena_decor.gd` monta em código, com cor por vértice e nos lotes de MultiMesh (poucas chamadas de desenho): **arquibancadas** nas maiores retas com **torcida pulando** (cada pessoa anima no shader), **faixas de anúncio** nas cores do tema, **cerca de proteção**, **torres de holofote** (com luz de verdade nas pistas noturnas), **pilhas de pneus** no lado de fora das curvas fortes e **tendas de box** perto da largada. No chão em volta da pista, detalhes por tema: tufos de grama, flores e pedras (parque), arbustos secos e rochas vermelhas (deserto), montes de neve (neve), entulho e blocos de concreto (cidade), blocos de brinquedo, rochas lunares e manchas sutis de cor que quebram o chão liso.
+
 ## Narrador: DECIBEL, locutor de arena rock and roll
 
-Locutor de estádio no estilo dos jogos de corrida clássicos, personagem original: falas curtas, gritadas, cheias de gíria de rock ("Number one, baby!", "Boom! Scrap metal!", "Final lap! Rock and roll!"). Fala no idioma do jogo (inglês ou português) e a legenda segue o idioma do jogo; **Configurações > Áudio > VOZ DO NARRADOR** permite, por exemplo, jogar em português ouvindo o Decibel em inglês. O nome do jogo tem pronúncia ajustada em cada voz (em português ele fala "Réquen Rôu").
+Locutor de estádio no estilo dos jogos de corrida clássicos, personagem original: falas curtas e gritadas, cheias de gíria de rock ("Number one, baby!", "Boom! Scrap metal!", "Final lap! Rock and roll!"). Fala no idioma do jogo (inglês ou português); **Configurações > Áudio > VOZ DO NARRADOR** permite outro idioma para a voz.
 
-- **92 falas em cada idioma** (`tools/build_voice.py` tem o roteiro): abertura, contagem, largada perfeita, liderança, ultrapassar e ser ultrapassado, destruir e ser destruído, queda, pulão, drift, nitro, carro quase destruído, última volta, vitória, pódio, derrota, entrada de cada chefe, ataques do chefe, chefe derrotado e comentários quando a corrida fica quieta.
-- **Voz**: gerada por IA com o Kokoro-82M (Apache 2.0) em precisão completa: voz `am_fenrir` em inglês (a mais expressiva das masculinas, escolhida numa comparação de quatro vozes) e `pm_santa` em português.
-- **Som limpo**: a primeira versão "de arena" soava robótica (a mudança de tom por esticamento e a voz dobrada criavam um chiado metálico). Agora a voz sai como o modelo gera, na velocidade normal, só com equalização leve, compressão suave e uma ambiência curta. Nos momentos grandes (abertura, chefe, liderança, última volta, vitória, destruição) entra **guitarra elétrica de verdade** (acorde em quintas, slide) ou prato de bateria antes da voz, abaixando por baixo dela. Guitarra e prato: amostras CC0 do Sonic Pi.
-- **Legenda animada** no alto da tela: o rosto do Decibel (cabeleira, bandana vermelha, óculos escuros, cavanhaque, jaqueta de couro com tachas e microfone), com a **boca abrindo no ritmo da voz** e a fala aparecendo letra a letra.
-- **Sem falar demais**: uma fala por vez; contagem e fim de corrida furam a fila; cada tipo de fala tem intervalo mínimo; as variações não se repetem em seguida. Enquanto ele fala, a música e os efeitos abaixam um pouco. Na largada, o Decibel abre a corrida (sempre nas corridas de chefe; nas outras, em metade das vezes) e a contagem espera ele terminar.
-- **Configurações > Áudio > NARRADOR** ajusta o volume (zero desliga a voz e a legenda).
+- **Voz expressiva**: as primeiras versões (Kokoro-82M) liam o texto com entonação de leitura e soavam "IA". Agora as falas são geradas com o **Chatterbox Multilingual** (Resemble AI, MIT), um modelo com controle de **exagero de emoção**: emoção alta e "cfg" baixo dão a fala gritada e cheia de altos e baixos de locutor (ajuste recomendado pelo próprio modelo para fala expressiva). O timbre vem de um trecho de referência sintético (`tools/decibel_ref_*.wav`, nenhuma voz de pessoa real é clonada). Cada fala é gerada até 2 vezes e o **Whisper** confere se ela disse o texto certo, sem repetir nem engolir palavras (`tools/build_voice_cb.py`). Depois, só equalização leve, compressão e as vinhetas de guitarra/prato (amostras CC0 do Sonic Pi).
+- **Fala pouco**: no máximo uma fala comum a cada 11 s, só nos momentos grandes (liderança, destruir e ser destruído, queda, chefe); ultrapassagens, drift, pulos e nitro só às vezes; abertura da corrida em 30% das largadas (sempre nas de chefe); comentário de corrida parada só depois de 45 s. Contagem, largada, última volta e fim de corrida falam sempre.
+- **Sem legenda** na tela: só a voz. Enquanto ele fala, a música e os efeitos abaixam um pouco.
+- **Configurações > Áudio > NARRADOR** ajusta o volume (zero desliga).
 
 ## Cenário do Céu e do Pântano
 

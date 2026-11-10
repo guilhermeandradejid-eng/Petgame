@@ -326,10 +326,36 @@ func _ready() -> void:
 		_ui_shots()
 	elif "--trailerui" in args:
 		_trailer_ui()
+	elif "--padtest" in args:
+		_pad_test()
 	elif "--server" in args or "--netclient" in args:
 		pass   # servidor/cliente de teste: o módulo online cuida
 	elif auto_test:
 		start_race()
+
+
+## teste: navega no menu só com eventos de controle (direcional e A) e mostra quem tem o foco
+func _pad_test() -> void:
+	hud.show_screen("menu")
+	for k in 30:
+		await get_tree().process_frame
+	var seq := [JOY_BUTTON_DPAD_DOWN, JOY_BUTTON_DPAD_DOWN, JOY_BUTTON_DPAD_UP, JOY_BUTTON_A, -1, JOY_BUTTON_DPAD_DOWN, JOY_BUTTON_B, -1, JOY_BUTTON_A]
+	for b in seq:
+		if b >= 0:
+			for pr in [true, false]:
+				var e := InputEventJoypadButton.new()
+				e.device = 0
+				e.button_index = b
+				e.pressed = pr
+				Input.parse_input_event(e)
+				for k in 4:
+					await get_tree().process_frame
+		else:
+			for k in 30:
+				await get_tree().process_frame
+		var fo := get_viewport().gui_get_focus_owner()
+		print("PAD botão %d -> tela=%s foco=%s" % [b, hud.cur_screen, (fo as Button).text if fo is Button else str(fo)])
+	get_tree().quit()
 
 
 ## trailer: vitrine do menu (logo + desfile dos carros), garagem e carreira, gravadas com o --write-movie
@@ -598,6 +624,13 @@ func _setup_input() -> void:
 		"nitro": [JOY_BUTTON_RIGHT_SHOULDER], "special": [JOY_BUTTON_LEFT_SHOULDER], "pause": [JOY_BUTTON_START], "reset": [JOY_BUTTON_BACK]}
 	if not InputMap.has_action("accel"):
 		InputMap.add_action("accel")
+	# menus: A confirma e B volta em qualquer controle (o mapa padrão do Godot não trazia os botões do controle)
+	for ui in [["ui_accept", JOY_BUTTON_A], ["ui_cancel", JOY_BUTTON_B]]:
+		var ev := InputEventJoypadButton.new()
+		ev.device = -1
+		ev.button_index = ui[1]
+		if not InputMap.action_has_event(ui[0], ev):
+			InputMap.action_add_event(ui[0], ev)
 	for a in axes:
 		var ja := InputEventJoypadMotion.new()
 		ja.device = -1
@@ -1081,6 +1114,7 @@ func _build_scenery() -> void:
 		_sky_decor(rng, mn, mx)
 	if theme.ground == 9:
 		_swamp_decor(rng, mn, mx)
+	ArenaDecor.build(self, track, theme, rng)   # arquibancadas, faixas, holofotes, cercas, pneus e tendas
 	_flush_batches()
 	for ps in track.pickup_spots:
 		var a := track.at(ps.s, ps.lat)
@@ -1634,7 +1668,7 @@ func _start_race_now() -> void:
 	var intro := 0.0
 	if boss != null and VoiceLines.LINES.has(boss.kind):
 		intro = narrator.say(boss.kind, 3)
-	elif randf() < 0.5 or not has_meta("narr_intro_done"):
+	elif randf() < 0.3 or not has_meta("narr_intro_done"):
 		intro = narrator.say("intro", 3)
 	set_meta("narr_intro_done", true)
 	for a in OS.get_cmdline_user_args():
@@ -1867,7 +1901,7 @@ func _on_landed(c: Car, air: float, impact: float) -> void:
 		hud.popup("PULÃO %.1fs" % air, Color("#7dff6a"), "+%d" % pts)
 		tev("air", player.global_position)
 		if air > 1.0:
-			narrator.say("air", 1, 0.75)
+			narrator.say("air", 1, 0.35)
 		stats.score += pts
 		stats.air = maxf(stats.air, air)
 		_add_meter(0.25)
@@ -2062,6 +2096,9 @@ func _local_input(lp: Dictionary) -> void:
 		pc.ctrl.fire = weapons._target(pc, 50.0, 0.97) != null
 
 
+var _kb_dir := Vector3.ZERO   # direção suavizada do teclado/direcional (modo TELA)
+
+
 func _player_input() -> void:
 	var c := player.ctrl
 	var screen_mode := String(save.get("steer", "tela")) == "tela"
@@ -2076,14 +2113,31 @@ func _player_input() -> void:
 		var kx := Input.get_action_strength("right") - Input.get_action_strength("left")
 		var ky := Input.get_action_strength("up") - Input.get_action_strength("down")
 		var kv := Vector2(kx, ky)
+		# teclas e direcional são 0 ou 1: a direção pedida pula de uma vez e o carro derrapava demais.
+		# Com entrada digital, a direção desejada gira aos poucos a partir da frente do carro.
+		var digital := kv.length() > 0.1 and absf(kx) in [0.0, 1.0] and absf(ky) in [0.0, 1.0]
+		c.kb = digital
 		if kv.length() > 0.1:
-			c.dir = (rr * kx + ff * ky).normalized()
+			var want := (rr * kx + ff * ky).normalized()
+			if digital:
+				if _kb_dir == Vector3.ZERO:
+					var fz := player.global_transform.basis.z
+					_kb_dir = Vector3(fz.x, 0, fz.z).normalized()
+				var ang := _kb_dir.signed_angle_to(want, Vector3.UP)
+				var stepa := 3.4 * get_physics_process_delta_time()
+				_kb_dir = _kb_dir.rotated(Vector3.UP, clampf(ang, -stepa, stepa)).normalized()
+				c.dir = _kb_dir
+			else:
+				c.dir = want
 			c.dir_mag = minf(1.0, kv.length() * 1.4)
 			c.throttle = 1.0
-		elif Input.get_action_strength("accel") > 0.3:
-			c.throttle = 1.0
+		else:
+			_kb_dir = Vector3.ZERO
+			if Input.get_action_strength("accel") > 0.3:
+				c.throttle = 1.0
 	else:
 		c.steer = Input.get_action_strength("left") - Input.get_action_strength("right")
+		c.kb = absf(c.steer) in [0.0, 1.0]
 		c.throttle = maxf(Input.get_action_strength("up"), Input.get_action_strength("accel"))
 		c.brake = maxf(c.brake, Input.get_action_strength("down"))
 	if c.brake > 0.0:
@@ -2282,7 +2336,7 @@ func _rules(dt: float) -> void:
 		var pts := int(p.drift_t * 120)
 		hud.popup("DRIFT %.1fs" % p.drift_t, Color("#c77dff"), "+%d" % pts)
 		if p.drift_t > 2.4 and p == player:
-			narrator.say("drift", 1, 0.6)
+			narrator.say("drift", 1, 0.25)
 		stats.score += pts
 		stats.best_drift = maxf(stats.best_drift, p.drift_t)
 		_add_meter(minf(0.3, p.drift_t * 0.08))
@@ -2877,11 +2931,11 @@ func _process(_delta: float) -> void:
 			if Input.is_action_pressed("up") or hud.touch.used or auto_test:
 				player.linear_velocity = player.global_transform.basis.z * 14.0
 				hud.popup("LARGADA PERFEITA!", Color("#ff9a1a"))
-				narrator.say("perfect_start", 2, 0.7)
+				narrator.say("perfect_start", 2, 0.5)
 	_car_fx(rdt * eff)
 	if player.nitroing and not was_nitro:
 		sfx.play("nitro")
-		narrator.say("nitro", 1, 0.3)
+		narrator.say("nitro", 1, 0.1)
 		zoom_kick += 4.5
 		cam_kick -= player.global_transform.basis.z * 2.6   # a câmera "fica para trás" e alcança o carro
 		_shake(0.18)
@@ -3378,8 +3432,9 @@ func _dyn_res(rdt: float) -> void:
 	if bool(settings.val("vsync")) and hz > 1.0:
 		want = minf(want, hz)
 	var budget := 1000.0 / want
-	if avg > budget * 0.85 and vp.scaling_3d_scale > 0.71:
-		vp.scaling_3d_scale = maxf(0.7, vp.scaling_3d_scale - 0.05)
+	var floor_s := 0.85 if Settings.is_desktop() else 0.7   # no PC nunca borra tanto
+	if avg > budget * 0.85 and vp.scaling_3d_scale > floor_s + 0.01:
+		vp.scaling_3d_scale = maxf(floor_s, vp.scaling_3d_scale - 0.05)
 	elif avg < budget * 0.55 and vp.scaling_3d_scale < max_s - 0.01:
 		vp.scaling_3d_scale = minf(max_s, vp.scaling_3d_scale + 0.05)
 
@@ -3401,9 +3456,9 @@ func _narr_step(rdt: float) -> void:
 			if pl == 1:
 				narrator.say("lead", 2, 1.0, 0.3)
 			else:
-				narrator.say("overtake", 1, 0.55)
+				narrator.say("overtake", 1, 0.25)
 		elif pl > _narr_place:
-			narrator.say("overtaken", 1, 0.5, 0.3)
+			narrator.say("overtaken", 1, 0.25, 0.3)
 	_narr_place = pl
 	if not player.wrecked and player.health < player.max_health * 0.25:
-		narrator.say("lowhp", 1)
+		narrator.say("lowhp", 1, 0.5)

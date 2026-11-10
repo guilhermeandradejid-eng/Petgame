@@ -137,7 +137,7 @@ var net_buf: Array = []     # estados recebidos [t, xform, vel, ...] para interp
 var display_name := ""
 var sp: Dictionary
 var color := Color.RED
-var ctrl := {"steer": 0.0, "throttle": 0.0, "brake": 0.0, "drift": false, "nitro": false, "fire": false, "drop": false, "special": false, "dir": null, "dir_mag": 0.0}
+var ctrl := {"steer": 0.0, "throttle": 0.0, "brake": 0.0, "drift": false, "nitro": false, "fire": false, "drop": false, "special": false, "dir": null, "dir_mag": 0.0, "kb": false}
 
 # equipamento e munição
 var front_type := "mg"
@@ -1018,7 +1018,8 @@ func _phys(dt: float) -> void:
 		_hard_t += dt
 	else:
 		_hard_t = maxf(0.0, _hard_t - dt * 2.0)
-	var want_drift: bool = ctrl.drift or _hard_t > 0.14
+	# teclado (entrada digital): só derrapa sozinho numa curva forte sustentada; o botão de drift continua valendo
+	var want_drift: bool = ctrl.drift or _hard_t > (0.5 if ctrl.get("kb", false) else 0.14)
 	if not drifting and on_ground and want_drift and v_f > 15.0 and absf(steer_s) > 0.3:
 		drifting = true
 		drift_dir = signf(steer_s)
@@ -1822,8 +1823,10 @@ func _jump_assist() -> void:
 	var vh := Vector2(v.x, v.z).length()
 	var hd := Vector3(to.x, 0, to.z).normalized()
 	var newh := clampf(maxf(vh, need), 0.0, maxf(vh, 8.0) * 1.5 + 6.0)
-	# rápido demais (nitro + placa): segura um pouco no ar para pousar na rampa, não voar para fora na curva
-	newh = minf(newh, need * 1.4 + 5.0)
+	# rápido demais (nitro + placa): segura um pouco para pousar na rampa, não voar para fora na curva — mas de leve:
+	# quem pulou de nitro sente o embalo (no máximo perde 12% da velocidade)
+	newh = minf(newh, need * 1.9 + 10.0)
+	newh = maxf(newh, vh * 0.88)
 	if OS.get_cmdline_user_args().has("--debugjump"):
 		print("JUMP %s s=%d k=%d D=%.1f dy=%.1f vy=%.1f tf=%.2f vh=%.1f need=%.1f new=%.1f ang=%.0f" % [display_name, int(s_track), k, D, to.y, v.y, tf, vh, need, newh, rad_to_deg(Vector2(v.x, v.z).angle_to(Vector2(to.x, to.z)))])
 	linear_velocity = hd * newh + Vector3.UP * vy

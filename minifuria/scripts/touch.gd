@@ -17,9 +17,22 @@ var font: Font
 const R := 70.0
 
 
+## os botões de toque só aparecem com tela de toque: no PC ficam escondidos até alguém tocar na tela e
+## somem de novo quando o teclado ou o controle é usado
+static var touch_mode := false
+var want := false   # o HUD quer mostrar (tela da corrida)
+
+
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	touch_mode = OS.has_feature("mobile") or OS.has_feature("web_android") or OS.has_feature("web_ios") \
+		or (OS.get_name() != "Web" and DisplayServer.is_touchscreen_available())
+
+
+func show_if(on: bool) -> void:
+	want = on
+	visible = on and touch_mode
 
 
 func _btn_rects() -> Dictionary:
@@ -39,6 +52,12 @@ func _btn_rects() -> Dictionary:
 
 
 func _input(e: InputEvent) -> void:
+	if (e is InputEventScreenTouch or e is InputEventScreenDrag) and not touch_mode:
+		touch_mode = true
+		visible = want
+	elif not OS.has_feature("mobile") and touch_mode and e.is_pressed() and (e is InputEventKey or e is InputEventJoypadButton):
+		touch_mode = false
+		visible = false
 	if not visible:
 		return
 	if e is InputEventScreenTouch:
