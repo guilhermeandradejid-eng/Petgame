@@ -538,7 +538,10 @@ function audioInit() {
   if (actx || !sndOn) { if (actx && actx.state === 'suspended') actx.resume(); return; }
   try {
     actx = new (window.AudioContext || window.webkitAudioContext)();
-    master = actx.createGain(); master.gain.value = 0.55; master.connect(actx.destination);
+    master = actx.createGain(); master.gain.value = 0.5;
+    const lim = actx.createDynamicsCompressor();          // limiter: stacked impact sounds must not clip
+    lim.threshold.value = -16; lim.knee.value = 8; lim.ratio.value = 12; lim.attack.value = 0.001; lim.release.value = 0.1;
+    master.connect(lim); lim.connect(actx.destination);
     noiseBuf = actx.createBuffer(1, actx.sampleRate, actx.sampleRate);
     const d = noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -855,7 +858,7 @@ function events() {
   }
   if (st === 'Run') {          // footfalls
     const c = (hero.act.time * META.fps) % 36, pc = hero.runC === undefined ? c : hero.runC;
-    for (const [k, b] of [[1, footL], [19, footR]]) if (pc < k && c >= k && b) { b.getWorldPosition(tmp); puff(tmp, 2, 0.25, 0.25); }
+    for (const [k, b] of [[1, footL], [19, footR]]) if (pc < k && c >= k && b) { b.getWorldPosition(tmp); puff(tmp, 2, 0.25, 0.25); thud(0.16, 95, 0.05); }
     hero.runC = c;
   } else hero.runC = undefined;
   if (st === 'Dash' && f < 16 && Math.random() < 0.7) {
