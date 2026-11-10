@@ -76,7 +76,8 @@ Personagem 3D em estilo anime/JRPG, modelado, texturizado, rigado e animado no *
   levar dano (H). Ataque 4 vezes para o combo; ataque durante a esquiva para a Estocada. Tem cel shading com contorno,
   cabelo/cachecol/casaco com física em tempo real, rastro da espada, faíscas e anéis de impacto com *bloom*, hit-stop,
   recuo dos bonecos de treino, tremor de câmera e sons sintetizados.
-- `hero/preview/` — renders do Blender (ficha do personagem, rosto, poses, reel) e vídeos do visualizador a 60 fps.
+- `hero/preview/` — renders do Blender (ficha do personagem, rosto, poses, reel) e vídeos do visualizador a 60 fps,
+  com o som sintetizado da própria página.
 - `hero/ANIMATION.md` — as referências (tempos do Genshin Impact, golpes de Devil May Cry 5, princípios de animação
   de combate), como foram aplicadas e o que dá peso aos golpes.
 

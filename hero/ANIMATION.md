@@ -69,7 +69,8 @@ Encadeamento: `Attack1 → 2 → 3 → 4 → 1`; `Dash` + ataque → `Stinger`; 
   atravessá-lo.
 - **Câmera.** Aproximação rápida do campo de visão e tremor proporcional ao golpe.
 - **Chão.** Poeira na pisada de cada golpe e nos passos da corrida; o Quebra-elmo deixa dois anéis e uma rachadura.
-- **Som** sintetizado (Web Audio): assobio da lâmina 4 quadros antes do acerto, baque e tinido no contato.
+- **Som** sintetizado (Web Audio): assobio da lâmina 4 quadros antes do acerto, baque e tinido no contato, passos na
+  corrida; um limitador na saída evita distorção quando vários sons se somam.
 
 ## Efeitos
 
@@ -88,6 +89,7 @@ Encadeamento: `Attack1 → 2 → 3 → 4 → 1`; `Dash` + ataque → `Stinger`; 
 das pernas, e grava tudo quadro a quadro em `blender/diag.json`. Na versão atual a ponta chega a 50–70 m/s nos
 golpes e o alvo do pé nunca fica a mais de 105% do alcance da perna (99% fora do salto e da estocada).
 
-O visualizador foi conferido quadro a quadro em navegador sem tela (folhas de contato dos vídeos em `preview/`):
+O visualizador foi conferido quadro a quadro em navegador sem tela (folhas de contato extraídas dos vídeos de `preview/`):
 todos os golpes do combo e a Estocada acertam o alvo, a demo automática roda 40 s sem erro e a página não transborda
-na largura de celular. Os vídeos não foram assistidos em movimento nem o som foi ouvido.
+na largura de celular. O som dos vídeos foi renderizado fora do tempo real a partir do mesmo grafo de áudio da página
+e conferido por medição (pico de 0,68, sem saturar). Os vídeos não foram assistidos em movimento nem o som foi ouvido.
