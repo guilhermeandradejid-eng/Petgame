@@ -30,8 +30,8 @@ sys.path.insert(0, HERE)
 import build_voice as bv  # noqa: E402
 import trailer_voice as tv  # noqa: E402
 
-EXAG = 0.85     # emoção (0,5 = neutro; acima de ~1 começa a repetir palavras)
-CFG = 0.3       # menor = fala mais solta e menos "lida"
+EXAG = float(os.environ.get("EXAG", "1.5"))      # emoção (0,5 = neutro; acima de ~1 começa a repetir palavras)
+CFG = float(os.environ.get("CFG", "0.5"))       # menor = fala mais solta e menos "lida"
 TEMP = 0.8
 TRIES = 2
 # palavras soltas da contagem: alongadas como um locutor faz (e o modelo não trava em uma sílaba só)
@@ -70,7 +70,7 @@ class Gen:
         spoken = LONG.get(text, text)
         for a, b in bv.SAY_TEXT.get(lang, []):
             spoken = spoken.replace(a, b)
-        ref = os.path.join(HERE, "decibel_ref_%s.wav" % lang)
+        ref = os.path.join(os.environ.get("REF_DIR", HERE), "decibel_ref_%s.wav" % lang)
         best = None
         short = len(norm(text)) <= 2
         for k in range(TRIES + (3 if short else 0)):
@@ -101,9 +101,82 @@ class Gen:
         return best[1], self.tts.sr
 
 
+def arena_ir(seconds=0.85, seed=11):
+    """eco de arena: cauda longa e escura (estádio), sem eco marcado"""
+    rng = np.random.default_rng(seed)
+    n = int(seconds * bv.SR)
+    t = np.arange(n) / bv.SR
+    ir = rng.standard_normal(n).astype(np.float32) * np.exp(-t / (seconds / 4.0))
+    ir = np.convolve(ir, np.ones(25) / 25.0, mode="same")   # escurece a cauda
+    ir[: int(0.02 * bv.SR)] = 0.0
+    return ir / np.sqrt(np.sum(ir ** 2))
+
+
+ARENA = None
+
+
+def tight(y, rel_db=-30.0):
+    """corta respiração e chiado nas pontas (relativo ao trecho mais alto da fala)"""
+    hop = int(0.01 * bv.SR)
+    n = len(y) // hop
+    e = np.sqrt(np.mean(y[: n * hop].reshape(n, hop) ** 2, axis=1))
+    on = np.where(e > e.max() * 10 ** (rel_db / 20.0))[0]
+    if len(on) == 0:
+        return y
+    return y[max(0, (on[0] - 2) * hop): (on[-1] + 5) * hop]
+
+
+def squeeze(x, sr, keep=0.07, min_gap=0.14):
+    """encurta as pausas entre as palavras (o locutor fala de uma vez, sem respirar no meio da frase)"""
+    hop = int(0.01 * sr)
+    n = len(x) // hop
+    e = np.sqrt(np.mean(x[: n * hop].reshape(n, hop) ** 2, axis=1))
+    thr = max(0.012, 0.06 * float(e.max()))
+    quiet = e < thr
+    out = []
+    i = 0
+    while i < n:
+        j = i
+        while j < n and quiet[j] == quiet[i]:
+            j += 1
+        seg = x[i * hop: j * hop]
+        if quiet[i] and 0 < i and j < n and (j - i) * 0.01 > min_gap:
+            k = int(keep * sr)
+            seg = np.concatenate([seg[: k // 2], seg[-(k - k // 2):]])
+        out.append(seg)
+        i = j
+    out.append(x[n * hop:])
+    return np.concatenate(out).astype(np.float32)
+
+
+def metal_fx(x, sr, drive=float(os.environ.get("DRIVE", "0.6"))):
+    """vocal de locutor de metal: presença, rouquidão (saturação em paralelo), compressão forte,
+    slapback e eco de arena. Nada de mudar o tom (era o que deixava a voz robótica)."""
+    global ARENA
+    x = squeeze(x, sr)
+    tempo = float(os.environ.get("TEMPO", "1.12"))
+    chain = ("aresample=%d," % bv.SR) + ("atempo=%.3f," % tempo if abs(tempo - 1.0) > 0.01 else "") + ("highpass=f=110,equalizer=f=320:t=o:w=1.2:g=-3,equalizer=f=2800:t=o:w=1.0:g=4.5,"
+             "equalizer=f=6500:t=o:w=1.5:g=1.5,acompressor=threshold=-24dB:ratio=4:attack=3:release=120:makeup=4")
+    y = tight(bv.ff(x, sr, chain))
+    y = y / (np.abs(y).max() + 1e-9)
+    # rouquidão: distorção suave misturada por baixo da voz limpa
+    grit = np.tanh(y * 7.0) / np.tanh(7.0)
+    grit = bv.ff(grit, bv.SR, "highpass=f=700,lowpass=f=6000")
+    y = y + grit[: len(y)] * drive
+    if ARENA is None:
+        ARENA = arena_ir()
+    wet = bv.conv(y, ARENA)
+    out = np.zeros(len(wet) + int(0.1 * bv.SR), dtype=np.float32)
+    out[: len(y)] += y
+    d = int(0.095 * bv.SR)                      # slapback de estádio
+    out[d: d + len(y)] += y * 0.18
+    out[: len(wet)] += wet * 0.13
+    return tight(out, -38.0)
+
+
 def process(g, text, lang, key, smp):
     x, sr = g.say(text, lang)
-    v = bv.voice_fx(x, sr)
+    v = metal_fx(x, sr) if os.environ.get("STYLE", "metal") == "metal" else bv.voice_fx(x, sr)
     if key in bv.STING and smp:
         v = bv.mix_sting(v, bv.STING[key], smp)
     return bv.level(v)

@@ -18,13 +18,13 @@ import build_voice as bv  # noqa: E402
 
 # chave: (inglês, português) — na ordem em que entram no trailer
 LINES = {
-    "n1": ("Ladies and gentlemen... start your weapons!", "Senhoras e senhores... liguem suas armas!"),
+    "n1": ("Ladies and gentlemen, start your engines, and your weapons!", "Senhoras e senhores, liguem os motores e as armas!"),
     "n2": ("Twenty-six tracks of pure chaos!", "Vinte e seis pistas de puro caos!"),
     "n3": ("Rockets! Mines! Lasers! No rules out here!", "Foguetes! Minas! Laser! Aqui não tem regra!"),
     "n4": ("And the bosses? They are HUGE!", "E os chefes? São GIGANTES!"),
     "n5": ("Grab your friends... same screen!", "Chama a galera... na mesma tela!"),
     "n6": ("Upgrade it! Arm it! Wreck it!", "Turbina! Arma! E destrói!"),
-    "n7": ("Wreck 'n' Roll! Crank it up!", "Wreck 'n' Roll! Aumenta o som!"),
+    "n7": ("Let's race!", "Valendo!"),
 }
 
 
