@@ -96,15 +96,20 @@ def tangents(pts):
 
 
 class Builder:
-    def __init__(self, mats):
+    """Accumulates one skinned mesh. Faces carry a material and per-corner UVs into the painted atlas:
+    lofts with a `tile` are unwrapped (u around, v along); everything else samples its material's flat swatch."""
+
+    def __init__(self, mats, tiles=None, swatch=None):
         self.mats = list(mats)
         self.mi = {n: i for i, n in enumerate(self.mats)}
+        self.tiles = tiles or {}
+        self.swatch = swatch or {}
         self.v, self.w, self.uv, self.ol = [], [], [], []
         self.f, self.fm, self.sharp = [], [], set()
+        self.cuv = {}            # face index -> {vertex index: (u, v)}
         self.parts = {}          # name -> (v0, v1)
         self._part = None
         self.cur_ol = 1.0
-        self.sym = None          # optional point transform applied to every vertex (mirroring)
 
     # -- bookkeeping ---------------------------------------------------------
     def begin(self, name, outline=1.0):
@@ -125,38 +130,45 @@ class Builder:
         return v0, v1
 
     def vert(self, p, w=None, uv=(0.0, 0.0)):
-        p = Vector(p)
-        if self.sym:
-            p = self.sym(p)
-        self.v.append(p)
+        self.v.append(Vector(p))
         self.w.append(w)
         self.uv.append(uv)
         self.ol.append(self.cur_ol)
         return len(self.v) - 1
 
-    def face(self, idx, mat):
+    def face(self, idx, mat, uvs=None):
         idx = tuple(idx)
         if len(set(idx)) < 3:
             return
+        if uvs is not None:
+            self.cuv[len(self.f)] = {i: tuple(u) for i, u in zip(idx, uvs)}
         self.f.append(idx)
         self.fm.append(self.mi[mat])
 
     def mark_sharp(self, a, b):
         self.sharp.add((min(a, b), max(a, b)))
 
+    def tile_uv(self, tile, u, v):
+        u0, v0, w, h = self.tiles[tile]
+        return (u0 + w * u, v0 + h * v)
+
     # -- primitives ----------------------------------------------------------
     def ring(self, pts, w=None, uvs=None):
         return [self.vert(p, w, uvs[i] if uvs else (0.0, 0.0)) for i, p in enumerate(pts)]
 
-    def strip(self, r0, r1, mat, closed=True):
+    def strip(self, r0, r1, mat, closed=True, uv0=None, uv1=None, tile_mats=None):
+        """uv0 / uv1: per-point UVs of each ring, with one extra entry for the wrap-around when closed.
+        tile_mats: only faces of these materials are unwrapped; the others keep their flat swatch."""
         n = len(r0)
         for j in range(n if closed else n - 1):
             k = (j + 1) % n
             m = mat(j) if callable(mat) else mat
             if m is not None:
-                self.face((r0[j], r0[k], r1[k], r1[j]), m)
+                use = uv0 is not None and (tile_mats is None or m in tile_mats)
+                uvs = (uv0[j], uv0[j + 1], uv1[j + 1], uv1[j]) if use else None
+                self.face((r0[j], r0[k], r1[k], r1[j]), m, uvs)
 
-    def cap(self, ring, mat, center=None, w=None):
+    def cap(self, ring, mat, center=None, w=None, uv=None):
         c = center if center is not None else sum((self.v[i] for i in ring), Vector()) / len(ring)
         ci = len(self.v)
         self.v.append(Vector(c))
@@ -165,24 +177,34 @@ class Builder:
         self.ol.append(self.cur_ol)
         n = len(ring)
         for j in range(n):
-            self.face((ci, ring[j], ring[(j + 1) % n]), mat(j) if callable(mat) else mat)
+            self.face((ci, ring[j], ring[(j + 1) % n]), mat(j) if callable(mat) else mat, None if uv is None else (uv, uv, uv))
         return ci
 
-    def loft(self, rings, mat, closed=True, caps=(True, True), w=None, uvfn=None, sharp_rings=(), sharp_cols=()):
-        """rings: list of point lists. mat: name or fn(ring_index, col_index). Returns index grid."""
+    def loft(self, rings, mat, closed=True, caps=(True, True), w=None, uvfn=None, sharp_rings=(), sharp_cols=(),
+             tile=None, ushift=0.0, vspan=(0.0, 1.0), vs=None, us=None, tile_mats=None):
+        """rings: list of point lists. mat: name or fn(ring_index, col_index). tile: unwrap into that atlas tile
+        (u around the ring, v along the loft; `vs` gives explicit v per ring). Returns the index grid."""
         grid = []
         for i, pts in enumerate(rings):
             uvs = [uvfn(i, j, p) for j, p in enumerate(pts)] if uvfn else None
             grid.append(self.ring(pts, w, uvs))
-        for i in range(len(grid) - 1):
+        n, R = len(grid[0]), len(grid)
+        rows = None
+        if tile:
+            rows = []
+            for i in range(R):
+                t = vs[i] if vs else (i / (R - 1.0) if R > 1 else 0.0)
+                v = vspan[0] + (vspan[1] - vspan[0]) * t
+                rows.append([self.tile_uv(tile, (us[j] if us else (j / float(n) if closed else j / (n - 1.0))) + ushift, v)
+                             for j in range(n + 1)])
+        for i in range(R - 1):
             m = (lambda j, i=i: mat(i, j)) if callable(mat) else mat
-            self.strip(grid[i], grid[i + 1], m, closed)
+            self.strip(grid[i], grid[i + 1], m, closed, rows[i] if rows else None, rows[i + 1] if rows else None, tile_mats)
         cm = (lambda i: (lambda j: mat(i, j))) if callable(mat) else (lambda i: mat)
         if caps[0]:
-            self.cap(grid[0], cm(0))
+            self.cap(grid[0], cm(0), uv=rows[0][n // 2] if rows else None)
         if caps[1]:
-            self.cap(grid[-1], cm(len(grid) - 2))
-        n = len(grid[0])
+            self.cap(grid[-1], cm(R - 2), uv=rows[-1][n // 2] if rows else None)
         for i in sharp_rings:
             r = grid[i]
             for j in range(n if closed else n - 1):
@@ -208,11 +230,11 @@ def hring(z, a, bf, bb, cy=0.0, nf=2.0, nb=2.0, cx=0.0, M=20, phis=None, ab=None
     return out
 
 
-def fring(c, u, v, ru, rv, n=2.0, M=12, phase=0.0):
-    """Super-ellipse ring in an arbitrary frame: c + u*ru*cos + v*rv*sin."""
+def fring(c, u, v, ru, rv, n=2.0, M=12, phase=0.0, flip=False):
+    """Super-ellipse ring in an arbitrary frame: c + u*ru*cos + v*rv*sin. flip reverses the winding."""
     out = []
     for j in range(M):
-        th = 2 * pi * j / M + phase
+        th = (-1.0 if flip else 1.0) * 2 * pi * j / M + phase
         out.append(c + u * (ru * spow(cos(th), 2.0 / n)) + v * (rv * spow(sin(th), 2.0 / n)))
     return out
 

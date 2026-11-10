@@ -20,13 +20,13 @@ DEFAULT = {
     "hip": (0.0, 0.0, 0.0), "hipR": (0.0, 0.0, 0.0), "spine": (0.0, 0.0, 0.0), "chest": (0.0, 0.0, 0.0),
     "look": (0.0, 0.0, 0.0), "clavL": (0.0, 0.0), "clavR": (0.0, 0.0),
     "handR": (-0.2, 0.1, -0.4), "elbR": (-0.5, -0.6, -0.6), "blade": (0.0, 1.0, 0.0),
-    "rollY": (0.0,), "rollP": (0.0,), "edgeW": (0.0,), "rollRef": (0.0,),
+    "rollY": (0.0,), "rollP": (0.0,), "edgeW": (0.0,), "rollRef": (0.0,), "rollK": (0.0,),
     "handL": (0.2, 0.1, -0.4), "elbL": (0.5, -0.6, -0.6), "wristL": (0.0, 0.0, 0.0), "gripL": (0.0,),
     "kneeL": (0.0,), "kneeR": (0.0,),
 }
 C2L = {"handR_c": ("handR", False), "handL_c": ("handL", False), "blade_c": ("blade", True),
        "elbR_c": ("elbR", True), "elbL_c": ("elbL", True)}
-STAND = {"footL": (0.13, 0.17, 0.0), "footLr": (0.0, 12.0), "footR": (-0.145, -0.15, 0.0), "footRr": (0.0, -38.0)}
+STAND = {"footL": (0.105, 0.02, 0.0), "footLr": (0.0, 8.0), "footR": (-0.165, 0.10, 0.0), "footRr": (0.0, -22.0)}
 
 
 def init(rig):
@@ -57,11 +57,15 @@ def pose(base=None, **kw):
         p[ch] = RIG.to_chest(p, v, is_dir)
     # blade roll of this pose with a relaxed wrist; keyed so it travels smoothly between poses
     RIG.edge_prev = None
-    info = RIG.solve(dict(p, edgeW=(0.0,), **STAND))[2]
+    info = RIG.solve(dict(p, edgeW=(0.0,), rollK=(0.0,), **STAND))[2]
+    forced = False
     for m in "YP":
-        if "roll" + m not in kw:
+        if "roll" + m in kw:
+            forced = True
+        else:
             p["roll" + m] = (info["roll" + m],)
-    p["edgeW"] = (1.0,)
+    p["rollK"] = (1.0,)
+    p["edgeW"] = (1.0,) if forced else (0.0,)
     return p
 
 
@@ -248,6 +252,9 @@ def breathe(P, t, amt=1.0):
     return P
 
 
+SETTLE = {"hip": (10.0, 0.72), "hipR": (11.0, 0.62), "spine": (11.5, 0.56), "chest": (11.5, 0.56), "look": (12.0, 0.8)}
+
+
 class Clip:
     def __init__(self, name, n, loop=False, speed=0.0):
         self.name, self.n, self.loop, self.speed = name, n, loop, speed
@@ -258,6 +265,8 @@ class Clip:
         self.rootfn = None
         self.events = {}
         self.breath = 0.35
+        self.settle = True
+        self._baked = None
 
     def root(self, f):
         if self.fn:
@@ -266,33 +275,56 @@ class Clip:
             return self.rootfn(f)
         return self.track.sample("root", f)
 
-    def controls(self, f):
+    def raw(self, f):
         if self.fn:
-            P = self.fn(f)
-        else:
-            dl = dict(self.delay)
-            dl["rollY"] = dl["rollP"] = dl.get("blade", 0.0)
-            P = {ch: self.track.sample(ch, f - dl.get(ch, 0.0)) for ch in DEFAULT}
-            r = P["root"] = self.root(f)
-            P["rollRef"] = (1.0 if self.track.dirmode == "pitch" else 0.0,)
-            c, sn = cos(radians(r[2])), sin(radians(r[2]))
-            for S in "LR":
-                s, fw, lift, pit, yaw = self.feet[S].at(f, self.root)
-                ds, df = s - r[0], fw - r[1]
-                P["foot" + S] = (ds * c - df * sn, ds * sn + df * c, lift)
-                P["foot" + S + "r"] = (pit, yaw - r[2])
-            breathe(P, f / FPS, self.breath * self.calm(f))
+            return self.fn(f)
+        dl = dict(self.delay)
+        dl["rollY"] = dl["rollP"] = dl.get("blade", 0.0)
+        P = {ch: self.track.sample(ch, f - dl.get(ch, 0.0)) for ch in DEFAULT}
+        r = P["root"] = self.root(f)
+        P["rollRef"] = (1.0 if self.track.dirmode == "pitch" else 0.0,)
+        c, sn = cos(radians(r[2])), sin(radians(r[2]))
+        for S in "LR":
+            s, fw, lift, pit, yaw = self.feet[S].at(f, self.root)
+            ds, df = s - r[0], fw - r[1]
+            P["foot" + S] = (ds * c - df * sn, ds * sn + df * c, lift)
+            P["foot" + S + "r"] = (pit, yaw - r[2])
+        breathe(P, f / FPS, self.breath)
         return P
 
-    def calm(self, f):
-        return 1.0
+    def controls(self, f):
+        fi = int(round(f))
+        if self.fn or not self.settle or abs(f - fi) > 1e-6 or fi < 0 or fi > self.n:
+            return self.raw(f)
+        if self._baked is None:
+            self._bake()
+        return dict(self._baked[fi])
+
+    def _bake(self):
+        """Pelvis, spine and head ride on under-damped springs: the body overshoots and settles after every
+        key instead of stopping dead, which is most of what reads as weight."""
+        frames = [self.raw(f) for f in range(self.n + 1)]
+        st = {ch: [list(frames[0][ch]), [0.0] * len(frames[0][ch])] for ch in SETTLE}
+        sub, dt = 4, 1.0 / (FPS * 4)
+        for P in frames:
+            for ch, (hz, zeta) in SETTLE.items():
+                x, v = st[ch]
+                w = 2 * pi * hz
+                for _ in range(sub):
+                    for i in range(len(x)):
+                        v[i] += (w * w * (P[ch][i] - x[i]) - 2 * zeta * w * v[i]) * dt
+                        x[i] += v[i] * dt
+                P[ch] = tuple(x)
+        self._baked = frames
 
 
 # ----------------------------------------------------------------------------
 # key poses
 # ----------------------------------------------------------------------------
-FEET = {"L": (0.130, 0.170, 12.0), "R": (-0.145, -0.150, -38.0)}
+FEET = {"L": (0.105, 0.020, 8.0), "R": (-0.165, 0.100, -22.0)}
 ELB_R, ELB_L = (-0.55, -0.70, -0.25), (0.60, -0.55, -0.35)
+DELAY = {"spine": 1.0, "chest": 1.6, "handR": 2.4, "elbR": 2.4, "blade": 3.0, "handL": 1.8, "elbL": 1.8,
+         "wristL": 2.5, "look": 0.5}
 
 
 def az(a, e):
@@ -301,20 +333,33 @@ def az(a, e):
 
 
 def idle_pose():
-    return pose(hip=(-0.012, -0.012, -0.045), hipR=(3, 0, -27), spine=(2, 0, -6), chest=(3, 0, -6), look=(2, 0, 0),
-                handR_c=(-0.275, 0.045, 0.835), blade_c=(-0.26, 0.76, -0.59), elbR_c=ELB_R,
-                handL_c=(0.265, 0.160, 0.865), elbL_c=ELB_L, wristL=(10, 0, -8))
+    """Weight on the left leg, sword resting on the right shoulder, left hand on the hip."""
+    return pose(hip=(0.035, 0.0, -0.022), hipR=(1, -5, -12), spine=(-1, 3, -3), chest=(-2, 3, -3), look=(-2, 1.5, 0),
+                handR_c=(-0.185, 0.135, 1.225), blade_c=az(-172, 28), elbR_c=(-0.3, 0.25, -0.9),
+                handL_c=(0.225, 0.02, 0.935), elbL_c=(0.75, -0.6, 0.05), wristL=(25, 0, -30))
+
+
+def keyed(name, n, rows, mode="yaw", delay=None):
+    """rows: (frame, pose, hold|pass, ease, root forward[, root yaw])."""
+    c = Clip(name, n)
+    c.track.dirmode = mode
+    for r in rows:
+        f, p, m, e, rf = r[:5]
+        c.track.key(f, dict(p, root=(0.0, rf, r[5] if len(r) > 5 else 0.0)), m, e)
+    c.delay = dict(DELAY if delay is None else delay)
+    return c
 
 
 def make_clips():
     I = idle_pose()
     clips = []
+    lr = FEET["L"], FEET["R"]
 
     # ---- Idle ------------------------------------------------------------------
     c = Clip("Idle", 384, loop=True)
 
     def idle_fn(f, I=I):
-        P = dict(I, edgeW=(0.0,))
+        P = dict(I, edgeW=(0.0,), rollK=(0.0,))
         for S in "LR":
             P["foot" + S] = (FEET[S][0], FEET[S][1], 0.0)
             P["foot" + S + "r"] = (0.0, FEET[S][2])
@@ -325,118 +370,191 @@ def make_clips():
     # ---- Run -------------------------------------------------------------------
     clips.append(run_clip())
 
-    # ---- Attack 1: rising diagonal cut, low right -> high left, stepping in ----------
-    A = pose(I, hip=(-0.035, -0.045, -0.090), hipR=(6, -2, -44), spine=(4, -2, -8), chest=(4, -2, -10), look=(4, 0, -4),
-             armR=(-100, -52, 0.78), blade_c=az(-128, -28), elbR_c=(-0.4, -0.9, 0.2),
-             armL=(8, -12, 0.80), elbL_c=(0.7, -0.3, -0.6), wristL=(0, 0, -30))
-    C = pose(I, hip=(0.0, 0.04, -0.105), hipR=(8, 1, -6), spine=(4, 1, 4), chest=(4, 2, 6), look=(4, 0, 0),
-             armR=(-8, -8, 0.96), blade_c=az(-46, -24), elbR_c=(-0.6, -0.3, -0.7),
-             armL=(70, -50, 0.72), elbL_c=ELB_L, wristL=(20, 0, -10))
-    FT = pose(I, hip=(0.03, 0.06, -0.085), hipR=(4, 3, 28), spine=(0, 3, 10), chest=(-2, 3, 14), look=(2, 0, 10),
-              armR=(74, 34, 0.93), blade_c=az(40, 50), elbR_c=(-0.3, 0.3, -0.9),
-              armL=(120, -58, 0.80), elbL_c=(0.5, -0.7, -0.2), wristL=(25, 0, -10))
-    H1 = pose(I, hip=(0.025, 0.05, -0.080), hipR=(4, 2, 23), spine=(0, 2, 8), chest=(-1, 2, 12), look=(2, 0, 7),
-              armR=(72, 32, 0.90), blade_c=az(50, 44), elbR_c=(-0.3, 0.3, -0.9),
-              armL=(115, -58, 0.78), elbL_c=(0.5, -0.7, -0.2), wristL=(20, 0, -10))
-    H1b = pose(H1, hip=(0.022, 0.048, -0.077), armR=(71.5, 31.5, 0.895), blade_c=az(52, 42))
-    adv = 0.30
-    c = Clip("Attack1", 52)
-    t = c.track
-    for f, p, m, e, rf in ((0, I, "hold", (1, 1), 0.0), (5.5, A, "hold", (1.0, 1.6), 0.02),
-                           (10, C, "pass", (1.8, 1.0), 0.21), (13, FT, "hold", (1.0, 1.5), adv - 0.01),
-                           (18.5, H1, "hold", (1.3, 1.6), adv), (27, H1b, "hold", (1, 1), adv),
-                           (46, I, "hold", (1.6, 1.8), adv)):
-        t.key(f, dict(p, root=(0.0, rf, 0.0)), m, e)
-    c.delay = {"spine": 1.0, "chest": 1.6, "handR": 2.4, "elbR": 2.4, "blade": 3.0, "handL": 1.8, "elbL": 1.8,
-               "wristL": 2.5, "look": 0.5}
-    L, R = Foot(*FEET["L"]), Foot(*FEET["R"])
-    L.step(4, 10.5, 0.13, 0.17 + adv, lift=0.05, off=10, land=6)
-    R.step(11.5, 17.5, -0.150, -0.150 + 0.11, yaw=-20, lift=0.012, off=0, land=0)
-    R.heels((0, 0), (6, 0), (11, -28), (17.5, -42), (28, -40), (29, 0), (52, 0))
-    R.step(29, 39, -0.145, -0.150 + adv, yaw=-38, lift=0.05, off=10, land=4)
+    # recovery breakdown: sword travels over the top back to the shoulder
+    def back_to_shoulder(yaw, e=78):
+        return pose(I, hip=(0.025, 0.03, -0.07), hipR=(5, -2, yaw * 0.3), spine=(2, 1, yaw * 0.1), chest=(1, 2, yaw * 0.15),
+                    look=(0, 0, 2), armR=(-30, 18, 0.62), blade_c=az(-70 if yaw <= 0 else -55, e), elbR_c=(-0.5, 0.2, -0.8),
+                    armL=(120, -55, 0.70), elbL_c=(0.7, -0.6, -0.2), wristL=(15, 0, -15))
+
+    # ---- Attack 1: diagonal cut off the shoulder, high right -> low left, stomping lunge ----------
+    A1 = pose(I, hip=(-0.03, -0.04, 0.005), hipR=(-5, -3, -32), spine=(-4, -2, -9), chest=(-7, -3, -13), look=(2, 0, -4),
+              armR=(-66, 66, 0.86), blade_c=az(-160, 30), elbR_c=(-0.7, 0.2, -0.6),
+              armL=(10, -8, 0.78), elbL_c=(0.7, -0.3, -0.6), wristL=(0, 0, -30))
+    C1 = pose(I, hip=(0.0, 0.05, -0.12), hipR=(10, 1, -4), spine=(6, 1, 4), chest=(6, 2, 8), look=(4, 0, 0),
+              armR=(-6, 4, 0.97), blade_c=az(-40, 42), elbR_c=(-0.6, -0.3, -0.7),
+              armL=(95, -60, 0.60), elbL_c=ELB_L, wristL=(20, 0, -10))
+    F1 = pose(I, hip=(0.05, 0.08, -0.25), hipR=(18, 4, 28), spine=(10, 4, 10), chest=(9, 4, 15), look=(6, -2, 6),
+              armR=(60, -50, 0.96), blade_c=az(20, -38), elbR_c=(-0.4, 0.2, -0.9),
+              armL=(162, 24, 0.94), elbL_c=(0.5, -0.6, -0.6), wristL=(0, 0, -20))
+    H1 = pose(I, hip=(0.045, 0.07, -0.225), hipR=(16, 4, 25), spine=(9, 4, 9), chest=(8, 4, 14), look=(5, -2, 5),
+              armR=(58, -48, 0.94), blade_c=az(26, -35), elbR_c=(-0.4, 0.2, -0.9),
+              armL=(158, 18, 0.90), elbL_c=(0.5, -0.6, -0.6), wristL=(0, 0, -20))
+    H1b = pose(H1, hip=(0.043, 0.068, -0.22), armR=(57.5, -47.5, 0.935), blade_c=az(28, -34))
+    adv = 0.34
+    c = keyed("Attack1", 56, ((0, I, "hold", (1, 1), 0.0), (5.5, A1, "hold", (1.0, 1.8), 0.02),
+                              (10, C1, "pass", (2.0, 1.0), 0.24), (13.5, F1, "hold", (1.0, 1.9), adv - 0.01),
+                              (18.5, H1, "hold", (1.3, 1.6), adv), (27, H1b, "hold", (1, 1), adv),
+                              (38, back_to_shoulder(8), "pass", (1.6, 1.0), adv), (52, I, "hold", (1.0, 1.8), adv)))
+    L, R = Foot(*lr[0]), Foot(*lr[1])
+    L.step(4, 10.5, 0.13, 0.50, yaw=6, lift=0.08, off=8, land=4, e=(1.2, 2.2))
+    R.heels((0, 0), (7, 0), (11, -30), (18, -44), (36, -40), (37, 0), (56, 0))
+    R.step(12, 18, -0.175, 0.20, yaw=-16, lift=0.012, off=0, land=0)
+    R.step(37, 47, -0.165, 0.10 + adv, yaw=-22, lift=0.05, off=8, land=4)
+    L.step(44, 52, 0.105, 0.02 + adv, yaw=8, lift=0.03, off=0, land=0)
     c.feet = {"L": L, "R": R}
-    c.events = {"hit": 13, "cancel": 22, "move": 32}
+    c.events = {"hit": 12, "cancel": 22, "move": 34, "stomp": 10}
     clips.append(c)
 
-    # ---- Attack 2: falling backhand, high left -> low right, passing step -------------
-    A2 = pose(I, hip=(0.03, 0.03, -0.11), hipR=(5, 3, 34), spine=(1, 3, 11), chest=(-1, 3, 17), look=(3, 0, 9),
-              armR=(106, 40, 0.90), blade_c=az(166, 18), elbR_c=(-0.2, 0.7, -0.6),
-              armL=(118, -55, 0.80), elbL_c=(0.5, -0.7, -0.2), wristL=(20, 0, -10))
-    C2 = pose(I, hip=(-0.01, 0.06, -0.15), hipR=(9, 0, -6), spine=(5, 0, -2), chest=(5, 0, -2), look=(4, 0, 0),
-              armR=(12, 2, 0.95), blade_c=az(80, 34), elbR_c=(-0.6, -0.2, -0.75),
-              armL=(60, -40, 0.70), elbL_c=ELB_L, wristL=(10, 0, -10))
-    FT2 = pose(I, hip=(-0.05, 0.08, -0.20), hipR=(12, -3, -36), spine=(7, -3, -12), chest=(7, -4, -16), look=(5, 0, -8),
-               armR=(-126, -34, 0.985), blade_c=az(-56, -30), elbR_c=(-0.4, -0.6, -0.6),
-               armL=(125, -60, 0.72), elbL_c=(0.7, -0.6, -0.2), wristL=(15, 0, -10))
-    H2 = pose(I, hip=(-0.045, 0.07, -0.185), hipR=(11, -3, -31), spine=(6, -3, -10), chest=(6, -3, -13), look=(4, 0, -6),
-              armR=(-124, -35, 0.975), blade_c=az(-62, -28), elbR_c=(-0.4, -0.6, -0.6),
-              armL=(120, -62, 0.70), elbL_c=(0.7, -0.6, -0.2), wristL=(15, 0, -10))
-    H2b = pose(H2, hip=(-0.042, 0.068, -0.18), armR=(-123.5, -35, 0.97), blade_c=az(-64, -27))
-    adv2 = 0.34
-    c = Clip("Attack2", 54)
-    t = c.track
-    for f, p, m, e, rf in ((0, H1b, "hold", (1, 1), 0.0), (4.5, A2, "hold", (1.0, 1.5), 0.03),
-                           (9, C2, "pass", (1.8, 1.0), 0.24), (12, FT2, "hold", (1.0, 1.5), adv2 - 0.01),
-                           (17.5, H2, "hold", (1.3, 1.6), adv2), (26, H2b, "hold", (1, 1), adv2),
-                           (48, I, "hold", (1.6, 1.8), adv2)):
-        t.key(f, dict(p, root=(0.0, rf, 0.0)), m, e)
-    c.delay = dict(clips[-1].delay)
-    L, R = Foot(0.13, 0.17, 12.0), Foot(-0.150, -0.34, -20.0)
-    R.heels((0, -40), (2, -40), (3, 0), (54, 0))
-    R.step(2, 9.5, -0.235, 0.17 + adv2 + 0.10, yaw=-14, lift=0.08, off=0, land=6)
-    L.heels((0, 0), (9, 0), (14, -30), (28, -34), (29, 0), (54, 0))
-    L.step(29, 40, 0.13, 0.17 + adv2, yaw=12, lift=0.05, off=8, land=4)
-    R.step(28, 39, -0.145, -0.150 + adv2, yaw=-38, lift=0.05, off=6, land=4)
+    # ---- Attack 2: wide horizontal backhand, left -> right, passing step ------------------------
+    A2 = pose(I, hip=(0.045, 0.04, -0.21), hipR=(12, 3, 32), spine=(6, 3, 12), chest=(6, 3, 18), look=(6, 0, 10),
+              armR=(88, -20, 0.70), blade_c=az(134, -8), elbR_c=(-0.3, 0.6, -0.7),
+              armL=(140, -30, 0.75), elbL_c=(0.5, -0.7, -0.3), wristL=(10, 0, -20))
+    C2 = pose(I, hip=(-0.03, 0.07, -0.20), hipR=(9, -2, -6), spine=(4, -2, -2), chest=(4, -3, -2), look=(4, 2, 0),
+              armR=(8, -4, 0.97), blade_c=az(62, 2), elbR_c=(-0.6, -0.2, -0.75),
+              armL=(70, -40, 0.65), elbL_c=ELB_L, wristL=(10, 0, -10))
+    F2 = pose(I, hip=(-0.10, 0.07, -0.25), hipR=(8, 2, -38), spine=(2, 4, -12), chest=(-2, 5, -18), look=(2, -3, 4),
+              armR=(-112, 28, 0.985), blade_c=az(-64, 36), elbR_c=(-0.3, -0.6, -0.7),
+              armL=(118, -52, 0.90), elbL_c=(0.6, -0.6, -0.4), wristL=(0, 0, -20))
+    H2 = pose(I, hip=(-0.09, 0.065, -0.23), hipR=(8, 2, -34), spine=(2, 3, -10), chest=(-1, 4, -15), look=(2, -3, 3),
+              armR=(-111, 24, 0.975), blade_c=az(-70, 32), elbR_c=(-0.3, -0.6, -0.7),
+              armL=(116, -54, 0.88), elbL_c=(0.6, -0.6, -0.4), wristL=(0, 0, -20))
+    H2b = pose(H2, hip=(-0.088, 0.063, -0.225), armR=(-110.5, 23, 0.97), blade_c=az(-72, 30))
+    adv2 = 0.36
+    c = keyed("Attack2", 56, ((0, H1b, "hold", (1, 1), 0.0), (6, A2, "hold", (1.3, 1.6), 0.03),
+                              (10, C2, "pass", (2.0, 1.0), 0.25), (13.5, F2, "hold", (1.0, 1.9), adv2 - 0.01),
+                              (18.5, H2, "hold", (1.3, 1.6), adv2), (27, H2b, "hold", (1, 1), adv2),
+                              (38, back_to_shoulder(-12, 72), "pass", (1.6, 1.0), adv2), (52, I, "hold", (1.0, 1.8), adv2)))
+    L, R = Foot(0.13, 0.50 - adv, 6.0), Foot(-0.175, 0.20 - adv, -16.0)
+    R.heels((0, -40), (3, -40), (4, 0), (56, 0))
+    R.step(3, 10.5, -0.36, 0.54, yaw=-30, lift=0.08, off=0, land=6, e=(1.2, 2.0))
+    L.heels((0, 0), (10, 0), (15, -30), (36, -34), (37, 0), (56, 0))
+    L.step(37, 47, 0.105, 0.02 + adv2, yaw=8, lift=0.05, off=8, land=4)
+    R.step(42, 52, -0.165, 0.10 + adv2, yaw=-22, lift=0.04, off=6, land=4)
     c.feet = {"L": L, "R": R}
-    c.events = {"hit": 13, "cancel": 22, "move": 33}
+    c.events = {"hit": 13, "cancel": 23, "move": 35, "stomp": 10}
     clips.append(c)
 
-    # ---- Attack 3: leaping overhead slam (two hands) ------------------------------
-    ROLL3 = -90.0
-    G = pose(I, rollP=(ROLL3,), hip=(0.0, -0.02, -0.14), hipR=(8, 0, -14), spine=(4, 0, -4), chest=(4, 0, -6), look=(2, 0, 0),
-             handR_c=(-0.16, 0.02, 1.50), blade_c=(-0.10, -0.70, 0.70), elbR_c=(-0.8, 0.1, -0.5),
-             handL_c=(0.20, 0.20, 1.10), elbL_c=(0.8, 0.0, -0.6), gripL=(0.5,))
-    A3 = pose(I, rollP=(ROLL3,), hip=(0.0, 0.0, -0.24), hipR=(14, 0, -6), spine=(6, 0, -2), chest=(6, 0, -2), look=(-8, 0, 0),
-              handR_c=(-0.08, -0.02, 1.44), blade_c=(0.0, -0.97, 0.05), elbR_c=(-0.9, 0.3, -0.2),
+    # ---- Attack 3: hop and a full clockwise spin, the blade comes round as one wide slash ---------
+    W3 = pose(I, hip=(-0.02, 0.02, -0.24), hipR=(10, -2, -34), spine=(4, -2, -12), chest=(2, -3, -16), look=(2, 0, -8),
+              armR=(-128, 6, 0.97), blade_c=az(-86, 10), elbR_c=(-0.3, -0.6, -0.7),
+              armL=(40, -12, 0.80), elbL_c=(0.6, -0.4, -0.6), wristL=(0, 0, -20))
+    S3 = pose(I, hip=(0.0, 0.03, 0.15), hipR=(6, 6, -12), spine=(3, 4, -4), chest=(4, 4, -8), look=(4, 0, -14),
+              armR=(-100, -2, 0.99), blade_c=az(-58, 0), elbR_c=(-0.3, -0.6, -0.7),
+              armL=(75, -48, 0.45), elbL_c=(0.5, -0.5, -0.7), wristL=(30, 0, 0))
+    L3 = pose(I, hip=(0.02, 0.05, -0.29), hipR=(14, -3, -34), spine=(7, -3, -12), chest=(6, -4, -18), look=(4, 0, 0),
+              armR=(-126, -8, 0.98), blade_c=az(-80, -6), elbR_c=(-0.3, -0.6, -0.7),
+              armL=(30, -64, 0.94), elbL_c=(0.7, -0.2, -0.3), wristL=(-30, 0, 0))
+    H3 = pose(L3, hip=(0.02, 0.05, -0.255), hipR=(12, -3, -32), armR=(-125, -7, 0.975), blade_c=az(-82, -5),
+              armL=(34, -62, 0.90))
+    H3b = pose(H3, hip=(0.02, 0.048, -0.25), blade_c=az(-83, -4))
+    adv3 = 0.30
+
+    def root3(f):
+        u = max(0.0, min(1.0, (f - 3.5) / 13.5))
+        return (0.0, adv3 * ss(3.0, 16.5, f), -360.0 * warp(u, 1.7, 1.5))
+    c = keyed("Attack3", 62, ((0, H2b, "hold", (1, 1), 0.0), (4, W3, "hold", (1.0, 1.5), 0.0), (10, S3, "pass", (1.2, 1.0), 0.0),
+                              (16.5, L3, "hold", (1.0, 1.3), 0.0), (22, H3, "hold", (1, 1), 0.0), (30, H3b, "hold", (1, 1), 0.0),
+                              (44, back_to_shoulder(-12, 72), "pass", (1.6, 1.0), 0.0), (58, I, "hold", (1.0, 1.8), 0.0)),
+              delay={"spine": 0.6, "chest": 1.0, "handR": 1.6, "elbR": 1.6, "blade": 2.2, "handL": 1.2, "elbL": 1.2, "look": 0.3})
+    c.rootfn = root3
+    L, R = Foot(0.13, 0.16 - adv2, 6.0), Foot(-0.36, 0.54 - adv2, -30.0)
+    L.heels((0, -34), (3, -42), (4, 0), (62, 0))
+    R.heels((0, 0), (2, 0), (4.5, -36), (5, 0), (16, 0), (17, -8), (39, -8), (40, 0), (62, 0))
+    L.air(4, 16, [(9, 0.11, 0.10, 0.34, -35, 8), (13, 0.13, 0.20, 0.20, -8, 10), (16, 0.14, 0.24, 0.0, 6, 12)])
+    R.air(4.5, 16.5, [(9, -0.14, -0.14, 0.30, -55, -20), (13, -0.17, -0.22, 0.16, -35, -30),
+                      (16.5, -0.19, -0.24, 0.0, -24, -34)])
+    L.step(40, 50, 0.105, 0.02 + adv3, yaw=8 - 360, lift=0.04, off=0, land=3)
+    R.step(46, 56, -0.165, 0.10 + adv3, yaw=-22 - 360, lift=0.04, off=6, land=3)
+    c.feet = {"L": L, "R": R}
+    c.events = {"hit": 13, "cancel": 25, "move": 38, "stomp": 16}
+    clips.append(c)
+
+    # ---- Attack 4: leap and two-handed helm breaker ------------------------------------------------
+    ROLL4 = -90.0
+    G4 = pose(I, rollP=(ROLL4,), hip=(0.0, -0.01, -0.17), hipR=(8, 0, -16), spine=(4, 0, -5), chest=(4, 0, -7), look=(2, 0, 0),
+              handR_c=(-0.16, 0.02, 1.47), blade_c=(-0.10, -0.70, 0.70), elbR_c=(-0.8, 0.1, -0.5),
+              handL_c=(0.20, 0.20, 1.10), elbL_c=(0.8, 0.0, -0.6), gripL=(0.5,))
+    A4 = pose(I, rollP=(ROLL4,), hip=(0.0, 0.0, -0.26), hipR=(15, 0, -6), spine=(6, 0, -2), chest=(6, 0, -2), look=(-8, 0, 0),
+              handR_c=(-0.08, -0.02, 1.42), blade_c=(0.0, -0.97, 0.05), elbR_c=(-0.9, 0.3, -0.2),
               elbL_c=(0.9, 0.3, -0.2), gripL=(1.0,))
-    TO = pose(I, rollP=(ROLL3,), hip=(0.0, 0.10, 0.0), hipR=(4, 0, 0), spine=(0, 0, 0), chest=(-4, 0, 0), look=(-6, 0, 0),
+    TO = pose(I, rollP=(ROLL4,), hip=(0.0, 0.10, 0.0), hipR=(4, 0, 0), spine=(0, 0, 0), chest=(-4, 0, 0), look=(-6, 0, 0),
               handR_c=(-0.06, -0.06, 1.74), blade_c=(0.0, -0.90, 0.35), elbR_c=(-0.9, 0.3, 0.0),
               elbL_c=(0.9, 0.3, 0.0), gripL=(1.0,))
-    AP = pose(I, rollP=(ROLL3,), hip=(0.0, 0.0, 0.42), hipR=(-12, 0, 0), spine=(-8, 0, 0), chest=(-10, 0, 0), look=(4, 0, 0),
-              handR_c=(-0.05, -0.26, 2.08), blade_c=(0.0, -0.75, -0.55), elbR_c=(-0.9, 0.2, 0.2),
+    AP = pose(I, rollP=(ROLL4,), hip=(0.0, 0.0, 0.44), hipR=(-14, 0, 0), spine=(-9, 0, 0), chest=(-11, 0, 0), look=(4, 0, 0),
+              handR_c=(-0.05, -0.28, 2.10), blade_c=(0.0, -0.75, -0.55), elbR_c=(-0.9, 0.2, 0.2),
               elbL_c=(0.9, 0.2, 0.2), gripL=(1.0,))
-    C3 = pose(I, rollP=(ROLL3,), hip=(0.0, 0.0, 0.16), hipR=(16, 0, 0), spine=(8, 0, 0), chest=(10, 0, 0), look=(10, 0, 0),
+    C4 = pose(I, rollP=(ROLL4,), hip=(0.0, 0.0, 0.16), hipR=(16, 0, 0), spine=(8, 0, 0), chest=(10, 0, 0), look=(10, 0, 0),
               handR_c=(-0.03, 0.46, 1.52), blade_c=(0.0, 0.45, 0.88), elbR_c=(-0.9, -0.2, -0.3),
               elbL_c=(0.9, -0.2, -0.3), gripL=(1.0,))
-    LD = pose(I, rollP=(ROLL3,), hip=(0.0, 0.02, -0.34), hipR=(24, 0, 4), spine=(10, 0, 2), chest=(10, 0, 2), look=(18, 0, 0),
-              handR_c=(-0.02, 0.50, 0.66), blade_c=(0.0, 0.78, -0.62), elbR_c=(-0.9, -0.3, -0.3),
+    LD = pose(I, rollP=(ROLL4,), hip=(0.0, 0.02, -0.40), hipR=(26, 0, 4), spine=(11, 0, 2), chest=(11, 0, 2), look=(18, 0, 0),
+              handR_c=(-0.02, 0.50, 0.60), blade_c=(0.0, 0.80, -0.60), elbR_c=(-0.9, -0.3, -0.3),
               elbL_c=(0.9, -0.3, -0.3), gripL=(1.0,))
-    OV = pose(LD, hip=(0.0, 0.03, -0.38), handR_c=(-0.02, 0.50, 0.68), blade_c=(0.0, 0.83, -0.55))
-    H3 = pose(LD, hip=(0.0, 0.02, -0.35), handR_c=(-0.02, 0.50, 0.665), blade_c=(0.0, 0.80, -0.60), look=(14, 0, 0))
-    H3b = pose(H3, hip=(0.0, 0.02, -0.34), look=(12, 0, 0))
-    adv3 = 1.10
-    c = Clip("Attack3", 82)
-    t = c.track
-    t.dirmode = "pitch"
-    for f, p, m, e, rf in ((0, H2b, "hold", (1, 1), 0.0), (6.5, G, "pass", (1, 1), 0.0), (11.5, A3, "hold", (1.0, 1.4), 0.02),
-                           (14, TO, "pass", (1.6, 1.0), 0.16), (20, AP, "pass", (1, 1), 0.62),
-                           (24, C3, "pass", (1, 1), 0.92), (27, LD, "hold", (1.0, 1.2), adv3 - 0.02),
-                           (30, OV, "hold", (1, 1), adv3), (35, H3, "hold", (1, 1), adv3), (47, H3b, "hold", (1, 1), adv3),
-                           (76, I, "hold", (1.8, 1.8), adv3)):
-        t.key(f, dict(p, root=(0.0, rf, 0.0)), m, e)
-    c.delay = {"spine": 0.5, "chest": 0.9, "handR": 1.2, "elbR": 1.2, "elbL": 1.2, "blade": 1.8, "handL": 1.2, "look": 0.4}
-    L, R = Foot(0.13, 0.17 - adv2 + 0.0, 12.0), Foot(-0.235, 0.27, -14.0)
-    L.heels((0, -34), (5, -20), (10, -10), (14, -40), (15, 0), (82, 0))
-    L.air(14, 26, [(17, 0.13, -0.24, 0.34, -60, 12), (21, 0.13, 0.04, 0.60, -20, 12), (24, 0.14, 0.24, 0.26, 0, 10),
-                   (26, 0.14, 0.26, 0.0, 6, 10)])
-    R.air(14, 26.5, [(17, -0.16, -0.14, 0.40, -55, -12), (21, -0.15, -0.30, 0.68, -70, -20),
-                     (24, -0.16, -0.26, 0.26, -40, -32), (26.5, -0.16, -0.20, 0.0, -30, -36)])
-    R.step(52, 64, -0.145, -0.150 + adv3, yaw=-38, lift=0.04, off=0, land=3)
-    L.step(56, 68, 0.13, 0.17 + adv3, yaw=12, lift=0.04, off=6, land=3)
+    OV = pose(LD, hip=(0.0, 0.03, -0.35), hipR=(22, 0, 4), handR_c=(-0.02, 0.50, 0.68), blade_c=(0.0, 0.85, -0.52))
+    H4 = pose(LD, hip=(0.0, 0.02, -0.37), handR_c=(-0.02, 0.50, 0.625), blade_c=(0.0, 0.81, -0.585), look=(14, 0, 0))
+    H4b = pose(H4, hip=(0.0, 0.02, -0.36), look=(10, 0, 0))
+    R4 = pose(I, rollP=(ROLL4,), hip=(0.02, 0.02, -0.10), hipR=(6, -2, -4), spine=(2, 1, -1), chest=(1, 2, -2), look=(0, 0, 0),
+              handR_c=(-0.14, 0.26, 1.16), blade_c=(-0.10, 0.25, 0.96), elbR_c=(-0.6, 0.1, -0.8),
+              handL_c=(0.24, 0.10, 0.95), elbL_c=(0.7, -0.6, -0.2), gripL=(0.0,))
+    adv4, rise = 1.10, 0.24
+    c = keyed("Attack4", 86, ((0, H3b, "hold", (1, 1), 0.0), (7, G4, "pass", (1, 1), 0.0), (12, A4, "hold", (1.0, 1.5), 0.02),
+                              (14.5, TO, "pass", (1.8, 1.0), 0.16), (20.5, AP, "pass", (1, 1), 0.62),
+                              (24.5, C4, "pass", (1, 1), 0.92), (27.5, LD, "hold", (1.0, 1.2), adv4 - 0.02),
+                              (30.5, OV, "hold", (1, 1), adv4), (36, H4, "hold", (1, 1), adv4), (48, H4b, "hold", (1, 1), adv4),
+                              (66, R4, "pass", (1.6, 1.0), adv4 + rise * 0.8), (80, I, "hold", (1.0, 1.8), adv4 + rise)),
+              mode="pitch",
+              delay={"spine": 0.5, "chest": 0.9, "handR": 1.2, "elbR": 1.2, "elbL": 1.2, "blade": 1.8, "handL": 1.2, "look": 0.4})
+    L, R = Foot(0.14, 0.24, 12.0), Foot(-0.19, -0.24, -34.0)
+    R.heels((0, -8), (8, -4), (12, -10), (14.5, -42), (15.5, 0), (27, 0), (28, -8), (53, -8), (54, 0), (86, 0))
+    L.heels((0, 0), (12, 0), (14.5, -30), (15.5, 0), (86, 0))
+    L.air(14.5, 26.5, [(17.5, 0.13, -0.24, 0.34, -60, 12), (21.5, 0.13, 0.04, 0.62, -20, 12), (24.5, 0.14, 0.24, 0.26, 0, 10),
+                       (26.5, 0.14, 0.26, 0.0, 6, 10)])
+    R.air(14.5, 27, [(17.5, -0.16, -0.14, 0.40, -55, -12), (21.5, -0.15, -0.32, 0.70, -72, -20),
+                     (24.5, -0.16, -0.26, 0.26, -40, -32), (27, -0.165, -0.20, 0.0, -30, -36)])
+    R.step(54, 66, -0.165, 0.10 + adv4 + rise, yaw=-22, lift=0.05, off=8, land=3)
+    L.step(70, 78, 0.105, 0.02 + adv4 + rise, yaw=8, lift=0.02, off=0, land=0)
     c.feet = {"L": L, "R": R}
-    # the rear foot stays on its ball after landing
-    R.heel = Curve([(0, 0), (11, 0), (14, -38), (15, 0), (26, 0), (27, -6), (51, -6), (52, 0), (82, 0)])
-    c.events = {"hit": 27, "cancel": 47, "move": 54}
+    c.events = {"hit": 27, "cancel": 50, "move": 58, "stomp": 27}
+    clips.append(c)
+
+    # ---- Stinger: chamber, then one long gliding thrust ---------------------------------------------
+    CH = pose(I, hip=(-0.02, -0.04, -0.20), hipR=(8, -2, -42), spine=(4, -2, -10), chest=(4, -2, -12), look=(4, 0, 0),
+              armR=(-142, -28, 0.55), blade_c=az(-6, 2), elbR_c=(-0.3, -0.9, 0.1),
+              armL=(4, -6, 0.90), elbL_c=(0.6, -0.3, -0.7), wristL=(0, 0, -40))
+    TH = pose(I, hip=(0.02, 0.14, -0.31), hipR=(32, 2, 24), spine=(9, 2, 9), chest=(9, 2, 13), look=(4, 0, 0),
+              armR=(-8, 0, 1.0), blade_c=az(-4, 1), elbR_c=(-0.5, -0.2, -0.8),
+              armL=(170, -8, 0.96), elbL_c=(0.5, -0.5, -0.6), wristL=(0, 0, -20))
+    GL = pose(TH, hip=(0.02, 0.12, -0.32), hipR=(31, 2, 22), armR=(-7, -0.5, 0.995), blade_c=az(-3, 0), armL=(168, -10, 0.94))
+    GL2 = pose(GL, hip=(0.02, 0.11, -0.315), armL=(164, -14, 0.92))
+    BR = pose(I, hip=(0.01, 0.02, -0.21), hipR=(16, 1, 14), spine=(6, 1, 6), chest=(6, 1, 8), look=(5, 0, 0),
+              armR=(-6, -5, 0.96), blade_c=az(-2, -3), elbR_c=(-0.5, -0.2, -0.8),
+              armL=(150, -32, 0.80), elbL_c=(0.5, -0.5, -0.6), wristL=(0, 0, -20))
+    dist_s = 3.42
+
+    def sroot(f):
+        if f <= 8.0:
+            return (0.0, 0.0525 * max(f, 0.0), 0.0)
+        u = min(1.0, (f - 8.0) / 15.0)
+        return (0.0, 0.42 + 3.0 * (1 - (1 - u) ** 2.6), 0.0)
+    # it starts from the dash glide, scoops the trailing blade down and forward, then commits
+    DS = pose(I, hip=(0.0, 0.02, -0.18), hipR=(32, 0, -6), spine=(8, 0, 0), chest=(6, 0, 0), look=(6, 0, 0),
+              handR_c=(-0.30, -0.02, 0.76), blade_c=(-0.20, -0.88, -0.43), elbR_c=(-0.6, -0.6, 0.5),
+              handL_c=(0.30, -0.02, 0.80), elbL_c=(0.6, -0.6, 0.5), wristL=(10, 0, 0))
+    c = keyed("Stinger", 62, ((0, DS, "hold", (1, 1), 0.0), (7, CH, "hold", (1.3, 1.6), 0.0), (11.5, TH, "pass", (2.2, 1.0), 0.0),
+                              (14, GL, "hold", (1.0, 1.2), 0.0), (22, GL2, "hold", (1, 1), 0.0),
+                              (28, BR, "hold", (1.2, 1.5), 0.0), (43, back_to_shoulder(6), "pass", (1.6, 1.0), 0.0),
+                              (57, I, "hold", (1.0, 1.8), 0.0)),
+              mode="pitch",
+              delay={"spine": 0.5, "chest": 0.9, "handR": 1.4, "elbR": 1.4, "blade": 1.4, "handL": 1.6, "elbL": 1.6, "look": 0.3})
+    c.rootfn = sroot
+    L, R = Foot(0.12, 0.30, 6.0), Foot(-0.165, -0.40, -12.0)
+    L.air(0, 23, [(7, 0.11, 0.30, 0.04, 0, 4), (12, 0.11, 0.50, 0.03, -6, 4), (19, 0.11, 0.52, 0.02, 0, 4),
+                  (23, 0.11, 0.46, 0.0, 0, 6)])
+    R.air(0, 30, [(7, -0.17, -0.30, 0.05, -30, -30), (13, -0.16, -0.72, 0.09, -64, -18), (22, -0.16, -0.70, 0.06, -60, -18),
+                  (30, -0.165, -0.26, 0.0, -12, -22)])
+    R.step(35, 45, -0.165, 0.10 + dist_s, yaw=-22, lift=0.05, off=8, land=4)
+    L.step(43, 53, 0.105, 0.02 + dist_s, yaw=8, lift=0.03, off=0, land=0)
+    c.feet = {"L": L, "R": R}
+    c.events = {"hit": 12, "hitEnd": 22, "cancel": 31, "move": 37}
     clips.append(c)
 
     # ---- Dash ----------------------------------------------------------------------
@@ -451,50 +569,45 @@ def make_clips():
               handR_c=(-0.30, 0.22, 0.90), blade_c=(-0.30, 0.85, -0.40), elbR_c=ELB_R,
               handL_c=(0.30, 0.34, 1.00), elbL_c=ELB_L, wristL=(0, 0, -10))
     dist = 2.60
-    c = Clip("Dash", 36)
-    t = c.track
 
     def droot(f):
         u = max(0.0, min(1.0, (f - 2.0) / 16.0))
-        return dist * (1 - (1 - u) ** 2.2)
-    for f, p, m, e in ((0, I, "hold", (1, 1)), (3, D1, "pass", (1, 1)), (7, D2, "hold", (1, 1.3)),
-                       (14, D3, "pass", (1, 1)), (19, D4, "hold", (1.0, 1.4)), (32, I, "hold", (1.5, 1.8))):
-        t.key(f, p, m, e)
-    c.rootfn = lambda f: (0.0, droot(f), 0.0)
-    c.delay = {"spine": 0.6, "chest": 1.0, "handR": 2.0, "elbR": 2.0, "blade": 3.0, "handL": 2.0, "elbL": 2.0, "look": 0.3}
-    L, R = Foot(*FEET["L"]), Foot(*FEET["R"])
-    R.heels((0, 0), (1, -10), (3, -45), (4, 0), (36, 0))
-    R.air(3, 23, [(7, -0.145, -0.52, 0.22, -65, -10), (14, -0.145, -0.46, 0.20, -60, -10),
-                  (19, -0.145, -0.22, 0.10, -20, -30), (23, -0.145, -0.150, 0.0, 0, -38)])
-    L.air(2, 16, [(6, 0.13, 0.30, 0.14, -10, 6), (12, 0.13, 0.34, 0.10, 5, 8), (16, 0.13, 0.197, 0.0, 6, 12)])
+        return (0.0, dist * (1 - (1 - u) ** 2.2), 0.0)
+    c = keyed("Dash", 40, ((0, I, "hold", (1, 1), 0.0), (3, D1, "pass", (1, 1), 0.0), (7, D2, "hold", (1, 1.3), 0.0),
+                           (14, D3, "pass", (1, 1), 0.0), (19, D4, "hold", (1.0, 1.4), 0.0),
+                           (36, I, "hold", (1.5, 1.8), 0.0)),
+              delay={"spine": 0.6, "chest": 1.0, "handR": 2.0, "elbR": 2.0, "blade": 3.0, "handL": 2.0, "elbL": 2.0, "look": 0.3})
+    c.rootfn = droot
+    L, R = Foot(*lr[0]), Foot(*lr[1])
+    R.heels((0, 0), (1, -10), (3, -45), (4, 0), (40, 0))
+    R.air(3, 24, [(7, -0.165, -0.52, 0.22, -65, -10), (14, -0.165, -0.46, 0.20, -60, -10),
+                  (19, -0.165, -0.12, 0.10, -20, -18), (24, -0.165, 0.10, 0.0, 0, -22)])
+    L.air(2, 16, [(6, 0.12, 0.30, 0.14, -10, 6), (12, 0.12, 0.34, 0.10, 5, 8), (16, 0.105, 0.047, 0.0, 6, 8)])
     c.feet = {"L": L, "R": R}
     c.events = {"cancel": 18, "move": 20}
     clips.append(c)
 
     # ---- Hit reaction ---------------------------------------------------------------
     X1 = pose(I, hip=(0.0, -0.09, -0.02), hipR=(-14, 3, -18), spine=(-10, 2, -2), chest=(-16, 2, 2), look=(16, -5, 8),
-              handR_c=(-0.38, 0.28, 0.98), blade_c=(-0.50, 0.60, 0.62), elbR_c=(-0.8, -0.4, -0.3),
-              handL_c=(0.36, 0.34, 1.04), elbL_c=(0.8, -0.4, -0.3), wristL=(-20, 0, 0), clavL=(8, 0), clavR=(8, 0))
+              armR=(-60, 20, 0.80), blade_c=az(-130, 50), elbR_c=(-0.8, -0.4, -0.3),
+              armL=(40, -10, 0.80), elbL_c=(0.8, -0.4, -0.3), wristL=(-20, 0, 0), clavL=(8, 0), clavR=(8, 0))
     X2 = pose(I, hip=(0.0, -0.05, -0.08), hipR=(-6, 1, -24), spine=(-4, 1, -4), chest=(-5, 1, -4), look=(-20, 5, -4),
-              handR_c=(-0.36, 0.10, 0.90), blade_c=(-0.45, 0.80, 0.40), elbR_c=ELB_R,
-              handL_c=(0.34, 0.20, 0.98), elbL_c=ELB_L, wristL=(0, 0, -10))
-    X3 = pose(I, hip=(-0.01, -0.01, -0.11), hipR=(10, 0, -28), spine=(6, 0, -6), chest=(8, 0, -6), look=(6, 0, 0),
-              handR_c=(-0.28, 0.08, 0.84), blade_c=(-0.30, 0.80, -0.45), elbR_c=ELB_R,
-              handL_c=(0.25, 0.22, 0.95), elbL_c=ELB_L, wristL=(10, 0, -10))
+              armR=(-50, -10, 0.82), blade_c=az(-100, 30), elbR_c=ELB_R,
+              armL=(50, -30, 0.80), elbL_c=ELB_L, wristL=(0, 0, -10))
+    X3 = pose(I, hip=(-0.01, -0.01, -0.11), hipR=(10, 0, -24), spine=(6, 0, -6), chest=(8, 0, -6), look=(6, 0, 0),
+              armR=(-40, -30, 0.72), blade_c=az(-50, 35), elbR_c=ELB_R,
+              armL=(60, -45, 0.70), elbL_c=ELB_L, wristL=(10, 0, -10))
     back = -0.38
-    c = Clip("Hit", 40)
-    t = c.track
-    for f, p, m, e, rf in ((0, I, "hold", (1, 1), 0.0), (2.5, X1, "pass", (0.8, 1.0), -0.10),
-                           (7, X2, "hold", (1.0, 1.3), -0.24), (14, X3, "hold", (1.2, 1.4), back),
-                           (34, I, "hold", (1.5, 1.8), back)):
-        t.key(f, dict(p, root=(0.0, rf, 0.0)), m, e)
-    c.delay = {"spine": 0.5, "chest": 0.9, "look": 2.2, "handR": 1.8, "elbR": 1.8, "blade": 2.8, "handL": 2.0, "elbL": 2.0}
-    L, R = Foot(*FEET["L"]), Foot(*FEET["R"])
-    R.step(2, 9, -0.145, -0.150 + back, lift=0.04, off=0, land=0)
-    L.heels((0, 0), (3, 0), (9, -16), (10, 0), (40, 0))
-    L.step(10, 19, 0.13, 0.17 + back, lift=0.035, off=0, land=0)
+    c = keyed("Hit", 44, ((0, I, "hold", (1, 1), 0.0), (2.5, X1, "pass", (0.8, 1.0), -0.10),
+                          (7, X2, "hold", (1.0, 1.3), -0.30), (14, X3, "hold", (1.2, 1.4), back),
+                          (38, I, "hold", (1.5, 1.8), back)),
+              delay={"spine": 0.5, "chest": 0.9, "look": 2.2, "handR": 1.8, "elbR": 1.8, "blade": 2.8, "handL": 2.0, "elbL": 2.0})
+    L, R = Foot(*lr[0]), Foot(*lr[1])
+    R.step(2, 9, -0.165, 0.10 + back, lift=0.04, off=0, land=0)
+    L.heels((0, 0), (3, 0), (9, -16), (10, 0), (44, 0))
+    L.step(10, 19, 0.105, 0.02 + back, lift=0.035, off=0, land=0)
     c.feet = {"L": L, "R": R}
-    c.events = {"move": 24}
+    c.events = {"move": 26}
     clips.append(c)
     return clips
 

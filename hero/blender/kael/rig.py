@@ -39,6 +39,11 @@ def clampf(x, a, b):
     return max(a, min(b, x))
 
 
+def smooth(a, b, x):
+    t = clampf((x - a) / (b - a), 0.0, 1.0)
+    return t * t * (3 - 2 * t)
+
+
 AH = 0.085                                  # ankle height when the foot is flat
 HEEL = Vector((0.0, 0.052, 0.0))            # contact points relative to the ankle's floor projection
 BALL = Vector((0.0, -0.122, 0.022))
@@ -59,9 +64,13 @@ class Rig:
         self.FR_T = {S: frame(self.RT["thigh." + S] - self.RH["thigh." + S], X).inverted() for S in "LR"}
         self.FR_S = {S: frame(self.RT["shin." + S] - self.RH["shin." + S], X).inverted() for S in "LR"}
         self.FR_A = {S: frame(skel.arm_dir(sx), Y).inverted() for S, sx in (("L", 1), ("R", -1))}
-        self.M0 = {S: frame(Vector((0, -1, 0)), skel.arm_dir(sx)).inverted() for S, sx in (("L", 1), ("R", -1))}
+        self.M0 = {}
+        for S, sx in (("L", 1), ("R", -1)):
+            e0, b0, _ = skel.blade_axes(sx)
+            self.M0[S] = frame(b0, e0).inverted()
         self.body = [n for n in self.names if n.split(".")[0] in (
-            "root", "hips", "spine", "chest", "neck", "head", "clavicle", "upper_arm", "forearm", "forearm_twist",
+            "root", "hips", "spine", "chest", "neck", "head", "clavicle", "upper_arm", "upper_arm_twist", "forearm",
+            "forearm_twist",
             "hand", "thigh", "shin", "foot", "toe", "weapon")]
         self.dyn = [n for n in self.names if n not in self.body]
         self.edge_prev = None
@@ -141,8 +150,9 @@ class Rig:
         blade = (Dc @ V(*P["blade"])).normalized()
         info = {}
 
-        def arm(S, sx, Wt, hint):
+        def arm(S, sx, Wt, hint, nat=None):
             cl, ua, fa, tw, ha = ("clavicle." + S, "upper_arm." + S, "forearm." + S, "forearm_twist." + S, "hand." + S)
+            ut = "upper_arm_twist." + S
             sh0 = pos["chest"] + Dc @ (RH[ua] - RH["chest"])
             v = Dc.inverted() @ (Wt - sh0)
             r = max(v.length, 1e-4)
@@ -161,11 +171,21 @@ class Rig:
             if hp.length < 1e-4:
                 hp = along.orthogonal()
             hp.normalize()
+            if nat is not None:
+                # the elbow follows the hand: with a relaxed forearm it points away from the thumb / blade,
+                # which keeps pronation small instead of wringing the forearm
+                nq = nat - along * nat.dot(along)
+                c = nq.length
+                if c > 1e-3:
+                    hp = (hp * (1.0 - 0.6 * c) + nq * 0.6).normalized()
             El = Sh + along * a + hp * h
             Wr = Sh + along * dist
-            D[ua] = (frame(El - Sh, hp) @ self.FR_A[S]).to_quaternion()
+            # shoulder end: swing only (no roll against the torso); the roll lives in the twist bone further down
+            D[ua] = arc(D[cl] @ skel.arm_dir(sx), El - Sh) @ D[cl]
+            D[ut] = (frame(El - Sh, hp) @ self.FR_A[S]).to_quaternion()
             D[fa] = (frame(Wr - El, hp) @ self.FR_A[S]).to_quaternion()
             pos[ua], pos[fa], pos[ha] = Sh, El, Wr
+            pos[ut] = Sh + (El - Sh) * 0.5
             pos[tw] = El + (Wr - El) * 0.5
             return Sh, El, Wr, (Wr - El).normalized()
 
@@ -181,8 +201,9 @@ class Rig:
             if q.w < 0:
                 q = -q
             D[tw] = Quaternion().slerp(q, 0.65) @ D[fa]
+            return degrees(2 * atan2(Vector((q.x, q.y, q.z)).length, q.w))
 
-        ShR, ElR, WrR, dfR = arm("R", -1, C0 + Dc @ V(*P["handR"]), Dc @ V(*P["elbR"]))
+        ShR, ElR, WrR, dfR = arm("R", -1, C0 + Dc @ V(*P["handR"]), Dc @ V(*P["elbR"]), -blade)
         # Blade roll. Free: least wrist strain (the edge lies in the forearm/blade plane, so a blade that lags
         # the forearm cuts edge-first). Keyed: an explicit roll angle about the blade, so the forearm can
         # pronate smoothly between a forehand and a backhand instead of flipping.
@@ -199,20 +220,22 @@ class Rig:
         if e.length < 1e-5:
             e = blade.orthogonal()
         e.normalize()
-        ew = P["edgeW"][0]
-        if ew > 0.001:
+        if P["rollK"][0] > 0.5:
+            # relaxed wrist wherever it is well defined; the keyed roll bridges the moments when the blade
+            # lines up with the forearm (and two-handed swings, where it is forced)
             m = "P" if P["rollRef"][0] > 0.5 else "Y"
             ek = Quaternion(blade, radians(P["roll" + m][0])) @ perp(refs[m])
-            e = perp(e * (1 - ew) + ek * ew)
+            wk = max(P["edgeW"][0], 1.0 - smooth(0.25, 0.6, conf))
+            e = perp(e * (1 - wk) + ek * wk)
         self.edge_prev = e.copy()
         for m in "YP":
             r = perp(refs[m])
             info["roll" + m] = degrees(atan2(r.cross(e).dot(blade), r.dot(e)))
         D["hand.R"] = (frame(blade, e) @ self.M0["R"]).to_quaternion()
-        twist("R", dfR)
+        info["pron"] = twist("R", dfR)
         D["weapon"] = D["hand.R"]
         pos["weapon"] = WrR + D["hand.R"] @ (RH["weapon"] - RH["hand.R"])
-        info["wrist_dev"] = degrees(acos(clampf(e.dot(dfR), -1, 1)))
+        info["wrist_dev"] = degrees(acos(clampf((D["hand.R"] @ skel.arm_dir(-1)).dot(dfR), -1, 1)))
         info["blade_fore"] = degrees(acos(clampf(blade.dot(dfR), -1, 1)))
         info["edge"], info["blade"] = e, blade
         info["tip"] = pos["weapon"] + blade * 0.915
@@ -220,7 +243,7 @@ class Rig:
         # left arm: free, or holding the grip below the right hand
         Wl = C0 + Dc @ V(*P["handL"])
         gw = clampf(P["gripL"][0], 0.0, 1.0)
-        Dg = None
+        Dg, natL = None, None
         if gw > 0.001:
             Gp = pos["weapon"] + blade * GRIP2
             shl = pos["chest"] + Dc @ (RH["upper_arm.L"] - RH["chest"])
@@ -229,10 +252,11 @@ class Rig:
             if eL.length < 1e-4:
                 eL = e
             Dg = (frame(blade, eL) @ self.M0["L"]).to_quaternion()
+            natL = -blade
             Xh, Yh, Zh = skel.hand_frame(1)
             Wg = Gp - Dg @ (Xh * skel.GRIP_LOCAL[0] + Zh * skel.GRIP_LOCAL[2])
             Wl = Wl.lerp(Wg, gw)
-        ShL, ElL, WrL, dfL = arm("L", 1, Wl, Dc @ V(*P["elbL"]))
+        ShL, ElL, WrL, dfL = arm("L", 1, Wl, Dc @ V(*P["elbL"]), natL if gw > 0.5 else None)
         fx, dv, tw = P["wristL"]
         Xh, Yh, Zh = skel.hand_frame(1)
         Qw = Quaternion(Xh, radians(tw)) @ Quaternion(Zh, radians(dv)) @ Quaternion(Yh, radians(fx))

@@ -61,21 +61,24 @@ Teclado: `J` liga o pulo, espaço freia ou usa a habilidade, `Esc` pausa.
 
 ## Kael — herói JRPG 3D (hack and slash)
 
-Personagem 3D em estilo anime/JRPG, modelado, rigado e animado no **Blender** por script
+Personagem 3D em estilo anime/JRPG, modelado, texturizado, rigado e animado no **Blender** por script
 (`hero/blender/build_hero.py`), com um visualizador jogável em Three.js.
 
-- `hero/hero.glb` — malha com skin (~16 mil polígonos, 51 ossos, rosto texturizado com 4 expressões) e 7 animações
-  a 60 fps: `Idle`, `Run`, `Attack1`, `Attack2`, `Attack3` (combo que encadeia pose a pose), `Dash` e `Hit`.
-  Ataques e esquiva têm *root motion* no osso `root`.
-- `hero/hero.meta.json` — eventos dos clipes (quadro do acerto, janelas de cancelamento), deslocamento da raiz,
-  correntes de ossos de mola, colisores e paleta do shader toon.
+- `hero/hero.glb` — malha com skin (~36 mil triângulos, 53 ossos), atlas de textura pintado por código (bordados,
+  costuras, cadarços, mechas do cabelo), rosto com 4 expressões e 9 animações a 60 fps: `Idle`, `Run`,
+  `Attack1`–`Attack4` (combo de quatro golpes que encadeia pose a pose), `Stinger` (estocada a partir da esquiva),
+  `Dash` e `Hit`. Ataques e esquiva têm *root motion* no osso `root`.
+- `hero/hero.meta.json` — eventos dos clipes (quadro do acerto, janelas de cancelamento, pisadas), deslocamento da
+  raiz, correntes de ossos de mola, colisores e paleta do shader toon.
 - `hero/blender/hero.blend` — cena do Blender com shader toon, contorno e um clipe por faixa NLA.
+- `hero/blender/textures/` — o atlas e a textura do rosto gerados pelo script.
 - `hero/index.html` — visualizador jogável: mover (WASD / direcional na tela), atacar (J), esquivar (Espaço),
-  levar dano (H). Tem cel shading com contorno, cabelo/cachecol/casaco com física em tempo real, rastro da espada,
-  hit-stop e bonecos de treino.
-- `hero/preview/` — renders do Blender (ficha do personagem, poses, reel) e um vídeo de gameplay a 60 fps.
-- `hero/ANIMATION.md` — a pesquisa de referência (tempos do Genshin Impact, princípios de animação de combate) e
-  como ela foi aplicada.
+  levar dano (H). Ataque 4 vezes para o combo; ataque durante a esquiva para a Estocada. Tem cel shading com contorno,
+  cabelo/cachecol/casaco com física em tempo real, rastro da espada, faíscas e anéis de impacto com *bloom*, hit-stop,
+  recuo dos bonecos de treino, tremor de câmera e sons sintetizados.
+- `hero/preview/` — renders do Blender (ficha do personagem, rosto, poses, reel) e vídeos do visualizador a 60 fps.
+- `hero/ANIMATION.md` — as referências (tempos do Genshin Impact, golpes de Devil May Cry 5, princípios de animação
+  de combate), como foram aplicadas e o que dá peso aos golpes.
 
 Para regenerar tudo (Blender 4.4+ ou o módulo `bpy` do pip):
 
@@ -86,6 +89,7 @@ blender -b -P hero/blender/build_hero.py -- --sheet --reel
 
 Para ver no navegador: `python3 -m http.server` na raiz e abra `/hero/`.
 
-O código fica em `hero/blender/kael/`: `model.py` (corpo, rosto, cabelo em mechas, roupa, espada), `facetex.py`
-(textura do rosto desenhada por código), `rig.py` (solver de poses com IK e ossos de mola), `anim.py` (os clipes),
-`look.py` (materiais e render).
+O código fica em `hero/blender/kael/`: `model.py` (corpo, rosto, cabelo em mechas, roupa, espada), `atlas.py`
+(atlas de textura pintado por código), `facetex.py` (textura do rosto), `skel.py` (esqueleto e pesos), `rig.py`
+(solver de poses com IK, ossos de torção e ossos de mola), `anim.py` (os clipes), `look.py` (materiais e render).
+O pós-processamento do visualizador usa os módulos do Three.js r160 em `vendor/jsm/`.

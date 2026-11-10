@@ -13,7 +13,7 @@ def hexc(h):
 PALETTE = {
     "skin":    dict(base=(1.0, 0.895, 0.815), shade=hexc("#eeb3a4"), kind="toon", line=hexc("#7a3b3a")),
     "face":    dict(base=(1.0, 0.895, 0.815), shade=hexc("#f2bfb0"), kind="face", line=hexc("#7a3b3a")),
-    "hair":    dict(base=hexc("#dfe3f1"), shade=hexc("#949cca"), kind="hair", line=hexc("#3b3f66")),
+    "hair":    dict(base=hexc("#eceef6"), shade=hexc("#a3a9d2"), kind="hair", line=hexc("#3b3f66")),
     "coat":    dict(base=hexc("#31429a"), shade=hexc("#1c2160"), kind="toon", line=hexc("#0d0f2e")),
     "pants":   dict(base=hexc("#262a45"), shade=hexc("#15162b"), kind="toon", line=hexc("#07070f")),
     "cream":   dict(base=hexc("#f7f0df"), shade=hexc("#c9b9c4"), kind="toon", line=hexc("#5a4a5c")),
@@ -43,11 +43,11 @@ def _reset(mat):
     return mat.node_tree
 
 
-def face_image(atlas, path=None):
+def make_image(name, arr, path=None):
     """numpy RGBA (row 0 = top) -> packed Blender image."""
-    h, w = atlas.shape[:2]
-    img = bpy.data.images.get("kael_face") or bpy.data.images.new("kael_face", w, h, alpha=False)
-    img.pixels.foreach_set(atlas[::-1].ravel())
+    h, w = arr.shape[:2]
+    img = bpy.data.images.get(name) or bpy.data.images.new(name, w, h, alpha=False)
+    img.pixels.foreach_set(arr[::-1].ravel())
     if path:
         img.filepath_raw = path
         img.file_format = "PNG"
@@ -56,24 +56,28 @@ def face_image(atlas, path=None):
     return img
 
 
-def make_pbr(name, img=None):
-    """Plain Principled material: this is what the glTF exporter reads."""
+def shade_tint(name):
+    """Shadow colour as a multiplier of the painted base colour (keeps the hue shift of the palette)."""
+    spec = PALETTE[name]
+    return tuple(min(1.15, s / max(b, 0.06)) for s, b in zip(spec["shade"], spec["base"]))
+
+
+def make_pbr(name, face_img, atlas_img):
+    """Plain Principled material with the painted atlas as base colour: this is what the glTF exporter reads."""
     spec = PALETTE[name]
     mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
     nt = _reset(mat)
     out = nt.nodes.new("ShaderNodeOutputMaterial")
     b = nt.nodes.new("ShaderNodeBsdfPrincipled")
-    b.inputs["Base Color"].default_value = lin(spec["base"]) + (1.0,)
     metal = spec["kind"] == "metal"
     b.inputs["Roughness"].default_value = 0.35 if metal else 0.9
     b.inputs["Metallic"].default_value = 0.7 if metal else 0.0
     if spec["kind"] == "glow":
         b.inputs["Emission Color"].default_value = lin(spec["base"]) + (1.0,)
         b.inputs["Emission Strength"].default_value = 2.0
-    if name == "face" and img is not None:
-        tex = nt.nodes.new("ShaderNodeTexImage")
-        tex.image = img
-        nt.links.new(tex.outputs["Color"], b.inputs["Base Color"])
+    tex = nt.nodes.new("ShaderNodeTexImage")
+    tex.image = face_img if name == "face" else atlas_img
+    nt.links.new(tex.outputs["Color"], b.inputs["Base Color"])
     nt.links.new(b.outputs[0], out.inputs[0])
     mat.diffuse_color = lin(spec["base"]) + (1.0,)
     return mat
@@ -137,8 +141,9 @@ class G:
         return lin(c) + (1.0,)
 
 
-def make_toon(name, img=None):
-    """Cel shading as an emission graph: N.L step, hue-shifted shadow, rim light, stepped speculars."""
+def make_toon(name, face_img, atlas_img):
+    """Cel shading as an emission graph: painted base colour, N.L step into a hue-shifted shadow,
+    rim light, stepped speculars."""
     spec = PALETTE[name]
     mat = bpy.data.materials[name]
     nt = _reset(mat)
@@ -148,46 +153,37 @@ def make_toon(name, img=None):
     geo = nt.nodes.new("ShaderNodeNewGeometry")
     N, I = geo.outputs["Normal"], geo.outputs["Incoming"]
     kind = spec["kind"]
-    base, shade = g.rgb(spec["base"]), g.rgb(spec["shade"])
     if kind == "glow":
-        emi.inputs[0].default_value = base
+        emi.inputs[0].default_value = g.rgb(spec["base"])
         emi.inputs[1].default_value = 1.6
         nt.links.new(emi.outputs[0], out.inputs[0])
         return mat
     ndl = g.dot(N, LIGHT_DIR)
     ndv = g.dot(N, I)
+    tex = nt.nodes.new("ShaderNodeTexImage")
+    uv = nt.nodes.new("ShaderNodeUVMap")
     if kind == "face":
-        tex = nt.nodes.new("ShaderNodeTexImage")
-        tex.image = img
+        tex.image = face_img
         tex.name = "FaceTex"
         mp = nt.nodes.new("ShaderNodeMapping")
         mp.name = "FaceUV"
-        uv = nt.nodes.new("ShaderNodeUVMap")
         nt.links.new(uv.outputs[0], mp.inputs[0])
         nt.links.new(mp.outputs[0], tex.inputs[0])
-        base = tex.outputs["Color"]
-        shade = g.mix(1.0, base, g.rgb((0.95, 0.80, 0.80)), "MULTIPLY")
         lit = g.step(ndl, -0.32, -0.26)
-    elif kind == "metal":
-        lit = g.step(g.math("ADD", g.math("MULTIPLY", ndl, 0.6), g.math("MULTIPLY", ndv, 0.4)), 0.20, 0.24)
     else:
-        lit = g.step(ndl, 0.02, 0.06)
+        tex.image = atlas_img
+        nt.links.new(uv.outputs[0], tex.inputs[0])
+        if kind == "metal":
+            lit = g.step(g.math("ADD", g.math("MULTIPLY", ndl, 0.6), g.math("MULTIPLY", ndv, 0.4)), 0.20, 0.24)
+        else:
+            lit = g.step(ndl, 0.02, 0.06)
+    base = tex.outputs["Color"]
+    shade = g.mix(1.0, base, shade_tint(name) + (1.0,), "MULTIPLY")
     col = g.mix(lit, shade, base)
     if kind == "metal":
         h = g.vadd(I, LIGHT_DIR, normalize=True)
         sp = g.step(g.dot(N, h), 0.93, 0.95)
         col = g.mix(g.math("MULTIPLY", sp, 0.85), col, (1, 1, 1, 1))
-    if kind == "hair":
-        # view-dependent highlight band ("angel ring"), broken up per lock by the strand UV
-        uv = nt.nodes.new("ShaderNodeUVMap")
-        sep = nt.nodes.new("ShaderNodeSeparateXYZ")
-        nt.links.new(uv.outputs[0], sep.inputs[0])
-        zig = g.math("MULTIPLY", g.math("PINGPONG", g.math("MULTIPLY", sep.outputs[0], 2.0), 0.5), 0.10)
-        h = g.vadd(I, (0.0, 0.0, 0.9), normalize=True)
-        v = g.math("SUBTRACT", g.dot(N, h), zig)
-        band = g.math("MULTIPLY", g.step(v, 0.905, 0.915), g.math("SUBTRACT", 1.0, g.step(v, 0.948, 0.958)))
-        band = g.math("MULTIPLY", band, lit)
-        col = g.mix(g.math("MULTIPLY", band, 0.9), col, (1, 1, 1, 1))
     if kind in ("toon", "hair", "metal"):
         rim = g.math("MULTIPLY", g.step(g.math("SUBTRACT", 1.0, ndv), 0.66, 0.72), g.step(ndl, 0.0, 0.35))
         col = g.mix(g.math("MULTIPLY", rim, 0.45), col, (1, 1, 1, 1), "SCREEN")

@@ -2,8 +2,8 @@
 
 Character space = Blender space: +Z up, the character faces -Y, +X is the character's left.
 """
-from math import sin, cos, pi, radians, sqrt, exp
-from mathutils import Vector, Matrix
+from math import sin, cos, pi, radians, sqrt, exp, asin, degrees
+from mathutils import Vector, Matrix, Quaternion
 from .geo import Builder, Curve, catmull, tangents, hring, fring, sym_phis, ss, lerp
 from . import facetex
 from . import skel
@@ -15,7 +15,7 @@ NORMAL_FIX = {}     # part name -> fn(p, n) -> n
 # ----------------------------------------------------------------------------
 # helpers
 # ----------------------------------------------------------------------------
-def ellipsoid(b, c, r, mat, w, rot=None, M=12, rows=8, fn=None):
+def ellipsoid(b, c, r, mat, w, rot=None, M=12, rows=8, fn=None, tile=None):
     c = Vector(c)
     rot = rot or Matrix.Identity(3)
     rings = []
@@ -27,10 +27,10 @@ def ellipsoid(b, c, r, mat, w, rot=None, M=12, rows=8, fn=None):
             p = c + rot @ Vector((r[0] * sin(th) * cos(ph), r[1] * sin(th) * sin(ph), r[2] * cos(th)))
             ring.append(fn(p) if fn else p)
         rings.append(ring)
-    g = b.loft(rings, mat, caps=(False, False), w=w)
+    g = b.loft(rings, mat, caps=(False, False), w=w, tile=tile, vs=[i / float(rows) for i in range(1, rows)])
     top, bot = c + rot @ Vector((0, 0, r[2])), c + rot @ Vector((0, 0, -r[2]))
-    b.cap(g[0], mat, center=fn(top) if fn else top, w=w)
-    b.cap(g[-1], mat, center=fn(bot) if fn else bot, w=w)
+    b.cap(g[0], mat, center=fn(top) if fn else top, w=w, uv=b.tile_uv(tile, 0.5, 0.0) if tile else None)
+    b.cap(g[-1], mat, center=fn(bot) if fn else bot, w=w, uv=b.tile_uv(tile, 0.5, 1.0) if tile else None)
     return g
 
 
@@ -66,12 +66,13 @@ def add_chain(name, parent, pts):
     return ["%s%d" % (name, i + 1) for i in range(len(pts) - 1)]
 
 
-def tube(b, path, radii, mat, w=None, M=10, squash=1.0, up=Vector((0, 0, 1)), caps=(True, True), wfn=None, n=2.0):
-    """Round tube along a path; radii: list or fn(s). wfn(s, p) -> weights."""
+def tube(b, path, radii, mat, w=None, M=10, squash=1.0, up=Vector((0, 0, 1)), caps=(True, True), wfn=None, n=2.0,
+         tile=None, umap=None):
+    """Round tube along a path; radii: list or fn(s). wfn(s, p) -> weights. tile: unwrap (u around, v along)."""
     T = tangents(path)
-    rings, k = [], len(path) - 1
+    k = len(path) - 1
     prev_u = None
-    grid = []
+    grid, rows = [], []
     for i, (p, t) in enumerate(zip(path, T)):
         s = i / k
         ref = up if prev_u is None else prev_u
@@ -85,12 +86,14 @@ def tube(b, path, radii, mat, w=None, M=10, squash=1.0, up=Vector((0, 0, 1)), ca
         pts = fring(p, u, v, r, r * squash, n=n, M=M)
         ww = wfn(s, p) if wfn else w
         grid.append(b.ring(pts, ww))
-    for a, c in zip(grid, grid[1:]):
-        b.strip(a, c, mat)
+        if tile:
+            rows.append([b.tile_uv(tile, umap(j / float(M)) if umap else j / float(M), s) for j in range(M + 1)])
+    for i, (a, c) in enumerate(zip(grid, grid[1:])):
+        b.strip(a, c, mat, uv0=rows[i] if tile else None, uv1=rows[i + 1] if tile else None)
     if caps[0]:
-        b.cap(grid[0], mat)
+        b.cap(grid[0], mat, uv=rows[0][0] if tile else None)
     if caps[1]:
-        b.cap(grid[-1], mat)
+        b.cap(grid[-1], mat, uv=rows[-1][0] if tile else None)
     return grid
 
 
@@ -174,7 +177,7 @@ def head(b):
 
 
 # ----------------------------------------------------------------------------
-# hair
+# hair: locks that run over the scalp from the crown and hang free past the hairline
 # ----------------------------------------------------------------------------
 HC = Vector((0.0, 0.016, 1.492))
 HR = Vector((0.110, 0.120, 0.122))
@@ -195,10 +198,11 @@ def sh(az, el, r=1.0):
 
 CLUMP_SECTION = [(-1.0, 0.0), (-0.62, 0.60), (0.0, 0.86), (0.62, 0.60), (1.0, 0.0), (0.55, -0.26), (0.0, -0.34),
                  (-0.55, -0.26)]
+CLUMP_U = [0.04 + 0.42 * (x + 1.0) for x, y in CLUMP_SECTION[:5]] + [0.955, 0.955, 0.955, 0.955]
 
 
 def clump(b, exit_azel, tip, w, bulge=0.012, roll=0.0, r_off=0.0, lift=0.03, n=16, thick=0.24, crown=(180.0, 80.0),
-          start=0.16, mid=None, wfn=None, taper=0.35, pre=None, mat="hair", tip_pow=1.35):
+          start=0.16, mid=None, wfn=None, taper=0.35, mat="hair", tip_pow=1.35):
     """A lock of hair: runs over the scalp from the crown to the hairline, then hangs free down to `tip`."""
     dK, dE = sdir(*crown), sdir(*exit_azel)
     ctrl = []
@@ -206,8 +210,6 @@ def clump(b, exit_azel, tip, w, bulge=0.012, roll=0.0, r_off=0.0, lift=0.03, n=1
         d = dK.slerp(dE, s)
         ctrl.append(on_shell(d, 1.0 + r_off + lift * sin(pi * s)))
     E, T = ctrl[-1], Vector(tip)
-    if pre:
-        ctrl += [Vector(p) for p in pre]
     if mid is None:
         m = E.lerp(T, 0.5)
         o = m - HC
@@ -222,7 +224,7 @@ def clump(b, exit_azel, tip, w, bulge=0.012, roll=0.0, r_off=0.0, lift=0.03, n=1
     s_exit = seg[4] / seg[-1]
     path = catmull(ctrl, n)
     T_ = tangents(path)
-    grid = []
+    grid, rows = [], []
     out_prev = None
     for i, (p, t) in enumerate(zip(path, T_)):
         s = i / n
@@ -246,13 +248,13 @@ def clump(b, exit_azel, tip, w, bulge=0.012, roll=0.0, r_off=0.0, lift=0.03, n=1
         hw = max(w * 0.5 * f, 0.0009)
         hh = max(w * 0.5 * thick * f ** 0.6, 0.0008)
         pts = [p + B * (x * hw) + N * (y * hh) for x, y in CLUMP_SECTION]
-        uvs = [(abs(x), s) for x, y in CLUMP_SECTION]
         ww = wfn(s, s_exit, p) if wfn else {"head": 1.0}
-        grid.append(b.ring(pts, ww, uvs))
-    for a, c in zip(grid, grid[1:]):
-        b.strip(a, c, mat)
-    b.cap(grid[0], mat)
-    b.cap(grid[-1], mat)
+        grid.append(b.ring(pts, ww))
+        rows.append([b.tile_uv("hair", u, s) for u in CLUMP_U])
+    for i, (a, c) in enumerate(zip(grid, grid[1:])):
+        b.strip(a, c, mat, uv0=rows[i], uv1=rows[i + 1])
+    b.cap(grid[0], mat, uv=rows[0][2])
+    b.cap(grid[-1], mat, uv=rows[-1][2])
     for a, c in zip(grid, grid[1:]):
         b.mark_sharp(a[0], c[0])
         b.mark_sharp(a[4], c[4])
@@ -271,81 +273,100 @@ def hair(b):
     rings = []
     for i in range(1, rows + 1):
         t = i / rows
-        ring = []
-        for j in range(M):
-            az = 360.0 * j / M
-            el = 90 - t * (90 - elmin(az))
-            ring.append(on_shell(sdir(az, el), 0.965))
-        rings.append(ring)
-    g = b.loft(rings, "hair", caps=(False, False), w={"head": 1.0},
-               uvfn=lambda i, j, p: (0.0, i / rows))
-    b.cap(g[0], "hair", center=on_shell(Vector((0, 0, 1)), 0.965), w={"head": 1.0})
+        rings.append([on_shell(sdir(360.0 * j / M, 90 - t * (90 - elmin(360.0 * j / M))), 0.965) for j in range(M)])
+    g = b.loft(rings, "hair", caps=(False, False), w={"head": 1.0}, tile="haircap", vs=[i / float(rows) for i in range(1, rows + 1)])
+    b.cap(g[0], "hair", center=on_shell(Vector((0, 0, 1)), 0.965), w={"head": 1.0}, uv=b.tile_uv("haircap", 0.5, 0.0))
 
     def dyn(bone, k=0.85):
         return lambda s, se, p: mixw({"head": 1.0}, {bone: 1.0}, k * ss(se, 1.0, s))
 
-    # fringe: centre lock + three per side, asymmetric
+    # fringe: parted over the left eye and swept across the forehead; eyes and brows stay readable
     fr = [
-        # exit (az, el)   tip (x, y, z)             width  roll  bone      mid (x, y, z) or None
-        ((8, 36), (0.004, -0.1095, 1.4520), 0.050, 6, "bang.C", (0.016, -0.1150, 1.500)),
-        ((-12, 37), (-0.0235, -0.1070, 1.4800), 0.046, 8, "bang.C", (-0.016, -0.1140, 1.512)),
-        ((30, 35), (0.0600, -0.0960, 1.4770), 0.056, -8, "bang.L", (0.046, -0.1090, 1.512)),
-        ((52, 29), (0.0880, -0.0720, 1.4580), 0.046, -12, "bang.L", (0.082, -0.0880, 1.494)),
-        ((70, 21), (0.1000, -0.0480, 1.4360), 0.040, -12, "bang.L", None),
-        ((-33, 35), (-0.0590, -0.0975, 1.4840), 0.050, 10, "bang.R", (-0.048, -0.1090, 1.516)),
-        ((-55, 28), (-0.0875, -0.0740, 1.4640), 0.046, 12, "bang.R", (-0.082, -0.0890, 1.498)),
-        ((-71, 21), (-0.0995, -0.0500, 1.4400), 0.040, 12, "bang.R", None),
+        # exit (az, el)  tip (x, y, z)              width  roll  bone      mid (x, y, z) or None
+        ((28, 38), (-0.050, -0.1030, 1.4800), 0.060, 10, "bang.C", (-0.008, -0.1190, 1.5060)),
+        ((15, 37), (-0.016, -0.1085, 1.4600), 0.044, 8, "bang.C", (0.006, -0.1175, 1.4990)),
+        ((-22, 37), (-0.083, -0.0810, 1.4700), 0.052, 12, "bang.R", (-0.062, -0.1065, 1.5070)),
+        ((-52, 30), (-0.1010, -0.0500, 1.4440), 0.042, 12, "bang.R", None),
+        ((41, 36), (0.071, -0.0920, 1.4900), 0.048, -10, "bang.L", (0.060, -0.1045, 1.5160)),
+        ((60, 28), (0.0985, -0.0560, 1.4560), 0.042, -12, "bang.L", None),
+        ((24, 39), (0.011, -0.1125, 1.4380), 0.020, 0, "bang.C", (0.020, -0.1205, 1.4950)),
+        ((-6, 39), (-0.038, -0.1100, 1.4930), 0.018, 0, "bang.R", (-0.026, -0.1200, 1.5180)),
     ]
-    add_chain("bang.C", "head", [sh(5, 37), Vector(fr[0][1])])
-    add_chain("bang.L", "head", [sh(42, 32), Vector(fr[2][1])])
-    add_chain("bang.R", "head", [sh(-37, 33), Vector(fr[5][1])])
+    add_chain("bang.C", "head", [sh(22, 37), Vector(fr[1][1])])
+    add_chain("bang.L", "head", [sh(48, 32), Vector(fr[4][1])])
+    add_chain("bang.R", "head", [sh(-37, 33), Vector(fr[2][1])])
     for k, (ex, tip, w, roll, bone, mid) in enumerate(fr):
-        clump(b, ex, tip, w, bulge=0.010, roll=roll, r_off=0.004 * (k % 3), wfn=dyn(bone + "1"), mid=mid, taper=0.05)
-    # side locks in front of the ears (spring chains)
-    for sx, name in ((1, "lock.L"), (-1, "lock.R")):
-        ex = (80 * sx, 12)
-        tip = (0.090 * sx, -0.050, 1.392 if sx > 0 else 1.398)
+        clump(b, ex, tip, w, bulge=0.010, roll=roll, r_off=0.004 * (k % 3) + (0.012 if w < 0.03 else 0.0),
+              wfn=dyn(bone + "1"), mid=mid, taper=0.05, tip_pow=1.15 if w < 0.03 else 1.35)
+    # face-framing locks in front of the ears (spring chains); the left one is longer and carries a clip
+    for sx, name, zt, wd in ((1, "lock.L", 1.362, 0.036), (-1, "lock.R", 1.388, 0.034)):
+        ex = (79 * sx, 12)
+        tip = (0.086 * sx, -0.058, zt)
         E = sh(*ex)
-        mid = Vector((0.1035 * sx, -0.038, 1.440))
+        mid = Vector((0.1045 * sx, -0.042, 1.432))
         bones = add_chain(name, "head", [E, mid, Vector(tip)])
 
         def wl(s, se, p, bones=bones):
             u = (s - se) / (1 - se)
             return {"head": 1.0} if u <= 0 else mixw({"head": 1.0}, chain_w(bones, u), ss(0.0, 0.25, u))
-        clump(b, ex, tip, 0.038, mid=mid, roll=-14 * sx, r_off=0.008, wfn=wl, taper=0.1)
-        clump(b, (101 * sx, 2), (0.1015 * sx, 0.034, 1.392), 0.044, bulge=0.012, roll=10 * sx, r_off=0.002)
-    # back of the head: spiky layered ends
-    back = [((126, -10), (0.096, 0.086, 1.372)), ((149, -18), (0.068, 0.132, 1.352)),
-            ((169, -22), (0.027, 0.152, 1.338)), ((191, -22), (-0.023, 0.153, 1.343)),
-            ((213, -18), (-0.066, 0.133, 1.357)), ((236, -10), (-0.096, 0.089, 1.377))]
+        clump(b, ex, tip, wd, mid=mid, roll=-14 * sx, r_off=0.008, wfn=wl, taper=0.1)
+        clump(b, (92 * sx, 8), (0.1010 * sx, -0.012, 1.405), 0.022, bulge=0.010, roll=-8 * sx, r_off=0.014, taper=0.05,
+              tip_pow=1.1)
+        clump(b, (102 * sx, 2), (0.1035 * sx, 0.036, 1.388), 0.046, bulge=0.012, roll=10 * sx, r_off=0.002)
+    # back of the head: two rows of spiky layered ends
+    for k, (ex, taz, tel, tr) in enumerate([((122, 14), 129, -13, 1.17), ((150, 16), 155, -19, 1.20),
+                                            ((180, 18), 182, -24, 1.22), ((210, 16), 205, -19, 1.20),
+                                            ((238, 14), 231, -13, 1.17)]):
+        clump(b, ex, sh(taz, tel, tr), 0.060, bulge=0.012, roll=(9 if k % 2 else -9), r_off=0.010, taper=0.15)
+    back = [((126, -10), (0.097, 0.086, 1.368)), ((149, -18), (0.068, 0.134, 1.348)),
+            ((169, -22), (0.027, 0.154, 1.334)), ((191, -22), (-0.023, 0.155, 1.339)),
+            ((213, -18), (-0.066, 0.135, 1.353)), ((236, -10), (-0.097, 0.089, 1.373))]
     for k, (ex, tip) in enumerate(back):
         clump(b, ex, tip, 0.058, bulge=0.016, roll=(8 if k % 2 else -8), r_off=0.004 * (k % 2), taper=0.25)
-    # upper layer tufts, to break the dome
+    # crown layer tufts break the dome; thin flyaways break the outline
     for k, (ex, taz, tel, tr) in enumerate([((32, 58), 20, 44, 1.10), ((-38, 56), -52, 40, 1.10),
                                             ((112, 42), 122, 18, 1.12), ((-116, 42), -130, 16, 1.12),
                                             ((172, 36), 178, 8, 1.13), ((75, 50), 86, 30, 1.11),
                                             ((-78, 50), -90, 28, 1.11), ((-5, 60), -8, 46, 1.09),
                                             ((148, 30), 152, 2, 1.12), ((-150, 30), -156, 0, 1.12)]):
         clump(b, ex, sh(taz, tel, tr), 0.050, bulge=0.004, r_off=0.012, lift=0.045, n=12, taper=0.1)
+    for ex, taz, tel, tr in (((178, 50), 182, 28, 1.26), ((100, 30), 113, 4, 1.20), ((-104, 30), -118, 2, 1.21),
+                             ((140, 20), 150, -8, 1.24), ((-142, 20), -152, -10, 1.25)):
+        clump(b, ex, sh(taz, tel, tr), 0.016, bulge=0.002, r_off=0.02, lift=0.05, n=10, taper=0.0, tip_pow=1.0, thick=0.5)
+    # a few bigger spikes lift off the crown towards the back, so the top is not a smooth dome
+    for k, (ex, taz, tel, tr) in enumerate([((165, 62), 172, 40, 1.24), ((-170, 60), -176, 36, 1.27),
+                                            ((128, 56), 140, 34, 1.22), ((-132, 56), -146, 32, 1.23),
+                                            ((60, 64), 74, 46, 1.15), ((-56, 64), -72, 46, 1.15)]):
+        clump(b, ex, sh(taz, tel, tr), 0.046, bulge=0.003, r_off=0.016, lift=0.06, n=12, taper=0.05, tip_pow=1.15)
     # ahoge
     K = sh(180, 84, 1.0)
     ah = [K + Vector((0.0, -0.006, 0.004)), K + Vector((0.003, -0.022, 0.022)), K + Vector((0.009, -0.046, 0.026)),
           K + Vector((0.014, -0.062, 0.014))]
     add_chain("ahoge", "head", [ah[0], ah[-1]])
+    tri = lambda t: 0.04 + 0.84 * (1.0 - abs(2.0 * t - 1.0))
     tube(b, catmull(ah, 10), lambda s: 0.0052 * (1 - s * s) ** 0.6 + 0.0005, "hair", M=6, squash=0.55,
-         wfn=lambda s, p: mixw({"head": 1.0}, {"ahoge1": 1.0}, ss(0.0, 0.5, s)))
-    # ponytail: thin, low, tied with a crimson ribbon
-    pp = [Vector((0.0, 0.126, 1.418)), Vector((0.0, 0.146, 1.365)), Vector((0.0, 0.158, 1.305)),
-          Vector((0.0, 0.160, 1.245))]
+         wfn=lambda s, p: mixw({"head": 1.0}, {"ahoge1": 1.0}, ss(0.0, 0.5, s)), tile="hair", umap=tri)
+    # low ponytail tied with a crimson ribbon
+    pp = [Vector((0.0, 0.126, 1.418)), Vector((0.0, 0.150, 1.362)), Vector((0.003, 0.166, 1.292)),
+          Vector((0.006, 0.170, 1.212))]
     bones = add_chain("pony", "head", pp)
-    tube(b, catmull(pp, 18), lambda s: 0.0200 * (ss(-0.25, 0.2, s)) * max(1 - s ** 1.8, 0.0) ** 0.7 + 0.001, "hair",
-         M=8, squash=0.8, up=Vector((1, 0, 0)), wfn=lambda s, p: mixw({"head": 1.0}, chain_w(bones, s), ss(0.0, 0.1, s)))
+    tube(b, catmull(pp, 18), lambda s: 0.0215 * (ss(-0.25, 0.2, s)) * max(1 - s ** 1.7, 0.0) ** 0.7 + 0.001, "hair",
+         M=8, squash=0.8, up=Vector((1, 0, 0)), wfn=lambda s, p: mixw({"head": 1.0}, chain_w(bones, s), ss(0.0, 0.1, s)),
+         tile="hair", umap=tri)
     b.end()
     b.begin("ribbon", outline=0.7)
     ellipsoid(b, (0.0, 0.129, 1.405), (0.021, 0.016, 0.011), "crimson", {"head": 1.0}, M=10, rows=6)
     for sx in (1, -1):
         R = Matrix.Rotation(radians(-25 * sx), 3, "Y")
         ellipsoid(b, (0.026 * sx, 0.136, 1.411), (0.026, 0.006, 0.014), "crimson", {"head": 1.0}, R, M=8, rows=6)
+        tube(b, catmull([Vector((0.010 * sx, 0.136, 1.400)), Vector((0.030 * sx, 0.150, 1.350)),
+                         Vector((0.038 * sx, 0.156, 1.300))], 6), lambda s: 0.010 * (1 - 0.5 * s), "crimson",
+             w={"head": 0.5, "pony1": 0.5}, M=6, squash=0.25, up=Vector((0, 1, 0)))
+    # hair clip on the long lock
+    cp = sh(79, 12).lerp(Vector((0.1045, -0.042, 1.432)), 0.45) + Vector((0.006, -0.004, 0.0))
+    Rc = Matrix.Rotation(radians(-12), 3, "Y")
+    ellipsoid(b, cp, (0.007, 0.013, 0.021), "gold", {"head": 1.0}, Rc, M=8, rows=6)
+    ellipsoid(b, cp + Vector((0.005, -0.004, 0.0)), (0.005, 0.006, 0.008), "glow", {"head": 1.0}, Rc, M=8, rows=5)
     b.end()
 
 
@@ -380,7 +401,7 @@ def torso(b):
     for z in zs:
         a, bf, bb, cy, n = TORSO(z)
         rings.append(hring(z, a, bf, bb, cy, n, n, M=24))
-    b.loft(rings, "cream", caps=(True, False))
+    b.loft(rings, "cream", caps=(True, False), tile="tunic")
     b.end(skel.w_torso)
 
     # jacket: C-shaped shell, open down the front, flared hem, stand-up collar
@@ -389,7 +410,6 @@ def torso(b):
                     (1.340, 0.040)])
     zs = [0.905, 0.917] + frange(0.93, 1.30, 24) + [1.312, 1.326, 1.340]
     K = 26
-    from math import asin, degrees
     rings = []
     for z in zs:
         a, bf, bb, cy, n = TORSO(z)
@@ -410,7 +430,9 @@ def torso(b):
         if j in (0, K - 2) or i == 0 or i >= nz - 2:
             return "gold"
         return "coat"
-    g = b.loft(rings, mat, caps=(False, False))
+    us = [0.5 * k / (K - 1.0) for k in range(K)] + [0.5 + 0.5 * m / (K - 1.0) for m in range(K)] + [1.0]
+    g = b.loft(rings, mat, caps=(False, False), tile="coat", us=us, vs=[(z - 0.905) / 0.435 for z in zs],
+               tile_mats=("coat", "crimson"))
     for row, m in ((g[0], "gold"), (g[-1], "gold")):
         for j in range(K - 1):
             b.face((row[j], row[j + 1], row[2 * K - 2 - j], row[2 * K - 1 - j]), m)
@@ -422,52 +444,64 @@ def torso(b):
     for z, off in ((0.952, 0.010), (0.956, 0.019), (0.992, 0.019), (0.996, 0.010)):
         a, bf, bb, cy, n = TORSO(z)
         rings.append(hring(z, a + off + 0.009, bf + off + 0.009, bb + off + 0.009, cy, n, n, M=24))
-    g = b.loft(rings, "leather", caps=(False, False), sharp_rings=(1, 2))
+    b.loft(rings, "leather", caps=(False, False), sharp_rings=(1, 2), tile="belt", vs=[0.0, 0.12, 0.88, 1.0])
     a, bf, bb, cy, n = TORSO(0.974)
     yb = cy - bf - 0.028
-    for k, (hw, hh, m, dy) in enumerate(((0.030, 0.026, "gold", 0.0), (0.017, 0.014, "dark", -0.004),
-                                         (0.010, 0.008, "glow", -0.007))):
+    for hw, hh, m, dy in ((0.030, 0.026, "gold", 0.0), (0.017, 0.014, "dark", -0.004), (0.010, 0.008, "glow", -0.007)):
         ellipsoid(b, (0.0, yb - 0.004 + dy, 0.974), (hw, 0.009, hh), m, None, M=10, rows=6)
-    # gem on the left hip, framed in gold
     gc = Vector((0.108, -0.066, 0.962))
     R = Matrix.Rotation(radians(52), 3, "Z")
     ellipsoid(b, gc, (0.027, 0.011, 0.027), "gold", None, R, M=12, rows=6)
     ellipsoid(b, gc + R @ Vector((0, -0.006, 0)), (0.019, 0.011, 0.019), "glow", None, R, M=12, rows=6)
-    # pouch at the back right
     R = Matrix.Rotation(radians(-150), 3, "Z")
     ellipsoid(b, (-0.085, 0.085, 0.94), (0.034, 0.02, 0.034), "leather", None, R, M=10, rows=6)
     ellipsoid(b, (-0.092, 0.097, 0.955), (0.03, 0.012, 0.016), "leather", None, R, M=8, rows=5)
     b.end(skel.w_torso)
 
+    # scabbard on the left hip, slung back
+    b.begin("scabbard")
+    m0, d = Vector((0.128, 0.040, 0.962)), Vector((0.10, 0.60, -0.79)).normalized()
+    path = [m0 + d * (0.84 * i / 16.0) for i in range(17)]
+    tube(b, path, lambda s: (0.021 if s < 0.9 else 0.021 * max(1 - ((s - 0.9) / 0.1) ** 2, 0.05) ** 0.5) * (1 - 0.3 * s),
+         "coat", w={"hips": 1.0}, M=10, squash=0.5, up=Vector((1, 0, 0.2)), tile="scabbard")
+    for t in (0.03, 0.19):
+        c = m0 + d * (0.84 * t)
+        tube(b, [c + Vector((0, 0, 0.0)), c + Vector((-0.012, -0.022, 0.030)), c + Vector((-0.020, -0.036, 0.040))],
+             [0.008, 0.007, 0.006], "leather", w={"hips": 1.0}, M=6, squash=0.5)
+    b.end()
+
 
 # ----------------------------------------------------------------------------
 # arms, hands
 # ----------------------------------------------------------------------------
-def axis_loft(b, origin, d, u, st, ts, mat, M=14, n=2.0, caps=(True, True), sharp_rings=()):
+def axis_loft(b, origin, d, u, st, ts, mat, M=14, n=2.0, caps=(True, True), sharp_rings=(), flip=False, tile=None,
+              tile_mats=None):
     v = d.cross(u).normalized()
     rings = []
     for t in ts:
         vals = st(t)
         r1 = vals[0]
         r2 = vals[1] if len(vals) > 1 else r1
-        rings.append(fring(origin + d * t, u, v, r1, r2, n=n, M=M))
-    return b.loft(rings, mat, caps=caps, sharp_rings=sharp_rings)
+        rings.append(fring(origin + d * t, u, v, r1, r2, n=n, M=M, flip=flip))
+    vs = [(t - ts[0]) / (ts[-1] - ts[0]) for t in ts]
+    return b.loft(rings, mat, caps=caps, sharp_rings=sharp_rings, tile=tile, vs=vs, tile_mats=tile_mats)
 
 
 def arm(b, sx):
     S = "L" if sx > 0 else "R"
-    sh, d = skel.shoulder(sx), skel.arm_dir(sx)
+    sh_, d = skel.shoulder(sx), skel.arm_dir(sx)
     u = Vector((0, -1, 0))
+    fl = sx < 0
     b.begin("sleeve." + S)
     st = Curve([(-0.040, 0.030), (-0.022, 0.050), (0.0, 0.0585), (0.05, 0.057), (0.12, 0.0495), (0.20, 0.0455),
                 (0.255, 0.0445), (0.30, 0.0460), (0.345, 0.0485)])
     ts = [-0.040, -0.032, -0.022, -0.010] + frange(0.0, 0.345, 22)
-    g = axis_loft(b, sh, d, u, st, ts, "coat", M=16, caps=(True, False))
-    # turned-back cuff: cream with a gold edge
+    axis_loft(b, sh_, d, u, st, ts, "coat", M=16, caps=(True, False), flip=fl, tile="sleeve")
     cu = Curve([(0.300, 0.0465), (0.306, 0.0560), (0.348, 0.0590), (0.356, 0.0590), (0.362, 0.0545), (0.350, 0.0400)])
     tsc = [0.300, 0.306, 0.320, 0.334, 0.348, 0.356, 0.362]
-    rings = [fring(sh + d * t, u, d.cross(u).normalized(), cu(t)[0], cu(t)[0], M=16) for t in tsc]
-    rings.append(fring(sh + d * 0.350, u, d.cross(u).normalized(), 0.040, 0.040, M=16))
+    vv = d.cross(u).normalized()
+    rings = [fring(sh_ + d * t, u, vv, cu(t)[0], cu(t)[0], M=16, flip=fl) for t in tsc]
+    rings.append(fring(sh_ + d * 0.350, u, vv, 0.040, 0.040, M=16, flip=fl))
     b.loft(rings, lambda i, j: "gold" if i >= 4 and i < 6 else ("dark" if i >= 6 else "cream"), caps=(False, True),
            sharp_rings=(1, 4, 5))
     b.end(skel.w_arm(sx))
@@ -475,14 +509,10 @@ def arm(b, sx):
     b.begin("bracer." + S)
     st = Curve([(0.325, 0.0345), (0.36, 0.0375), (0.42, 0.0345), (0.47, 0.0300), (0.492, 0.0285)])
     ts = frange(0.325, 0.492, 12)
-
-    def mat(i, j):
-        t = ts[i]
-        return "gold" if (0.385 < t < 0.40 or t > 0.476) else "leather"
-    axis_loft(b, sh, d, u, st, ts, mat, M=14, caps=(False, False))
+    axis_loft(b, sh_, d, u, st, ts, "leather", M=14, caps=(False, False), flip=fl, tile="bracer")
     for t in (0.395, 0.484):
         r = st(t)[0] + 0.0028
-        rings = [fring(sh + d * (t + dt), u, d.cross(u).normalized(), rr, rr, M=14)
+        rings = [fring(sh_ + d * (t + dt), u, vv, rr, rr, M=14, flip=fl)
                  for dt, rr in ((-0.008, r - 0.004), (-0.006, r), (0.006, r), (0.008, r - 0.004))]
         b.loft(rings, "gold", caps=(False, False))
     b.end(skel.w_arm(sx))
@@ -504,15 +534,23 @@ def hand(b, sx):
     X, Y, Z = skel.hand_frame(sx)
     W = skel.wrist(sx)
     grip = sx < 0
+    ct, st_ = cos(radians(skel.GRIP_TILT)), sin(radians(skel.GRIP_TILT))
+    gx, gy = skel.GRIP_LOCAL[0], skel.GRIP_LOCAL[1]
 
     def P(x, y, z):
+        if grip:        # fingers wrap the handle, which lies diagonally across the palm
+            dx, dy = x - gx, y - gy
+            x, y = gx + dx * ct + dy * st_, gy - dx * st_ + dy * ct
+        return W + X * x + Y * y + Z * z
+
+    def P0(x, y, z):
         return W + X * x + Y * y + Z * z
 
     b.begin("hand." + S, outline=0.75)
     w = {"hand." + S: 1.0}
     pal = Curve([(-0.016, 0.0190, 0.0150), (0.0, 0.0220, 0.0165), (0.022, 0.0290, 0.0165), (0.048, 0.0350, 0.0150),
                  (0.072, 0.0375, 0.0135), (0.088, 0.0360, 0.0115), (0.094, 0.0300, 0.0085)])
-    rings = [fring(P(x, 0.001, 0.0), Y, Z, pal(x)[0], pal(x)[1], n=3.0, M=14)
+    rings = [fring(P0(x, 0.001, 0.0), Y, Z, pal(x)[0], pal(x)[1], n=3.0, M=14)
              for x in (-0.016, -0.006, 0.006, 0.022, 0.040, 0.058, 0.074, 0.086, 0.094)]
     b.loft(rings, "skin", w=w)
     curls = CURL_GRIP if grip else CURL_RELAX
@@ -541,17 +579,17 @@ def hand(b, sx):
 
 def pauldron(b):
     b.begin("pauldron")
-    sh, d = skel.shoulder(1), skel.arm_dir(1)
+    sh_, d = skel.shoulder(1), skel.arm_dir(1)
     w = {"clavicle.L": 0.45, "upper_arm.L": 0.55}
     up = Vector((d.z * -1, 0, d.x))          # perpendicular to the arm, pointing up/out
     R = Matrix((d, Vector((0, -1, 0)), up)).transposed()
-    c = sh + d * 0.018 + up * 0.030
-    ellipsoid(b, c, (0.082, 0.074, 0.040), "coat", w, R, M=14, rows=8)
+    c = sh_ + d * 0.018 + up * 0.030
+    ellipsoid(b, c, (0.082, 0.074, 0.040), "coat", w, R, M=14, rows=8, tile="pauldron")
     ellipsoid(b, c - up * 0.012, (0.0850, 0.0770, 0.020), "gold", w, R, M=14, rows=6)
-    c2 = sh + d * 0.075 + up * 0.018
-    ellipsoid(b, c2, (0.060, 0.066, 0.034), "coat", w, R, M=12, rows=8)
+    c2 = sh_ + d * 0.075 + up * 0.018
+    ellipsoid(b, c2, (0.060, 0.066, 0.034), "coat", w, R, M=12, rows=8, tile="pauldron")
     ellipsoid(b, c2 - up * 0.011, (0.0630, 0.0690, 0.017), "gold", w, R, M=12, rows=6)
-    ellipsoid(b, sh + d * 0.01 + up * 0.064, (0.016, 0.016, 0.012), "glow", w, R, M=10, rows=6)
+    ellipsoid(b, sh_ + d * 0.01 + up * 0.064, (0.016, 0.016, 0.012), "glow", w, R, M=10, rows=6)
     b.end()
 
 
@@ -589,13 +627,15 @@ BOOT = Curve([
 
 def leg(b, sx):
     S = "L" if sx > 0 else "R"
+    ph16 = [(sx * 360.0 * j / 16) % 360.0 for j in range(16)]      # mirrored unwrap: u = .25 is always the outer side
+    ph18 = [(sx * 360.0 * j / 18) % 360.0 for j in range(18)]
     b.begin("leg." + S)
     zs = frange(0.910, 0.350, 30)
     rings = []
     for z in zs:
         a, bb, cx, cy = LEG(z)
-        rings.append(hring(z, a, bb, bb, cy, 2.0, 2.0, cx=cx * sx, M=16))
-    b.loft(rings, "pants", caps=(True, True))
+        rings.append(hring(z, a, bb, bb, cy, 2.0, 2.0, cx=cx * sx, phis=ph16))
+    b.loft(rings, "pants", caps=(True, True), tile="pants", vs=[(z - 0.35) / 0.56 for z in zs])
     if sx < 0:      # thigh strap + small pouch on the right leg
         srs = []
         for z, off in ((0.705, 0.002), (0.708, 0.008), (0.732, 0.008), (0.735, 0.002)):
@@ -613,21 +653,18 @@ def leg(b, sx):
     rings = []
     for z in zs:
         a, cy, yf, yb, nf, nb = BOOT(z)
-        rings.append(hring(z, a, cy - yf, yb - cy, ay + cy, nf, nb, cx=ax, M=18, ab=a * (0.80 if z < 0.07 else 1.0)))
-    b.loft(rings, "leather", caps=(True, True))
-    # sole
+        rings.append(hring(z, a, cy - yf, yb - cy, ay + cy, nf, nb, cx=ax, phis=ph18, ab=a * (0.80 if z < 0.07 else 1.0)))
+    b.loft(rings, "leather", caps=(True, True), tile="boot", vs=[z / 0.405 for z in zs])
     a, cy, yf, yb, nf, nb = BOOT(0.010)
     srs = [hring(z, a + o, cy - yf + o, yb - cy + o, ay + cy, nf, nb, cx=ax, M=18, ab=(a + o) * 0.80)
            for z, o in ((0.0, 0.002), (0.004, 0.005), (0.013, 0.005), (0.016, 0.001))]
     b.loft(srs, "dark", caps=(True, True), sharp_rings=(1, 2))
-    # folded cuff with gold trim
     crs = []
     for z, o in ((0.372, 0.002), (0.378, 0.012), (0.428, 0.015), (0.436, 0.013), (0.440, 0.004), (0.425, -0.004)):
         a, cy, yf, yb, nf, nb = BOOT(min(z, 0.405))
         crs.append(hring(z, a + o, cy - yf + o, yb - cy + o, ay + cy, 2.0, 2.0, cx=ax, M=18))
     b.loft(crs, lambda i, j: "gold" if i >= 2 and i < 4 else ("dark" if i >= 4 else "cream"), caps=(False, True),
            sharp_rings=(1, 2, 3))
-    # ankle strap
     for z0 in (0.150,):
         srs = []
         for z, o in ((z0, 0.001), (z0 + 0.003, 0.006), (z0 + 0.020, 0.006), (z0 + 0.023, 0.001)):
@@ -641,11 +678,13 @@ def leg(b, sx):
 # ----------------------------------------------------------------------------
 # cloth: scarf and coat tails (spring chains)
 # ----------------------------------------------------------------------------
-def ribbon(b, path, width, thick, wide, mats, wfn, K=5, trim=None):
-    """Flat strip with thickness. mats = (outer, inner, edge). wide: preferred width axis."""
+def ribbon(b, path, width, thick, wide, mats, wfn, K=5, tile=None, tile_mats=None):
+    """Flat strip with thickness. mats = (outer, inner, edge[, trim]). wide: preferred width axis.
+    Unwrap: u 0..0.5 across the outer face, 0.5..1 across the inner face; v along."""
     T = tangents(path)
     n = len(path) - 1
-    grid = []
+    grid, rows = [], []
+    us = [0.5 * k / (K - 1.0) for k in range(K)] + [0.5 + 0.5 * m / (K - 1.0) for m in range(K)] + [1.0]
     for i, (p, t) in enumerate(zip(path, T)):
         s = i / n
         Wd = wide - t * wide.dot(t)
@@ -661,18 +700,17 @@ def ribbon(b, path, width, thick, wide, mats, wfn, K=5, trim=None):
             x = -1 + 2 * k / (K - 1)
             pts.append(p + Wd * (x * hw) - Nn * (th * 0.5))
         grid.append(b.ring(pts, wfn(s, p)))
+        if tile:
+            rows.append([b.tile_uv(tile, u, s) for u in us])
 
-    def mat(i, j):
-        s = (i + 0.5) / n
-        if trim and trim(s):
-            return mats[2]
+    def mat(j):
         if j < K - 1:
             return mats[2] if (len(mats) > 3 and j in (0, K - 2)) else mats[0]
         if j == K - 1 or j == 2 * K - 1:
             return mats[2]
         return mats[1]
     for i, (a, c) in enumerate(zip(grid, grid[1:])):
-        b.strip(a, c, lambda j, i=i: mat(i, j))
+        b.strip(a, c, mat, uv0=rows[i] if tile else None, uv1=rows[i + 1] if tile else None, tile_mats=tile_mats)
     b.cap(grid[0], mats[0])
     b.cap(grid[-1], mats[2])
     return grid
@@ -682,19 +720,26 @@ def scarf(b):
     b.begin("scarf")
     w0 = {"chest": 0.55, "neck": 0.45}
     nc = Vector((0.0, 0.012, 1.326))
-    M = 24
-    rings = []
+    M, Mc = 24, 10
+    rings, rows = [], []
     for k in range(M):
         th = 2 * pi * k / M
         rad = Vector((sin(th), -cos(th), 0.0))
         c = nc + Vector((0.064 * rad.x, 0.070 * rad.y, -0.026 * cos(th)))
         rr = 0.027 + 0.004 * sin(3 * th + 1.0) + 0.006 * max(cos(th), 0.0)
         rz = 0.034 + 0.010 * max(cos(th), 0.0) + 0.003 * sin(2 * th)
-        rings.append(fring(c, rad, Vector((0, 0, 1)), rr, rz, M=10))
-    g = b.loft(rings, "crimson", caps=(False, False), w=w0)
-    b.strip(g[-1], g[0], "crimson")
+        rings.append(b.ring(fring(c, rad, Vector((0, 0, 1)), rr, rz, M=Mc), w0))
+    for k in range(M + 1):
+        rows.append([b.tile_uv("scarfwrap", j / float(Mc), k / float(M)) for j in range(Mc + 1)])
+    for k in range(M):
+        b.strip(rings[k], rings[(k + 1) % M], "crimson", uv0=rows[k], uv1=rows[k + 1])
     knot = Vector((0.052, 0.090, 1.352))
     ellipsoid(b, knot, (0.030, 0.026, 0.028), "crimson", w0, M=10, rows=6)
+    # brooch at the front
+    bc, bn = Vector((0.041, -0.082, 1.304)), Vector((0.42, -0.90, 0.10)).normalized()
+    Rb = bn.to_track_quat("Y", "Z").to_matrix()
+    ellipsoid(b, bc, (0.016, 0.006, 0.016), "gold", w0, Rb, M=10, rows=6)
+    ellipsoid(b, bc + bn * 0.004, (0.009, 0.006, 0.009), "glow", w0, Rb, M=8, rows=5)
     for name, x0, x1, top, length, wd, nb in (("scarfA", 0.060, 0.086, 1.345, 0.62, 0.072, 5),
                                               ("scarfB", 0.040, 0.030, 1.340, 0.44, 0.062, 4)):
         pts = [knot + Vector((x0 - 0.052, 0.012, top - 1.352)),
@@ -703,10 +748,9 @@ def scarf(b):
         path = catmull(pts, nb * 4)
         joints = [path[i * 4] for i in range(nb + 1)]
         bones = add_chain(name, "chest", joints)
-        ribbon(b, path, lambda s, wd=wd: wd * (0.55 + 0.45 * ss(0.0, 0.12, s)) * (1.0 if s < 0.86 else max(1 - ((s - 0.86) / 0.14) ** 1.6, 0.0)),
+        ribbon(b, path, lambda s, wd=wd: wd * (0.55 + 0.45 * ss(0.0, 0.12, s)) * (1.0 if s < 0.90 else max(1 - ((s - 0.90) / 0.10) ** 1.6, 0.0)),
                0.008, Vector((-1, 0, 0)), ("crimson", "crimson", "crimson"),
-               lambda s, p, bones=bones: mixw(w0, chain_w(bones, s), ss(0.0, 0.08, s)), K=5,
-               trim=None)
+               lambda s, p, bones=bones: mixw(w0, chain_w(bones, s), ss(0.0, 0.08, s)), K=5, tile="scarftail")
     b.end()
 
     b.begin("tails")
@@ -718,7 +762,8 @@ def scarf(b):
         bones = add_chain("tail." + S, "hips", joints)
         ribbon(b, path, lambda s: 0.110 * (0.9 + 0.2 * s) * (1.0 if s < 0.80 else max(1 - ((s - 0.80) / 0.20) ** 1.5, 0.0)),
                0.008, Vector((-1, 0, 0)), ("coat", "crimson", "gold", "trim"),
-               lambda s, p, bones=bones: mixw({"hips": 1.0}, chain_w(bones, s), ss(0.0, 0.10, s)), K=7)
+               lambda s, p, bones=bones: mixw({"hips": 1.0}, chain_w(bones, s), ss(0.0, 0.10, s)), K=7, tile="tail",
+               tile_mats=("coat", "crimson"))
     b.end()
 
 
@@ -726,38 +771,33 @@ def scarf(b):
 # sword (rigid on the weapon bone)
 # ----------------------------------------------------------------------------
 def sword(b):
-    X, Y, Z = skel.hand_frame(-1)
+    A, T, N = skel.blade_axes(-1)               # across the blade (edge), along the blade, flat normal
     G = skel.grip_point()
-    A, T, N = X, Vector((0, -1, 0)), Z          # across the blade (edge), along the blade, flat normal
     w = {"weapon": 1.0}
+    R3 = Matrix((A, T, N)).transposed()
 
     def P(a, t, n=0.0):
         return G + A * a + T * t + N * n
 
     b.begin("sword", outline=0.8)
-    # grip + pommel
-    rings = [fring(P(0, t), A, N, r, r * 0.86, M=10) for t, r in
-             ((-0.128, 0.008), (-0.122, 0.0130), (-0.06, 0.0122), (0.0, 0.0125), (0.052, 0.0135), (0.056, 0.009))]
-    b.loft(rings, "dark", w=w)
+    hs = ((-0.128, 0.008), (-0.122, 0.0130), (-0.06, 0.0122), (0.0, 0.0125), (0.052, 0.0135), (0.056, 0.009))
+    rings = [fring(P(0, t), A, N, r, r * 0.86, M=10) for t, r in hs]
+    b.loft(rings, "dark", w=w, tile="grip", vs=[(t + 0.128) / 0.184 for t, r in hs])
     for t in (-0.092, -0.046, 0.0, 0.044):
         rr = [fring(P(0, t + dt), A, N, r, r * 0.86, M=10) for dt, r in ((-0.004, 0.012), (-0.003, 0.0148),
                                                                         (0.003, 0.0148), (0.004, 0.012))]
         b.loft(rr, "gold", caps=(False, False), w=w)
-    ellipsoid(b, P(0, -0.142), (0.020, 0.017, 0.015), "gold", w, Matrix((A, T, N)).transposed(), M=10, rows=6)
-    ellipsoid(b, P(0, -0.142), (0.0105, 0.0105, 0.017), "glow", w, Matrix((A, T, N)).transposed(), M=8, rows=6)
-    # guard: swept wings
+    ellipsoid(b, P(0, -0.142), (0.020, 0.017, 0.015), "gold", w, R3, M=10, rows=6)
+    ellipsoid(b, P(0, -0.142), (0.0105, 0.0105, 0.017), "glow", w, R3, M=8, rows=6)
     gp = [P(-0.078, 0.098), P(-0.054, 0.074), P(-0.026, 0.063), P(0.0, 0.061), P(0.026, 0.063), P(0.054, 0.074),
           P(0.078, 0.098)]
-    path = catmull(gp, 20)
-    tube(b, path, lambda s: 0.0088 * (1 - (2 * s - 1) ** 2) ** 0.45 + 0.0020, "gold", w=w, M=8, squash=0.8, up=N)
-    ellipsoid(b, P(0, 0.064), (0.019, 0.021, 0.0150), "gold", w, Matrix((A, T, N)).transposed(), M=10, rows=6)
-    ellipsoid(b, P(0, 0.064), (0.0100, 0.0120, 0.0178), "glow", w, Matrix((A, T, N)).transposed(), M=10, rows=6)
-    # blade: diamond section, flat shaded
+    tube(b, catmull(gp, 20), lambda s: 0.0088 * (1 - (2 * s - 1) ** 2) ** 0.45 + 0.0020, "gold", w=w, M=8, squash=0.8, up=N)
+    ellipsoid(b, P(0, 0.064), (0.019, 0.021, 0.0150), "gold", w, R3, M=10, rows=6)
+    ellipsoid(b, P(0, 0.064), (0.0100, 0.0120, 0.0178), "glow", w, R3, M=10, rows=6)
     st = [(0.072, 0.0250, 0.0050), (0.090, 0.0300, 0.0062), (0.50, 0.0265, 0.0056), (0.78, 0.0225, 0.0048),
           (0.86, 0.0150, 0.0036), (0.915, 0.0010, 0.0008)]
     rings = [[P(-hw, t), P(0, t, hn), P(hw, t), P(0, t, -hn)] for t, hw, hn in st]
-    g = b.loft(rings, "steel", w=w, sharp_cols=(0, 1, 2, 3))
-    # glowing fuller on both faces
+    b.loft(rings, "steel", w=w, sharp_cols=(0, 1, 2, 3), tile="blade", vs=[(t - 0.072) / 0.843 for t, hw, hn in st])
     for sgn in (1, -1):
         fr = [[P(-hw, t, sgn * (hn + 0.0004)), P(0, t, sgn * (hn + 0.0022)), P(hw, t, sgn * (hn + 0.0004)),
                P(0, t, sgn * (hn - 0.002))]

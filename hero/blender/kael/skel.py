@@ -49,11 +49,19 @@ def hand_frame(sx):
 
 
 GRIP_LOCAL = (0.060, 0.0, -0.026)         # sword grip centre in right-hand local coords
+GRIP_TILT = 22.0                          # sabre grip: the handle lies diagonally across the palm
 
 
 def grip_point():
     X, Y, Z = hand_frame(-1)
     return wrist(-1) + X * GRIP_LOCAL[0] + Y * GRIP_LOCAL[1] + Z * GRIP_LOCAL[2]
+
+
+def blade_axes(sx=-1):
+    """Rest sword axes for a hand: (edge direction, blade direction, flat normal)."""
+    X, Y, Z = hand_frame(sx)
+    t = radians(GRIP_TILT)
+    return (X * cos(t) - Y * sin(t)).normalized(), (Y * cos(t) + X * sin(t)).normalized(), Z
 
 
 def bones(extra=()):
@@ -72,6 +80,7 @@ def bones(extra=()):
         B += [
             ("clavicle." + S, "chest", (0.022 * sx, 0.0, 1.272), tuple(sh - Vector((0.012 * sx, 0, 0)))),
             ("upper_arm." + S, "clavicle." + S, tuple(sh), tuple(el)),
+            ("upper_arm_twist." + S, "upper_arm." + S, tuple(sh + d * (LU * 0.5)), tuple(el)),
             ("forearm." + S, "upper_arm." + S, tuple(el), tuple(wr)),
             ("forearm_twist." + S, "forearm." + S, tuple(el + d * (LF * 0.5)), tuple(wr)),
             ("hand." + S, "forearm." + S, tuple(wr), tuple(wr + d * LH)),
@@ -81,7 +90,7 @@ def bones(extra=()):
             ("toe." + S, "foot." + S, tuple(ball(sx)), (0.091 * sx, -0.192, 0.022)),
         ]
     g = grip_point()
-    B.append(("weapon", "hand.R", tuple(g), tuple(g + Vector((0, -0.25, 0)))))
+    B.append(("weapon", "hand.R", tuple(g), tuple(g + blade_axes()[1] * 0.25)))
     for ch in extra:
         pts = ch["pts"]
         for i in range(len(pts) - 1):
@@ -128,8 +137,10 @@ def w_arm(sx):
         e = ss(LU - 0.04, LU + 0.04, s)
         t = ss(LU + 0.07, LU + LF - 0.03, s) * 0.8   # forearm twist share
         h = ss(LU + LF - 0.022, LU + LF + 0.012, s)
+        u = ss(0.035, LU - 0.055, s)                 # roll is spread along the upper arm, none at the shoulder
         w = {"clavicle." + S: k * 0.75, "chest": k * 0.25,
-             "upper_arm." + S: (1 - k) * (1 - e),
+             "upper_arm." + S: (1 - k) * (1 - e) * (1 - u),
+             "upper_arm_twist." + S: (1 - k) * (1 - e) * u,
              "forearm." + S: e * (1 - t) * (1 - h),
              "forearm_twist." + S: e * t * (1 - h),
              "hand." + S: h}

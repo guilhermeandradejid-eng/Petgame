@@ -25,9 +25,20 @@ def mesh_object(b, name, scene, bone_names=None, rigid=False):
     me.update()
     uvl = me.uv_layers.new(name="UVMap")
     uvs = [0.0] * (2 * len(me.loops))
-    for lp in me.loops:
-        u, v = b.uv[lp.vertex_index]
-        uvs[2 * lp.index], uvs[2 * lp.index + 1] = u, v
+    face_mat = b.mi.get("face", -1)
+    for poly in me.polygons:
+        fi = poly.index
+        cu = b.cuv.get(fi)
+        sw = b.swatch.get(b.mats[b.fm[fi]], (0.0, 0.0))
+        for li in poly.loop_indices:
+            vi = me.loops[li].vertex_index
+            if cu is not None:
+                u, v = cu[vi]
+            elif b.fm[fi] == face_mat:
+                u, v = b.uv[vi]             # planar-projected face texture
+            else:
+                u, v = sw                   # flat palette swatch in the atlas
+            uvs[2 * li], uvs[2 * li + 1] = u, v
     uvl.data.foreach_set("uv", uvs)
     if b.sharp:
         ek = {tuple(sorted(e.vertices)): e.index for e in me.edges}

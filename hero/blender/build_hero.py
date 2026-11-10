@@ -25,7 +25,7 @@ def opt(name, default=None):
     return argv[argv.index(name) + 1] if name in argv else default
 
 
-from kael import geo, facetex, look, skel, model, assemble, rig, anim   # noqa: E402
+from kael import geo, facetex, look, atlas, skel, model, assemble, rig, anim   # noqa: E402
 
 T0 = time.time()
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -35,13 +35,13 @@ scene.render.fps = 60
 # -- textures + materials -------------------------------------------------------
 tex_path = os.path.join(HERE, "textures", "kael_face.png")
 os.makedirs(os.path.dirname(tex_path), exist_ok=True)
-atlas = facetex.build_atlas(int(opt("--face-res", "1024")))
-face_img = look.face_image(atlas, tex_path)
+face_img = look.make_image("kael_face", facetex.build_atlas(int(opt("--face-res", "1024"))), tex_path)
+atlas_img = look.make_image("kael_atlas", atlas.build(), os.path.join(HERE, "textures", "kael_atlas.png"))
 for n in look.MAT_NAMES:
-    look.make_pbr(n, face_img)
+    look.make_pbr(n, face_img, atlas_img)
 
 # -- model + rig -----------------------------------------------------------------
-b = geo.Builder(look.MAT_NAMES)
+b = geo.Builder(look.MAT_NAMES, tiles=atlas.TILES, swatch=atlas.SWATCH)
 model.build(b, only=opt("--parts"))
 arm, BONES = assemble.armature(scene, model.EXTRA)
 body = assemble.mesh_object(b, "KaelBody", scene, [x[0] for x in BONES])
@@ -173,7 +173,8 @@ if "--no-export" not in argv:
                  for ch in model.EXTRA},
         colliders=[dict(bone=c[0], center=list(c[1]), radius=c[2], groups=c[3]) for c in rig.COLLIDERS],
         rest={n: list(rg.RH[n]) for n in rg.names},
-        palette={k: dict(base=v["base"], shade=v["shade"], kind=v["kind"], line=v["line"]) for k, v in look.PALETTE.items()},
+        palette={k: dict(base=v["base"], shade=v["shade"], kind=v["kind"], line=v["line"], tint=look.shade_tint(k))
+                 for k, v in look.PALETTE.items()},
         face=dict(cells=facetex.CELL),
         tris=sum(len(f) - 2 for f in b.f), bones=len(BONES),
     )
@@ -186,7 +187,7 @@ if "--no-export" not in argv:
 want_render = any(k in argv for k in ("--stills", "--poses", "--reel", "--sheet"))
 if want_render or "--no-export" not in argv:
     for n in look.MAT_NAMES:
-        look.make_toon(n, face_img)
+        look.make_toon(n, face_img, atlas_img)
     look.add_outline(body)
     cam = look.setup_scene(scene)
     use_action("Idle" if "Idle" in ACTIONS else list(ACTIONS)[0])
@@ -234,7 +235,7 @@ if opt("--poses"):
             r = clips[[c.name for c in clips].index(name)].root(f)
             o = rig.V(r[0], r[1], 0.0)
             for vw in view.split(","):
-                look.aim(cam, Vector(AVIEW[vw]) + o, Vector((0, 0, 0.92)) + o, 150 if vw != "top" else 105)
+                look.aim(cam, Vector(AVIEW[vw]) + o, Vector((0, 0, float(opt("--tz", "0.95")))) + o, float(opt("--lens", "130")))
                 look.render(scene, os.path.join(out, "pose_%s_%03d_%s.png" % (name, f, vw)), (res, res), samples=samples)
 
 # -- presentation sheets ---------------------------------------------------------
@@ -257,11 +258,11 @@ if "--sheet" in argv:
         look.render(scene, os.path.join(out, "sheet", "turn_%d.png" % i), (560, 900), samples=samples)
     look.aim(cam, (-0.55, -2.3, 1.50), (0.0, 0.0, 1.45), 200)
     look.render(scene, os.path.join(out, "sheet", "face.png"), (900, 900), samples=samples)
-    POSES = [("Idle", 0, "quarter"), ("Attack1", 9, "quarter"), ("Attack1", 19, "quarter"), ("Attack2", 13, "quarter"),
-             ("Attack3", 21, "quarterL"), ("Attack3", 30, "quarter"), ("Run", 9, "side"), ("Dash", 8, "side")]
+    POSES = [("Idle", 0, "quarter"), ("Attack1", 16, "quarter"), ("Attack2", 17, "quarterL"), ("Attack3", 9, "quarter"),
+             ("Attack4", 21, "quarterL"), ("Attack4", 31, "quarter"), ("Stinger", 17, "side"), ("Run", 9, "side")]
     for i, (name, f, vw) in enumerate(POSES):
         render_pose(name, f, vw, os.path.join(out, "sheet", "pose_%d.png" % i), (640, 640), lens=135,
-                    tz=1.25 if (name == "Attack3" and f < 26) else 0.92)
+                    tz=1.3 if (name == "Attack4" and f < 26) else (1.1 if name == "Attack3" else 0.92))
 
 # -- reel: one continuous performance, springs simulated across clip changes ------------
 if "--reel" in argv:
@@ -270,14 +271,15 @@ if "--reel" in argv:
     def add(name, f0, f1, blend=0):
         for k, f in enumerate(range(f0, f1)):
             seq.append((name, f, blend if k == 0 else 0))
-    add("Idle", 0, 56); add("Attack1", 0, 22); add("Attack2", 0, 22); add("Attack3", 0, 82); add("Idle", 0, 20)
-    add("Dash", 0, 36); add("Idle", 0, 10); add("Run", 0, 108, 8); add("Idle", 0, 34, 10); add("Hit", 0, 40); add("Idle", 0, 26)
+    add("Idle", 0, 50); add("Attack1", 0, 22); add("Attack2", 0, 23); add("Attack3", 0, 25); add("Attack4", 0, 86)
+    add("Idle", 0, 16); add("Dash", 0, 6); add("Stinger", 0, 62, 4); add("Idle", 0, 10); add("Run", 0, 108, 8)
+    add("Idle", 0, 34, 10); add("Hit", 0, 44); add("Idle", 0, 26)
     act = bpy.data.actions.new("Reel")
     arm.animation_data.action = act
     springs = rig.Springs(rg, model.EXTRA)
     rg.edge_prev = None
     off = Vector((0.0, 0.0))                    # accumulated stage offset (side, fwd)
-    prev, last, base_root, Pprev, blend_left, blend_n, roots = {}, None, (0.0, 0.0, 0.0), None, 0, 1, []
+    prev, last, base_root, Pprev, blend_left, blend_n, roots, hz = {}, None, (0.0, 0.0, 0.0), None, 0, 1, [], []
     face_uv = bpy.data.materials["face"].node_tree.nodes["FaceUV"].inputs[1]
     EXPR = {"neutral": (0.0, 0.0, 0.0), "blink": (0.5, 0.0, 0.0), "attack": (0.0, -0.5, 0.0), "hurt": (0.5, -0.5, 0.0)}
     expr_prev = "neutral"
@@ -306,7 +308,7 @@ if "--reel" in argv:
         springs.step(Dw, pw)
         set_pose(pos, Dw, stage, prev, frame=i)
         ex = "neutral"
-        if name.startswith("Attack") and 4 <= f <= clip.events["hit"] + 14:
+        if (name.startswith("Attack") or name == "Stinger") and 4 <= f <= clip.events["hit"] + 14:
             ex = "attack"
         elif name == "Hit" and f < 22:
             ex = "hurt"
@@ -319,25 +321,28 @@ if "--reel" in argv:
         face_uv.keyframe_insert("default_value", frame=i)
         expr_prev = ex
         roots.append(stage)
+        hz.append(pos["hips"].z)
         last = (name, f)
     ACTIONS["Reel"] = (act, len(seq))
     use_action("Reel")
     os.makedirs(os.path.join(out, "reel"), exist_ok=True)
-    cx, cy = 0.0, 0.0
     step = int(opt("--reel-step", "2"))
     size = int(opt("--reel-res", "720"))
     only = [int(x) for x in opt("--reel-only").split(",")] if opt("--reel-only") else None
+
+    def box(v, w):                               # symmetric moving average: the camera anticipates, it never lags
+        return [sum(v[max(0, i - w):i + w + 1]) / len(v[max(0, i - w):i + w + 1]) for i in range(len(v))]
+    cxs, cys = (box(box([r[k] for r in roots], 6), 6) for k in (0, 1))
+    lift = box(box([max(0.0, z - rg.RH["hips"].z) for z in hz], 4), 4)
     for i in range(0, len(seq), step):
-        cx += (roots[i][0] - cx) * 0.22
-        cy += (roots[i][1] - cy) * 0.22
         if only and (i // step) not in only:
             continue
         if "--reel-resume" in argv and os.path.exists(os.path.join(out, "reel", "%04d.png" % (i // step))):
             continue
-        o = rig.V(cx, cy, 0.0)
+        o = rig.V(cxs[i], cys[i], 0.55 * lift[i])
         scene.frame_set(i)
-        # 4:3 frame tall enough for the whole body, the sword overhead and the leap
-        look.aim(cam, Vector((-4.4, -6.2, 2.3)) + o, Vector((0, 0, 1.12)) + o, 77)
+        # 4:3 frame tall enough for the whole body and the sword overhead; it follows the leap
+        look.aim(cam, Vector((-4.4, -6.2, 2.3)) + o, Vector((0, 0, 1.12)) + o, 76)
         look.render(scene, os.path.join(out, "reel", "%04d.png" % (i // step)), (int(size * 4 / 3), size), samples=samples)
     print("reel: %d frames" % (len(seq) // step))
 print("done in %.1fs" % (time.time() - T0))
