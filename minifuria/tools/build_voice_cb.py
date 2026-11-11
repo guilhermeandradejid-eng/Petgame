@@ -14,6 +14,10 @@ build_voice.py (equalização, compressão, ambiência curta e as vinhetas de gu
 Uso (ambiente com chatterbox-tts e faster-whisper):
     python tools/build_voice_cb.py PASTA_DAS_AMOSTRAS voice scripts/voice_lines.gd
     ONLY=intro,lead python tools/build_voice_cb.py ...      (refaz só essas chaves)
+    PT_CKPT=PASTA: português com o ajuste ResembleAI/Chatterbox-Multilingual-pt-br (t3_pt_br.safetensors renomeado
+      para t3_mtl23ls_v2.safetensors + ve.pt, conds.pt, s3gen.pt e os .json do modelo base; o s3gen_v3 dele ainda
+      não carrega na biblioteca do PyPI). O português usa a mesma voz de referência do inglês (PT_REF=en): numa
+      comparação com o Whisper, acertou 82% das palavras contra 73% do modelo base.
     TRAILER=PASTA python tools/build_voice_cb.py ...         (só as falas do trailer, em PASTA/<idioma>_<chave>.wav)
 """
 import difflib
@@ -56,6 +60,9 @@ class Gen:
         torch.set_num_threads(os.cpu_count() or 4)
         self.torch = torch
         self.tts = ChatterboxMultilingualTTS.from_pretrained(device="cpu")
+        # português: o ajuste oficial só de português do Brasil (ResembleAI/Chatterbox-Multilingual-pt-br) soa mais
+        # natural que o modelo de 23 línguas; PT_CKPT = pasta com t3/s3gen dele + ve/conds/tokenizer do modelo base
+        self.tts_pt = ChatterboxMultilingualTTS.from_local(os.environ["PT_CKPT"], "cpu") if os.environ.get("PT_CKPT") else self.tts
         self.asr = WhisperModel("small", device="cpu", compute_type="int8")
 
     def _hear(self, x, sr, lang):
@@ -70,7 +77,10 @@ class Gen:
         spoken = LONG.get(text, text)
         for a, b in bv.SAY_TEXT.get(lang, []):
             spoken = spoken.replace(a, b)
-        ref = os.path.join(os.environ.get("REF_DIR", HERE), "decibel_ref_%s.wav" % lang)
+        tts = self.tts_pt if lang == "pt" else self.tts
+        # PT_REF=en: o português usa a mesma voz de referência do inglês (mesmo timbre nos dois idiomas)
+        rl = os.environ.get("PT_REF", "en") if lang == "pt" else lang
+        ref = os.path.join(os.environ.get("REF_DIR", HERE), "decibel_ref_%s.wav" % rl)
         best = None
         short = len(norm(text)) <= 2
         for k in range(TRIES + (3 if short else 0)):
@@ -78,17 +88,17 @@ class Gen:
             # palavra solta ("Um!") às vezes trava o modelo ou sai embolada: alonga a vogal como locutor ("Uuum!")
             say_txt = spoken if k < 2 or not short else re.sub(r"([aeiouáéíóúãõê])", r"\1\1\1", spoken, count=1, flags=re.I)
             try:
-                w = self.tts.generate(say_txt, language_id=lang, audio_prompt_path=ref, exaggeration=EXAG,
+                w = tts.generate(say_txt, language_id=lang, audio_prompt_path=ref, exaggeration=EXAG,
                                       cfg_weight=CFG, temperature=TEMP)
             except (IndexError, RuntimeError) as e:
                 print("   (falhou: %s)" % e, flush=True)
                 continue
             x = w.squeeze(0).cpu().numpy().astype(np.float32)
-            heard = self._hear(x, self.tts.sr, lang)
+            heard = self._hear(x, tts.sr, lang)
             a, b = norm(text), norm(heard)
             sim = difflib.SequenceMatcher(None, a, b).ratio()
             # fala esticada demais = repetiu ou travou
-            dur = len(x) / self.tts.sr
+            dur = len(x) / tts.sr
             slow = dur > 1.5 + 0.45 * len(a)
             score = sim - (0.3 if slow else 0.0)
             if best is None or score > best[0]:
@@ -98,7 +108,7 @@ class Gen:
         if best is None:
             raise RuntimeError("não deu para gerar: " + text)
         print("   %.2f  %s  <- ouvido: %s" % (best[0], text, best[2].strip()), flush=True)
-        return best[1], self.tts.sr
+        return best[1], tts.sr
 
 
 def arena_ir(seconds=0.85, seed=11):

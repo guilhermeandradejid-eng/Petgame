@@ -8,6 +8,7 @@ Voz gerada por inteligência artificial com o Chatterbox Multilingual (licença 
 controle de emoção (exaggeration 0,85, cfg 0,3) e conferida pelo Whisper "small" via faster-whisper (MIT).
 O timbre vem de trechos de referência sintéticos (tools/decibel_ref_en.wav e decibel_ref_pt.wav, feitos com
 as vozes "am_fenrir" e "pm_santa" do Kokoro-82M, Apache 2.0): nenhuma voz de pessoa real foi clonada.
+Português: ajuste oficial ResembleAI/Chatterbox-Multilingual-pt-br (licença MIT).
 Roteiro e gerador: tools/build_voice.py (falas) e tools/build_voice_cb.py (voz).
   https://huggingface.co/ResembleAI/chatterbox
   https://github.com/hexgrad/kokoro
