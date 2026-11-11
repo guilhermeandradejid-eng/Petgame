@@ -54,7 +54,7 @@ LINES = {
         ("Left 'em eating dust!", 'Deixou geral comendo poeira!'),
     ],
     "lead": [
-        ('First place! Suck it, everybody!', 'Primeiro lugar! Chupa, galera!'),
+        ('First place! Suck it, everybody!', 'Primeiro lugar! Vem me pegar, se for capaz!'),
         ('Out in front! Eat my dust, losers!', 'Na frente! Come poeira, otário!'),
         ('Leading the pack and talking trash!', 'Liderando e tirando onda!'),
         ("Nobody's touching this guy!", 'Ninguém encosta nesse doido!'),
@@ -66,7 +66,7 @@ LINES = {
         ('Too slow, buddy!', 'Lerdo demais, parceiro!'),
     ],
     "overtaken": [
-        ('Wake up, sleepyhead!', 'Acorda, ô lesado!'),
+        ('Wake up, sleepyhead!', 'Acorda pra vida!'),
         ('Getting passed? Seriously?!', 'Tão te passando? Sério?!'),
         ('Hey! Was that a minivan?!', 'Ô! Te passaram de fusca?!'),
     ],
@@ -113,9 +113,9 @@ LINES = {
         ('One lap left! Floor it!', 'Falta uma! Enfia o pé!'),
     ],
     "win": [
-        ('Winner! Suck it, everybody!', 'Venceu! Chupa todo mundo!'),
+        ('Winner! Suck it, everybody!', 'Venceu! Atropelou geral!'),
         ('Checkered flag! Absolute legend!', 'Que corrida! Que monstro!'),
-        ('Number one! Bow down!', 'Número um! Ajoelha!'),
+        ('Number one! Bow down!', 'Número um! Respeita!'),
         ('And the trophy goes to the maniac!', 'E o troféu vai pro maluco!'),
     ],
     "podium": [

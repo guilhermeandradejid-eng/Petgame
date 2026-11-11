@@ -277,7 +277,7 @@ Locutor de estádio desbocado, agressivo e engraçado, que zoa todo mundo: "Na f
 
 - **Voz gritada**: **Chatterbox Multilingual** (Resemble AI, MIT) no máximo de emoção (exaggeration 1,5, cfg 0,5). A referência de voz foi construída por etapas a partir dos gritos mais fortes do próprio modelo (`tools/decibel_ref_*.wav`, voz sintética, nenhuma pessoa real clonada).
 - **Português**: usa o ajuste oficial só de português do Brasil (`ResembleAI/Chatterbox-Multilingual-pt-br`) com a **mesma voz de referência do inglês** — numa comparação conferida pelo Whisper, acertou 82% das palavras contra 73% do modelo de 23 línguas, e o Decibel tem o mesmo timbre nos dois idiomas.
-- Cada fala é conferida pelo **Whisper** e refeita se faltar ou sobrar palavra; as que o modelo não pronunciava bem ganharam outro texto (`tools/build_voice_cb.py`).
+- Cada fala é conferida pelo **Whisper** e refeita se faltar ou sobrar palavra; as que o modelo não pronunciava bem ganharam outro texto (`tools/build_voice_cb.py`). Em português são até 4 tomadas por fala com emoção um pouco menor (1,2: no máximo o modelo erra mais acento e entonação), e fica a que o Whisper entende com mais certeza — acento na sílaba errada e entonação estranha derrubam a confiança dele.
 - **Vocal de locutor de metal**: pausas encurtadas, fala 12% mais rápida, presença, rouquidão (distorção suave em paralelo), compressão forte, slapback e eco curto de arena, sem mudar o tom.
 - **Fala pouco**: no máximo uma fala comum a cada 11 s, só nos momentos grandes; abertura em 30% das largadas (sempre nas de chefe). Sem legenda na tela; a música e os efeitos abaixam um pouco enquanto ele fala.
 - **Configurações > Áudio > NARRADOR** ajusta o volume (zero desliga).

@@ -21,6 +21,7 @@ Uso (ambiente com chatterbox-tts e faster-whisper):
     TRAILER=PASTA python tools/build_voice_cb.py ...         (só as falas do trailer, em PASTA/<idioma>_<chave>.wav)
 """
 import difflib
+import subprocess
 import json
 import os
 import re
@@ -38,6 +39,9 @@ EXAG = float(os.environ.get("EXAG", "1.5"))      # emoção (0,5 = neutro; acima
 CFG = float(os.environ.get("CFG", "0.5"))       # menor = fala mais solta e menos "lida"
 TEMP = 0.8
 TRIES = 2
+LANGS = os.environ.get("LANGS", "en,pt").split(",")
+PT_TRIES = int(os.environ.get("PT_TRIES", "4"))
+EXAG_PT = float(os.environ.get("EXAG_PT", "1.2"))   # no máximo de emoção o português erra mais acento e entonação
 # palavras soltas da contagem: alongadas como um locutor faz (e o modelo não trava em uma sílaba só)
 LONG = {"Um!": "Uuuum!", "Dois!": "Dooois!", "Três!": "Trêêês!", "One!": "Ooone!", "Two!": "Twooo!", "Three!": "Threeee!"}
 
@@ -71,6 +75,9 @@ class Gen:
                                           "-ar", "16000", "-f", "f32le", "-"], input=x.tobytes(), capture_output=True,
                                          check=True).stdout, np.float32).copy()
         seg, _ = self.asr.transcribe(y.astype(np.float32), language=lang)
+        seg = list(seg)
+        # confiança média do reconhecedor: acento na sílaba errada e entonação estranha derrubam esse número
+        self.last_conf = float(np.mean([s.avg_logprob for s in seg])) if seg else -3.0
         return " ".join(s.text for s in seg)
 
     def say(self, text, lang):
@@ -83,12 +90,15 @@ class Gen:
         ref = os.path.join(os.environ.get("REF_DIR", HERE), "decibel_ref_%s.wav" % rl)
         best = None
         short = len(norm(text)) <= 2
-        for k in range(TRIES + (3 if short else 0)):
+        # português: várias tomadas, fica a que o reconhecedor entende com mais certeza (prosódia mais natural)
+        tries = PT_TRIES if lang == "pt" else TRIES
+        exag = EXAG_PT if lang == "pt" else EXAG
+        for k in range(tries + (3 if short else 0)):
             self.torch.manual_seed(1000 + k * 77 + len(text))
             # palavra solta ("Um!") às vezes trava o modelo ou sai embolada: alonga a vogal como locutor ("Uuum!")
             say_txt = spoken if k < 2 or not short else re.sub(r"([aeiouáéíóúãõê])", r"\1\1\1", spoken, count=1, flags=re.I)
             try:
-                w = tts.generate(say_txt, language_id=lang, audio_prompt_path=ref, exaggeration=EXAG,
+                w = tts.generate(say_txt, language_id=lang, audio_prompt_path=ref, exaggeration=exag,
                                       cfg_weight=CFG, temperature=TEMP)
             except (IndexError, RuntimeError) as e:
                 print("   (falhou: %s)" % e, flush=True)
@@ -101,9 +111,14 @@ class Gen:
             dur = len(x) / tts.sr
             slow = dur > 1.5 + 0.45 * len(a)
             score = sim - (0.3 if slow else 0.0)
+            if lang == "pt":
+                score = min(sim, 0.9) + 0.25 * self.last_conf - (0.3 if slow else 0.0)
             if best is None or score > best[0]:
                 best = (score, x, heard)
-            if sim >= 0.85 and not slow:
+            if lang != "pt" and sim >= 0.85 and not slow:
+                break
+            # português: depois de 2 tomadas, para se já saiu clara e com o reconhecedor bem seguro
+            if lang == "pt" and k >= 1 and best[0] > 0.75 and sim >= 0.9 and not slow:
                 break
         if best is None:
             raise RuntimeError("não deu para gerar: " + text)
@@ -226,6 +241,11 @@ def main():
         for n, (en, pt) in enumerate(lines):
             durs = {}
             for lang, text in (("en", en), ("pt", pt)):
+                if lang not in LANGS:
+                    f = os.path.join(out_dir, lang, "%s_%d.ogg" % (key, n))
+                    durs[lang] = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", f],
+                                                      capture_output=True, text=True, check=True).stdout)
+                    continue
                 v = process(g, text, lang, key, smp)
                 os.makedirs(os.path.join(out_dir, lang), exist_ok=True)
                 bv.encode(v, os.path.join(out_dir, lang, "%s_%d.ogg" % (key, n)))
