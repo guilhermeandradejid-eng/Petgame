@@ -7,6 +7,8 @@ var total := 1800
 var scene := "battle"
 var n := 0
 var frame := 0
+var pause_at := -1
+var mode := "watch"
 
 func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -16,9 +18,14 @@ func _ready() -> void:
 		elif a.begins_with("--scene="): scene = a.substr(8)
 		elif a.begins_with("--chars="): Game.p_chars = Array(a.substr(8).split(","))
 		elif a.begins_with("--level="): Game.cpu_level = int(a.substr(8))
+		elif a.begins_with("--pause-at="): pause_at = int(a.substr(11))
+		elif a.begins_with("--mode="): mode = a.substr(7)
 	DirAccess.make_dir_recursive_absolute(out)
 	Game.mode = Game.Mode.WATCH
 	Game.p_cpu = [true, true]
+	if mode == "training":
+		Game.mode = Game.Mode.TRAINING
+		Game.p_cpu = [true, true]
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_start.call_deferred()
 
@@ -30,6 +37,8 @@ func _start() -> void:
 
 func _process(_d: float) -> void:
 	frame += 1
+	if frame == pause_at and get_tree().current_scene.has_method("set_paused"):
+		get_tree().current_scene.set_paused(true)
 	if frame % every == 0:
 		var img := get_viewport().get_texture().get_image()
 		img.save_png("%s/shot_%04d.png" % [out, n])

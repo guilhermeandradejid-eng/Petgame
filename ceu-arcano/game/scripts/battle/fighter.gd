@@ -714,6 +714,12 @@ func _move() -> void:
 		can_cancel = true
 	if can_cancel and _try_cancel():
 		return
+	# a sequência de golpes (A A A A) encadeia mesmo sem acertar, depois do fim do quadro ativo
+	if not mv_contact and mv_id in ["a5_1", "a5_2", "a5_3"] and grounded and sf >= int(mv.get("swing_at", 3)) + 7:
+		if inp.pressed("a", 6) and not inp.down() and not inp.fwd(facing):
+			inp.consume("a")
+			start_move(kit.next_chain(mv_id))
+			return
 	if grounded and mv.get("air", false) and sf > 2:
 		enter("land")
 		landing_lag = 7

@@ -4,9 +4,12 @@
 se enfrentam com golpes, tiros de magia, voo e **cartas de feitiço** declaradas com cut-in. É um jogo
 original, com personagens, cenário, músicas e efeitos próprios.
 
-![Tela de título](docs/title.png)
-![Luta](docs/battle.png)
-![Carta de feitiço](docs/spell.png)
+![Rubi declara 「Mil Golpes da Tormenta」](docs/gameplay.gif)
+
+| | |
+|---|---|
+| ![Tela de título](docs/title.png) | ![Luta](docs/battle.png) |
+| ![Carta de feitiço](docs/spell.png) | |
 
 ## Como jogar
 

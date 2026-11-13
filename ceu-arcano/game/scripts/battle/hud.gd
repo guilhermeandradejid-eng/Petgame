@@ -141,6 +141,11 @@ func _draw_all(c: Control) -> void:
 		_draw_used(c, u)
 	for fl in card_fly:
 		_draw_flying(c, fl)
+	if battle.round_num == 1 and battle.phase in ["intro", "fight"] and (battle.phase == "intro" or battle.phase_t < 360) \
+			and Game.mode != Game.Mode.WATCH and Game.mode != Game.Mode.TRAINING:
+		var ha := clampf((360 - (battle.phase_t if battle.phase == "fight" else 0)) / 60.0, 0.0, 1.0)
+		_text(c, "J golpe · K tiro · L habilidade · Espaço dash · I carta · Esc pausa e comandos", Vector2(320, 352), 8,
+			Color(0.85, 0.88, 1.0, 0.85 * ha), 1, Game.font_small)
 	if Game.mode == Game.Mode.TRAINING:
 		_text(c, "TREINO  ·  F1 caixas de colisão  ·  Esc pausa", Vector2(320, 352), 8, Color(0.8, 0.85, 1, 0.8), 1, Game.font_small)
 	if Game.show_boxes:
@@ -440,6 +445,11 @@ func _draw_timer(c: Control) -> void:
 		var a := i * TAU / 8.0 + t * 0.3
 		c.draw_circle(ctr + Vector2.from_angle(a) * 16.0, 1.2, Color("ffd66b"))
 	var col := Color(1, 1, 1) if secs > 10 else Color(1, 0.4, 0.4).lerp(Color.WHITE, 0.5 + 0.5 * sin(t * 12.0))
+	if battle.round_num == 1 and battle.phase in ["intro", "fight"] and (battle.phase == "intro" or battle.phase_t < 360) \
+			and Game.mode != Game.Mode.WATCH and Game.mode != Game.Mode.TRAINING:
+		var ha := clampf((360 - (battle.phase_t if battle.phase == "fight" else 0)) / 60.0, 0.0, 1.0)
+		_text(c, "J golpe · K tiro · L habilidade · Espaço dash · I carta · Esc pausa e comandos", Vector2(320, 352), 8,
+			Color(0.85, 0.88, 1.0, 0.85 * ha), 1, Game.font_small)
 	if Game.mode == Game.Mode.TRAINING:
 		_text(c, "∞", ctr + Vector2(0, 6), 16, col, 1, Game.font_main)
 	else:

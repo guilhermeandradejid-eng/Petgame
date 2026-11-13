@@ -58,3 +58,21 @@ Teclado: `J` liga o pulo, espaço freia ou usa a habilidade, `Esc` pausa.
 
 - `estelar/holes.js`: os buracos, descritos como mapas de texto (tipo de piso + altura por casa)
 - `estelar/game.js`: física isométrica com alturas e rampas, renderização em baixa resolução ampliada sem suavização, sprites gerados por código (personagens e inimigos são esferas iluminadas rasterizadas pixel a pixel, por isso rolam de verdade), música chiptune e efeitos sintetizados com Web Audio
+
+---
+
+# Céu Arcano
+
+Jogo de luta 2D em pixel art no estilo bullet-hell fighter, feito no **Godot 4.5**, com cartas de feitiço,
+graze, voo e muito game juice. Duas duelistas originais (Lumia, a Bruxa dos Vagalumes, e Rubi, a Lutadora
+da Tempestade) e um cenário, o Jardim das Lanternas Suspensas. Fica na pasta [`ceu-arcano/`](ceu-arcano/).
+
+![Céu Arcano](ceu-arcano/docs/gameplay.gif)
+
+- As personagens saem de um **rig de pixel art em Python**: formas vetoriais (SDF) renderizadas pixel a pixel,
+  com IK, física de cabelo, cachecol e lanterna, rastros de golpe e hitboxes exportadas automaticamente.
+- O cenário foi modelado e renderizado no **Blender** por script (bpy + Cycles) e convertido para uma paleta de pixel art.
+- Músicas e efeitos sonoros são sintetizados em Python.
+
+Para jogar, abra `ceu-arcano/game/project.godot` no Godot 4.5 e aperte F5. Os controles e o funcionamento do
+pipeline estão em [`ceu-arcano/README.md`](ceu-arcano/README.md).
