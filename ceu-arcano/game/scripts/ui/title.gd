@@ -135,7 +135,7 @@ func _draw_ui(c: Control) -> void:
 	c.draw_string(Game.font_main, Vector2(320 - sw * 0.5, y + 24), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.9, 0.85, 1.0, e))
 	if not started:
 		var a := 0.5 + 0.5 * sin(t * 4.0)
-		var s2 := "aperte J ou Enter"
+		var s2 := "aperte J, Enter ou toque"
 		var w2 := Game.font_main.get_string_size(s2, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 		c.draw_string(Game.font_main, Vector2(320 - w2 * 0.5, 260), s2, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, a))
 	else:

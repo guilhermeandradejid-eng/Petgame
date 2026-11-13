@@ -34,6 +34,8 @@ Modos: Versus CPU (melhor de 3), 2 Jogadores, Treino (boneco parado, espírito e
 | Trocar carta | O | Num6 ou `'` | Back |
 | Pausa | Esc | Backspace | Start |
 
+**Toque**: em celular ou tablet aparecem um direcional virtual e botões (golpe, tiro, habilidade, dash, carta, troca e pausa). Eles valem para o jogador 1 e também navegam pelos menus. F2 liga e desliga o overlay.
+
 F11 alterna tela cheia. F1 mostra as caixas de colisão (hitbox em vermelho, hurtbox em azul).
 
 ### Sistema de luta
@@ -146,6 +148,7 @@ barra de vida fantasma e contador de combo que pulsa.
 ```sh
 cd ceu-arcano/game
 godot --headless res://tests/check.tscn               # compila todos os scripts
+godot --headless res://tests/touch_test.tscn          # toques viram ações do jogador 1
 godot --headless --fixed-fps 60 res://tests/input_test.tscn -- --char=rubi   # simula o jogador 1 (16 ações)
 xvfb-run godot res://tests/autoplay.tscn -- --out=/tmp/shots --total=3600   # CPU x CPU com capturas
 xvfb-run godot res://tests/showcase.tscn -- --out=/tmp/spells               # todas as cartas de feitiço

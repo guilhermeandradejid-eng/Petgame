@@ -16,6 +16,7 @@ config/icon="res://icon.svg"
 
 Game="*res://scripts/core/game.gd"
 Audio="*res://scripts/core/audio.gd"
+Touch="*res://scripts/core/touch.gd"
 
 [display]
 
@@ -28,7 +29,7 @@ window/stretch/aspect="keep"
 
 [input_devices]
 
-pointing/emulate_touch_from_mouse=true
+pointing/emulate_touch_from_mouse=false
 
 [physics]
 
