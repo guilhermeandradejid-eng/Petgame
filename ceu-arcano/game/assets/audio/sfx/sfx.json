@@ -1,0 +1,217 @@
+{
+  "beam": {
+    "duration_sec": 2.6041,
+    "file": "beam.wav",
+    "suggested_volume_db": -2
+  },
+  "block": {
+    "duration_sec": 0.4041,
+    "file": "block.wav",
+    "suggested_volume_db": -2
+  },
+  "bullet_cancel": {
+    "duration_sec": 0.06,
+    "file": "bullet_cancel.wav",
+    "suggested_volume_db": -10
+  },
+  "card_gain": {
+    "duration_sec": 0.7982,
+    "file": "card_gain.wav",
+    "suggested_volume_db": -3
+  },
+  "card_select": {
+    "duration_sec": 0.0449,
+    "file": "card_select.wav",
+    "suggested_volume_db": -6
+  },
+  "combo_break": {
+    "duration_sec": 0.5488,
+    "file": "combo_break.wav",
+    "suggested_volume_db": -4
+  },
+  "comet": {
+    "duration_sec": 0.6984,
+    "file": "comet.wav",
+    "suggested_volume_db": -3
+  },
+  "dash": {
+    "duration_sec": 0.3,
+    "file": "dash.wav",
+    "suggested_volume_db": -3
+  },
+  "electric_orb": {
+    "duration_sec": 0.8499,
+    "file": "electric_orb.wav",
+    "suggested_volume_db": -4
+  },
+  "explosion": {
+    "duration_sec": 1.4118,
+    "file": "explosion.wav",
+    "suggested_volume_db": 0
+  },
+  "fight_start": {
+    "duration_sec": 0.8082,
+    "file": "fight_start.wav",
+    "suggested_volume_db": 0
+  },
+  "flight": {
+    "duration_sec": 0.4429,
+    "file": "flight.wav",
+    "suggested_volume_db": -6
+  },
+  "graze": {
+    "duration_sec": 0.055,
+    "file": "graze.wav",
+    "suggested_volume_db": -14
+  },
+  "guard_crush": {
+    "duration_sec": 0.9379,
+    "file": "guard_crush.wav",
+    "suggested_volume_db": 0
+  },
+  "heal": {
+    "duration_sec": 1.1624,
+    "file": "heal.wav",
+    "suggested_volume_db": -4
+  },
+  "hit_counter": {
+    "duration_sec": 0.9129,
+    "file": "hit_counter.wav",
+    "suggested_volume_db": 0
+  },
+  "hit_heavy": {
+    "duration_sec": 0.5288,
+    "file": "hit_heavy.wav",
+    "suggested_volume_db": 0
+  },
+  "hit_light": {
+    "duration_sec": 0.1247,
+    "file": "hit_light.wav",
+    "suggested_volume_db": -3
+  },
+  "hit_medium": {
+    "duration_sec": 0.2594,
+    "file": "hit_medium.wav",
+    "suggested_volume_db": -2
+  },
+  "jump": {
+    "duration_sec": 0.2893,
+    "file": "jump.wav",
+    "suggested_volume_db": -4
+  },
+  "ko": {
+    "duration_sec": 2.8685,
+    "file": "ko.wav",
+    "suggested_volume_db": 0
+  },
+  "land": {
+    "duration_sec": 0.3043,
+    "file": "land.wav",
+    "suggested_volume_db": -3
+  },
+  "lantern_place": {
+    "duration_sec": 1.6063,
+    "file": "lantern_place.wav",
+    "suggested_volume_db": -4
+  },
+  "moth": {
+    "duration_sec": 0.6685,
+    "file": "moth.wav",
+    "suggested_volume_db": -6
+  },
+  "round_announce": {
+    "duration_sec": 1.7011,
+    "file": "round_announce.wav",
+    "suggested_volume_db": 0
+  },
+  "shot_firefly": {
+    "duration_sec": 0.12,
+    "file": "shot_firefly.wav",
+    "suggested_volume_db": -12
+  },
+  "shot_star": {
+    "duration_sec": 0.4939,
+    "file": "shot_star.wav",
+    "suggested_volume_db": -6
+  },
+  "slowmo": {
+    "duration_sec": 1.05,
+    "file": "slowmo.wav",
+    "suggested_volume_db": -2
+  },
+  "spark_shot": {
+    "duration_sec": 0.17,
+    "file": "spark_shot.wav",
+    "suggested_volume_db": -4
+  },
+  "spell_declare": {
+    "duration_sec": 1.9456,
+    "file": "spell_declare.wav",
+    "suggested_volume_db": 0
+  },
+  "spirit_refill": {
+    "duration_sec": 0.5188,
+    "file": "spirit_refill.wav",
+    "suggested_volume_db": -5
+  },
+  "step": {
+    "duration_sec": 0.07,
+    "file": "step.wav",
+    "suggested_volume_db": -9
+  },
+  "super_flash": {
+    "duration_sec": 0.7333,
+    "file": "super_flash.wav",
+    "suggested_volume_db": -1
+  },
+  "swing_heavy": {
+    "duration_sec": 0.34,
+    "file": "swing_heavy.wav",
+    "suggested_volume_db": -3
+  },
+  "swing_light": {
+    "duration_sec": 0.17,
+    "file": "swing_light.wav",
+    "suggested_volume_db": -4
+  },
+  "thunder_crack": {
+    "duration_sec": 1.6463,
+    "file": "thunder_crack.wav",
+    "suggested_volume_db": 0
+  },
+  "timer_tick": {
+    "duration_sec": 0.06,
+    "file": "timer_tick.wav",
+    "suggested_volume_db": -6
+  },
+  "ui_back": {
+    "duration_sec": 0.13,
+    "file": "ui_back.wav",
+    "suggested_volume_db": -6
+  },
+  "ui_confirm": {
+    "duration_sec": 0.7234,
+    "file": "ui_confirm.wav",
+    "suggested_volume_db": -3
+  },
+  "ui_error": {
+    "duration_sec": 0.2145,
+    "file": "ui_error.wav",
+    "suggested_volume_db": -8
+  },
+  "ui_move": {
+    "duration_sec": 0.09,
+    "file": "ui_move.wav",
+    "suggested_volume_db": -6
+  },
+  "uppercut": {
+    "duration_sec": 0.459,
+    "file": "uppercut.wav",
+    "suggested_volume_db": -2
+  },
+  "weather_change": {
+    "duration_sec": 1.7211,
+    "file": "weather_change.wav",
+    "suggested_volume_db": -3
+  }
+}

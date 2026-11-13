@@ -1,0 +1,565 @@
+{
+ "name": "Jardim das Lanternas Suspensas",
+ "ref_camera": [
+  0,
+  -110
+ ],
+ "floor_y": 0,
+ "layers": [
+  {
+   "name": "far",
+   "file": "far.png",
+   "parallax": 0.12,
+   "origin": [
+    -512,
+    -410
+   ],
+   "size": [
+    1024,
+    560
+   ],
+   "z": -40
+  },
+  {
+   "name": "mid",
+   "file": "mid.png",
+   "parallax": 0.35,
+   "origin": [
+    -570,
+    -440
+   ],
+   "size": [
+    1140,
+    560
+   ],
+   "z": -30
+  },
+  {
+   "name": "near",
+   "file": "near.png",
+   "parallax": 0.65,
+   "origin": [
+    -700,
+    -540
+   ],
+   "size": [
+    1400,
+    640
+   ],
+   "z": -20
+  },
+  {
+   "name": "ground",
+   "file": "ground.png",
+   "parallax": 1.0,
+   "origin": [
+    -800,
+    -260
+   ],
+   "size": [
+    1600,
+    460
+   ],
+   "z": -10
+  },
+  {
+   "name": "fg",
+   "file": "fg.png",
+   "parallax": 1.25,
+   "origin": [
+    -1000,
+    -90
+   ],
+   "size": [
+    2000,
+    290
+   ],
+   "z": 20,
+   "front": true
+  }
+ ],
+ "moon": {
+  "file": "moon.png",
+  "parallax": 0.03,
+  "origin": [
+   130,
+   -282
+  ],
+  "size": [
+   144,
+   144
+  ]
+ },
+ "lights": [
+  {
+   "layer": "mid",
+   "x": 333,
+   "y": 284,
+   "r": 7,
+   "color": "#ffc46a",
+   "kind": "lantern_small"
+  },
+  {
+   "layer": "mid",
+   "x": 358,
+   "y": 278,
+   "r": 7,
+   "color": "#ffc46a",
+   "kind": "lantern_small"
+  },
+  {
+   "layer": "mid",
+   "x": 380,
+   "y": 269,
+   "r": 7,
+   "color": "#ffc46a",
+   "kind": "lantern_small"
+  },
+  {
+   "layer": "mid",
+   "x": 405,
+   "y": 252,
+   "r": 7,
+   "color": "#ffc46a",
+   "kind": "lantern_small"
+  },
+  {
+   "layer": "mid",
+   "x": 426,
+   "y": 232,
+   "r": 7,
+   "color": "#ffc46a",
+   "kind": "lantern_small"
+  },
+  {
+   "layer": "mid",
+   "x": 452,
+   "y": 204,
+   "r": 7,
+   "color": "#ffc46a",
+   "kind": "lantern_small"
+  },
+  {
+   "layer": "mid",
+   "x": 756,
+   "y": 328,
+   "r": 7,
+   "color": "#ffc46a",
+   "kind": "lantern_small"
+  },
+  {
+   "layer": "mid",
+   "x": 770,
+   "y": 324,
+   "r": 7,
+   "color": "#ffc46a",
+   "kind": "lantern_small"
+  },
+  {
+   "layer": "mid",
+   "x": 779,
+   "y": 317,
+   "r": 7,
+   "color": "#ffc46a",
+   "kind": "lantern_small"
+  },
+  {
+   "layer": "mid",
+   "x": 793,
+   "y": 299,
+   "r": 7,
+   "color": "#ffc46a",
+   "kind": "lantern_small"
+  },
+  {
+   "layer": "mid",
+   "x": 807,
+   "y": 276,
+   "r": 7,
+   "color": "#ffc46a",
+   "kind": "lantern_small"
+  },
+  {
+   "layer": "mid",
+   "x": 822,
+   "y": 240,
+   "r": 7,
+   "color": "#ffc46a",
+   "kind": "lantern_small"
+  },
+  {
+   "layer": "near",
+   "x": 410,
+   "y": 459,
+   "r": 5,
+   "color": "#9fe8e0",
+   "kind": "rune"
+  },
+  {
+   "layer": "near",
+   "x": 450,
+   "y": 420,
+   "r": 5,
+   "color": "#9fe8e0",
+   "kind": "rune"
+  },
+  {
+   "layer": "near",
+   "x": 410,
+   "y": 326,
+   "r": 5,
+   "color": "#9fe8e0",
+   "kind": "rune"
+  },
+  {
+   "layer": "near",
+   "x": 354,
+   "y": 326,
+   "r": 5,
+   "color": "#9fe8e0",
+   "kind": "rune"
+  },
+  {
+   "layer": "near",
+   "x": 314,
+   "y": 365,
+   "r": 5,
+   "color": "#9fe8e0",
+   "kind": "rune"
+  },
+  {
+   "layer": "near",
+   "x": 314,
+   "y": 420,
+   "r": 5,
+   "color": "#9fe8e0",
+   "kind": "rune"
+  },
+  {
+   "layer": "near",
+   "x": 354,
+   "y": 459,
+   "r": 5,
+   "color": "#9fe8e0",
+   "kind": "rune"
+  },
+  {
+   "layer": "near",
+   "x": 1064,
+   "y": 445,
+   "r": 5,
+   "color": "#9fe8e0",
+   "kind": "rune"
+  },
+  {
+   "layer": "near",
+   "x": 1106,
+   "y": 404,
+   "r": 5,
+   "color": "#9fe8e0",
+   "kind": "rune"
+  },
+  {
+   "layer": "near",
+   "x": 1106,
+   "y": 345,
+   "r": 5,
+   "color": "#9fe8e0",
+   "kind": "rune"
+  },
+  {
+   "layer": "near",
+   "x": 1064,
+   "y": 303,
+   "r": 5,
+   "color": "#9fe8e0",
+   "kind": "rune"
+  },
+  {
+   "layer": "near",
+   "x": 1004,
+   "y": 303,
+   "r": 5,
+   "color": "#9fe8e0",
+   "kind": "rune"
+  },
+  {
+   "layer": "near",
+   "x": 962,
+   "y": 345,
+   "r": 5,
+   "color": "#9fe8e0",
+   "kind": "rune"
+  },
+  {
+   "layer": "near",
+   "x": 962,
+   "y": 404,
+   "r": 5,
+   "color": "#9fe8e0",
+   "kind": "rune"
+  },
+  {
+   "layer": "near",
+   "x": 1004,
+   "y": 445,
+   "r": 5,
+   "color": "#9fe8e0",
+   "kind": "rune"
+  },
+  {
+   "layer": "near",
+   "x": 111,
+   "y": 348,
+   "r": 21,
+   "color": "#ffc46a",
+   "kind": "lantern"
+  },
+  {
+   "layer": "near",
+   "x": 212,
+   "y": 361,
+   "r": 21,
+   "color": "#ffc46a",
+   "kind": "lantern"
+  },
+  {
+   "layer": "near",
+   "x": 314,
+   "y": 340,
+   "r": 21,
+   "color": "#ffc46a",
+   "kind": "lantern"
+  },
+  {
+   "layer": "near",
+   "x": 1095,
+   "y": 320,
+   "r": 21,
+   "color": "#ffc46a",
+   "kind": "lantern"
+  },
+  {
+   "layer": "near",
+   "x": 1177,
+   "y": 345,
+   "r": 21,
+   "color": "#ffc46a",
+   "kind": "lantern"
+  },
+  {
+   "layer": "near",
+   "x": 1259,
+   "y": 333,
+   "r": 21,
+   "color": "#ffc46a",
+   "kind": "lantern"
+  },
+  {
+   "layer": "near",
+   "x": 608,
+   "y": 141,
+   "r": 18,
+   "color": "#ffc46a",
+   "kind": "lantern"
+  },
+  {
+   "layer": "near",
+   "x": 686,
+   "y": 152,
+   "r": 18,
+   "color": "#ffc46a",
+   "kind": "lantern"
+  },
+  {
+   "layer": "near",
+   "x": 755,
+   "y": 147,
+   "r": 18,
+   "color": "#ffc46a",
+   "kind": "lantern"
+  },
+  {
+   "layer": "near",
+   "x": 850,
+   "y": 117,
+   "r": 18,
+   "color": "#ffc46a",
+   "kind": "lantern"
+  },
+  {
+   "layer": "ground",
+   "x": 118,
+   "y": 124,
+   "r": 22,
+   "color": "#ffc46a",
+   "kind": "lantern"
+  },
+  {
+   "layer": "ground",
+   "x": 573,
+   "y": 139,
+   "r": 22,
+   "color": "#ffc46a",
+   "kind": "lantern"
+  },
+  {
+   "layer": "ground",
+   "x": 1027,
+   "y": 139,
+   "r": 22,
+   "color": "#ffc46a",
+   "kind": "lantern"
+  },
+  {
+   "layer": "ground",
+   "x": 1482,
+   "y": 124,
+   "r": 22,
+   "color": "#ffc46a",
+   "kind": "lantern"
+  },
+  {
+   "layer": "fg",
+   "x": 1790,
+   "y": 152,
+   "r": 48,
+   "color": "#90f0e0",
+   "kind": "mushroom"
+  },
+  {
+   "layer": "fg",
+   "x": 240,
+   "y": 166,
+   "r": 34,
+   "color": "#90f0e0",
+   "kind": "mushroom"
+  },
+  {
+   "layer": "fg",
+   "x": 120,
+   "y": 15,
+   "r": 34,
+   "color": "#ffc46a",
+   "kind": "lantern"
+  }
+ ],
+ "waterfalls": [
+  {
+   "layer": "far",
+   "x": 180,
+   "y": 242,
+   "w": 3,
+   "h": 75
+  },
+  {
+   "layer": "far",
+   "x": 738,
+   "y": 208,
+   "w": 3,
+   "h": 88
+  },
+  {
+   "layer": "mid",
+   "x": 306,
+   "y": 326,
+   "w": 9,
+   "h": 147
+  },
+  {
+   "layer": "mid",
+   "x": 140,
+   "y": 326,
+   "w": 7,
+   "h": 110
+  },
+  {
+   "layer": "mid",
+   "x": 830,
+   "y": 262,
+   "w": 8,
+   "h": 138
+  },
+  {
+   "layer": "mid",
+   "x": 751,
+   "y": 354,
+   "w": 7,
+   "h": 71
+  }
+ ],
+ "sky_preview_stops": [
+  [
+   -760,
+   "#0b0a24"
+  ],
+  [
+   -560,
+   "#1d1748"
+  ],
+  [
+   -330,
+   "#4a2a6e"
+  ],
+  [
+   -175,
+   "#a2477a"
+  ],
+  [
+   -75,
+   "#f08a6a"
+  ],
+  [
+   -25,
+   "#ffc98a"
+  ]
+ ],
+ "palette": [
+  "#120e26",
+  "#1e1838",
+  "#2c2249",
+  "#3d2e5c",
+  "#523d70",
+  "#6c5084",
+  "#8c6894",
+  "#b48a9c",
+  "#4e3674",
+  "#66447f",
+  "#7f5288",
+  "#9c5f8c",
+  "#b86c8a",
+  "#d98690",
+  "#f0a596",
+  "#ffc7a2",
+  "#172a3e",
+  "#1d4450",
+  "#27645f",
+  "#3a8773",
+  "#6aae88",
+  "#4f7a4f",
+  "#8aa75e",
+  "#c2c46e",
+  "#3e1a48",
+  "#66285e",
+  "#933a74",
+  "#c2557f",
+  "#e67f93",
+  "#ffb0a8",
+  "#4c1f30",
+  "#8e3236",
+  "#cf5b38",
+  "#f2923f",
+  "#ffc46a",
+  "#ffe7a6",
+  "#fffbe8",
+  "#3b2335",
+  "#5e3a48",
+  "#7fb0dc",
+  "#bfe8f0",
+  "#f1eaf6",
+  "#d8cfea",
+  "#bdb2dc",
+  "#a397c9"
+ ],
+ "notes": "origin = world position of the image top-left with the camera at ref_camera, zoom 1. lights/waterfalls are in pixels of the named layer image (x,y = light centre; waterfall x,y = top-left of the strip). Fighter-safe: fg props inside |x| < 640 stay below y = +46."
+}

@@ -1,0 +1,40 @@
+{
+  "title.ogg": {
+    "loop": true,
+    "bpm": 80,
+    "beats_per_bar": 4,
+    "bars": 24,
+    "samples": 3175200,
+    "duration_sec": 72.0,
+    "loop_start_sec": 0.0,
+    "loop_end_sec": 72.0
+  },
+  "select.ogg": {
+    "loop": true,
+    "bpm": 120,
+    "beats_per_bar": 4,
+    "bars": 24,
+    "samples": 2116800,
+    "duration_sec": 48.0,
+    "loop_start_sec": 0.0,
+    "loop_end_sec": 48.0
+  },
+  "battle.ogg": {
+    "loop": true,
+    "bpm": 165,
+    "beats_per_bar": 4,
+    "bars": 64,
+    "samples": 4105309,
+    "duration_sec": 93.0909,
+    "loop_start_sec": 0.0,
+    "loop_end_sec": 93.0909
+  },
+  "victory.ogg": {
+    "loop": false,
+    "bpm": 132,
+    "beats_per_bar": 4,
+    "bars": 3,
+    "samples": 362628,
+    "duration_sec": 8.2229
+  }
+}
