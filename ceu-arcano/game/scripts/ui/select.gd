@@ -66,7 +66,7 @@ func _process(delta: float) -> void:
 			continue
 		var pre := "p%d_" % (dev + 1)
 		if picked[side]:
-			if Input.is_action_just_pressed(pre + "b") or (dev == 0 and Input.is_action_just_pressed("ui_cancel")):
+			if Input.is_action_just_pressed(pre + "b") or (not _two_players() and Input.is_action_just_pressed("ui_cancel")):
 				picked[side] = false
 				if not _two_players() and side == 1:
 					pass
@@ -81,7 +81,7 @@ func _process(delta: float) -> void:
 			cursor[side] = posmod(cursor[side] + moved, Game.CHARACTERS.size())
 			_refresh(side)
 			Audio.play("ui_move", -5.0)
-		if Input.is_action_just_pressed(pre + "a") or (dev == 0 and Input.is_action_just_pressed("ui_accept") and not Input.is_action_just_pressed(pre + "a")):
+		if Input.is_action_just_pressed(pre + "a") or (not _two_players() and Input.is_action_just_pressed("ui_accept") and not Input.is_action_just_pressed(pre + "a")):
 			picked[side] = true
 			flash[side] = 1.0
 			previews[side].play("intro")
@@ -90,7 +90,7 @@ func _process(delta: float) -> void:
 			Audio.play("card_gain", -6.0)
 			if not _two_players() and side == 0:
 				active_side = 1
-		elif Input.is_action_just_pressed(pre + "b") or (dev == 0 and Input.is_action_just_pressed("ui_cancel")):
+		elif Input.is_action_just_pressed(pre + "b") or (not _two_players() and Input.is_action_just_pressed("ui_cancel")):
 			if not _two_players() and side == 1:
 				active_side = 0
 				picked[0] = false

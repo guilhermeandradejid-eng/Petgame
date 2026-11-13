@@ -367,7 +367,7 @@ func _timers() -> void:
 	if spirit_delay > 0:
 		spirit_delay -= 1
 	elif crushed <= 0 and spirit < SPIRIT_MAX and state not in ["block", "fly", "crush"]:
-		var rate := 0.035 * (2.0 if buffs.has("vento") else 1.0)
+		var rate := 0.035 * (2.0 if buffs.has("vento") else 1.0) * (1.5 if battle.stage.weather == 2 else 1.0)
 		spirit = minf(SPIRIT_MAX, spirit + rate)
 	if hp_shown > hp:
 		if not (state in ["hit", "hit_air", "knockdown"]) or sf > 30:
@@ -388,6 +388,8 @@ func _draw_card() -> void:
 
 
 func gain_card(amount: float) -> void:
+	if battle and battle.stage and battle.stage.weather == 1:
+		amount *= 1.5   # Chuva de Estrelas
 	if hand.size() >= HAND_MAX:
 		card_gauge = minf(100.0, card_gauge + amount)
 	else:
@@ -974,6 +976,9 @@ func _process(_delta: float) -> void:
 		tint = Color(1.0, 0.7, 0.75) if (Engine.get_frames_drawn() / 6) % 2 == 0 else Color.WHITE
 	if buffs.has("vento"):
 		tint = tint * Color(0.95, 1.05, 1.1)
+	var lf: float = battle.stage.flash if battle and battle.stage else 0.0
+	if lf > 0.0:
+		tint = tint.lerp(Color(1.3, 1.45, 1.7), lf * 0.6)
 	mat.set_shader_parameter("tint", tint)
 	var inv := strike_inv > 0 and state in ["wakeup", "air_recover"]
 	modulate.a = 0.55 if (inv and (Engine.get_frames_drawn() / 3) % 2 == 0) else 1.0

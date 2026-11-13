@@ -50,7 +50,8 @@ F11 alterna tela cheia. F1 mostra as caixas de colisão (hitbox em vermelho, hur
   Cartas de **sistema** (Elixir, Vento Favorável) têm efeito na hora.
 - **Combos** perdem dano aos poucos (proration) e têm um limite. Golpes fortes lançam, quicam na parede e no chão.
 - **Contra-ataque**: acertar alguém no meio de um golpe dá dano e atordoamento extras.
-- **Clima**: cada round muda o céu (Crepúsculo, Chuva de Estrelas, Aurora).
+- **Clima**: cada round muda o céu e uma regra. Crepúsculo é neutro, na Chuva de Estrelas as cartas enchem
+  50% mais rápido e na Aurora o espírito recarrega 50% mais rápido.
 
 ### As duelistas
 
@@ -145,6 +146,7 @@ barra de vida fantasma e contador de combo que pulsa.
 ```sh
 cd ceu-arcano/game
 godot --headless res://tests/check.tscn               # compila todos os scripts
+godot --headless --fixed-fps 60 res://tests/input_test.tscn -- --char=rubi   # simula o jogador 1 (16 ações)
 xvfb-run godot res://tests/autoplay.tscn -- --out=/tmp/shots --total=3600   # CPU x CPU com capturas
 xvfb-run godot res://tests/showcase.tscn -- --out=/tmp/spells               # todas as cartas de feitiço
 ```

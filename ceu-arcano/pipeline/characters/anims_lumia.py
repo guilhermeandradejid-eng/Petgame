@@ -246,7 +246,7 @@ def anims():
                   events=[(8, "fire")], step=2))
 
     # ------------------------------------------------------------ habilidades (C)
-    plant = P(st, root=(0, 3), spine=6, chest=2, sh_f=-150, el_f=-10, hand_f=10, staff__w=0, sh_b=-30,
+    plant = P(st, root=(0, 3), spine=6, chest=2, sh_f=-122, el_f=-10, hand_f=10, staff__w=0, sh_b=-30,
               el_b=-60, hand_b=0, face="determined", hand="open")
     release = P(st, root=(2, 2), spine=10, chest=4, sh_f=-100, el_f=-6, hand_f=20, staff__w=90, sh_b=-90, el_b=-10,
                 face="shout", ik=feet(10, -8))
@@ -260,7 +260,7 @@ def anims():
     A.append(Anim("c6", 34, [(0, P(st)), (9, P(comet_w, ease="out")), (13, P(comet_h, ease="snap")),
                              (22, P(comet_h, root=(5, 3.5))), (34, P(st))], events=[(13, "skill")],
                   smears=[Smear(11, 15, "staff", (8, -36), width=4, trail=3)], step=2, wind=(-0.4, 0)))
-    moth = P(st, root=(0, 1), spine=-12, chest=-10, head=-14, sh_f=-160, el_f=-6, hand_f=0, staff__w=0,
+    moth = P(st, root=(0, 1), spine=-12, chest=-10, head=-14, sh_f=-118, el_f=-6, hand_f=0, staff__w=8,
              sh_b=-140, el_b=-10, face="shout", hand="open", ik=feet(8, -7))
     A.append(Anim("c2", 34, [(0, P(CROUCH, ease="out")), (8, P(CROUCH, root=(0, 14))), (12, P(moth, ease="snap")),
                              (22, P(moth, root=(0, 0))), (34, P(st))], events=[(12, "skill")], step=2,
@@ -269,7 +269,7 @@ def anims():
                              (13, P(shoot_air, ease="snap")), (34, P(AIR))], events=[(13, "skill")], step=2))
 
     # ------------------------------------------------------------ cartas
-    declare = P(st, root=(0, 0), spine=-6, chest=-10, neck=-4, head=-8, sh_f=-170, el_f=-4, hand_f=0, staff__w=0,
+    declare = P(st, root=(0, 0), spine=-6, chest=-10, neck=-4, head=-8, sh_f=-112, el_f=-6, hand_f=0, staff__w=0,
                 sh_b=-60, el_b=-90, hand_b=-20, face="shout", hand="open", ik=feet(9, -9))
     A.append(Anim("declare", 44, [(0, P(st, root=(0, 3), face="closed")), (10, P(st, root=(0, 4), chest=4, face="closed")),
                                   (18, P(declare, ease="back")), (44, P(declare, root=(0, -1)))],

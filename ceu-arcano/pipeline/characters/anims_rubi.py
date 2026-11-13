@@ -219,8 +219,9 @@ def anims():
     A.append(Anim("c6", 34, [(0, P(st)), (7, P(charge, ease="out")), (10, P(elbow, ease="snap")), (24, P(elbow, root=(8, 6.5))),
                              (34, P(st))],
                   hits=[Hit(10, 22, "el_f", (0, 0), 10, rx=12)], events=[(10, "skill")], step=2, wind=(-0.8, 0)))
-    rise = P(st, root=(4, -10), pelvis=-6, spine=-12, chest=-10, head=-14, sh_f=-176, el_f=-4, hand_f=0, sh_b=20,
-             el_b=-90, face="shout", ik={"foot_f": (10, -22, 20, 1.0), "foot_b": (-2, -12, 40, 1.0)})
+    rise = P(st, root=(4, -10), pelvis=-6, spine=-12, chest=-10, head=-14, sh_f=-158, el_f=-8, hand_f=0, sh_b=20,
+             el_b=-90, face="shout", ik={"foot_f": (10, -22, 20, 1.0), "foot_b": (-2, -12, 40, 1.0)},
+             **{"z.arm_f_up": 12.2, "z.forearm_f": 12.3, "z.hand_f": 12.4})
     A.append(Anim("c2", 36, [(0, P(CROUCH, ease="snap")), (4, P(CROUCH, root=(0, 18))), (8, P(rise, ease="out")),
                              (20, P(rise, root=(4, -12))), (36, P(AIR))],
                   hits=[Hit(6, 18, "hand_f", (0, 0), 10)], events=[(6, "skill")],
@@ -231,9 +232,8 @@ def anims():
                   hits=[Hit(11, 34, "foot_f", (2, 1), 9)], events=[(11, "skill")], step=2, wind=(-0.6, -0.6)))
 
     # ------------------------------------------------------------ cartas
-    declare = P(st, root=(0, 2), spine=-8, chest=-12, neck=-4, head=-12, sh_f=-140, el_f=-30, sh_b=-140, el_b=-40,
-                hand="fist", face="shout", ik=feet(12, -12),
-                **{"z.arm_b_up": 10.2, "z.forearm_b": 10.3, "z.hand_b": 10.4})
+    declare = P(st, root=(0, 2), spine=-8, chest=-12, neck=-4, head=-12, sh_f=-100, el_f=-62, sh_b=-150, el_b=-40,
+                hand="fist", face="shout", ik=feet(12, -12), **{"z.forearm_f": 12.3, "z.hand_f": 12.4})
     A.append(Anim("declare", 44, [(0, P(st, root=(0, 6), face="closed")), (10, P(st, root=(0, 7), chest=8, face="closed",
                                                                               sh_f=-20, el_f=-130, sh_b=-10, el_b=-130)),
                                   (18, P(declare, ease="back")), (44, P(declare, root=(0, 1)))],
@@ -246,8 +246,8 @@ def anims():
                   hits=[Hit(0, 12, "chest", (14, 0), 12, rx=14)],
                   smears=[Smear(0, 5, "hand_f", (1, 2), width=3.4, trail=2), Smear(6, 11, "hand_b", (1, 2), width=3.4, trail=2)],
                   wind=(-0.6, -0.2)))
-    call = P(st, root=(0, 2), spine=-10, chest=-12, head=-18, sh_f=-178, el_f=-2, hand="open", sh_b=20, el_b=-40,
-             face="shout", ik=feet(12, -10))
+    call = P(st, root=(0, 2), spine=-10, chest=-12, head=-18, sh_f=-150, el_f=-14, hand="open", sh_b=20, el_b=-40,
+             face="shout", ik=feet(12, -10), **{"z.arm_f_up": 12.2, "z.forearm_f": 12.3, "z.hand_f": 12.4})
     A.append(Anim("cast_up", 24, [(0, P(call)), (12, P(call, root=(0, 1)))], loop=True, step=3, wind=(0.0, -0.6)))
 
     # ------------------------------------------------------------ apresentação
@@ -262,9 +262,9 @@ def anims():
         (56, P(declare)),
         (70, P(st)),
     ], step=3, wind=(0, -0.2)))
-    win = P(st, root=(0, 0), spine=-6, chest=-8, head=-12, sh_f=-170, el_f=-20, sh_b=10, el_b=-100, hand_b=0,
-            face="happy", ik=feet(8, -7))
-    A.append(Anim("win", 80, [(0, P(st)), (14, P(win, ease="back")), (40, P(win, root=(0, -1), sh_f=-176)),
+    win = P(st, root=(0, 0), spine=-6, chest=-8, head=-12, sh_f=-100, el_f=-62, sh_b=10, el_b=-100, hand_b=0,
+            face="happy", ik=feet(8, -7), **{"z.forearm_f": 12.3, "z.hand_f": 12.4})
+    A.append(Anim("win", 80, [(0, P(st)), (14, P(win, ease="back")), (40, P(win, root=(0, -1), sh_f=-106, el_f=-58)),
                               (60, P(win)), (80, P(win, root=(0, -1)))], loop=True, loop_start=14, step=4,
                   wind=(-0.3, -0.1)))
     A.append(Anim("portrait", 1, [(0, P(declare, root=(0, 0)))], step=1))

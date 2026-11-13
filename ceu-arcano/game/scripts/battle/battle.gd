@@ -252,7 +252,8 @@ func _phase_logic() -> void:
 		"intro":
 			if phase_t == 80:
 				hud.announce("ROUND %d" % round_num if round_num < 3 else "ROUND FINAL", Color("ffd66b"), 1.0, false,
-					"Clima: %s" % ["Crepúsculo", "Chuva de Estrelas", "Aurora"][stage.weather])
+					["Clima: Crepúsculo", "Clima: Chuva de Estrelas · cartas enchem mais rápido",
+					"Clima: Aurora · espírito recarrega mais rápido"][stage.weather])
 				Audio.play("round_announce")
 			if phase_t == 135:
 				hud.announce("DUELO!", Color("ffffff"), 0.7, true)
