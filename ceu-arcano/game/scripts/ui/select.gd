@@ -18,8 +18,8 @@ func _ready() -> void:
 	for side in 2:
 		var p := CharPreview.new()
 		p.setup(Game.CHARACTERS[cursor[side]], side == 1 and cursor[0] == cursor[1])
-		p.position = Vector2(150 if side == 0 else 490, 290)
-		p.scale = Vector2(2, 2)
+		p.position = Vector2(160 if side == 0 else 480, 292)
+		p.scale = Vector2(1.75, 1.75)
 		p.facing = 1 if side == 0 else -1
 		add_child(p)
 		previews.append(p)
@@ -131,7 +131,7 @@ func _draw_bg(c: Node2D) -> void:
 				Color(col, 0.05 + 0.03 * sin(i)))
 		c.draw_rect(Rect2(x0, 290, 320, 70), Color(col.darkened(0.6), 0.6))
 		# chão com círculo mágico
-		var ctr := Vector2(150 if side == 0 else 490, 292)
+		var ctr := Vector2(160 if side == 0 else 480, 294)
 		c.draw_set_transform(ctr, 0.0, Vector2(1, 0.28))
 		c.draw_arc(Vector2.ZERO, 70.0, 0, TAU, 48, Color(col, 0.6 + 0.4 * flash[side]), 2.0)
 		c.draw_arc(Vector2.ZERO, 54.0, t * 0.5, t * 0.5 + TAU * 0.8, 40, Color(col, 0.5), 1.0)
@@ -155,21 +155,21 @@ func _draw_ui(c: Control) -> void:
 		var who := "P%d" % (side + 1)
 		if not _two_players() and side == 1:
 			who = "CPU" if Game.mode != Game.Mode.TRAINING else "BONECO"
-		_t(c, tf, who, Vector2(x, 56), 12, col.lerp(Color.WHITE, 0.3), al)
-		_t(c, tf, info["name"].to_upper(), Vector2(x, 84), 24, Color(1, 1, 1), al)
-		_t(c, font, info["title"], Vector2(x, 100), 11, col.lerp(Color.WHITE, 0.4), al)
-		_t(c, font, "Estilo: %s" % info["style"], Vector2(x, 114), 9, Color(0.8, 0.82, 1.0), al)
-		var bx := x if side == 0 else x - 200.0
-		c.draw_multiline_string(font, Vector2(bx, 132), info["blurb"], HORIZONTAL_ALIGNMENT_LEFT if side == 0 else HORIZONTAL_ALIGNMENT_RIGHT,
-			200, 9, -1, Color(0.85, 0.85, 0.95))
+		_t(c, tf, who, Vector2(x, 50), 12, col.lerp(Color.WHITE, 0.3), al)
+		_t(c, tf, info["name"].to_upper(), Vector2(x, 76), 24, Color(1, 1, 1), al)
+		_t(c, font, info["title"], Vector2(x, 91), 11, col.lerp(Color.WHITE, 0.4), al)
+		_t(c, font, "Estilo: %s" % info["style"], Vector2(x, 104), 9, Color(0.8, 0.82, 1.0), al)
+		var bx := x if side == 0 else x - 250.0
+		c.draw_multiline_string(font, Vector2(bx, 118), info["blurb"], HORIZONTAL_ALIGNMENT_LEFT if side == 0 else HORIZONTAL_ALIGNMENT_RIGHT,
+			250, 9, -1, Color(0.85, 0.85, 0.95))
 		if picked[side]:
 			var a := 0.7 + 0.3 * sin(t * 8.0)
-			_t(c, tf, "PRONTA!", Vector2(150 if side == 0 else 490, 320), 16, Color(1, 1, 1, a), 1)
+			_t(c, tf, "PRONTA!", Vector2(160 if side == 0 else 480, 320), 16, Color(1, 1, 1, a), 1)
 		elif not _two_players() and side != active_side:
 			pass
 		else:
 			var s := "◀  %s  ▶" % info["name"]
-			_t(c, font, s, Vector2(150 if side == 0 else 490, 322), 12, Color(1, 1, 1, 0.85), 1)
+			_t(c, font, s, Vector2(160 if side == 0 else 480, 322), 12, Color(1, 1, 1, 0.85), 1)
 	# ícones no centro
 	for i in Game.CHARACTERS.size():
 		var cid2: String = Game.CHARACTERS[i]

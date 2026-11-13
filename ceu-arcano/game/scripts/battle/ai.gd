@@ -176,6 +176,29 @@ func _spell_ok(cid: String, adx: float) -> bool:
 
 func _zoner(adx: float, r: float) -> void:
 	var want := 230.0
+	var o: Fighter = f.opp
+	# resposta a quem vem correndo ou investindo
+	if adx < 130.0 and (o.state == "dash_f" or (o.state == "move" and o.mv_id in ["c6", "ad"])) and r < AGGRO[level] + 0.1:
+		if o.state == "move":
+			_push(Vector2i(-1, 0), 1, {"dash": true})
+			_push(Vector2i.ZERO, 10)
+		else:
+			_press("a")
+			_push(Vector2i.ZERO, 5)
+			_press("a")
+		return
+	if o.state == "dash_f" and adx > 130.0 and adx < 340.0 and f.grounded and f.spirit >= 1.0 and r < AGGRO[level]:
+		_press("c", Vector2i(1, 0) if r < 0.6 else Vector2i.ZERO)
+		return
+	if o.state == "dash_f" and adx > 100.0 and f.grounded and f.spirit >= 0.4 and r < 0.5:
+		_press("b", Vector2i(0, 1))
+		return
+	if adx < 140.0 and f.grounded and r < 0.25:
+		# sai do canto pulando por cima e atira de cima
+		_push(Vector2i(-1 if absf(f.pos.x) < 380.0 else 1, -1), 3)
+		_push(Vector2i.ZERO, 10)
+		_press("b")
+		return
 	if adx < 80.0:
 		if r < 0.35:
 			_press("dash", Vector2i(-1, 0))

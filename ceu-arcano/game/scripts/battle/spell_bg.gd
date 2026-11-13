@@ -14,6 +14,10 @@ func start(f: Fighter, cid: String) -> void:
 	circles.append({"f": f, "col": Cards.get_card(cid)["color"], "t": 0.0, "fade": 0.0, "alive": true})
 
 
+func clear() -> void:
+	circles.clear()
+
+
 func stop(f: Fighter) -> void:
 	for c in circles:
 		if c["f"] == f:

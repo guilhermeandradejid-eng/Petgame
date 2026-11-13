@@ -85,7 +85,8 @@ func _fireflies(f: Fighter) -> void:
 	if f.mv_id == "b2c":
 		var v := Vector2(f.facing * 4.2, 0)
 		bullet(f, "orb", tip + Vector2(0, 8), v, {"radius": 6.0, "color": GOLD, "dmg": 260, "stun": 16,
-			"life": 140, "strength": 3, "trail_len": 7, "level": 1, "kb": Vector2(3, 0), "guard": "low", "accel": Vector2(f.facing * 0.04, 0)})
+			"life": 140, "strength": 3, "trail_len": 7, "level": 1, "kb": Vector2(3, 0), "guard": "low", "accel": Vector2(f.facing * 0.04, 0),
+			"grazeable": false})
 		return
 	for i in 3:
 		var ang := base + (i - 1) * 0.16
@@ -119,7 +120,7 @@ func _comet(f: Fighter, air: bool) -> void:
 	var v := Vector2(f.facing * 8.0, 3.2 if air else 0.0)
 	var c := bullet(f, "comet", tip, v, {"radius": 7.5, "color": Color(0.6, 0.95, 1.0), "color2": Color(1, 1, 1),
 		"dmg": 600, "stun": 24, "life": 120, "trail_len": 14, "strength": 4, "level": 2, "kb": Vector2(5, -4),
-		"launch": true, "spark": "magic"})
+		"launch": true, "spark": "magic", "grazeable": false})
 	c.tick_cb = func(p):
 		if p.age % 2 == 0:
 			p.battle.fx.particle(p.pos + Vector2(randf_range(-4, 4), randf_range(-4, 4)), -p.vel * 0.15 + Vector2(0, randf_range(-0.5, 0.5)),

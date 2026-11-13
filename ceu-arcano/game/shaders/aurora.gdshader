@@ -1,4 +1,5 @@
 shader_type canvas_item;
+render_mode blend_add;
 // Feixe "Cortina de Aurora" da Lumia.
 
 uniform float intensity = 1.0;
@@ -27,5 +28,5 @@ void fragment() {
 	float edge = smoothstep(0.0, 0.06, x) * (1.0 - smoothstep(0.92, 1.0, x));
 	float a = (curtain * 0.55 + core * 0.7) * edge * intensity;
 	a = floor(a * 6.0) / 6.0;
-	COLOR = vec4(c, a);
+	COLOR = vec4(c * a, a);
 }

@@ -31,7 +31,7 @@ func _ready() -> void:
 	for i in 2:
 		var p := CharPreview.new()
 		p.setup(Game.CHARACTERS[i])
-		p.position = Vector2(-70 if i == 0 else 70, 0)
+		p.position = Vector2(-190 if i == 0 else 190, 0)
 		p.facing = 1 if i == 0 else -1
 		p.z_index = 5
 		world.add_child(p)
@@ -86,7 +86,7 @@ class _UI extends Control:
 func _process(delta: float) -> void:
 	t += delta
 	logo_t += delta
-	var cp := Vector2(sin(t * 0.07) * 120.0, -150.0 + sin(t * 0.11) * 30.0)
+	var cp := Vector2(sin(t * 0.07) * 40.0, -140.0 + sin(t * 0.11) * 20.0)
 	var z := 0.9 + sin(t * 0.05) * 0.05
 	cam.position = cp
 	cam.zoom = Vector2(z, z)

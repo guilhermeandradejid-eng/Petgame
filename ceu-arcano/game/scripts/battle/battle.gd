@@ -19,6 +19,7 @@ var spells := [null, null]        # carta ativa por jogador
 var paused := false
 var slowmo := 0.0
 var training := false
+var stats := {}   # dano por golpe (diagnóstico, impresso no fim da partida)
 
 var world: Node2D
 var stage: Node2D
@@ -145,6 +146,10 @@ func start_round(first := false) -> void:
 			p.queue_free()
 	projectiles.clear()
 	spells = [null, null]
+	spell_bg.clear()
+	for i in 2:
+		hud.spell_banner(i, "")
+		fighters[i].spell_card = ""
 	winner = null
 	timer = ROUND_TIME * 60
 	hitstop = 0
@@ -246,7 +251,8 @@ func _phase_logic() -> void:
 	match phase:
 		"intro":
 			if phase_t == 80:
-				hud.announce("ROUND %d" % round_num if round_num < 3 else "ROUND FINAL", Color("ffd66b"), 1.0)
+				hud.announce("ROUND %d" % round_num if round_num < 3 else "ROUND FINAL", Color("ffd66b"), 1.0, false,
+					"Clima: %s" % ["Crepúsculo", "Chuva de Estrelas", "Aurora"][stage.weather])
 				Audio.play("round_announce")
 			if phase_t == 135:
 				hud.announce("DUELO!", Color("ffffff"), 0.7, true)
@@ -318,6 +324,12 @@ func _time_up() -> void:
 
 func _match_over() -> void:
 	phase = "end"
+	print("FIM_DA_PARTIDA vencedora=%s placar=%d-%d rounds=%d" % [winner.kit.id, fighters[0].wins, fighters[1].wins, round_num])
+	if OS.get_cmdline_user_args().size() > 0:
+		var keys := stats.keys()
+		keys.sort_custom(func(a, b): return stats[a] > stats[b])
+		for k in keys:
+			print("  DANO %s %d" % [k, int(stats[k])])
 	hud.announce("VITÓRIA DE %s" % Game.CHAR_INFO[winner.kit.id]["name"].to_upper(), Game.CHAR_INFO[winner.kit.id]["color"], 2.0)
 	Audio.music("victory", 0.3)
 	await get_tree().create_timer(2.2).timeout
@@ -474,6 +486,8 @@ func resolve_hit(att: Fighter, def: Fighter, m: Dictionary, point: Vector2, proj
 	if training and def.pid == 1:
 		pass
 	def.take_hit(att, m, dmg, counter, from_dir)
+	var sk: String = att.kit.id + ":" + (str(proj.kind) if proj != null else (att.mv_id if att.state == "move" else "spell"))
+	stats[sk] = stats.get(sk, 0.0) + dmg
 	var hs: int = int(m.get("hitstop", 0))
 	if hs <= 0:
 		hs = [7, 10, 14][clampi(level, 0, 2)] if not is_bullet else [3, 5, 8][clampi(level, 0, 2)]
@@ -669,13 +683,13 @@ func _process(delta: float) -> void:
 	var mid := (a.center() + b.center()) * 0.5
 	var dx := absf(a.pos.x - b.pos.x)
 	var dy := absf(a.pos.y - b.pos.y)
-	var z := clampf(minf(640.0 * 0.78 / (dx + 170.0), 360.0 * 0.62 / (dy + 120.0)), 0.72, 1.15)
+	var z := clampf(minf(640.0 * 0.86 / (dx + 150.0), 360.0 * 0.66 / (dy + 110.0)), 0.74, 1.32)
 	if phase == "intro" and phase_t < 135:
-		z = 1.2
+		z = 1.3
 	var vw := 640.0 / z
 	var vh := 360.0 / z
 	var top := minf(a.pos.y, b.pos.y) - 100.0
-	var cy := minf(-0.3 * vh, top + vh * 0.5)
+	var cy := minf(-0.34 * vh, top + vh * 0.5)
 	cy = maxf(cy, -640.0 + vh * 0.5)
 	var target := Vector2(mid.x, cy)
 	if cam_focus_t > 0.0:

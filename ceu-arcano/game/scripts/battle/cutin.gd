@@ -64,7 +64,12 @@ func _draw_cut(c: Control) -> void:
 	c.draw_set_transform(ctr, ang, Vector2.ONE)
 	var h := 92.0 * open
 	c.draw_rect(Rect2(-500, -h * 0.5 - 4, 1000, h + 8), Color(0.02, 0.01, 0.06, 0.92))
-	c.draw_rect(Rect2(-500, -h * 0.5, 1000, h), Color(col.darkened(0.7), 0.95))
+	var deep := Color(0.12, 0.06, 0.26)
+	c.draw_rect(Rect2(-500, -h * 0.5, 1000, h), Color(deep.lerp(col, 0.35), 0.95))
+	for i in 6:
+		var yy := -h * 0.5 + h * (i + 0.5) / 6.0
+		c.draw_rect(Rect2(-500, yy - 1, 1000, 2), Color(col, 0.08))
+	c.draw_rect(Rect2(-500, -h * 0.5, 1000, h * 0.35), Color(1, 1, 1, 0.05))
 	c.draw_rect(Rect2(-500, -h * 0.5, 1000, 2), col)
 	c.draw_rect(Rect2(-500, h * 0.5 - 2, 1000, 2), col)
 	# linhas de velocidade
@@ -78,13 +83,13 @@ func _draw_cut(c: Control) -> void:
 	c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	# retrato
 	if tex and open > 0.05:
-		var scale := 3.0
+		var scale := 3.0 if tex.get_height() * 3 <= 320 else 2.0
 		var tw := tex.get_width() * scale
 		var th := tex.get_height() * scale
 		var slide := 1.0 - pow(1.0 - clampf(t / 0.22, 0.0, 1.0), 3.0)
 		var drift := t * 14.0
 		var px := -tw + (180.0 + tw) * slide + drift if side == 0 else 640.0 - (180.0 + tw) * slide - drift
-		var py := 180.0 - th * 0.55
+		var py := clampf(196.0 - th * 0.5, 8.0, 360.0 - th)
 		var m := Color(1, 1, 1, 1.0 - k_out)
 		# rastro
 		for i in 3:

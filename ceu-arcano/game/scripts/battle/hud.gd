@@ -16,6 +16,7 @@ var ann_color := Color.WHITE
 var ann_t := 99.0
 var ann_dur := 1.0
 var ann_big := false
+var ann_sub := ""
 var orb_flash := [0.0, 0.0]
 var graze_t := [0.0, 0.0]
 var graze_n := [0, 0]
@@ -77,7 +78,8 @@ func round_start(_n: int) -> void:
 	combo = [{"hits": 0, "dmg": 0.0, "t": 9.0, "pop": 0.0}, {"hits": 0, "dmg": 0.0, "t": 9.0, "pop": 0.0}]
 
 
-func announce(txt: String, col: Color, dur := 1.0, big := false) -> void:
+func announce(txt: String, col: Color, dur := 1.0, big := false, sub := "") -> void:
+	ann_sub = sub
 	ann_text = txt
 	ann_color = col
 	ann_t = 0.0
@@ -467,6 +469,8 @@ func _draw_announce(c: Control) -> void:
 	_text(c, ann_text, Vector2(0, size * 0.35), size, Color(ann_color, a), 1, Game.font_title, 5)
 	if k < 0.3:
 		_text(c, ann_text, Vector2(0, size * 0.35), size, Color(1, 1, 1, (0.3 - k) / 0.3), 1, Game.font_title, 0)
+	if ann_sub != "":
+		_text(c, ann_sub, Vector2(0, size * 0.35 + 16), 10, Color(0.85, 0.9, 1.0, a), 1, Game.font_main)
 	c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
