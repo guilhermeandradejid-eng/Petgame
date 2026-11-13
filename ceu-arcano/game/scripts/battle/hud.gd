@@ -204,12 +204,10 @@ func _draw_health(c: Control, p: int) -> void:
 	c.draw_rect(Rect2(px - 1, 3, 38, 38), Color(0.04, 0.02, 0.1))
 	c.draw_rect(Rect2(px, 4, 36, 36), info["color"].darkened(0.55))
 	c.draw_rect(Rect2(px, 4, 36, 36), info["color"], false, 1.0)
-	var tex: Texture2D = f.data.portrait_b if f.alt_palette else f.data.portrait_a
+	var tex: Texture2D = f.data.tex_b if f.alt_palette else f.data.tex_a
 	if tex:
-		var tw := tex.get_width()
-		var src := Rect2(maxf(0, tw * 0.5 - 16), 0, minf(32, tw), 32)
 		c.draw_set_transform(Vector2(px + (36 if p == 1 else 0), 4), 0, Vector2(-1.0 if p == 1 else 1.0, 1.0))
-		c.draw_texture_rect_region(tex, Rect2(2, 2, 32, 32), src)
+		c.draw_texture_rect_region(tex, Rect2(1, 1, 34, 34), f.data.head_icon(30.0))
 		c.draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 	var nx = x0 + 4 if p == 0 else x0 + W - 4
 	_text(c, info["name"].to_upper(), Vector2(nx, y + 22), 8, Color(1, 1, 1), 0 if p == 0 else 2, Game.font_title)

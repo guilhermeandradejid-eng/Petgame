@@ -178,9 +178,7 @@ func _draw_ui(c: Control) -> void:
 		pos = Vector2(320 - 26 + i * 28, 296)
 		c.draw_rect(Rect2(pos, Vector2(24, 24)), Color(0.04, 0.02, 0.1))
 		c.draw_rect(Rect2(pos + Vector2(1, 1), Vector2(22, 22)), Game.CHAR_INFO[cid2]["color"].darkened(0.5))
-		var tex: Texture2D = d.portrait_a
-		var src := Rect2(maxf(0, tex.get_width() * 0.5 - 11), 0, 22, 22)
-		c.draw_texture_rect_region(tex, Rect2(pos + Vector2(1, 1), Vector2(22, 22)), src)
+		c.draw_texture_rect_region(d.tex_a, Rect2(pos + Vector2(1, 1), Vector2(22, 22)), d.head_icon(26.0))
 		for side in 2:
 			if cursor[side] == i:
 				var cc: Color = Color("ff6a5a") if side == 0 else Color("5ab8ff")

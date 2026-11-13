@@ -83,6 +83,14 @@ func frame_at(anim: String, t: int) -> int:
 	return lo
 
 
+func head_icon(size := 30.0) -> Rect2:
+	## retângulo no atlas centrado na cabeça do primeiro quadro de "idle" (ícones do HUD e da seleção)
+	var fr: Dictionary = anims["idle"]["frames"][0]
+	var head: Vector2 = fr["pts_v"].get("head", Vector2(0, -76))
+	var c: Vector2 = fr["rect"].position + fr["origin"] + head + Vector2(0, 2)
+	return Rect2((c - Vector2(size, size) * 0.5).floor(), Vector2(size, size))
+
+
 func has_anim(anim: String) -> bool:
 	return anims.has(anim)
 
