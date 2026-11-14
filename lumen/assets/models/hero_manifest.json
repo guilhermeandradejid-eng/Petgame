@@ -1,0 +1,32 @@
+{
+ "bottom_botas": {
+  "slot": "bottom",
+  "label": "Calção e Botas",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 512
+ },
+ "hair_bagunca": {
+  "slot": "hair",
+  "label": "Bagunçado",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 762,
+  "has_top": true
+ },
+ "top_tunica": {
+  "slot": "top",
+  "label": "Túnica de Aventureiro",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 526
+ },
+ "sword_ferro": {
+  "slot": "weapon",
+  "label": "Espada de Ferro",
+  "wt": "sword",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 104
+ }
+}
