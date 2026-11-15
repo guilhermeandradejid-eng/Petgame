@@ -62,6 +62,7 @@ func _mk_label(t: String, col: Color, y: float, size: int) -> Label3D:
 	lb.modulate = col
 	lb.outline_size = 14
 	lb.outline_modulate = Color("1b1730")
+	lb.visibility_range_begin = 3.0
 	lb.position.y = y
 	add_child(lb)
 	return lb

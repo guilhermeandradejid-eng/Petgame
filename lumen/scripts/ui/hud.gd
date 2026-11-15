@@ -285,7 +285,7 @@ func _room_event(kind: String, data: Dictionary) -> void:
 			_toast("O Guardião se enfurece!", Color("ff7ad5"))
 
 func _process(delta: float) -> void:
-	visible = Game.phase != Game.Phase.MENU
+	visible = Game.phase != Game.Phase.MENU and not (Game.ui != null and Game.ui.current == "wardrobe")
 	if not visible:
 		return
 	var me: Player = Game.me()

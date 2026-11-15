@@ -1,0 +1,515 @@
+{
+ "arrow": {
+  "tags": [
+   "projectile"
+  ],
+  "collider": null,
+  "tris": 132,
+  "size": [
+   0.104,
+   0.592,
+   0.05
+  ]
+ },
+ "dagger": {
+  "tags": [
+   "projectile"
+  ],
+  "collider": null,
+  "tris": 144,
+  "size": [
+   0.1,
+   0.375,
+   0.019
+  ]
+ },
+ "coin": {
+  "tags": [
+   "pickup"
+  ],
+  "collider": null,
+  "tris": 232,
+  "size": [
+   0.28,
+   0.05,
+   0.285
+  ]
+ },
+ "shard": {
+  "tags": [
+   "pickup",
+   "currency"
+  ],
+  "light": {
+   "color": "#7df9ff",
+   "energy": 1.2,
+   "height": 0.2,
+   "range": 3.0
+  },
+  "collider": null,
+  "tris": 26,
+  "size": [
+   0.284,
+   0.162,
+   0.364
+  ]
+ },
+ "heart": {
+  "tags": [
+   "pickup",
+   "heal"
+  ],
+  "collider": null,
+  "tris": 144,
+  "size": [
+   0.3,
+   0.176,
+   0.312
+  ]
+ },
+ "potion": {
+  "tags": [
+   "pickup"
+  ],
+  "collider": null,
+  "tris": 310,
+  "size": [
+   0.24,
+   0.228,
+   0.345
+  ]
+ },
+ "tome": {
+  "tags": [
+   "pickup",
+   "spell"
+  ],
+  "collider": null,
+  "tris": 456,
+  "size": [
+   0.27,
+   0.132,
+   0.32
+  ]
+ },
+ "relic_orb": {
+  "tags": [
+   "pickup",
+   "relic"
+  ],
+  "light": {
+   "color": "#7df9ff",
+   "energy": 1.0,
+   "height": 0.2,
+   "range": 3.0
+  },
+  "collider": null,
+  "tris": 304,
+  "size": [
+   0.316,
+   0.184,
+   0.41
+  ]
+ },
+ "key": {
+  "tags": [
+   "pickup"
+  ],
+  "collider": null,
+  "tris": 276,
+  "size": [
+   0.165,
+   0.062,
+   0.374
+  ]
+ },
+ "bomb": {
+  "tags": [
+   "pickup"
+  ],
+  "collider": null,
+  "tris": 228,
+  "size": [
+   0.283,
+   0.257,
+   0.418
+  ]
+ },
+ "chest_base": {
+  "tags": [
+   "chest",
+   "interact"
+  ],
+  "lid": "chest_lid",
+  "origin": "hinge",
+  "collider": {
+   "type": "cyl",
+   "r": 0.55,
+   "h": 0.45
+  },
+  "tris": 612,
+  "size": [
+   0.9,
+   0.602,
+   0.403
+  ]
+ },
+ "chest_lid": {
+  "tags": [
+   "chest",
+   "part"
+  ],
+  "origin": "hinge",
+  "collider": null,
+  "tris": 156,
+  "size": [
+   0.84,
+   0.591,
+   0.251
+  ]
+ },
+ "chest_rare_base": {
+  "tags": [
+   "chest",
+   "interact",
+   "rare"
+  ],
+  "lid": "chest_rare_lid",
+  "origin": "hinge",
+  "light": {
+   "color": "#7df9ff",
+   "energy": 0.8,
+   "height": 0.5,
+   "range": 3.0
+  },
+  "collider": {
+   "type": "cyl",
+   "r": 0.55,
+   "h": 0.45
+  },
+  "tris": 668,
+  "size": [
+   0.9,
+   0.61,
+   0.403
+  ]
+ },
+ "chest_rare_lid": {
+  "tags": [
+   "chest",
+   "part",
+   "rare"
+  ],
+  "origin": "hinge",
+  "collider": null,
+  "tris": 240,
+  "size": [
+   0.84,
+   0.591,
+   0.36
+  ]
+ },
+ "portal_arch": {
+  "tags": [
+   "portal",
+   "landmark"
+  ],
+  "light": {
+   "color": "#7df9ff",
+   "energy": 1.6,
+   "height": 2.0,
+   "range": 7.0
+  },
+  "collider": null,
+  "tris": 908,
+  "size": [
+   3.304,
+   0.771,
+   3.257
+  ]
+ },
+ "reward_pedestal": {
+  "tags": [
+   "interact",
+   "reward"
+  ],
+  "light": {
+   "color": "#7df9ff",
+   "energy": 0.8,
+   "height": 0.9,
+   "range": 3.5
+  },
+  "collider": {
+   "type": "cyl",
+   "r": 0.44,
+   "h": 0.74
+  },
+  "tris": 392,
+  "size": [
+   1.03,
+   0.905,
+   0.745
+  ]
+ },
+ "altar": {
+  "tags": [
+   "interact",
+   "shrine"
+  ],
+  "light": {
+   "color": "#7df9ff",
+   "energy": 2.0,
+   "height": 1.3,
+   "range": 6.0
+  },
+  "collider": {
+   "type": "box",
+   "w": 1.4,
+   "d": 0.95,
+   "h": 0.9
+  },
+  "tris": 668,
+  "size": [
+   1.523,
+   1.0,
+   1.637
+  ]
+ },
+ "shop_stall": {
+  "tags": [
+   "interact",
+   "shop"
+  ],
+  "light": {
+   "color": "#ffc878",
+   "energy": 1.5,
+   "height": 1.6,
+   "range": 5.0
+  },
+  "collider": {
+   "type": "box",
+   "w": 2.3,
+   "d": 1.3,
+   "h": 1.0
+  },
+  "tris": 2124,
+  "size": [
+   2.52,
+   1.495,
+   2.375
+  ]
+ },
+ "wardrobe": {
+  "tags": [
+   "interact",
+   "wardrobe"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 2.0,
+   "d": 0.7,
+   "h": 2.0
+  },
+  "tris": 1874,
+  "size": [
+   2.008,
+   0.635,
+   2.19
+  ]
+ },
+ "dummy": {
+  "tags": [
+   "dummy",
+   "training"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.32,
+   "h": 1.3
+  },
+  "tris": 784,
+  "size": [
+   1.06,
+   0.75,
+   1.351
+  ]
+ },
+ "signpost": {
+  "tags": [
+   "deco",
+   "sign",
+   "interact"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.12,
+   "h": 1.8
+  },
+  "tris": 352,
+  "size": [
+   1.03,
+   0.341,
+   1.828
+  ]
+ },
+ "campfire": {
+  "tags": [
+   "deco",
+   "fire",
+   "camp"
+  ],
+  "light": {
+   "color": "#ffa040",
+   "energy": 2.5,
+   "height": 0.5,
+   "range": 7.0
+  },
+  "collider": {
+   "type": "cyl",
+   "r": 0.5,
+   "h": 0.3
+  },
+  "tris": 762,
+  "size": [
+   1.042,
+   1.101,
+   0.358
+  ]
+ },
+ "bench": {
+  "tags": [
+   "deco",
+   "seat"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 1.3,
+   "d": 0.5,
+   "h": 0.42
+  },
+  "tris": 540,
+  "size": [
+   1.34,
+   0.5,
+   0.797
+  ]
+ },
+ "crate": {
+  "tags": [
+   "deco",
+   "breakable"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 0.7,
+   "d": 0.7,
+   "h": 0.7
+  },
+  "tris": 612,
+  "size": [
+   0.7,
+   0.7,
+   0.7
+  ]
+ },
+ "barrel": {
+  "tags": [
+   "deco",
+   "breakable"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.33,
+   "h": 0.8
+  },
+  "tris": 240,
+  "size": [
+   0.64,
+   0.653,
+   0.8
+  ]
+ },
+ "lantern_post": {
+  "tags": [
+   "deco",
+   "light"
+  ],
+  "light": {
+   "color": "#7df9ff",
+   "energy": 2.0,
+   "height": 1.9,
+   "range": 7.0
+  },
+  "collider": {
+   "type": "cyl",
+   "r": 0.14,
+   "h": 2.3
+  },
+  "tris": 344,
+  "size": [
+   0.698,
+   0.407,
+   2.399
+  ]
+ },
+ "banner": {
+  "tags": [
+   "deco",
+   "banner"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.2,
+   "h": 2.8
+  },
+  "tris": 360,
+  "size": [
+   1.01,
+   0.42,
+   2.919
+  ]
+ },
+ "bridge_plank": {
+  "tags": [
+   "bridge",
+   "platform"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 2.0,
+   "d": 4.0,
+   "h": 0.22
+  },
+  "tris": 960,
+  "size": [
+   2.074,
+   4.0,
+   0.3
+  ]
+ },
+ "spike_trap": {
+  "tags": [
+   "trap"
+  ],
+  "collider": null,
+  "tris": 696,
+  "size": [
+   1.1,
+   1.1,
+   0.085
+  ]
+ },
+ "spike_trap_spikes": {
+  "tags": [
+   "trap",
+   "part"
+  ],
+  "collider": null,
+  "tris": 135,
+  "size": [
+   0.683,
+   0.687,
+   0.46
+  ]
+ }
+}

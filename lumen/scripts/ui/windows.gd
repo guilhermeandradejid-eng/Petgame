@@ -17,6 +17,7 @@ var _wd_buy: Button
 var _wd_try := ""
 var _wd_look: Dictionary = {}
 var _summary: Dictionary = {}
+var _wd_root: Control
 
 func _ready() -> void:
 	layer = 10
@@ -260,13 +261,14 @@ func open_wardrobe() -> void:
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	margin.add_theme_constant_override("margin_left", 40)
 	margin.add_theme_constant_override("margin_right", 40)
-	margin.add_theme_constant_override("margin_top", 40)
+	margin.add_theme_constant_override("margin_top", 70)
 	margin.add_theme_constant_override("margin_bottom", 40)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(margin)
-	holder.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.add_child(margin)
+	_wd_root = margin
 	var pc := Ui.panel()
 	pc.size_flags_horizontal = Control.SIZE_SHRINK_END
+	pc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	pc.custom_minimum_size = Vector2(760, 0)
 	margin.add_child(pc)
 	var v := VBoxContainer.new()
@@ -432,6 +434,9 @@ func _wardrobe_buy() -> void:
 		Sfx.ui("ui_error")
 
 func _wardrobe_close() -> void:
+	if is_instance_valid(_wd_root):
+		_wd_root.queue_free()
+	_wd_root = null
 	Save.data["look"] = _wd_look
 	Save.save()
 	Game.world.rig.orbit_mode = false

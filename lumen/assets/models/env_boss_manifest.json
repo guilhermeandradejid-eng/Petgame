@@ -1,0 +1,137 @@
+{
+ "ring_wall": {
+  "tags": [
+   "wall"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 4.0,
+   "d": 1.6,
+   "h": 4.6
+  },
+  "tris": 1232,
+  "size": [
+   4.205,
+   1.929,
+   4.99
+  ]
+ },
+ "ring_pillar": {
+  "tags": [
+   "wall_pillar"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.85,
+   "h": 7.0
+  },
+  "tris": 891,
+  "size": [
+   1.839,
+   1.839,
+   7.132
+  ]
+ },
+ "rune_floor": {
+  "tags": [
+   "centerpiece"
+  ],
+  "collider": null,
+  "tris": 1740,
+  "size": [
+   8.0,
+   8.0,
+   0.05
+  ]
+ },
+ "brazier": {
+  "tags": [
+   "light"
+  ],
+  "light": {
+   "color": "#8ff3ff",
+   "energy": 2.2,
+   "height": 1.7,
+   "range": 8.0
+  },
+  "collider": {
+   "type": "cyl",
+   "r": 0.5,
+   "h": 1.4
+  },
+  "tris": 334,
+  "size": [
+   1.1,
+   1.046,
+   1.9
+  ]
+ },
+ "crystal_throne": {
+  "tags": [
+   "backdrop"
+  ],
+  "collider": null,
+  "tris": 659,
+  "size": [
+   5.2,
+   3.6,
+   5.827
+  ]
+ },
+ "ring_arch": {
+  "tags": [
+   "backdrop"
+  ],
+  "collider": null,
+  "tris": 1385,
+  "size": [
+   9.1,
+   2.567,
+   10.546
+  ]
+ },
+ "rubble_a": {
+  "tags": [
+   "rock"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.8,
+   "h": 1.0
+  },
+  "tris": 104,
+  "size": [
+   1.883,
+   1.195,
+   1.2
+  ]
+ },
+ "rubble_b": {
+  "tags": [
+   "rock"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.75,
+   "h": 0.9
+  },
+  "tris": 142,
+  "size": [
+   1.853,
+   1.226,
+   1.045
+  ]
+ },
+ "banner_ruin": {
+  "tags": [
+   "deco"
+  ],
+  "collider": null,
+  "tris": 352,
+  "size": [
+   1.3,
+   0.218,
+   3.74
+  ]
+ }
+}

@@ -96,6 +96,7 @@ func _ready() -> void:
 		lb.modulate = col.lightened(0.5)
 		lb.outline_size = 14
 		lb.outline_modulate = Color("1b1730")
+		lb.visibility_range_begin = 4.0
 		lb.position.y = 3.6 if kind == "start" else 2.7
 		add_child(lb)
 	Game.world.register_interactable(self)

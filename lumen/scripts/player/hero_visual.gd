@@ -106,6 +106,9 @@ func apply_look(l: Dictionary) -> void:
 		hair_mode = str(DB.cosmetics.get(hat, {}).get("hair", "keep"))
 	for slot in ["hat", "ears", "acc", "top", "bottom", "back", "eyes", "weapon"]:
 		var id := str(look.get(slot, ""))
+		# orelhas no topo da cabeca somem sob chapeus que cobrem a cabeca
+		if slot == "ears" and hat != "" and hair_mode != "keep" and bool(DB.cosmetics.get(id, {}).get("top", false)):
+			continue
 		if id != "" and not meshes.has(id):
 			id = str(DEFAULT_LOOK.get(slot, ""))
 		if id != "" and meshes.has(id):

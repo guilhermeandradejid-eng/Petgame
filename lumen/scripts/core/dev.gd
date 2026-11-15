@@ -23,6 +23,7 @@ var _bot_attack := false
 var _bot_skill_t := 2.0
 var _bot_pick_t := 0.0
 var log_t := 0.0
+var _ui_at := -1.0
 
 func _enter_tree() -> void:
 	Controls.setup()
@@ -40,6 +41,8 @@ func _enter_tree() -> void:
 		_quit = float(args["quit"])
 	if args.has("autostart"):
 		_autostart = float(args["autostart"])
+	if args.has("ui"):
+		_ui_at = float(str(args["ui"]).get_slice("@", 1))
 
 func _ready() -> void:
 	if args.has("cls") and DB.CLASSES.has(str(args["cls"])):
@@ -91,6 +94,23 @@ func _process(delta: float) -> void:
 			Game._go_room(r)
 		else:
 			Game.start_run()
+	if _ui_at >= 0.0 and t >= _ui_at and Game.ui:
+		_ui_at = -1.0
+		match str(args["ui"]).get_slice("@", 0):
+			"wardrobe":
+				Game.ui.open_wardrobe()
+			"reward":
+				Game.ui.open_reward("relic", null)
+			"boon":
+				Game.ui.open_reward("boon", null)
+			"classes":
+				Game.ui.open_classes()
+			"upgrades":
+				Game.ui.open_upgrades()
+			"shop":
+				var sp := Spot.new()
+				sp.kind = "shop"
+				Game.ui.open_shop(sp)
 	for s in _shots:
 		if s[1] >= 0.0 and t >= s[1]:
 			s[1] = -1.0
@@ -120,13 +140,13 @@ func _bot_update(delta: float) -> void:
 	var me: Player = Game.me()
 	bot_move = Vector2.ZERO
 	_bot_attack = false
-	if me == null or Game.world == null or Game.world.level == null or not me.alive():
-		return
 	if Game.ui and Game.ui.is_open():
 		_bot_pick_t += delta
 		if _bot_pick_t > 0.6:
 			_bot_pick_t = 0.0
 			Game.ui.bot_act()
+		return
+	if me == null or Game.world == null or Game.world.level == null or not me.alive():
 		return
 	var target := Vector3.ZERO
 	var has_target := false

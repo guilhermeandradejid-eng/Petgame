@@ -11,16 +11,16 @@ const BIOME_LOOK := {
 		"obst": ["rock", "pillar", "tree", "ruin", "log"], "deco": {"grass": 240, "flower": 46, "bush": 12, "mushroom": 7, "pebble": 16, "fern": 16, "tile": 12},
 	},
 	"crystal": {
-		"floor_a": "3d386e", "floor_b": "4c4585", "edge": "231f47", "path": "6a62a8",
-		"env": {"sun_dir": Vector2(-70, 20), "sun_col": "9fb4ff", "sun_e": 0.55, "amb": "5a4fb8", "amb_e": 0.9,
-			"sky_top": "0d0b1e", "sky_hor": "1a1638", "ground": "0d0b1e", "fog": "3a2f7a", "fog_d": 0.022, "glow": 1.1, "vol": true, "vol_d": 0.02, "sat": 1.18},
+		"floor_a": "4f4892", "floor_b": "6159ad", "edge": "2c2858", "path": "8a80d0",
+		"env": {"sun_dir": Vector2(-62, 25), "sun_col": "b4c2ff", "sun_e": 0.95, "amb": "7266d8", "amb_e": 1.15,
+			"sky_top": "120f2a", "sky_hor": "2a2358", "ground": "120f2a", "fog": "4a3c96", "fog_d": 0.012, "glow": 1.0, "vol": true, "vol_d": 0.01, "sat": 1.15},
 		"motes": "9ffbff",
 		"obst": ["crystal_big", "rock", "pillar", "ruin"], "deco": {"crystal_small": 46, "mushroom": 10, "pebble": 18, "tile": 14},
 	},
 	"boss": {
-		"floor_a": "8a7fb0", "floor_b": "9c90c2", "edge": "4a4070", "path": "c7bde6",
+		"floor_a": "8a82b8", "floor_b": "a59ccc", "edge": "4a4070", "path": "d4cbef",
 		"env": {"sun_dir": Vector2(-22, 150), "sun_col": "ffb27a", "sun_e": 1.5, "amb": "8a6fd8", "amb_e": 0.8,
-			"sky_top": "3a2a78", "sky_hor": "ff9a7a", "ground": "5a3f78", "fog": "e89ab0", "fog_d": 0.012, "glow": 0.95, "vol": true, "vol_d": 0.012},
+			"sky_top": "3a2a78", "sky_hor": "ff9a7a", "ground": "5a3f78", "fog": "d99ab8", "fog_d": 0.008, "glow": 0.95, "vol": true, "vol_d": 0.008},
 		"motes": "ffd0f0",
 		"obst": ["rock"], "deco": {"tile": 10},
 	},
@@ -102,13 +102,13 @@ func _walls() -> void:
 		var depth := float(KitLib.meta(kit, piece).get("size", [4, 2, 4])[1])
 		var mi := KitLib.make(kit, piece)
 		mi.position = pm + out * (depth * 0.5 - 0.15)
-		mi.rotation.y = atan2(-out.x, -out.z) + PI
+		mi.rotation.y = atan2(out.x, out.z) + PI
 		mi.scale = Vector3(1.04, rng.randf_range(0.95, 1.2), 1.0)
 		add_child(mi)
 		if pillars.size() > 0 and k % 3 == 0:
 			var pp := KitLib.make(kit, pillars[0])
 			pp.position = p + Vector3(cos(a), 0, sin(a)) * 0.2
-			pp.rotation.y = atan2(-cos(a), -sin(a)) + PI
+			pp.rotation.y = atan2(cos(a), sin(a)) + PI
 			add_child(pp)
 		a += step
 		k += 1
@@ -242,7 +242,7 @@ func _backdrop() -> void:
 			continue
 		var mi := KitLib.make(kit, nm)
 		mi.position = p
-		mi.rotation.y = atan2(-cos(a), -sin(a)) + PI + rng.randf_range(-0.4, 0.4)
+		mi.rotation.y = atan2(cos(a), sin(a)) + PI + rng.randf_range(-0.4, 0.4)
 		var s := rng.randf_range(1.0, 1.5)
 		mi.scale = Vector3(s, s, s)
 		add_child(mi)

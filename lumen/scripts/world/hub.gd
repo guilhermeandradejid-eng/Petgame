@@ -37,7 +37,7 @@ func _ring() -> void:
 			var depth := float(KitLib.meta("env_forest", piece).get("size", [4, 2, 4])[1])
 			var mi := KitLib.make("env_forest", piece)
 			mi.position = point_at(mid) + out * (depth * 0.5 - 0.15)
-			mi.rotation.y = atan2(-out.x, -out.z) + PI
+			mi.rotation.y = atan2(out.x, out.z) + PI
 			mi.scale = Vector3(1.04, rng.randf_range(0.8, 1.0), 1.0)
 			add_child(mi)
 		elif trees.is_empty():

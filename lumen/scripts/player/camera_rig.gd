@@ -79,10 +79,10 @@ func _process(delta: float) -> void:
 	var sh := shoulder
 	var dist := distance
 	if orbit_mode:
-		basis = Basis(Vector3.UP, orbit_angle) * Basis(Vector3.RIGHT, -0.12)
-		sh = -0.85
-		dist = 3.3
-		_pivot = target.global_position + Vector3(0, 0.85, 0)
+		basis = Basis(Vector3.UP, orbit_angle) * Basis(Vector3.RIGHT, -0.1)
+		sh = 1.1
+		dist = 3.0
+		_pivot = target.global_position + Vector3(0, 0.78, 0)
 	var origin := _pivot + basis.x * sh
 	var desired := origin + basis.z * dist
 	var q := PhysicsRayQueryParameters3D.create(_pivot, desired, 1)

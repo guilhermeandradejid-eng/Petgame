@@ -474,8 +474,8 @@ def top_moletom():
 @piece('top', 'top_vestido', 'Vestido de Camponesa', cost=110)
 def top_vestido():
     zh = 0.262
-    saia = [(zh, 0.226, 0.200, 0, 0.004, 0.05), (0.310, 0.222, 0.196, 0, 0.004, 0.05),
-            (0.378, 0.196, 0.168, 0, 0.004, 0.1), (0.428, 0.162, 0.134, 0, 0.004, 0.15),
+    saia = [(zh, 0.224, 0.190, 0, -0.010, 0.05), (0.310, 0.220, 0.186, 0, -0.010, 0.05),
+            (0.378, 0.194, 0.164, 0, -0.004, 0.1), (0.428, 0.162, 0.134, 0, 0.002, 0.15),
             (0.460, 0.141, 0.113, 0, 0.003, 0.2)]
     w = _pesos(zh, 0.46, 0.66)
     g = hb.make_torso('primary', chest=0.98, belly=0.95)
@@ -485,8 +485,9 @@ def top_vestido():
     g.add(s)
     # anagua de bico aparecendo por baixo
     n = 20
-    top = [(x, 0.004 + y, zh + 0.012) for x, y in ring_pts(n, 0.218, 0.192, 0.05)]
-    bot = [(x, 0.004 + y, zh - 0.030 + (0.014 if i % 2 else 0.0)) for i, (x, y) in enumerate(ring_pts(n, 0.222, 0.196, 0.05))]
+    top = [(x, -0.010 + y, zh + 0.012) for x, y in ring_pts(n, 0.216, 0.182, 0.05)]
+    bot = [(x, -0.010 + y, zh - 0.030 + (0.014 if i % 2 else 0.0))
+           for i, (x, y) in enumerate(ring_pts(n, 0.220, 0.186, 0.05))]
     an = loft([bot, top], 'white', cap_a=True, cap_b=False)
     an.color((0.90, 0.88, 0.96))
     g.add(an)
@@ -600,7 +601,7 @@ def _ombreira(R=0.098, h=0.086, mat='metal', friso='accent', n=8):
     """Ombreira esquerda: cupula com friso na borda e fundo fechado (o braco gira por dentro)."""
     g = lathe([(R, -0.014), (R * 0.99, 0.004), (R * 0.84, h * 0.55), (R * 0.46, h * 0.92), (0.0, h)], n, mat)
     g.grad('z', -0.014, h, (0.80, 0.78, 0.92), lp.WHITE)
-    g.add(lathe([(R * 1.03, -0.024), (R * 1.08, -0.008), (R * 1.0, 0.010)], n, friso))
+    g.add(lathe([(R * 1.07, -0.024), (R * 1.0, 0.012)], n, friso))
     g.add(lathe([(0.0, -0.022), (R * 1.03, -0.020)], n, 'dark'))
     return g
 
@@ -659,10 +660,8 @@ def top_placas():
                   (0.447, 0.050, 0.050)], 'metal', cap_b=True)
     vam.grad('x', 0.33, 0.45, lp.WHITE, (0.80, 0.78, 0.92))
     arm.add(vam)
-    arm.add(_manga([(0.414, 0.059, 0.059), (0.436, 0.058, 0.058)], 'accent'))
     # ombreira grande: acompanha o braco, mas presa um pouco no peito
     om = _ombreira()
-    om.add(_botao((0, 0, 0.083), (0, 0, 1), 0.017, 0.012, OURO, 6))
     om.scale(1.0, 0.95, 1.0).rot('Y', 22).move(0.190, 0.0, 0.710)
     arm.add(om.bind_fn(lambda p: {'upper_arm.L': 0.7, 'chest': 0.3}))
     g.add(arm.both())
@@ -758,7 +757,7 @@ def top_casaca():
     # alamares dourados
     for z, hw in ((0.662, 0.060), (0.610, 0.050), (0.558, 0.040)):
         rows = [[_frente(tr, x, z + dz, 0.006, 10, 0.5) for x in (hw, 0.0, -hw)] for dz in (0.009, -0.009)]
-        al = _faixa(rows, 'vcol', 0.010).color(OURO)
+        al = _faixa(rows, 'vcol', 0.0).color(OURO)
         for s in (1, -1):
             p = _frente(tr, s * hw, z, 0.004, 10, 0.5)
             al.add(_botao(p, _frente(tr, s * hw, z, 1.0, 10, 0.5) - _frente(tr, s * hw, z, 0.0, 10, 0.5), 0.016, 0.010))
@@ -774,9 +773,7 @@ def top_casaca():
     arm = _manga([(0.135, 0.038, 0.038), (0.200, 0.056, 0.056), (0.275, 0.052, 0.052), (0.305, 0.052, 0.052),
                   (0.335, 0.054, 0.054), (0.388, 0.056, 0.056)], 'primary', cap_a=True)
     arm.grad('x', SHX, 0.39, lp.WHITE, (0.84, 0.80, 0.90))
-    arm.add(_manga([(0.372, 0.058, 0.058), (0.380, 0.069, 0.069), (0.440, 0.066, 0.066), (0.448, 0.050, 0.050)],
-                   'accent', cap_b=True))
-    arm.add(_botao((0.410, 0.0, AZ + 0.066), (0, 0, 1), 0.014, 0.009).bind('forearm.L'))
+    arm.add(_manga([(0.374, 0.058, 0.058), (0.382, 0.069, 0.069), (0.447, 0.066, 0.066)], 'accent', cap_b=True))
     # dragona dourada com franja
     dr = lathe([(0.056, -0.040), (0.062, -0.010), (0.056, 0.008), (0.0, 0.016)], 8, 'vcol').color(OURO)
     dr.grad('z', -0.040, -0.008, (0.62, 0.50, 0.42), lp.WHITE)

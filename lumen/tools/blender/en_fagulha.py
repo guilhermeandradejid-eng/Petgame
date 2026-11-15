@@ -74,7 +74,6 @@ def model():
     ring = lp.loft([[Vector(p) + Vector((math.cos(math.tau * i / 8) * a, b, math.sin(math.tau * i / 8) * a))
                      for a, b in lp.ring_pts(4, 0.013, 0.013)] for i, p in list(enumerate(pts)) + [(0, pts[0])]],
                    cap_a=False, cap_b=False)
-    eb.outward(ring, (0, 0, 1.53)) if False else None
     g.add(brass(ring, 1.46, 1.6).bind('ring'))
     # chama (nucleo de lumen) com rostinho
     w = lp.lathe([(0.0, 0.935), (0.078, 0.955), (0.108, 1.01), (0.098, 1.07), (0.062, 1.125), (0.028, 1.17),

@@ -1,10 +1,210 @@
 {
+ "back_capa": {
+  "slot": "back",
+  "label": "Capa de Viagem",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 334
+ },
+ "back_capa_real": {
+  "slot": "back",
+  "label": "Manto Real",
+  "rarity": 2,
+  "cost": 480,
+  "tris": 868
+ },
+ "back_mochila": {
+  "slot": "back",
+  "label": "Mochila de Aventureiro",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 330
+ },
+ "back_aljava": {
+  "slot": "back",
+  "label": "Aljava",
+  "rarity": 0,
+  "cost": 90,
+  "tris": 284
+ },
+ "back_asas_fada": {
+  "slot": "back",
+  "label": "Asas de Fada",
+  "rarity": 3,
+  "cost": 1100,
+  "tris": 124
+ },
+ "back_asas_morcego": {
+  "slot": "back",
+  "label": "Asas de Dragão",
+  "rarity": 2,
+  "cost": 520,
+  "tris": 236
+ },
+ "back_rabo_raposa": {
+  "slot": "back",
+  "label": "Cauda de Raposa",
+  "rarity": 1,
+  "cost": 200,
+  "tris": 112
+ },
+ "back_rabo_gato": {
+  "slot": "back",
+  "label": "Cauda de Gato",
+  "rarity": 1,
+  "cost": 160,
+  "tris": 98
+ },
+ "back_casco": {
+  "slot": "back",
+  "label": "Casco de Tartaruga",
+  "rarity": 1,
+  "cost": 240,
+  "tris": 512
+ },
+ "back_espadao": {
+  "slot": "back",
+  "label": "Espadão nas Costas",
+  "rarity": 1,
+  "cost": 300,
+  "tris": 194
+ },
  "bottom_botas": {
   "slot": "bottom",
   "label": "Calção e Botas",
   "rarity": 0,
   "cost": 0,
   "tris": 512
+ },
+ "bottom_calca": {
+  "slot": "bottom",
+  "label": "Calça e Sapatos",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 658
+ },
+ "bottom_bermuda": {
+  "slot": "bottom",
+  "label": "Bermuda e Sandálias",
+  "cost": 60,
+  "rarity": 0,
+  "tris": 732
+ },
+ "bottom_saia": {
+  "slot": "bottom",
+  "label": "Saia Plissada e Meias",
+  "cost": 100,
+  "rarity": 0,
+  "tris": 696
+ },
+ "bottom_sultao": {
+  "slot": "bottom",
+  "label": "Calça Bufante e Babuchas",
+  "rarity": 1,
+  "cost": 180,
+  "tris": 696
+ },
+ "bottom_cano_alto": {
+  "slot": "bottom",
+  "label": "Botas de Cano Alto",
+  "rarity": 1,
+  "cost": 260,
+  "tris": 768
+ },
+ "bottom_grevas": {
+  "slot": "bottom",
+  "label": "Grevas de Aço",
+  "rarity": 1,
+  "cost": 240,
+  "tris": 772
+ },
+ "ears_elfo": {
+  "slot": "ears",
+  "label": "Orelhas Élficas",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 96
+ },
+ "ears_gato": {
+  "slot": "ears",
+  "label": "Orelhas de Gato",
+  "rarity": 1,
+  "cost": 150,
+  "top": true,
+  "tris": 160
+ },
+ "ears_raposa": {
+  "slot": "ears",
+  "label": "Orelhas de Raposa",
+  "rarity": 1,
+  "cost": 180,
+  "top": true,
+  "tris": 180
+ },
+ "ears_coelho": {
+  "slot": "ears",
+  "label": "Orelhas de Coelho",
+  "rarity": 1,
+  "cost": 220,
+  "top": true,
+  "tris": 200
+ },
+ "ears_chifres": {
+  "slot": "ears",
+  "label": "Chifres de Dragão",
+  "rarity": 2,
+  "cost": 400,
+  "top": true,
+  "tris": 304
+ },
+ "acc_oculos": {
+  "slot": "acc",
+  "label": "Óculos Redondos",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 312
+ },
+ "acc_tapaolho": {
+  "slot": "acc",
+  "label": "Tapa-olho",
+  "rarity": 0,
+  "cost": 80,
+  "tris": 194
+ },
+ "acc_mascara": {
+  "slot": "acc",
+  "label": "Lenço de Bandido",
+  "rarity": 1,
+  "cost": 140,
+  "tris": 196
+ },
+ "acc_bigode": {
+  "slot": "acc",
+  "label": "Bigodão",
+  "rarity": 0,
+  "cost": 60,
+  "tris": 120
+ },
+ "acc_flor": {
+  "slot": "acc",
+  "label": "Flor no Cabelo",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 256
+ },
+ "acc_brincos": {
+  "slot": "acc",
+  "label": "Argolas",
+  "rarity": 0,
+  "cost": 90,
+  "tris": 232
+ },
+ "acc_cachecol": {
+  "slot": "acc",
+  "label": "Cachecol",
+  "rarity": 1,
+  "cost": 160,
+  "tris": 332
  },
  "hair_bagunca": {
   "slot": "hair",
@@ -89,6 +289,102 @@
   "cost": 0,
   "tris": 336
  },
+ "hat_gorro": {
+  "slot": "hat",
+  "label": "Gorro de Lã",
+  "hair": "flat",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 284
+ },
+ "hat_bandana": {
+  "slot": "hat",
+  "label": "Bandana",
+  "hair": "flat",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 442
+ },
+ "hat_palha": {
+  "slot": "hat",
+  "label": "Chapéu de Palha",
+  "hair": "flat",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 414
+ },
+ "hat_mago": {
+  "slot": "hat",
+  "label": "Chapéu de Mago",
+  "rarity": 1,
+  "cost": 220,
+  "hair": "flat",
+  "tris": 444
+ },
+ "hat_cogumelo": {
+  "slot": "hat",
+  "label": "Chapéu de Cogumelo",
+  "rarity": 1,
+  "cost": 180,
+  "hair": "flat",
+  "tris": 462
+ },
+ "hat_capuz": {
+  "slot": "hat",
+  "label": "Capuz de Viajante",
+  "cost": 90,
+  "hair": "hide",
+  "rarity": 0,
+  "tris": 592
+ },
+ "hat_flores": {
+  "slot": "hat",
+  "label": "Coroa de Flores",
+  "rarity": 1,
+  "cost": 160,
+  "hair": "keep",
+  "tris": 573
+ },
+ "hat_pirata": {
+  "slot": "hat",
+  "label": "Tricórnio de Pirata",
+  "rarity": 2,
+  "cost": 380,
+  "hair": "flat",
+  "tris": 586
+ },
+ "hat_elmo": {
+  "slot": "hat",
+  "label": "Elmo de Cavaleiro",
+  "rarity": 2,
+  "cost": 420,
+  "hair": "hide",
+  "tris": 582
+ },
+ "hat_coroa": {
+  "slot": "hat",
+  "label": "Coroinha",
+  "rarity": 2,
+  "cost": 520,
+  "hair": "keep",
+  "tris": 320
+ },
+ "hat_viking": {
+  "slot": "hat",
+  "label": "Elmo Viking",
+  "rarity": 1,
+  "cost": 240,
+  "hair": "flat",
+  "tris": 682
+ },
+ "hat_aureola": {
+  "slot": "hat",
+  "label": "Auréola",
+  "rarity": 3,
+  "cost": 900,
+  "hair": "keep",
+  "tris": 264
+ },
  "top_tunica": {
   "slot": "top",
   "label": "Túnica de Aventureiro",
@@ -136,7 +432,7 @@
   "label": "Armadura de Placas",
   "rarity": 1,
   "cost": 280,
-  "tris": 948
+  "tris": 852
  },
  "top_pirata": {
   "slot": "top",
@@ -150,7 +446,7 @@
   "label": "Casaca Real",
   "rarity": 2,
   "cost": 450,
-  "tris": 992
+  "tris": 898
  },
  "top_cristal": {
   "slot": "top",
