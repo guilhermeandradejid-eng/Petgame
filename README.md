@@ -1,3 +1,12 @@
+# Lúmen: Ruínas do Entardecer
+
+Roguelite de ação cooperativo online (até 4 amigos) em terceira pessoa, feito na Godot 4.7, com
+personagens chibi low poly que você veste do jeito que quiser. Modelos e animações gerados por
+script no Blender. Fica na pasta [`lumen/`](lumen/); veja [`lumen/README.md`](lumen/README.md)
+para rodar, hospedar e jogar com amigos.
+
+---
+
 # Mochi Pet
 
 Um cozy pet game mobile no estilo Pou, com bichinhos de gelatina brilhante. Roda direto no navegador, sem build e sem dependências.

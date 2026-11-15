@@ -1,6 +1,5 @@
 .godot/
 *.translation
-export_presets.cfg
 builds/
 *.tmp
 __pycache__/

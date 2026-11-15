@@ -235,7 +235,7 @@ func interact(p: Player) -> void:
 		"classes":
 			Game.ui.open_classes()
 		"start":
-			if Net.is_host():
+			if Game.can_command():
 				Game.ui.open_start()
 			else:
 				Game.toast.emit("Aguarde: só o host abre o portal.", Color("ffd36b"))

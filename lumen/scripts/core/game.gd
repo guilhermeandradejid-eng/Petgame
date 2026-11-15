@@ -139,11 +139,30 @@ func cl_enter_hub() -> void:
 	room_changed.emit()
 
 # ------------------------------------------------------------------ run
-func request_start_run() -> void:
+## Servidor dedicado: o host nao tem heroi proprio, entao qualquer jogador comanda a sala.
+func is_dedicated() -> bool:
+	return Net.active and not players.has(1)
+
+func can_command() -> bool:
+	return Net.is_host() or is_dedicated()
+
+func request_start_run(heat: int = -1) -> void:
 	if Net.is_host():
-		start_run()
+		start_run(heat)
+	elif is_dedicated():
+		srv_start.rpc_id(1, heat)
 	else:
 		toast.emit("Só o host pode abrir o portal.", Color("ffd36b"))
+
+@rpc("any_peer", "call_remote", "reliable")
+func srv_start(heat: int) -> void:
+	if Net.is_host() and not players.has(1):
+		start_run(clampi(heat, 0, 5))
+
+@rpc("any_peer", "call_remote", "reliable")
+func srv_return() -> void:
+	if Net.is_host() and not players.has(1) and phase == Phase.RUN:
+		return_to_hub()
 
 func start_run(heat: int = -1) -> void:
 	if not Net.is_host() or phase == Phase.RUN:
@@ -235,6 +254,11 @@ func finish_run(victory: bool) -> void:
 	var summary := {"victory": victory, "rooms": int(run.get("rooms_cleared", 0)), "heat": int(run.get("heat", 0)),
 		"time": (Time.get_ticks_msec() - int(run.get("t0", 0))) / 1000.0}
 	cl_run_end.rpc(summary)
+	if not players.has(1):
+		# servidor dedicado: ninguem aperta o botao do host, entao volta sozinho
+		get_tree().create_timer(12.0).timeout.connect(func() -> void:
+			if phase == Phase.RUN:
+				return_to_hub())
 
 @rpc("authority", "call_local", "reliable")
 func cl_run_end(summary: Dictionary) -> void:
@@ -244,6 +268,8 @@ func cl_run_end(summary: Dictionary) -> void:
 func return_to_hub() -> void:
 	if Net.is_host():
 		cl_enter_hub.rpc()
+	elif is_dedicated():
+		srv_return.rpc_id(1)
 
 func heat_mult() -> float:
 	return 1.0 + 0.28 * float(run.get("heat", 0))

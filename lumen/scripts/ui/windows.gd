@@ -583,7 +583,7 @@ func open_start() -> void:
 	go.pressed.connect(func() -> void:
 		Save.save()
 		close()
-		Game.start_run())
+		Game.request_start_run(int(Save.data.get("heat", 0))))
 	hb.add_child(go)
 	var cl := Ui.button("Ainda não", 20)
 	cl.pressed.connect(close)
@@ -629,7 +629,7 @@ func open_summary(s: Dictionary) -> void:
 		for id in p.boons:
 			flow.add_child(Ui.icon_tile(str(DB.BOONS[id]["icon"]), 44, Color("5a4f96")))
 		v.add_child(flow)
-	if Net.is_host():
+	if Game.can_command():
 		var b := Ui.button("Voltar para a vila", 24)
 		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		var act := func() -> void:
