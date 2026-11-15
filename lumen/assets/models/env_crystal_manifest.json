@@ -1,0 +1,394 @@
+{
+ "cave_wall_a": {
+  "tags": [
+   "wall"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 4.0,
+   "d": 1.9,
+   "h": 5.6
+  },
+  "tris": 637,
+  "size": [
+   4.0,
+   2.497,
+   6.114
+  ]
+ },
+ "cave_wall_b": {
+  "tags": [
+   "wall"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 4.0,
+   "d": 1.9,
+   "h": 6.3
+  },
+  "tris": 656,
+  "size": [
+   4.0,
+   2.618,
+   6.289
+  ]
+ },
+ "cave_wall_c": {
+  "tags": [
+   "wall"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 4.0,
+   "d": 1.9,
+   "h": 5.6
+  },
+  "tris": 586,
+  "size": [
+   4.0,
+   2.407,
+   5.869
+  ]
+ },
+ "cave_wall_d": {
+  "tags": [
+   "wall"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 4.0,
+   "d": 1.9,
+   "h": 6.1
+  },
+  "tris": 593,
+  "size": [
+   4.0,
+   2.449,
+   6.292
+  ]
+ },
+ "crystal_big_a": {
+  "tags": [
+   "crystal_big"
+  ],
+  "light": {
+   "color": "#8fe9ff",
+   "energy": 2.4,
+   "height": 1.6,
+   "range": 7.5
+  },
+  "collider": {
+   "type": "cyl",
+   "r": 0.75,
+   "h": 2.6
+  },
+  "tris": 274,
+  "size": [
+   2.205,
+   1.73,
+   2.726
+  ]
+ },
+ "crystal_big_b": {
+  "tags": [
+   "crystal_big"
+  ],
+  "light": {
+   "color": "#ff9fe0",
+   "energy": 2.0,
+   "height": 1.2,
+   "range": 6.5
+  },
+  "collider": {
+   "type": "cyl",
+   "r": 0.85,
+   "h": 1.9
+  },
+  "tris": 264,
+  "size": [
+   2.231,
+   1.575,
+   1.898
+  ]
+ },
+ "crystal_big_c": {
+  "tags": [
+   "crystal_big"
+  ],
+  "light": {
+   "color": "#a9b4ff",
+   "energy": 2.6,
+   "height": 1.8,
+   "range": 8.0
+  },
+  "collider": {
+   "type": "cyl",
+   "r": 0.7,
+   "h": 2.9
+  },
+  "tris": 258,
+  "size": [
+   1.921,
+   1.609,
+   2.944
+  ]
+ },
+ "crystal_small_a": {
+  "tags": [
+   "crystal_small"
+  ],
+  "collider": null,
+  "tris": 116,
+  "size": [
+   0.482,
+   0.471,
+   0.459
+  ]
+ },
+ "crystal_small_b": {
+  "tags": [
+   "crystal_small"
+  ],
+  "collider": null,
+  "tris": 96,
+  "size": [
+   0.407,
+   0.363,
+   0.371
+  ]
+ },
+ "crystal_small_c": {
+  "tags": [
+   "crystal_small"
+  ],
+  "collider": null,
+  "tris": 118,
+  "size": [
+   0.533,
+   0.498,
+   0.261
+  ]
+ },
+ "rock_a": {
+  "tags": [
+   "rock"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.6,
+   "h": 2.3
+  },
+  "tris": 222,
+  "size": [
+   1.442,
+   1.285,
+   2.45
+  ]
+ },
+ "rock_b": {
+  "tags": [
+   "rock"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 2.3,
+   "d": 1.1,
+   "h": 1.5
+  },
+  "tris": 378,
+  "size": [
+   2.563,
+   1.034,
+   1.9
+  ]
+ },
+ "rock_c": {
+  "tags": [
+   "rock"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.95,
+   "h": 1.3
+  },
+  "tris": 126,
+  "size": [
+   2.302,
+   1.799,
+   1.395
+  ]
+ },
+ "pebble_a": {
+  "tags": [
+   "pebble"
+  ],
+  "collider": null,
+  "tris": 35,
+  "size": [
+   0.507,
+   0.399,
+   0.151
+  ]
+ },
+ "pebble_b": {
+  "tags": [
+   "pebble"
+  ],
+  "collider": null,
+  "tris": 30,
+  "size": [
+   0.437,
+   0.374,
+   0.195
+  ]
+ },
+ "pillar_a": {
+  "tags": [
+   "pillar"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.62,
+   "h": 4.7
+  },
+  "tris": 350,
+  "size": [
+   1.94,
+   1.864,
+   4.7
+  ]
+ },
+ "pillar_b": {
+  "tags": [
+   "pillar"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.65,
+   "h": 4.3
+  },
+  "tris": 721,
+  "size": [
+   1.678,
+   1.551,
+   4.672
+  ]
+ },
+ "stalactite_a": {
+  "tags": [
+   "ceiling"
+  ],
+  "drop": 2.7,
+  "collider": null,
+  "tris": 386,
+  "size": [
+   2.049,
+   1.748,
+   0.0
+  ]
+ },
+ "stalactite_b": {
+  "tags": [
+   "ceiling"
+  ],
+  "drop": 1.9,
+  "collider": null,
+  "tris": 464,
+  "size": [
+   2.676,
+   1.094,
+   0.0
+  ]
+ },
+ "stalactite_c": {
+  "tags": [
+   "ceiling"
+  ],
+  "drop": 2.6,
+  "light": {
+   "color": "#8fe9ff",
+   "energy": 1.6,
+   "height": -2.1,
+   "range": 6.0
+  },
+  "collider": null,
+  "tris": 421,
+  "size": [
+   1.976,
+   1.576,
+   0.0
+  ]
+ },
+ "mushroom_a": {
+  "tags": [
+   "mushroom"
+  ],
+  "light": {
+   "color": "#5ff5c8",
+   "energy": 1.1,
+   "height": 0.6,
+   "range": 4.0
+  },
+  "collider": null,
+  "tris": 440,
+  "size": [
+   0.936,
+   0.727,
+   1.081
+  ]
+ },
+ "mushroom_b": {
+  "tags": [
+   "mushroom"
+  ],
+  "light": {
+   "color": "#5ff5c8",
+   "energy": 0.9,
+   "height": 0.35,
+   "range": 3.5
+  },
+  "collider": null,
+  "tris": 548,
+  "size": [
+   1.092,
+   0.704,
+   0.73
+  ]
+ },
+ "tile_a": {
+  "tags": [
+   "tile"
+  ],
+  "collider": null,
+  "tris": 43,
+  "size": [
+   1.4,
+   1.098,
+   0.05
+  ]
+ },
+ "tile_b": {
+  "tags": [
+   "tile"
+  ],
+  "collider": null,
+  "tris": 74,
+  "size": [
+   1.314,
+   1.419,
+   0.054
+  ]
+ },
+ "tile_c": {
+  "tags": [
+   "tile"
+  ],
+  "collider": null,
+  "tris": 84,
+  "size": [
+   1.178,
+   1.041,
+   0.051
+  ]
+ }
+}

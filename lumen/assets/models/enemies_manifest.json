@@ -1,0 +1,29 @@
+{
+ "broto": {
+  "name": "Brotinho",
+  "radius": 0.26,
+  "height": 0.7,
+  "anims": {
+   "idle-loop": {
+    "len": 1.6
+   },
+   "move-loop": {
+    "len": 0.6
+   },
+   "attack": {
+    "len": 0.933,
+    "hit": 0.433
+   },
+   "hit": {
+    "len": 0.3
+   },
+   "die": {
+    "len": 1.0
+   },
+   "spawn": {
+    "len": 0.867
+   }
+  },
+  "tris": 1010
+ }
+}
