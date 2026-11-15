@@ -14,7 +14,8 @@ var phase: int = Phase.MENU
 var players: Dictionary = {}     # peer id -> {name, cls, look}
 var run: Dictionary = {}         # estado da run (plano, passo, sala atual, heat)
 var room: Dictionary = {}        # sala atual
-var world: Node = null           # World (definido pela cena principal)
+var world: World = null          # definido pela cena principal
+var ui: Windows = null           # janelas (recompensa, loja, guarda-roupa...)
 var paused_ui := false           # alguma janela aberta: trava controles do heroi
 
 func _ready() -> void:

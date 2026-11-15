@@ -191,7 +191,7 @@ def crystal(r, h, n=6, tip=0.32, base=0.7, c_base=LUMEN_DEEP, c_tip=LUMEN_HOT, s
         nrm2 = (b1 - b0).cross(ap - b0).normalized()
         k2 = 1.0 + facet * (nrm2.dot(light)) + rnd.uniform(-0.07, 0.07)
         tm = 'glow' if glow_tip else mat
-        kk = 0.75 if glow_tip else 1.0
+        kk = 0.62 if glow_tip else 1.0
         t = [g.add_vert(b0, c=lp.mulc(c_mid, k2 * kk)), g.add_vert(b1, c=lp.mulc(c_mid, k2 * kk)),
              g.add_vert(ap, c=lp.mulc(c_tip, k2 * kk))]
         g.add_face(t, tm, False)
@@ -612,7 +612,7 @@ def lfu(p):
     return (p[0], -p[1], p[2])
 
 
-def ik_bake(clip, sk, upper, lower, end, space='world', pole=(0.5, -0.6, -0.4), end_world=False):
+def ik_bake(clip, sk, upper, lower, end, space='world', pole=None, end_world=False, end_point=None):
     """IK de dois ossos assado quadro a quadro. O alvo da cabeca do osso `end` vem do canal
     '<end>.ik' = (esquerda, frente, cima): no espaco da armature (space='world') ou no espaco de
     repouso do pai de `upper` (space='parent'). pole: para onde o cotovelo/joelho aponta, dado para
@@ -621,7 +621,8 @@ def ik_bake(clip, sk, upper, lower, end, space='world', pole=(0.5, -0.6, -0.4), 
     tch, pch, wch = end + '.ik', end + '.pole', end + '.wrot'
     if tch not in clip.tracks:
         return clip
-    S, E, W = sk.head[upper], sk.head[lower], sk.head[end]
+    S, E = sk.head[upper], sk.head[lower]
+    W = Vector(end_point) if end_point is not None else sk.head[end]
     l1, l2 = (E - S).length, (W - E).length
     par = sk.parent[upper]
     side = -1.0 if is_r(end) else 1.0
@@ -633,12 +634,17 @@ def ik_bake(clip, sk, upper, lower, end, space='world', pole=(0.5, -0.6, -0.4), 
         if pch in vals:
             p = vals[pch]
             P = Vector((p[0], -p[1], p[2]))
-        else:
+        elif pole is not None:
             P = Vector((pole[0] * side, -pole[1], pole[2]))
+        else:
+            P = None
         dp = sk.fk(vals)[par] if par else Matrix.Identity(4)
         if space == 'world':
             T = dp.inverted() @ T
-            P = dp.to_3x3().inverted() @ P
+            if P is not None:
+                P = dp.to_3x3().inverted() @ P
+        if P is None:
+            P = E - S       # mesma dobra do repouso
         v = T - S
         d = max(abs(l1 - l2) * 1.001 + 1e-4, min((l1 + l2) * 0.999, v.length))
         dirv = v.normalized() if v.length > 1e-6 else Vector((0, 0, -1))
@@ -667,4 +673,68 @@ def ik_bake(clip, sk, upper, lower, end, space='world', pole=(0.5, -0.6, -0.4), 
     set_track(clip, lower, los)
     if ends:
         set_track(clip, end, ends)
+    return clip
+
+
+def brow_eye(p, n, sx, rx, rz, depth, cut=(0.5, 0.5), brow=None, hl=(-0.22, 0.02, 0.30), hl2=(0.22, -0.42, 0.14),
+             eye_bone='eye', face_bone='body', color=DARK):
+    """Olho bravo: cupula escura com o topo cortado em diagonal + sobrancelha grossa.
+    p, n: ponto e normal na superficie; sx: +1 esquerdo, -1 direito.
+    brow = (comprimento, espessura, cor, angulo_graus) ou None."""
+    e = eye((0, 0, 0), (0, -1, 0), rx, rz, depth=depth, hl=hl, hl2=hl2, cut_top=(cut[0], cut[1] * sx), color=color)
+    e.bind(eye_bone + ('.L' if sx > 0 else '.R'))
+    if brow:
+        ln, th, col, ang = brow
+        bw = cbox(ln, th * 1.1, th, th * 0.28, center=(-0.05 * ln * sx, 0.0, rz * cut[0] + th * 0.52))
+        bw.rot('Y', -ang * sx, (0, 0, rz * cut[0]))
+        paint(bw, rz * cut[0] - th, rz * cut[0] + th * 1.5, cool(col, 0.85), warm(col, 1.1))
+        bw.bind(face_bone)
+        e.add(bw)
+    e.xf(face_frame(n, Vector(p) - Vector(n) * 0.004))
+    return e
+
+
+def bind_chain(g, pts, bones, blend=0.3):
+    """Pesos de um membro: pts = juntas (n+1 pontos), bones = n ossos. Mistura perto das juntas."""
+    pts = [Vector(p) for p in pts]
+
+    def fn(p):
+        best = None
+        for i in range(len(bones)):
+            a, b = pts[i], pts[i + 1]
+            ab = b - a
+            t = (p - a).dot(ab) / ab.length_squared
+            tc = max(0.0, min(1.0, t))
+            d = (p - (a + ab * tc)).length
+            if best is None or d < best[0]:
+                best = (d, i, t)
+        _, i, t = best
+        ws = {bones[i]: 1.0}
+        if t > 1.0 - blend and i + 1 < len(bones):
+            k = min(1.0, (t - (1.0 - blend)) / blend) * 0.5
+            ws = {bones[i]: 1.0 - k, bones[i + 1]: k}
+        elif t < blend and i > 0:
+            k = min(1.0, (blend - t) / blend) * 0.5
+            ws = {bones[i]: 1.0 - k, bones[i - 1]: k}
+        return ws
+    return g.bind_fn(fn)
+
+
+def gait(clip, ch, rest, phase, stride=0.3, lift=0.08, duty=0.5, side=0.0):
+    """Trilha de um pe num ciclo de andar parado no lugar: apoio (desliza para tras) e passada
+    (levanta e volta para a frente). rest = (esq, frente, cima) do pe; phase 0..1."""
+    L = clip.length
+    vals = []
+    for f in range(L + 1):
+        p = (f / float(L) + phase) % 1.0
+        if p < duty:
+            u = p / duty
+            dy, dz = stride * (0.5 - u), 0.0
+        else:
+            u = (p - duty) / (1.0 - duty)
+            s = u * u * (3 - 2 * u)
+            dy, dz = stride * (-0.5 + s), lift * math.sin(math.pi * u)
+        vals.append((rest[0] + side * dz * 0.3, rest[1] + dy, rest[2] + dz))
+    vals[-1] = vals[0]
+    set_track(clip, ch, vals)
     return clip

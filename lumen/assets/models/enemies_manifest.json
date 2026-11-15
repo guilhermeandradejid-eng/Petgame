@@ -25,5 +25,184 @@
    }
   },
   "tris": 1010
+ },
+ "cogu": {
+  "name": "Cogumelo Brigão",
+  "radius": 0.4,
+  "height": 1.1,
+  "anims": {
+   "idle-loop": {
+    "len": 1.333
+   },
+   "move-loop": {
+    "len": 0.8
+   },
+   "attack": {
+    "len": 1.067,
+    "hit": 0.5
+   },
+   "attack2": {
+    "len": 1.533,
+    "hit": 0.8
+   },
+   "hit": {
+    "len": 0.3
+   },
+   "die": {
+    "len": 1.267
+   },
+   "spawn": {
+    "len": 1.067
+   }
+  },
+  "tris": 1984
+ },
+ "fagulha": {
+  "name": "Fagulha",
+  "radius": 0.3,
+  "height": 1.55,
+  "anims": {
+   "idle-loop": {
+    "len": 2.0
+   },
+   "move-loop": {
+    "len": 0.8
+   },
+   "cast": {
+    "len": 1.267,
+    "hit": 0.567
+   },
+   "hit": {
+    "len": 0.3
+   },
+   "die": {
+    "len": 1.267
+   },
+   "spawn": {
+    "len": 1.067
+   }
+  },
+  "tris": 1290
+ },
+ "cascudo": {
+  "name": "Cascudo",
+  "radius": 0.55,
+  "height": 1.0,
+  "anims": {
+   "idle-loop": {
+    "len": 1.333
+   },
+   "move-loop": {
+    "len": 0.533
+   },
+   "charge_start": {
+    "len": 0.6,
+    "hit": 0.6
+   },
+   "charge-loop": {
+    "len": 0.333,
+    "hit": 0.0
+   },
+   "charge_end": {
+    "len": 0.533
+   },
+   "attack": {
+    "len": 0.933,
+    "hit": 0.433
+   },
+   "hit": {
+    "len": 0.3
+   },
+   "die": {
+    "len": 1.4
+   },
+   "spawn": {
+    "len": 1.067
+   }
+  },
+  "tris": 2452
+ },
+ "sentinela": {
+  "name": "Sentinela de Ruína",
+  "radius": 0.8,
+  "height": 2.2,
+  "anims": {
+   "idle-loop": {
+    "len": 2.0
+   },
+   "move-loop": {
+    "len": 1.2
+   },
+   "attack": {
+    "len": 1.667,
+    "hit": 0.833
+   },
+   "attack2": {
+    "len": 1.533,
+    "hit": 0.7
+   },
+   "hit": {
+    "len": 0.3
+   },
+   "die": {
+    "len": 1.467
+   },
+   "spawn": {
+    "len": 1.667
+   }
+  },
+  "tris": 2092
+ },
+ "guardiao": {
+  "name": "Guardião Cristalino",
+  "radius": 1.15,
+  "height": 3.4,
+  "anims": {
+   "idle-loop": {
+    "len": 2.5
+   },
+   "move-loop": {
+    "len": 1.5
+   },
+   "attack": {
+    "len": 2.067,
+    "hit": 1.033
+   },
+   "attack2": {
+    "len": 1.933,
+    "hit": 0.867
+   },
+   "cast": {
+    "len": 2.2,
+    "hit": 0.533
+   },
+   "roar": {
+    "len": 1.533
+   },
+   "charge_start": {
+    "len": 0.8,
+    "hit": 0.8
+   },
+   "charge-loop": {
+    "len": 0.667,
+    "hit": 0.0
+   },
+   "charge_end": {
+    "len": 0.8
+   },
+   "stagger": {
+    "len": 2.0
+   },
+   "hit": {
+    "len": 0.333
+   },
+   "die": {
+    "len": 2.0
+   },
+   "spawn": {
+    "len": 2.133
+   }
+  },
+  "tris": 2256
  }
 }

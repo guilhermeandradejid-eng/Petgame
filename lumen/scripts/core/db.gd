@@ -245,6 +245,8 @@ const UPGRADES := {
 # atk: lista de ataques. shape: circle (raio r em volta de um ponto a 'off' metros a frente),
 # cone (r, angle), line (len, width). Tempos de acerto vem do manifesto das animacoes quando existem.
 const ENEMIES := {
+	"dummy": {"name": "Boneco de Treino", "hp": 99999.0, "speed": 0.0, "radius": 0.45, "height": 1.7, "cost": 0.0, "gold": 0, "ai": "none",
+		"range": 0.0, "color": "c9a26b", "atk": [], "no_spawn_anim": true, "poise": 1.0},
 	"broto": {"name": "Brotinho", "hp": 36.0, "speed": 3.9, "radius": 0.38, "height": 0.75, "cost": 1.0, "gold": 2, "ai": "melee",
 		"range": 2.0, "color": "5fce7a",
 		"atk": [{"anim": "attack", "hit": 0.42, "len": 0.9, "dmg": 9.0, "shape": "circle", "r": 1.25, "off": 1.1, "lunge": 2.2, "cd": 1.4}]},
@@ -266,7 +268,10 @@ const ENEMIES := {
 	"guardiao": {"name": "Guardião Cristalino", "hp": 2400.0, "speed": 2.7, "radius": 1.5, "height": 3.5, "cost": 99.0, "gold": 120, "ai": "boss", "boss": true,
 		"range": 4.6, "color": "7df9ff", "poise": 1.0,
 		"atk": [{"anim": "attack", "hit": 0.8, "len": 1.7, "dmg": 34.0, "shape": "circle", "r": 4.6, "off": 3.0, "cd": 3.0, "kb": 9.0, "shake": 0.9, "wave": true},
-			{"anim": "attack2", "hit": 0.65, "len": 1.5, "dmg": 28.0, "shape": "cone", "r": 6.0, "angle": 180.0, "cd": 4.5, "kb": 10.0}]},
+			{"anim": "attack2", "hit": 0.65, "len": 1.5, "dmg": 28.0, "shape": "cone", "r": 6.0, "angle": 180.0, "cd": 4.5, "kb": 10.0},
+			{"anim": "charge_start", "hit": 0.8, "len": 0.8, "dmg": 32.0, "shape": "charge", "speed": 17.0, "time": 1.0, "width": 3.2, "cd": 9.0, "kb": 12.0},
+			{"anim": "cast", "hit": 0.9, "len": 1.7, "dmg": 26.0, "shape": "rain", "r": 2.4, "delay": 1.0, "count": 5, "cd": 8.0, "phase": 1},
+			{"anim": "roar", "hit": 0.8, "len": 1.5, "dmg": 0.0, "shape": "summon", "count": 3, "cd": 16.0, "phase": 2}]},
 }
 
 # ------------------------------------------------------------------ biomas

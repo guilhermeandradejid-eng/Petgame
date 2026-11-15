@@ -673,8 +673,8 @@ func _play_loco(l: int, speed: float) -> void:
 		2:
 			visual.play(wt + "_air-loop", 0.12)
 		3:
-			if visual.current != "down" and visual.current != "down-loop":
-				visual.play("down-loop", 0.2)
+			if visual.current != "down" and not visual.current.begins_with("downed"):
+				visual.play("downed-loop", 0.2)
 
 func _on_event_local(kind: String, d: Dictionary) -> void:
 	match kind:

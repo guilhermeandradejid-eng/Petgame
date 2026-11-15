@@ -579,7 +579,7 @@ def tree_c():
         blob(0.66, (1.15, 1.0, 0.65), (-1.3, 0.15, 2.5), seed=13),
         blob(0.62, (1.1, 1.0, 0.7), (0.5, 0.1, 3.35), seed=14),
     )
-    leafy(crown, dark=H('#e0679c'), mid=H('#ff8fb8'), light=H('#ffd0dc'), deep=H('#a8508f'), seed=8)
+    leafy(crown, dark=H('#d95f97'), mid=H('#f783b0'), light=H('#ffb0cc'), deep=H('#a04a8c'), seed=8)
     return ao(merge(wood, crown), 0.55, dist=0.9)
 
 
@@ -1283,7 +1283,7 @@ def bush_b():
     rnd = random.Random(3)
     buds = Geo()
     for x, y, z in ((-0.3, -0.32, 0.5), (0.05, -0.2, 0.62), (-0.42, 0.1, 0.6), (0.5, -0.12, 0.5), (0.72, 0.2, 0.44), (0.2, 0.3, 0.6), (-0.05, 0.1, 0.66)):
-        buds.add(gem((x, y, z), 0.085, 0.07, col=PINK, tip=H('#ffd3e0'), phase=rnd.random()))
+        buds.add(gem((x, y, z * 0.72 - 0.03), 0.085, 0.07, col=PINK, tip=H('#ffd3e0'), phase=rnd.random()))
     return ao(merge(g, buds), 0.55, dist=0.5)
 
 
@@ -1395,7 +1395,7 @@ def shroom(x, y, h, r, seed=0, n=6, cap=H('#2f86b8'), cap_l=H('#63cfe0'), glow=L
     stem.color(H('#e6dcf2')).grad('z', 0, h, (0.62, 0.62, 0.9), (1.0, 0.98, 0.95))
     ph = rnd.random()
     top = lathe([(0.86 * r, h + 0.20 * r), (0.56 * r, h + 0.42 * r * cone / 0.55), (0.0, h + r * cone)], n, 'vcol', phase=ph, smooth=False)
-    top.tint(lambda p, c: mixc(cap_l, cap, min(1.0, (p.z - h - 0.2 * r) / (r * cone - 0.2 * r + 1e-6)) ** 0.7))
+    top.tint(lambda p, c: mixc(cap_l, cap, max(0.0, min(1.0, (p.z - h - 0.2 * r) / (r * cone - 0.2 * r + 1e-6))) ** 0.7))
     facet(top, var=0.07, seed=seed, sun=0.05)
     under = lathe([(0.2 * r, h), (0.95 * r, h - 0.06 * r), (1.0 * r, h + 0.06 * r), (0.86 * r, h + 0.20 * r)], n, 'glow', phase=ph, smooth=False)
     under.tint(lambda p, c: mixc(mul(glow, (0.45, 0.75, 0.85)), glow, min(1.0, math.hypot(p.x, p.y) / r)))
@@ -1701,6 +1701,82 @@ def stump_a():
     g = merge(wood, top, sp, sprout, moss)
     g.add(tuft([(0.6, -0.4, 0.3, 0.06, 20, 0.09, True), (0.7, -0.3, 0.2, 0.05, 80, 0.06, False), (-0.66, 0.36, 0.22, 0.05, 200, 0.07, False)], seed=8))
     return ao(g, 0.6, dist=0.5)
+
+
+# =========================================================================== FUNDO
+@kit.prop('backdrop_tree', tags=['backdrop', 'tree', 'glow'])
+def backdrop_tree():
+    # arvore anciã gigante: tronco torto, raizes grandes, copa em sete massas com flores de lumen
+    t = limb([(0, 0, -0.1), (0.15, 0, 1.3), (-0.3, 0.1, 3.2), (0.1, 0, 5.2), (0.0, 0, 6.8)], [1.6, 1.1, 0.92, 0.8, 0.5], 9)
+    wood = merge(
+        t,
+        limb([(0, 0, 5.0), (-1.6, 0.1, 6.4), (-3.2, 0.0, 7.7)], [0.5, 0.38, 0.2], 6),
+        limb([(0.1, 0, 5.2), (1.6, -0.2, 6.6), (3.1, -0.3, 8.1)], [0.5, 0.36, 0.2], 6),
+        limb([(0, 0, 6.2), (0.5, 0.3, 7.8), (0.3, 0.3, 9.3)], [0.45, 0.3, 0.18], 6),
+        roots(1.35, 6, seed=2, length=1.7, h=1.5, n=5),
+    )
+    bark(wood, seed=3, z0=0, z1=8.0)
+    spec = [(2.7, (1.25, 1.1, 0.70), (0.1, 0.1, 10.2), 41), (2.1, (1.2, 1.05, 0.72), (-3.6, 0.0, 8.5), 42),
+            (2.2, (1.2, 1.05, 0.72), (3.5, -0.3, 8.9), 43), (1.7, (1.2, 1.0, 0.70), (0.5, -1.5, 8.2), 44),
+            (1.5, (1.1, 1.0, 0.75), (-1.9, 0.3, 11.0), 45), (1.4, (1.1, 1.0, 0.75), (2.0, 0.2, 11.2), 46),
+            (1.1, (1.2, 1.0, 0.70), (4.9, -0.2, 7.6), 47)]
+    crown = merge(*[blob(r, sc, c, seed=sd) for r, sc, c, sd in spec])
+    leafy(crown, dark=H('#27807a'), mid=LEAF_M, light=mixc(LEAF_M, LEAF_L, 0.75), deep=H('#1f6068'), seed=7)
+    rnd = random.Random(11)
+    glow = Geo()
+    for i in range(18):
+        r, sc, c, _ = spec[i % len(spec)]
+        a = rnd.uniform(0, TAU)
+        el = rnd.uniform(-0.1, 1.0)
+        d = Vector((math.cos(a) * math.cos(el), -abs(math.sin(a) * math.cos(el)) if i % 3 else math.sin(a) * math.cos(el), math.sin(el)))
+        pos = (c[0] + d.x * r * sc[0] * 0.97, c[1] + d.y * r * sc[1] * 0.97, c[2] + max(-0.38, d.z) * r * sc[2] * 0.97)
+        col = LUMEN if i % 4 else H('#ffd0e6')
+        glow.add(gem(pos, 0.17, 0.2, 'glow', col=col, n=4, phase=rnd.random()))
+    for x, y, z, ln in ((-3.9, -0.6, 7.9, 1.9), (-2.4, -0.9, 7.6, 1.2), (1.2, -1.9, 7.6, 2.2), (3.0, -1.0, 8.0, 1.5), (4.8, -0.5, 7.2, 1.1)):
+        st = tube([(x, y, z), (x + 0.05, y, z - ln * 0.5), (x, y, z - ln)], [0.035, 0.03, 0.02], 3, 'vcol_wind', cap_a=False).flat().color(LEAF_D)
+        glow.add(st)
+        glow.add(gem((x, y, z - ln - 0.12), 0.13, 0.2, 'glow', col=LUMEN, n=4))
+    return ao(merge(wood, crown, glow), 0.6, dist=1.6)
+
+
+@kit.prop('backdrop_tower', tags=['backdrop', 'ruin', 'glow'])
+def backdrop_tower():
+    # torre em ruinas: topo arrancado, cristais de lumen brotando da cratera, janelas ainda acesas
+    n = 8
+    body = merge(
+        stack([(0.0, 2.15, 2.15), (0.5, 2.05, 2.05), (0.62, 1.9, 1.9)], n, phase=0.5),
+        drum(0.6, 3.6, 1.82, 1.72, n, phase=0.5, ch=0.06),
+        stack([(3.6, 1.86, 1.86), (3.8, 1.92, 1.92), (3.95, 1.74, 1.74)], n, phase=0.5),
+        drum(3.95, 6.9, 1.66, 1.56, n, phase=0.5, off=(0.05, 0.0), ch=0.06),
+        stack([(6.9, 1.70, 1.70), (7.08, 1.76, 1.76), (7.22, 1.58, 1.58)], n, phase=0.5),
+        broken_drum(7.2, 9.7, 1.5, n, seed=4, jag=2.1, phase=0.5, off=(0.03, 0.0)),
+    )
+    stub = masonry([(0.0, 0.8, [1.8, 2.6, 3.5]), (0.8, 1.6, [1.8, 2.3, 3.2]), (1.6, 2.4, [1.8, 2.7])], -0.45, 0.45, seed=6, xlim=(-9, 9),
+                   chip_top=lambda xc, z1: True, bevel=0.05)
+    stone = merge(body, stub, rubble([(-2.5, -1.0, 0.9, 0.6, 0.5, 20, 12), (-1.9, -1.9, 0.6, 0.5, 0.4, -30, -10), (2.6, -1.2, 0.7, 0.5, 0.4, 40, 15)], seed=3))
+    frames = Geo()
+    panes = Geo()
+    for yaw, z0, w in ((0, 4.5, 0.36), (45, 1.6, 0.32), (-45, 7.4, 0.3)):
+        rr = 1.80 - 0.035 * z0
+        y = -rr * math.cos(math.pi / 8) - 0.03
+        pane = poly_extrude([(-w, z0), (w, z0), (w, z0 + 0.8), (w * 0.62, z0 + 1.12), (0, z0 + 1.26), (-w * 0.62, z0 + 1.12), (-w, z0 + 0.8)], 0.08, 'glow')
+        pane.tint(lambda p, c, z0=z0: mixc(mul(LUMEN, (0.25, 0.6, 0.8)), LUMEN, min(1.0, max(0.0, (p.z - z0) / 1.26))))
+        panes.add(pane.move(0, y, 0).rot('Z', yaw))
+        fr = merge(arch_stones(0.0, z0 + 0.8, w, w + 0.22, y - 0.12, y + 0.2, n=5, seed=int(z0 * 10), key=0.06),
+                   block(-w - 0.24, w + 0.24, y - 0.16, y + 0.2, z0 - 0.16, z0, seed=2, j=0.01),
+                   block(-w - 0.2, -w, y - 0.1, y + 0.2, z0, z0 + 0.8, seed=3, j=0.01), block(w, w + 0.2, y - 0.1, y + 0.2, z0, z0 + 0.8, seed=4, j=0.01))
+        frames.add(fr.rot('Z', yaw))
+    stone.add(frames)
+    _wall_paint(stone, 9, 9.7, moss=0.55)
+    cr = merge(crystal(2.9, 0.52, 6, seed=1, lean=(0.05, -0.04), pos=(0.1, -0.1, 8.0)),
+               crystal(2.0, 0.38, 5, seed=2, lean=(-0.3, 0.05), pos=(-0.55, 0.2, 7.9)),
+               crystal(1.6, 0.32, 5, seed=3, lean=(0.36, -0.2), pos=(0.65, -0.4, 7.9)))
+    yf = -1.5 * math.cos(math.pi / 8)
+    g = merge(stone, panes, cr,
+              ivy(-0.5, 8.2, 3.2, 1.3, yf - 0.1, seed=5, size=0.5, drift=0.3),
+              ivy(0.5, 3.5, 2.4, 1.2, -1.72 * math.cos(math.pi / 8) - 0.1, seed=8, size=0.5, drift=-0.4),
+              ivy(2.5, 2.5, 1.6, 0.9, -0.52, seed=3, size=0.42))
+    return ao(g, 0.65, dist=1.4)
 
 
 

@@ -236,7 +236,7 @@ def down():
 
 
 def down_loop():
-    return Clip('down', 50, [
+    return Clip('downed', 50, [
         KP(0, LYING),
         KP(25, merged(LYING, {'chest': (11, 0, 0), 'head': (12, 0, 12), 'arm.L': (-6, 64, 0)})),
     ], loop=True, base=LYING, ground=False)

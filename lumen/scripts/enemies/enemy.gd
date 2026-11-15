@@ -97,7 +97,10 @@ func _ready() -> void:
 
 func _build_visual() -> void:
 	var path := "res://assets/models/enemy_%s.glb" % kind
-	if ResourceLoader.exists(path):
+	if is_dummy and KitLib.has("props", "dummy"):
+		model = Node3D.new()
+		model.add_child(KitLib.make("props", "dummy"))
+	elif ResourceLoader.exists(path):
 		model = (load(path) as PackedScene).instantiate()
 		model.rotation.y = PI
 		Mats.apply_env(model)
@@ -141,8 +144,17 @@ func _fallback_visual() -> Node3D:
 	return root
 
 # ------------------------------------------------------------------ animacao
+func _res(a: String) -> String:
+	if anim == null:
+		return ""
+	if anim.has_animation(a):
+		return a
+	var b := a.trim_suffix("-loop")
+	return b if anim.has_animation(b) else ""
+
 func play(a: String, blend: float = 0.12, restart: bool = false) -> void:
-	if anim == null or not anim.has_animation(a):
+	a = _res(a)
+	if a == "":
 		return
 	if cur_anim == a and anim.is_playing() and not restart:
 		return
@@ -152,7 +164,8 @@ func play(a: String, blend: float = 0.12, restart: bool = false) -> void:
 		anim.seek(0.0, true)
 
 func anim_len(a: String, fallback: float = 0.6) -> float:
-	if anim and anim.has_animation(a):
+	a = _res(a)
+	if a != "":
 		return anim.get_animation(a).length
 	return fallback
 
@@ -483,7 +496,7 @@ func _stun(t: float) -> void:
 
 func net_flags() -> int:
 	var f := 0
-	if st == "chase" and cur_anim == "move-loop":
+	if st == "chase" and cur_anim.begins_with("move"):
 		f |= 1
 	if slow_t > 0.0:
 		f |= 2
@@ -525,11 +538,11 @@ func on_attack(i: int, pos: Vector3, dir: Vector3, tpos: Vector3) -> void:
 	var center := pos + dir * float(a.get("off", 0.0)) + (dir * float(a.get("lunge", 0.0)) * 0.8 if a.has("lunge") else Vector3.ZERO)
 	match shape:
 		"circle":
-			Fx.telegraph(center, float(a["r"]), hit_t, col, false)
+			Fx.telegraph(center, float(a["r"]), hit_t, col, false, null, self)
 		"cone":
-			Fx.telegraph_cone(pos, dir, float(a["r"]), float(a["angle"]), hit_t, col)
+			Fx.telegraph_cone(pos, dir, float(a["r"]), float(a["angle"]), hit_t, col, self)
 		"charge":
-			Fx.telegraph_line(pos, dir, float(a["speed"]) * float(a["time"]) * 0.9, float(a["width"]), hit_t, col)
+			Fx.telegraph_line(pos, dir, float(a["speed"]) * float(a["time"]) * 0.9, float(a["width"]), hit_t, col, self)
 		"proj":
 			Fx.charge_glow(self, hit_t, Color(str(a.get("color", "ff9a3d"))))
 		"rain", "summon":
@@ -628,7 +641,8 @@ func _flash() -> void:
 	if _flash_tw:
 		_flash_tw.kill()
 	_flash_tw = create_tween()
-	_flash_tw.tween_method(func(v: float) -> void: Mats.set_instance_param(model, &"flash", v), 0.9, 0.0, 0.14)
+	var rest_lvl := float(get_meta("st_lvl", 0.0))
+	_flash_tw.tween_method(func(v: float) -> void: Mats.set_instance_param(model, &"flash", v), 0.9, rest_lvl, 0.14)
 	var tw := create_tween()
 	model.scale = Vector3(1.12, 0.9, 1.12) * (1.25 if champion else 1.0)
 	tw.tween_property(model, "scale", Vector3.ONE * (1.25 if champion else 1.0), 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -645,7 +659,7 @@ func on_die() -> void:
 	play("die", 0.06, true)
 	Sfx.play("enemy_die", global_position, 0.8)
 	Fx.burst(global_position + Vector3(0, height * 0.5, 0), Color(str(def.get("color", "ffffff"))), radius * 2.2)
-	var t := anim_len("die", 0.5) if anim and anim.has_animation("die") else 0.15
+	var t := anim_len("die", 0.5) if _res("die") != "" else 0.15
 	var tw := create_tween()
 	tw.tween_interval(minf(t, 1.6))
 	tw.tween_method(func(v: float) -> void: Mats.set_instance_param(model, &"dissolve", v), 0.0, 1.0, 0.5)

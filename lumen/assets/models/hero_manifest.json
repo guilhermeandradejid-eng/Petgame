@@ -14,12 +14,150 @@
   "tris": 762,
   "has_top": true
  },
+ "hair_tigela": {
+  "slot": "hair",
+  "label": "Tigela",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 282,
+  "has_top": true
+ },
+ "hair_rabo": {
+  "slot": "hair",
+  "label": "Rabo de Cavalo",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 740
+ },
+ "hair_liso": {
+  "slot": "hair",
+  "label": "Liso Comprido",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 604
+ },
+ "hair_maria": {
+  "slot": "hair",
+  "label": "Maria-Chiquinha",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 640
+ },
+ "hair_coque": {
+  "slot": "hair",
+  "label": "Coquinhos",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 618,
+  "has_top": true
+ },
+ "hair_moicano": {
+  "slot": "hair",
+  "label": "Moicano",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 602,
+  "has_top": true
+ },
+ "hair_ondulado": {
+  "slot": "hair",
+  "label": "Chanel Ondulado",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 727
+ },
+ "hair_espetado": {
+  "slot": "hair",
+  "label": "Espetado",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 780,
+  "has_top": true
+ },
+ "hair_black": {
+  "slot": "hair",
+  "label": "Black Power",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 882,
+  "has_top": true
+ },
+ "hair_raspado": {
+  "slot": "hair",
+  "label": "Raspadinho",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 336
+ },
  "top_tunica": {
   "slot": "top",
   "label": "Túnica de Aventureiro",
   "rarity": 0,
   "cost": 0,
   "tris": 526
+ },
+ "top_gibao": {
+  "slot": "top",
+  "label": "Gibão de Couro",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 875
+ },
+ "top_quimono": {
+  "slot": "top",
+  "label": "Quimono de Lutador",
+  "cost": 90,
+  "rarity": 0,
+  "tris": 781
+ },
+ "top_moletom": {
+  "slot": "top",
+  "label": "Moletom com Capuz",
+  "cost": 120,
+  "rarity": 0,
+  "tris": 768
+ },
+ "top_vestido": {
+  "slot": "top",
+  "label": "Vestido de Camponesa",
+  "cost": 110,
+  "rarity": 0,
+  "tris": 848
+ },
+ "top_manto": {
+  "slot": "top",
+  "label": "Manto de Mago",
+  "rarity": 1,
+  "cost": 220,
+  "tris": 806
+ },
+ "top_placas": {
+  "slot": "top",
+  "label": "Armadura de Placas",
+  "rarity": 1,
+  "cost": 280,
+  "tris": 948
+ },
+ "top_pirata": {
+  "slot": "top",
+  "label": "Colete de Pirata",
+  "rarity": 1,
+  "cost": 200,
+  "tris": 763
+ },
+ "top_casaca": {
+  "slot": "top",
+  "label": "Casaca Real",
+  "rarity": 2,
+  "cost": 450,
+  "tris": 992
+ },
+ "top_cristal": {
+  "slot": "top",
+  "label": "Armadura de Cristal",
+  "rarity": 3,
+  "cost": 1200,
+  "tris": 815
  },
  "sword_ferro": {
   "slot": "weapon",
@@ -28,5 +166,93 @@
   "rarity": 0,
   "cost": 0,
   "tris": 104
+ },
+ "sword_runa": {
+  "slot": "weapon",
+  "label": "Lâmina Rúnica",
+  "wt": "sword",
+  "rarity": 2,
+  "cost": 450,
+  "tris": 364
+ },
+ "sword_solar": {
+  "slot": "weapon",
+  "label": "Lâmina Solar",
+  "wt": "sword",
+  "rarity": 3,
+  "cost": 900,
+  "tris": 500
+ },
+ "bow_madeira": {
+  "slot": "weapon",
+  "label": "Arco de Madeira",
+  "wt": "bow",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 456
+ },
+ "bow_elfico": {
+  "slot": "weapon",
+  "label": "Arco Élfico",
+  "wt": "bow",
+  "rarity": 1,
+  "cost": 220,
+  "tris": 600
+ },
+ "bow_celeste": {
+  "slot": "weapon",
+  "label": "Arco Celeste",
+  "wt": "bow",
+  "rarity": 3,
+  "cost": 950,
+  "tris": 792
+ },
+ "staff_aprendiz": {
+  "slot": "weapon",
+  "label": "Cajado de Aprendiz",
+  "wt": "staff",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 390
+ },
+ "staff_lunar": {
+  "slot": "weapon",
+  "label": "Cajado Lunar",
+  "wt": "staff",
+  "rarity": 2,
+  "cost": 420,
+  "tris": 358
+ },
+ "staff_lumen": {
+  "slot": "weapon",
+  "label": "Cetro do Lúmen",
+  "wt": "staff",
+  "rarity": 3,
+  "cost": 1000,
+  "tris": 572
+ },
+ "hammer_ferro": {
+  "slot": "weapon",
+  "label": "Maça e Broquel",
+  "wt": "hammer",
+  "rarity": 0,
+  "cost": 0,
+  "tris": 708
+ },
+ "hammer_cavaleiro": {
+  "slot": "weapon",
+  "label": "Martelo de Cavaleiro",
+  "wt": "hammer",
+  "rarity": 1,
+  "cost": 260,
+  "tris": 688
+ },
+ "hammer_aurora": {
+  "slot": "weapon",
+  "label": "Martelo da Aurora",
+  "wt": "hammer",
+  "rarity": 3,
+  "cost": 1000,
+  "tris": 752
  }
 }

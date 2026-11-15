@@ -134,11 +134,21 @@ func weapon_type() -> String:
 
 # ------------------------------------------------------------------ animacao
 func has(a: String) -> bool:
-	return anim != null and anim.has_animation(a)
+	return _res(a) != ""
+
+## O importador do Godot remove o sufixo "-loop" do nome: aceita as duas formas.
+func _res(a: String) -> String:
+	if anim == null:
+		return ""
+	if anim.has_animation(a):
+		return a
+	var b := a.trim_suffix("-loop")
+	return b if anim.has_animation(b) else ""
 
 ## Toca um clipe em loop/continuo (nao reinicia se ja estiver tocando).
 func play(a: String, blend: float = 0.15, speed: float = 1.0) -> void:
-	if not has(a):
+	a = _res(a)
+	if a == "":
 		return
 	if current == a and anim.is_playing():
 		anim.speed_scale = speed if _stop_t <= 0.0 else anim.speed_scale
@@ -151,7 +161,8 @@ func play(a: String, blend: float = 0.15, speed: float = 1.0) -> void:
 
 ## Toca do comeco, mesmo que seja o mesmo clipe (ataques, esquiva).
 func play_once(a: String, blend: float = 0.08, speed: float = 1.0) -> void:
-	if not has(a):
+	a = _res(a)
+	if a == "":
 		return
 	current = a
 	_saved_speed = speed
@@ -160,7 +171,8 @@ func play_once(a: String, blend: float = 0.08, speed: float = 1.0) -> void:
 	anim.speed_scale = speed if _stop_t <= 0.0 else 0.02
 
 func anim_len(a: String) -> float:
-	return anim.get_animation(a).length if has(a) else 0.5
+	a = _res(a)
+	return anim.get_animation(a).length if a != "" else 0.5
 
 ## Congela a animacao por um instante (impacto de golpe).
 func hitstop(t: float) -> void:

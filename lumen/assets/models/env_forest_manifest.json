@@ -1,0 +1,631 @@
+{
+ "rock_a": {
+  "tags": [
+   "rock",
+   "large"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.95,
+   "h": 2.2
+  },
+  "tris": 110,
+  "size": [
+   2.567,
+   1.67,
+   2.447
+  ]
+ },
+ "rock_b": {
+  "tags": [
+   "rock",
+   "medium"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.9,
+   "h": 1.0
+  },
+  "tris": 116,
+  "size": [
+   2.423,
+   1.65,
+   1.195
+  ]
+ },
+ "rock_c": {
+  "tags": [
+   "rock",
+   "small"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.5,
+   "h": 0.65
+  },
+  "tris": 47,
+  "size": [
+   1.149,
+   0.929,
+   0.748
+  ]
+ },
+ "pebble_a": {
+  "tags": [
+   "pebble"
+  ],
+  "collider": null,
+  "tris": 51,
+  "size": [
+   0.491,
+   0.406,
+   0.114
+  ]
+ },
+ "pebble_b": {
+  "tags": [
+   "pebble"
+  ],
+  "collider": null,
+  "tris": 67,
+  "size": [
+   0.529,
+   0.471,
+   0.1
+  ]
+ },
+ "tree_a": {
+  "tags": [
+   "tree",
+   "round"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.38,
+   "h": 4.8
+  },
+  "tris": 513,
+  "size": [
+   4.066,
+   2.826,
+   4.887
+  ]
+ },
+ "tree_b": {
+  "tags": [
+   "tree",
+   "tall"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.32,
+   "h": 5.9
+  },
+  "tris": 259,
+  "size": [
+   3.287,
+   3.155,
+   5.95
+  ]
+ },
+ "tree_c": {
+  "tags": [
+   "tree",
+   "blossom"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.3,
+   "h": 3.6
+  },
+  "tris": 484,
+  "size": [
+   4.25,
+   2.114,
+   3.722
+  ]
+ },
+ "wall_cliff_a": {
+  "tags": [
+   "wall",
+   "cliff"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 4.0,
+   "d": 2.0,
+   "h": 4.6
+  },
+  "tris": 541,
+  "size": [
+   4.0,
+   2.055,
+   4.83
+  ]
+ },
+ "wall_cliff_b": {
+  "tags": [
+   "wall",
+   "cliff"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 4.0,
+   "d": 2.0,
+   "h": 5.3
+  },
+  "tris": 638,
+  "size": [
+   4.0,
+   2.187,
+   5.53
+  ]
+ },
+ "wall_cliff_c": {
+  "tags": [
+   "wall",
+   "cliff"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 4.0,
+   "d": 2.0,
+   "h": 3.9
+  },
+  "tris": 710,
+  "size": [
+   4.0,
+   2.101,
+   4.13
+  ]
+ },
+ "wall_ruin_a": {
+  "tags": [
+   "wall",
+   "ruin"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 4.0,
+   "d": 1.5,
+   "h": 4.8
+  },
+  "tris": 779,
+  "size": [
+   4.0,
+   1.442,
+   5.215
+  ]
+ },
+ "wall_ruin_b": {
+  "tags": [
+   "wall",
+   "ruin"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 4.0,
+   "d": 1.5,
+   "h": 4.8
+  },
+  "tris": 993,
+  "size": [
+   4.0,
+   1.708,
+   4.81
+  ]
+ },
+ "pillar_a": {
+  "tags": [
+   "pillar",
+   "whole"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.52,
+   "h": 3.4
+  },
+  "tris": 383,
+  "size": [
+   1.226,
+   1.3,
+   3.451
+  ]
+ },
+ "pillar_b": {
+  "tags": [
+   "pillar",
+   "broken"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.6,
+   "h": 1.9
+  },
+  "tris": 304,
+  "size": [
+   2.402,
+   1.699,
+   2.213
+  ]
+ },
+ "pillar_c": {
+  "tags": [
+   "pillar",
+   "fallen"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 3.3,
+   "d": 1.0,
+   "h": 0.7
+  },
+  "tris": 281,
+  "size": [
+   3.542,
+   1.329,
+   1.061
+  ]
+ },
+ "ruin_arch": {
+  "tags": [
+   "ruin",
+   "arch"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 3.7,
+   "d": 0.9,
+   "h": 3.7
+  },
+  "tris": 404,
+  "size": [
+   4.24,
+   1.982,
+   3.869
+  ]
+ },
+ "ruin_statue": {
+  "tags": [
+   "ruin",
+   "statue"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.62,
+   "h": 3.0
+  },
+  "tris": 446,
+  "size": [
+   1.491,
+   1.526,
+   2.95
+  ]
+ },
+ "ruin_stairs": {
+  "tags": [
+   "ruin",
+   "stairs"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 2.5,
+   "d": 2.5,
+   "h": 1.0
+  },
+  "tris": 305,
+  "size": [
+   2.847,
+   2.576,
+   1.659
+  ]
+ },
+ "bush_a": {
+  "tags": [
+   "bush"
+  ],
+  "collider": null,
+  "tris": 249,
+  "size": [
+   1.928,
+   1.218,
+   1.02
+  ]
+ },
+ "bush_b": {
+  "tags": [
+   "bush",
+   "blossom"
+  ],
+  "collider": null,
+  "tris": 216,
+  "size": [
+   1.628,
+   0.966,
+   0.515
+  ]
+ },
+ "grass_a": {
+  "tags": [
+   "grass"
+  ],
+  "collider": null,
+  "tris": 30,
+  "size": [
+   0.24,
+   0.242,
+   0.42
+  ]
+ },
+ "grass_b": {
+  "tags": [
+   "grass"
+  ],
+  "collider": null,
+  "tris": 33,
+  "size": [
+   0.225,
+   0.257,
+   0.24
+  ]
+ },
+ "grass_c": {
+  "tags": [
+   "grass"
+  ],
+  "collider": null,
+  "tris": 36,
+  "size": [
+   0.196,
+   0.22,
+   0.62
+  ]
+ },
+ "flower_a": {
+  "tags": [
+   "flower",
+   "pink"
+  ],
+  "collider": null,
+  "tris": 77,
+  "size": [
+   0.364,
+   0.349,
+   0.4
+  ]
+ },
+ "flower_b": {
+  "tags": [
+   "flower",
+   "white"
+  ],
+  "collider": null,
+  "tris": 113,
+  "size": [
+   0.461,
+   0.438,
+   0.457
+  ]
+ },
+ "flower_c": {
+  "tags": [
+   "flower",
+   "glow",
+   "lumen"
+  ],
+  "collider": null,
+  "tris": 67,
+  "size": [
+   0.315,
+   0.286,
+   0.419
+  ]
+ },
+ "mushroom_a": {
+  "tags": [
+   "mushroom",
+   "glow"
+  ],
+  "light": {
+   "color": "#7df9ff",
+   "energy": 0.9,
+   "height": 0.4,
+   "range": 3.2
+  },
+  "collider": null,
+  "tris": 276,
+  "size": [
+   0.827,
+   0.522,
+   0.552
+  ]
+ },
+ "mushroom_b": {
+  "tags": [
+   "mushroom",
+   "glow"
+  ],
+  "light": {
+   "color": "#9fe8ff",
+   "energy": 0.8,
+   "height": 0.5,
+   "range": 3.0
+  },
+  "collider": null,
+  "tris": 301,
+  "size": [
+   0.728,
+   0.569,
+   0.681
+  ]
+ },
+ "fern_a": {
+  "tags": [
+   "fern"
+  ],
+  "collider": null,
+  "tris": 129,
+  "size": [
+   1.307,
+   1.273,
+   0.403
+  ]
+ },
+ "reed_a": {
+  "tags": [
+   "reed"
+  ],
+  "collider": null,
+  "tris": 201,
+  "size": [
+   1.302,
+   1.113,
+   1.25
+  ]
+ },
+ "tile_a": {
+  "tags": [
+   "tile"
+  ],
+  "collider": null,
+  "tris": 38,
+  "size": [
+   1.34,
+   1.31,
+   0.1
+  ]
+ },
+ "tile_b": {
+  "tags": [
+   "tile"
+  ],
+  "collider": null,
+  "tris": 36,
+  "size": [
+   1.11,
+   1.0,
+   0.045
+  ]
+ },
+ "tile_c": {
+  "tags": [
+   "tile"
+  ],
+  "collider": null,
+  "tris": 99,
+  "size": [
+   1.159,
+   1.17,
+   0.045
+  ]
+ },
+ "light_lantern": {
+  "tags": [
+   "light",
+   "lantern"
+  ],
+  "light": {
+   "color": "#ffc46b",
+   "energy": 1.6,
+   "height": 1.05,
+   "range": 6.5
+  },
+  "collider": {
+   "type": "cyl",
+   "r": 0.4,
+   "h": 1.6
+  },
+  "tris": 219,
+  "size": [
+   0.965,
+   0.758,
+   1.698
+  ]
+ },
+ "light_flower": {
+  "tags": [
+   "light",
+   "lumen"
+  ],
+  "light": {
+   "color": "#7df9ff",
+   "energy": 1.4,
+   "height": 1.35,
+   "range": 5.5
+  },
+  "collider": {
+   "type": "cyl",
+   "r": 0.2,
+   "h": 1.8
+  },
+  "tris": 220,
+  "size": [
+   1.266,
+   1.0,
+   1.878
+  ]
+ },
+ "log_a": {
+  "tags": [
+   "log",
+   "fallen"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 2.7,
+   "d": 0.9,
+   "h": 0.7
+  },
+  "tris": 265,
+  "size": [
+   2.555,
+   1.339,
+   0.669
+  ]
+ },
+ "stump_a": {
+  "tags": [
+   "log",
+   "stump"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.52,
+   "h": 0.65
+  },
+  "tris": 264,
+  "size": [
+   1.671,
+   1.44,
+   1.02
+  ]
+ },
+ "backdrop_tree": {
+  "tags": [
+   "backdrop",
+   "tree",
+   "glow"
+  ],
+  "collider": null,
+  "tris": 1140,
+  "size": [
+   12.222,
+   6.119,
+   12.254
+  ]
+ },
+ "backdrop_tower": {
+  "tags": [
+   "backdrop",
+   "ruin",
+   "glow"
+  ],
+  "collider": null,
+  "tris": 1100,
+  "size": [
+   6.526,
+   4.246,
+   10.9
+  ]
+ }
+}

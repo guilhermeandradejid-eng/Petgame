@@ -1,0 +1,418 @@
+{
+ "cottage_a": {
+  "tags": [
+   "building",
+   "cottage"
+  ],
+  "light": {
+   "color": "#ffc46b",
+   "energy": 1.2,
+   "height": 1.8,
+   "range": 5.0,
+   "offset": [
+    -0.05,
+    -2.1
+   ]
+  },
+  "collider": {
+   "type": "box",
+   "w": 4.9,
+   "d": 3.9,
+   "h": 3.2
+  },
+  "tris": 1171,
+  "size": [
+   5.599,
+   4.808,
+   5.98
+  ]
+ },
+ "cottage_b": {
+  "tags": [
+   "building",
+   "cottage"
+  ],
+  "light": {
+   "color": "#ffc46b",
+   "energy": 1.2,
+   "height": 1.8,
+   "range": 5.0,
+   "offset": [
+    0.2,
+    -2.0
+   ]
+  },
+  "collider": {
+   "type": "box",
+   "w": 4.4,
+   "d": 3.6,
+   "h": 3.2
+  },
+  "tris": 1121,
+  "size": [
+   5.845,
+   4.551,
+   6.06
+  ]
+ },
+ "tent": {
+  "tags": [
+   "building",
+   "tent"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 2.0,
+   "h": 3.0
+  },
+  "tris": 202,
+  "size": [
+   5.229,
+   3.954,
+   3.8
+  ]
+ },
+ "lantern_tree": {
+  "tags": [
+   "landmark",
+   "tree"
+  ],
+  "light": {
+   "color": "#ffc46b",
+   "energy": 2.4,
+   "height": 3.2,
+   "range": 12.0
+  },
+  "lanterns": [
+   [
+    -2.6,
+    -0.5,
+    3.4499999999999997
+   ],
+   [
+    -1.3,
+    -1.25,
+    3.0
+   ],
+   [
+    0.55,
+    -2.2,
+    3.35
+   ],
+   [
+    1.7,
+    -1.0,
+    2.85
+   ],
+   [
+    2.95,
+    -0.6,
+    3.65
+   ],
+   [
+    -0.45,
+    -1.95,
+    3.9
+   ]
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 1.3,
+   "h": 3.0
+  },
+  "tris": 1473,
+  "size": [
+   8.79,
+   5.143,
+   8.123
+  ]
+ },
+ "well": {
+  "tags": [
+   "well"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 1.0,
+   "h": 2.9
+  },
+  "tris": 399,
+  "size": [
+   2.54,
+   1.807,
+   3.164
+  ]
+ },
+ "fence": {
+  "tags": [
+   "fence"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 2.0,
+   "d": 0.25,
+   "h": 1.0
+  },
+  "tris": 100,
+  "size": [
+   2.109,
+   0.256,
+   1.12
+  ]
+ },
+ "fence_post": {
+  "tags": [
+   "fence_post"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.13,
+   "h": 1.1
+  },
+  "tris": 20,
+  "size": [
+   0.181,
+   0.173,
+   1.12
+  ]
+ },
+ "lamp_post": {
+  "tags": [
+   "lamp_post",
+   "light"
+  ],
+  "light": {
+   "color": "#ffc46b",
+   "energy": 2.0,
+   "height": 2.45,
+   "range": 8.0,
+   "offset": [
+    0.62,
+    0.0
+   ]
+  },
+  "collider": {
+   "type": "cyl",
+   "r": 0.16,
+   "h": 3.0
+  },
+  "tris": 236,
+  "size": [
+   1.146,
+   0.589,
+   3.2
+  ]
+ },
+ "gate": {
+  "tags": [
+   "gate"
+  ],
+  "posts": [
+   [
+    -1.55,
+    0.0
+   ],
+   [
+    1.55,
+    0.0
+   ]
+  ],
+  "post_r": 0.26,
+  "clear_w": 2.6,
+  "light": {
+   "color": "#ffc46b",
+   "energy": 1.6,
+   "height": 2.4,
+   "range": 7.0
+  },
+  "collider": null,
+  "tris": 532,
+  "size": [
+   5.013,
+   1.04,
+   3.975
+  ]
+ },
+ "market_crates": {
+  "tags": [
+   "market_crates",
+   "market"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 1.7,
+   "d": 1.1,
+   "h": 0.9
+  },
+  "tris": 524,
+  "size": [
+   1.951,
+   1.446,
+   0.654
+  ]
+ },
+ "cart": {
+  "tags": [
+   "cart"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 2.7,
+   "d": 1.3,
+   "h": 1.0
+  },
+  "tris": 488,
+  "size": [
+   2.778,
+   1.51,
+   1.05
+  ]
+ },
+ "hay": {
+  "tags": [
+   "hay"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 1.5,
+   "d": 1.0,
+   "h": 1.0
+  },
+  "tris": 302,
+  "size": [
+   1.729,
+   1.205,
+   1.684
+  ]
+ },
+ "flower_bed": {
+  "tags": [
+   "flower_bed"
+  ],
+  "collider": {
+   "type": "box",
+   "w": 1.8,
+   "d": 0.75,
+   "h": 0.5
+  },
+  "tris": 492,
+  "size": [
+   1.835,
+   0.755,
+   0.66
+  ]
+ },
+ "plaza_tile": {
+  "tags": [
+   "plaza_tile",
+   "tile"
+  ],
+  "collider": null,
+  "tris": 142,
+  "size": [
+   2.0,
+   2.0,
+   0.067
+  ]
+ },
+ "bunting": {
+  "tags": [
+   "bunting"
+  ],
+  "attach": [
+   [
+    -2.0,
+    0.0,
+    0.85
+   ],
+   [
+    2.0,
+    0.0,
+    0.85
+   ]
+  ],
+  "collider": null,
+  "tris": 78,
+  "size": [
+   4.009,
+   0.021,
+   0.861
+  ]
+ },
+ "stone_stairs": {
+  "tags": [
+   "stone_stairs"
+  ],
+  "ramp": {
+   "w": 2.0,
+   "d": 1.4,
+   "h": 0.8
+  },
+  "collider": null,
+  "tris": 175,
+  "size": [
+   2.821,
+   1.557,
+   1.01
+  ]
+ },
+ "mailbox": {
+  "tags": [
+   "mailbox"
+  ],
+  "collider": {
+   "type": "cyl",
+   "r": 0.2,
+   "h": 1.25
+  },
+  "tris": 187,
+  "size": [
+   0.509,
+   0.677,
+   1.409
+  ]
+ },
+ "windmill": {
+  "tags": [
+   "backdrop",
+   "windmill"
+  ],
+  "blades": {
+   "piece": "windmill_blades",
+   "pos": [
+    0.0,
+    -2.05,
+    6.7
+   ],
+   "axis": [
+    0,
+    1,
+    0
+   ]
+  },
+  "collider": null,
+  "tris": 1032,
+  "size": [
+   5.081,
+   5.081,
+   9.1
+  ]
+ },
+ "windmill_blades": {
+  "tags": [
+   "windmill_blades"
+  ],
+  "spin_axis": [
+   0,
+   1,
+   0
+  ],
+  "collider": null,
+  "tris": 306,
+  "size": [
+   7.659,
+   0.6,
+   3.831
+  ]
+ }
+}
