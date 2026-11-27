@@ -1,0 +1,104 @@
+config_version=5
+
+[application]
+config/name="prova-reino-em-guerra"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.7")
+
+[animation]
+fps=60
+
+[display]
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/vsync/vsync_mode=0
+
+[rendering]
+anti_aliasing/quality/msaa_3d=2
+textures/vram_compression/import_etc2_astc=true
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=3
+
+[shader_globals]
+
+escuro_mundo={
+"type": "float",
+"value": 0.0
+}
+
+curva_dir={
+"type": "vec2",
+"value": Vector2(0, -1)
+}
+nevoa_alt={
+"type": "vec4",
+"value": Vector4(0.6, -2.5, 14, 0)
+}
+
+sol_dir={
+"type": "vec3",
+"value": Vector3(0.6, 0.45, 0.3)
+}
+foco={
+"type": "vec3",
+"value": Vector3(0, 0, 0)
+}
+curva_k={
+"type": "float",
+"value": 0.0
+}
+curva_r0={
+"type": "float",
+"value": 10.0
+}
+escuro_base={
+"type": "float",
+"value": 0.6
+}
+escuro_faixa={
+"type": "float",
+"value": 2.6
+}
+papel_frio={
+"type": "color",
+"value": Color(0.557, 0.592, 0.639, 1)
+}
+papel_quente={
+"type": "color",
+"value": Color(0.89, 0.788, 0.604, 1)
+}
+frente_x={
+"type": "vec2",
+"value": Vector2(-4, 6)
+}
+alvo_px={
+"type": "float",
+"value": 4.5
+}
+tempo={
+"type": "float",
+"value": 0.0
+}
+vento={
+"type": "vec2",
+"value": Vector2(1, 0)
+}
+nevoa={
+"type": "vec4",
+"value": Vector4(18, 40, 0.85, 0)
+}
+n_luzes={
+"type": "int",
+"value": 0
+}
+luzes={
+"type": "sampler2D",
+"value": ""
+}
+conv_cor={
+"type": "float",
+"value": 0.0
+}
+grao={
+"type": "sampler2D",
+"value": ""
+}

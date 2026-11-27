@@ -1,0 +1,58 @@
+{
+ "escorador": {
+  "tris": 29382,
+  "ossos": 27,
+  "pecas": 80,
+  "acoes": 2,
+  "t": 1.2,
+  "kb": 1318.5
+ },
+ "cristaleira": {
+  "tris": 24908,
+  "ossos": 29,
+  "pecas": 64,
+  "acoes": 2,
+  "t": 1.11,
+  "kb": 1188.7
+ },
+ "coveira": {
+  "tris": 25804,
+  "ossos": 28,
+  "pecas": 61,
+  "acoes": 2,
+  "t": 1.12,
+  "kb": 1161.2
+ },
+ "gancheiro": {
+  "tris": 28352,
+  "ossos": 29,
+  "pecas": 53,
+  "acoes": 3,
+  "t": 1.17,
+  "kb": 1279.4
+ },
+ "ouvidor": {
+  "tris": 12884,
+  "ossos": 14,
+  "pecas": 47,
+  "acoes": 8,
+  "t": 0.72,
+  "kb": 634.7
+ },
+ "bocalume": {
+  "tris": 12664,
+  "ossos": 8,
+  "pecas": 34,
+  "acoes": 5,
+  "t": 0.54,
+  "kb": 539.9
+ },
+ "prumo": {
+  "tris": 3200,
+  "ossos": 0,
+  "pecas": 3,
+  "acoes": 0,
+  "t": 0.09,
+  "kb": 87.3
+ }
+}

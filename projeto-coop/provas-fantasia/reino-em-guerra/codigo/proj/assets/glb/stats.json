@@ -1,0 +1,169 @@
+{
+ "porta": {
+  "tris": 7436,
+  "ossos": 28,
+  "pecas": 60,
+  "acoes": [
+   "idle",
+   "corre",
+   "investida",
+   "fincar",
+   "juramento",
+   "recepcao",
+   "passa",
+   "atingido",
+   "rest"
+  ],
+  "t": 1.0,
+  "kb": 827.4
+ },
+ "sineira": {
+  "tris": 9448,
+  "ossos": 30,
+  "pecas": 79,
+  "acoes": [
+   "idle",
+   "arremessa",
+   "recua",
+   "grita",
+   "passa",
+   "bonk",
+   "rest"
+  ],
+  "t": 0.85,
+  "kb": 787.3
+ },
+ "sapador": {
+  "tris": 7914,
+  "ossos": 31,
+  "pecas": 68,
+  "acoes": [
+   "idle",
+   "arremessa",
+   "corre",
+   "olha",
+   "rest"
+  ],
+  "t": 0.57,
+  "kb": 579.2
+ },
+ "bruxa": {
+  "tris": 7660,
+  "ossos": 32,
+  "pecas": 53,
+  "acoes": [
+   "idle",
+   "conjura",
+   "corre",
+   "contrato",
+   "rest"
+  ],
+  "t": 0.78,
+  "kb": 665.5
+ },
+ "miliciano": {
+  "tris": 4960,
+  "ossos": 23,
+  "pecas": 31,
+  "acoes": [
+   "idle",
+   "corre",
+   "grita",
+   "rest"
+  ],
+  "t": 0.26,
+  "kb": 351.8
+ },
+ "piqueiro": {
+  "tris": 4568,
+  "ossos": 24,
+  "pecas": 49,
+  "acoes": [
+   "idle",
+   "marcha",
+   "baixa",
+   "choque",
+   "cai",
+   "rest"
+  ],
+  "t": 0.56,
+  "kb": 464.5
+ },
+ "penitente": {
+  "tris": 5022,
+  "ossos": 26,
+  "pecas": 32,
+  "acoes": [
+   "idle",
+   "anda",
+   "gira",
+   "choque",
+   "rest"
+  ],
+  "t": 0.37,
+  "kb": 441.4
+ },
+ "carpideira": {
+  "tris": 4184,
+  "ossos": 28,
+  "pecas": 25,
+  "acoes": [
+   "flutua",
+   "inspira",
+   "recua",
+   "rest"
+  ],
+  "t": 0.37,
+  "kb": 370.5
+ },
+ "mastro": {
+  "tris": 408,
+  "ossos": 1,
+  "pecas": 6,
+  "acoes": [
+   "rest"
+  ],
+  "t": 0.02,
+  "kb": 23.7
+ },
+ "sino": {
+  "tris": 576,
+  "ossos": 1,
+  "pecas": 4,
+  "acoes": [
+   "rest"
+  ],
+  "t": 0.03,
+  "kb": 32.8
+ },
+ "pote": {
+  "tris": 192,
+  "ossos": 1,
+  "pecas": 1,
+  "acoes": [
+   "rest"
+  ],
+  "t": 0.02,
+  "kb": 12.7
+ },
+ "tocha": {
+  "tris": 156,
+  "ossos": 1,
+  "pecas": 3,
+  "acoes": [
+   "rest"
+  ],
+  "t": 0.03,
+  "kb": 15.0
+ },
+ "piquemil": {
+  "tris": 120,
+  "ossos": 1,
+  "pecas": 2,
+  "acoes": [
+   "rest"
+  ],
+  "t": 0.02,
+  "kb": 10.4
+ }
+}

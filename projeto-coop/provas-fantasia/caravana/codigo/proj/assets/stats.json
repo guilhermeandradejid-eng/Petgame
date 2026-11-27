@@ -1,0 +1,58 @@
+{
+ "rodeira": {
+  "tris": 6812,
+  "ossos": 27,
+  "pecas": 66,
+  "acoes": 3,
+  "t": 0.22,
+  "kb": 672.1
+ },
+ "pavieiro": {
+  "tris": 6916,
+  "ossos": 28,
+  "pecas": 60,
+  "acoes": 2,
+  "t": 0.2,
+  "kb": 566.9
+ },
+ "sineira": {
+  "tris": 6556,
+  "ossos": 28,
+  "pecas": 47,
+  "acoes": 2,
+  "t": 0.13,
+  "kb": 558.0
+ },
+ "gatuno": {
+  "tris": 5240,
+  "ossos": 28,
+  "pecas": 51,
+  "acoes": 2,
+  "t": 0.16,
+  "kb": 490.6
+ },
+ "fuligento": {
+  "tris": 1960,
+  "ossos": 8,
+  "pecas": 29,
+  "acoes": 2,
+  "t": 0.05,
+  "kb": 192.0
+ },
+ "apagador": {
+  "tris": 3528,
+  "ossos": 18,
+  "pecas": 26,
+  "acoes": 2,
+  "t": 0.08,
+  "kb": 293.6
+ },
+ "lanterna": {
+  "tris": 624,
+  "ossos": 0,
+  "pecas": 14,
+  "acoes": 0,
+  "t": 0.01,
+  "kb": 35.2
+ }
+}
