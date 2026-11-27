@@ -1,0 +1,5538 @@
+{
+ "versao": 1,
+ "descricao": "Mapa evento -> camadas do Plumbdeep. Gerado por som/scripts/compor.py; edite la e rode de novo. Caminhos relativos a raiz de audio (padrao res://audio/). Volumes em dB, atrasos em ms, pitch como fator (pitch_var = +-fracao).",
+ "buses": [
+  "Master",
+  "Mundo",
+  "SFX",
+  "Golpes",
+  "Ambiente",
+  "Caverna",
+  "Musica",
+  "UI"
+ ],
+ "grupos": {
+  "amb_abismo_respiracao": {
+   "arquivos": [
+    "biblioteca/ambiente/amb_abismo_respiracao_1.ogg",
+    "biblioteca/ambiente/amb_abismo_respiracao_2.ogg",
+    "biblioteca/ambiente/amb_abismo_respiracao_3.ogg"
+   ],
+   "pico_em_s": [
+    33.577,
+    5.253,
+    23.212
+   ],
+   "duracao_s": [
+    40.0,
+    18.0,
+    40.0
+   ],
+   "laco": true,
+   "canais": 2,
+   "ataque_em_s": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "amb_cascata": {
+   "arquivos": [
+    "biblioteca/ambiente/amb_cascata_1.ogg",
+    "biblioteca/ambiente/amb_cascata_2.ogg",
+    "biblioteca/ambiente/amb_cascata_3.ogg"
+   ],
+   "pico_em_s": [
+    8.469,
+    21.169,
+    1.286
+   ],
+   "duracao_s": [
+    40.0,
+    39.276,
+    6.253
+   ],
+   "laco": true,
+   "canais": 2,
+   "ataque_em_s": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "amb_caverna_base": {
+   "arquivos": [
+    "biblioteca/ambiente/amb_caverna_base_1.ogg",
+    "biblioteca/ambiente/amb_caverna_base_2.ogg"
+   ],
+   "pico_em_s": [
+    4.978,
+    9.135
+   ],
+   "duracao_s": [
+    18.0,
+    40.0
+   ],
+   "laco": true,
+   "canais": 2,
+   "ataque_em_s": [
+    0.0,
+    0.0
+   ]
+  },
+  "amb_goteiras": {
+   "arquivos": [
+    "biblioteca/ambiente/amb_goteiras_1.ogg",
+    "biblioteca/ambiente/amb_goteiras_2.ogg",
+    "biblioteca/ambiente/amb_goteiras_3.ogg"
+   ],
+   "pico_em_s": [
+    2.003,
+    8.465,
+    9.176
+   ],
+   "duracao_s": [
+    18.0,
+    18.0,
+    10.981
+   ],
+   "laco": true,
+   "canais": 2,
+   "ataque_em_s": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "amb_rio_subterraneo": {
+   "arquivos": [
+    "biblioteca/ambiente/amb_rio_subterraneo_1.ogg"
+   ],
+   "pico_em_s": [
+    20.022
+   ],
+   "duracao_s": [
+    45.0
+   ],
+   "laco": true,
+   "canais": 2,
+   "ataque_em_s": [
+    0.0
+   ]
+  },
+  "amb_vento_caverna": {
+   "arquivos": [
+    "biblioteca/ambiente/amb_vento_caverna_1.ogg",
+    "biblioteca/ambiente/amb_vento_caverna_2.ogg",
+    "biblioteca/ambiente/amb_vento_caverna_3.ogg"
+   ],
+   "pico_em_s": [
+    17.808,
+    27.262,
+    10.907
+   ],
+   "duracao_s": [
+    40.0,
+    40.0,
+    40.0
+   ],
+   "laco": true,
+   "canais": 2,
+   "ataque_em_s": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "fungos_zumbido": {
+   "arquivos": [
+    "biblioteca/ambiente/fungos_zumbido_1.ogg",
+    "biblioteca/ambiente/fungos_zumbido_2.ogg"
+   ],
+   "pico_em_s": [
+    0.64,
+    3.464
+   ],
+   "duracao_s": [
+    4.867,
+    8.0
+   ],
+   "laco": true,
+   "canais": 1,
+   "ataque_em_s": [
+    0.0,
+    0.0
+   ]
+  },
+  "gota_eco": {
+   "arquivos": [
+    "biblioteca/ambiente/gota_eco_1.ogg",
+    "biblioteca/ambiente/gota_eco_2.ogg",
+    "biblioteca/ambiente/gota_eco_3.ogg",
+    "biblioteca/ambiente/gota_eco_4.ogg",
+    "biblioteca/ambiente/gota_eco_5.ogg",
+    "biblioteca/ambiente/gota_eco_6.ogg"
+   ],
+   "pico_em_s": [
+    0.137,
+    0.28,
+    0.015,
+    0.019,
+    0.024,
+    0.156
+   ],
+   "duracao_s": [
+    1.651,
+    1.85,
+    1.374,
+    0.336,
+    0.572,
+    0.385
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.128,
+    0.068,
+    0.004,
+    0.017,
+    0.004,
+    0.006
+   ]
+  },
+  "lanterna_crepitar": {
+   "arquivos": [
+    "biblioteca/ambiente/lanterna_crepitar_1.ogg",
+    "biblioteca/ambiente/lanterna_crepitar_2.ogg",
+    "biblioteca/ambiente/lanterna_crepitar_3.ogg"
+   ],
+   "pico_em_s": [
+    21.657,
+    12.585,
+    1.698
+   ],
+   "duracao_s": [
+    25.0,
+    25.0,
+    4.019
+   ],
+   "laco": true,
+   "canais": 1,
+   "ataque_em_s": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "raio_zumbido_agua": {
+   "arquivos": [
+    "biblioteca/ambiente/raio_zumbido_agua_1.ogg",
+    "biblioteca/ambiente/raio_zumbido_agua_2.ogg",
+    "biblioteca/ambiente/raio_zumbido_agua_3.ogg"
+   ],
+   "pico_em_s": [
+    0.496,
+    2.777,
+    2.89
+   ],
+   "duracao_s": [
+    1.4,
+    4.537,
+    3.35
+   ],
+   "laco": true,
+   "canais": 1,
+   "ataque_em_s": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "pa_pancada": {
+   "arquivos": [
+    "biblioteca/combate/pa_pancada_1.ogg",
+    "biblioteca/combate/pa_pancada_2.ogg",
+    "biblioteca/combate/pa_pancada_3.ogg",
+    "biblioteca/combate/pa_pancada_4.ogg",
+    "biblioteca/combate/pa_pancada_5.ogg",
+    "biblioteca/combate/pa_pancada_6.ogg"
+   ],
+   "pico_em_s": [
+    0.002,
+    0.005,
+    0.007,
+    0.008,
+    0.026,
+    0.004
+   ],
+   "duracao_s": [
+    1.4,
+    1.4,
+    1.4,
+    1.4,
+    1.4,
+    1.4
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    0.0,
+    0.0,
+    -1.43,
+    -1.85,
+    -1.64,
+    -0.45
+   ],
+   "ataque_em_s": [
+    0.001,
+    0.002,
+    0.002,
+    0.001,
+    0.001,
+    0.001
+   ]
+  },
+  "pa_whoosh": {
+   "arquivos": [
+    "biblioteca/combate/pa_whoosh_1.ogg",
+    "biblioteca/combate/pa_whoosh_2.ogg",
+    "biblioteca/combate/pa_whoosh_3.ogg",
+    "biblioteca/combate/pa_whoosh_4.ogg",
+    "biblioteca/combate/pa_whoosh_5.ogg"
+   ],
+   "pico_em_s": [
+    0.061,
+    0.229,
+    0.057,
+    0.105,
+    0.128
+   ],
+   "duracao_s": [
+    0.473,
+    0.363,
+    0.419,
+    0.455,
+    0.456
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -0.62,
+    0.0,
+    0.0,
+    -0.83,
+    -0.76
+   ],
+   "ataque_em_s": [
+    0.035,
+    0.18,
+    0.046,
+    0.034,
+    0.044
+   ]
+  },
+  "peso_thump": {
+   "arquivos": [
+    "biblioteca/combate/peso_thump_1.ogg",
+    "biblioteca/combate/peso_thump_2.ogg",
+    "biblioteca/combate/peso_thump_3.ogg",
+    "biblioteca/combate/peso_thump_4.ogg",
+    "biblioteca/combate/peso_thump_5.ogg"
+   ],
+   "pico_em_s": [
+    0.052,
+    0.04,
+    0.078,
+    0.035,
+    0.136
+   ],
+   "duracao_s": [
+    0.802,
+    0.845,
+    0.887,
+    0.648,
+    0.897
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    0.0,
+    -0.5,
+    -0.85,
+    0.0,
+    -3.58
+   ],
+   "ataque_em_s": [
+    0.025,
+    0.032,
+    0.024,
+    0.03,
+    0.049
+   ]
+  },
+  "punhal_corte": {
+   "arquivos": [
+    "biblioteca/combate/punhal_corte_1.ogg",
+    "biblioteca/combate/punhal_corte_2.ogg",
+    "biblioteca/combate/punhal_corte_3.ogg",
+    "biblioteca/combate/punhal_corte_4.ogg",
+    "biblioteca/combate/punhal_corte_5.ogg",
+    "biblioteca/combate/punhal_corte_6.ogg"
+   ],
+   "pico_em_s": [
+    0.006,
+    0.006,
+    0.008,
+    0.062,
+    0.062,
+    0.151
+   ],
+   "duracao_s": [
+    0.346,
+    0.338,
+    0.45,
+    0.374,
+    0.374,
+    0.418
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    0.0,
+    -0.7,
+    0.0,
+    -5.88,
+    -3.92,
+    -4.13
+   ],
+   "ataque_em_s": [
+    0.004,
+    0.004,
+    0.001,
+    0.007,
+    0.007,
+    0.07
+   ]
+  },
+  "punhal_metal": {
+   "arquivos": [
+    "biblioteca/combate/punhal_metal_1.ogg",
+    "biblioteca/combate/punhal_metal_2.ogg",
+    "biblioteca/combate/punhal_metal_3.ogg",
+    "biblioteca/combate/punhal_metal_4.ogg",
+    "biblioteca/combate/punhal_metal_5.ogg",
+    "biblioteca/combate/punhal_metal_6.ogg"
+   ],
+   "pico_em_s": [
+    0.005,
+    0.004,
+    0.003,
+    0.003,
+    0.104,
+    0.013
+   ],
+   "duracao_s": [
+    0.297,
+    0.264,
+    0.264,
+    0.347,
+    0.502,
+    0.336
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -1.43,
+    -0.17,
+    0.0,
+    0.0,
+    -2.34,
+    -3.11
+   ],
+   "ataque_em_s": [
+    0.0,
+    0.001,
+    0.0,
+    0.002,
+    0.068,
+    0.002
+   ]
+  },
+  "punhal_whoosh": {
+   "arquivos": [
+    "biblioteca/combate/punhal_whoosh_1.ogg",
+    "biblioteca/combate/punhal_whoosh_2.ogg",
+    "biblioteca/combate/punhal_whoosh_3.ogg",
+    "biblioteca/combate/punhal_whoosh_4.ogg",
+    "biblioteca/combate/punhal_whoosh_5.ogg",
+    "biblioteca/combate/punhal_whoosh_6.ogg"
+   ],
+   "pico_em_s": [
+    0.173,
+    0.041,
+    0.091,
+    0.069,
+    0.042,
+    0.036
+   ],
+   "duracao_s": [
+    0.385,
+    0.197,
+    0.283,
+    0.342,
+    0.213,
+    0.236
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -1.12,
+    0.0,
+    0.0,
+    -0.14,
+    -1.05,
+    -1.12
+   ],
+   "ataque_em_s": [
+    0.16,
+    0.018,
+    0.066,
+    0.043,
+    0.015,
+    0.008
+   ]
+  },
+  "raio_carga": {
+   "arquivos": [
+    "biblioteca/combate/raio_carga_1.ogg",
+    "biblioteca/combate/raio_carga_2.ogg",
+    "biblioteca/combate/raio_carga_3.ogg"
+   ],
+   "pico_em_s": [
+    0.462,
+    0.282,
+    0.799
+   ],
+   "duracao_s": [
+    1.283,
+    2.2,
+    1.009
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -1.79,
+    -4.31,
+    0.0
+   ],
+   "ataque_em_s": [
+    0.111,
+    0.001,
+    0.172
+   ]
+  },
+  "raio_descarga": {
+   "arquivos": [
+    "biblioteca/combate/raio_descarga_1.ogg",
+    "biblioteca/combate/raio_descarga_2.ogg",
+    "biblioteca/combate/raio_descarga_3.ogg",
+    "biblioteca/combate/raio_descarga_4.ogg",
+    "biblioteca/combate/raio_descarga_5.ogg"
+   ],
+   "pico_em_s": [
+    0.274,
+    0.364,
+    0.49,
+    0.441,
+    0.01
+   ],
+   "duracao_s": [
+    1.038,
+    1.045,
+    1.035,
+    2.2,
+    1.707
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -0.67,
+    -0.74,
+    0.0,
+    -0.88,
+    0.0
+   ],
+   "ataque_em_s": [
+    0.149,
+    0.113,
+    0.122,
+    0.009,
+    0.004
+   ]
+  },
+  "raio_estalo": {
+   "arquivos": [
+    "biblioteca/combate/raio_estalo_1.ogg",
+    "biblioteca/combate/raio_estalo_2.ogg",
+    "biblioteca/combate/raio_estalo_3.ogg",
+    "biblioteca/combate/raio_estalo_4.ogg",
+    "biblioteca/combate/raio_estalo_5.ogg",
+    "biblioteca/combate/raio_estalo_6.ogg"
+   ],
+   "pico_em_s": [
+    0.015,
+    0.029,
+    0.024,
+    0.225,
+    0.515,
+    0.008
+   ],
+   "duracao_s": [
+    0.849,
+    0.887,
+    0.839,
+    0.664,
+    0.694,
+    0.282
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    0.0,
+    -1.01,
+    -0.74,
+    -0.39,
+    -0.74,
+    0.0
+   ],
+   "ataque_em_s": [
+    0.002,
+    0.001,
+    0.001,
+    0.009,
+    0.009,
+    0.007
+   ]
+  },
+  "turibulo_corrente": {
+   "arquivos": [
+    "biblioteca/combate/turibulo_corrente_1.ogg",
+    "biblioteca/combate/turibulo_corrente_2.ogg",
+    "biblioteca/combate/turibulo_corrente_3.ogg",
+    "biblioteca/combate/turibulo_corrente_4.ogg",
+    "biblioteca/combate/turibulo_corrente_5.ogg"
+   ],
+   "pico_em_s": [
+    0.191,
+    0.066,
+    0.021,
+    0.097,
+    0.031
+   ],
+   "duracao_s": [
+    0.441,
+    0.398,
+    0.773,
+    0.461,
+    0.495
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -0.99,
+    -2.25,
+    -0.78,
+    0.0,
+    0.0
+   ],
+   "ataque_em_s": [
+    0.005,
+    0.011,
+    0.012,
+    0.041,
+    0.017
+   ]
+  },
+  "viga_arrasto": {
+   "arquivos": [
+    "biblioteca/combate/viga_arrasto_1.ogg",
+    "biblioteca/combate/viga_arrasto_2.ogg",
+    "biblioteca/combate/viga_arrasto_3.ogg",
+    "biblioteca/combate/viga_arrasto_4.ogg"
+   ],
+   "pico_em_s": [
+    0.794,
+    0.749,
+    0.951,
+    1.621
+   ],
+   "duracao_s": [
+    3.271,
+    2.659,
+    2.836,
+    3.339
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -0.08,
+    -3.02,
+    0.0,
+    -1.83
+   ],
+   "ataque_em_s": [
+    0.06,
+    0.174,
+    0.633,
+    0.143
+   ]
+  },
+  "viga_impacto": {
+   "arquivos": [
+    "biblioteca/combate/viga_impacto_1.ogg",
+    "biblioteca/combate/viga_impacto_2.ogg",
+    "biblioteca/combate/viga_impacto_3.ogg",
+    "biblioteca/combate/viga_impacto_4.ogg",
+    "biblioteca/combate/viga_impacto_5.ogg",
+    "biblioteca/combate/viga_impacto_6.ogg"
+   ],
+   "pico_em_s": [
+    0.074,
+    0.019,
+    0.015,
+    0.049,
+    0.032,
+    0.041
+   ],
+   "duracao_s": [
+    0.76,
+    0.772,
+    0.82,
+    0.722,
+    0.614,
+    0.845
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -0.04,
+    -0.04,
+    0.0,
+    -0.74,
+    -0.17,
+    0.0
+   ],
+   "ataque_em_s": [
+    0.013,
+    0.015,
+    0.012,
+    0.013,
+    0.013,
+    0.013
+   ]
+  },
+  "viga_whoosh": {
+   "arquivos": [
+    "biblioteca/combate/viga_whoosh_1.ogg",
+    "biblioteca/combate/viga_whoosh_2.ogg",
+    "biblioteca/combate/viga_whoosh_3.ogg",
+    "biblioteca/combate/viga_whoosh_4.ogg",
+    "biblioteca/combate/viga_whoosh_5.ogg",
+    "biblioteca/combate/viga_whoosh_6.ogg"
+   ],
+   "pico_em_s": [
+    0.176,
+    0.161,
+    0.155,
+    0.209,
+    0.069,
+    0.077
+   ],
+   "duracao_s": [
+    0.653,
+    0.69,
+    0.649,
+    0.773,
+    0.714,
+    0.763
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "ataque_em_s": [
+    0.062,
+    0.087,
+    0.073,
+    0.073,
+    0.033,
+    0.056
+   ]
+  },
+  "corda_chicote": {
+   "arquivos": [
+    "biblioteca/corda/corda_chicote_1.ogg",
+    "biblioteca/corda/corda_chicote_2.ogg",
+    "biblioteca/corda/corda_chicote_3.ogg",
+    "biblioteca/corda/corda_chicote_4.ogg"
+   ],
+   "pico_em_s": [
+    0.141,
+    0.225,
+    0.135,
+    0.112
+   ],
+   "duracao_s": [
+    0.347,
+    0.417,
+    0.556,
+    0.703
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -0.88,
+    0.0,
+    -0.04,
+    -0.24
+   ],
+   "ataque_em_s": [
+    0.06,
+    0.059,
+    0.111,
+    0.083
+   ]
+  },
+  "corda_puxar": {
+   "arquivos": [
+    "biblioteca/corda/corda_puxar_1.ogg",
+    "biblioteca/corda/corda_puxar_2.ogg",
+    "biblioteca/corda/corda_puxar_3.ogg",
+    "biblioteca/corda/corda_puxar_4.ogg"
+   ],
+   "pico_em_s": [
+    1.946,
+    0.679,
+    2.526,
+    0.721
+   ],
+   "duracao_s": [
+    2.105,
+    0.842,
+    2.714,
+    1.092
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    0.0,
+    -0.11,
+    -1.16,
+    -2.98
+   ],
+   "ataque_em_s": [
+    0.434,
+    0.091,
+    0.553,
+    0.077
+   ]
+  },
+  "corda_rangido": {
+   "arquivos": [
+    "biblioteca/corda/corda_rangido_1.ogg",
+    "biblioteca/corda/corda_rangido_2.ogg",
+    "biblioteca/corda/corda_rangido_3.ogg",
+    "biblioteca/corda/corda_rangido_4.ogg",
+    "biblioteca/corda/corda_rangido_5.ogg",
+    "biblioteca/corda/corda_rangido_6.ogg"
+   ],
+   "pico_em_s": [
+    0.142,
+    0.122,
+    0.329,
+    1.372,
+    0.937,
+    1.265
+   ],
+   "duracao_s": [
+    0.636,
+    0.831,
+    0.57,
+    1.8,
+    1.8,
+    1.8
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -2.52,
+    -1.61,
+    -1.68,
+    0.0,
+    0.0,
+    -0.35
+   ],
+   "ataque_em_s": [
+    0.051,
+    0.112,
+    0.138,
+    0.296,
+    0.325,
+    0.117
+   ]
+  },
+  "rapel_atrito": {
+   "arquivos": [
+    "biblioteca/corda/rapel_atrito_1.ogg",
+    "biblioteca/corda/rapel_atrito_2.ogg",
+    "biblioteca/corda/rapel_atrito_3.ogg"
+   ],
+   "pico_em_s": [
+    2.839,
+    2.316,
+    3.183
+   ],
+   "duracao_s": [
+    3.048,
+    2.504,
+    3.421
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -0.9,
+    0.0,
+    -0.9
+   ],
+   "ataque_em_s": [
+    0.801,
+    0.516,
+    0.877
+   ]
+  },
+  "carne_leve": {
+   "arquivos": [
+    "biblioteca/impacto/carne_leve_1.ogg",
+    "biblioteca/impacto/carne_leve_2.ogg",
+    "biblioteca/impacto/carne_leve_3.ogg",
+    "biblioteca/impacto/carne_leve_4.ogg",
+    "biblioteca/impacto/carne_leve_5.ogg"
+   ],
+   "pico_em_s": [
+    0.058,
+    0.058,
+    0.063,
+    0.024,
+    0.05
+   ],
+   "duracao_s": [
+    0.534,
+    0.534,
+    0.489,
+    0.596,
+    0.597
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -0.48,
+    0.0,
+    -0.06,
+    0.0,
+    -0.27
+   ],
+   "ataque_em_s": [
+    0.004,
+    0.002,
+    0.034,
+    0.007,
+    0.033
+   ]
+  },
+  "carne_medio": {
+   "arquivos": [
+    "biblioteca/impacto/carne_medio_1.ogg",
+    "biblioteca/impacto/carne_medio_2.ogg",
+    "biblioteca/impacto/carne_medio_3.ogg",
+    "biblioteca/impacto/carne_medio_4.ogg",
+    "biblioteca/impacto/carne_medio_5.ogg",
+    "biblioteca/impacto/carne_medio_6.ogg"
+   ],
+   "pico_em_s": [
+    0.144,
+    0.113,
+    0.088,
+    0.02,
+    0.086,
+    0.041
+   ],
+   "duracao_s": [
+    0.797,
+    0.649,
+    0.58,
+    0.471,
+    0.618,
+    0.522
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -0.35,
+    -1.96,
+    0.0,
+    -0.14,
+    0.0,
+    -0.91
+   ],
+   "ataque_em_s": [
+    0.086,
+    0.062,
+    0.027,
+    0.012,
+    0.05,
+    0.018
+   ]
+  },
+  "carne_pesado": {
+   "arquivos": [
+    "biblioteca/impacto/carne_pesado_1.ogg",
+    "biblioteca/impacto/carne_pesado_2.ogg",
+    "biblioteca/impacto/carne_pesado_3.ogg",
+    "biblioteca/impacto/carne_pesado_4.ogg",
+    "biblioteca/impacto/carne_pesado_5.ogg",
+    "biblioteca/impacto/carne_pesado_6.ogg"
+   ],
+   "pico_em_s": [
+    0.147,
+    0.128,
+    0.085,
+    0.04,
+    0.009,
+    0.051
+   ],
+   "duracao_s": [
+    0.63,
+    0.676,
+    0.39,
+    0.332,
+    0.56,
+    0.721
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -2.62,
+    -0.95,
+    0.0,
+    -0.17,
+    0.0,
+    -3.89
+   ],
+   "ataque_em_s": [
+    0.068,
+    0.036,
+    0.059,
+    0.037,
+    0.003,
+    0.004
+   ]
+  },
+  "gosma_esmaga": {
+   "arquivos": [
+    "biblioteca/impacto/gosma_esmaga_1.ogg",
+    "biblioteca/impacto/gosma_esmaga_2.ogg",
+    "biblioteca/impacto/gosma_esmaga_3.ogg",
+    "biblioteca/impacto/gosma_esmaga_4.ogg"
+   ],
+   "pico_em_s": [
+    0.137,
+    0.106,
+    0.241,
+    0.208
+   ],
+   "duracao_s": [
+    0.976,
+    0.785,
+    0.711,
+    0.997
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -0.03,
+    0.0,
+    -0.17,
+    -0.38
+   ],
+   "ataque_em_s": [
+    0.031,
+    0.006,
+    0.077,
+    0.074
+   ]
+  },
+  "osso_quebra": {
+   "arquivos": [
+    "biblioteca/impacto/osso_quebra_1.ogg",
+    "biblioteca/impacto/osso_quebra_2.ogg",
+    "biblioteca/impacto/osso_quebra_3.ogg",
+    "biblioteca/impacto/osso_quebra_4.ogg"
+   ],
+   "pico_em_s": [
+    0.352,
+    0.004,
+    0.119,
+    0.195
+   ],
+   "duracao_s": [
+    0.486,
+    0.213,
+    0.361,
+    0.329
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -3.19,
+    0.0,
+    -0.04,
+    -0.32
+   ],
+   "ataque_em_s": [
+    0.064,
+    0.004,
+    0.118,
+    0.194
+   ]
+  },
+  "bocalume_ataque": {
+   "arquivos": [
+    "biblioteca/inimigos/bocalume_ataque_1.ogg",
+    "biblioteca/inimigos/bocalume_ataque_2.ogg",
+    "biblioteca/inimigos/bocalume_ataque_3.ogg",
+    "biblioteca/inimigos/bocalume_ataque_4.ogg"
+   ],
+   "pico_em_s": [
+    0.175,
+    0.281,
+    0.043,
+    0.206
+   ],
+   "duracao_s": [
+    0.5,
+    0.997,
+    0.382,
+    0.387
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.074,
+    0.204,
+    0.014,
+    0.045
+   ]
+  },
+  "bocalume_gorgolejo": {
+   "arquivos": [
+    "biblioteca/inimigos/bocalume_gorgolejo_1.ogg",
+    "biblioteca/inimigos/bocalume_gorgolejo_2.ogg",
+    "biblioteca/inimigos/bocalume_gorgolejo_3.ogg",
+    "biblioteca/inimigos/bocalume_gorgolejo_4.ogg",
+    "biblioteca/inimigos/bocalume_gorgolejo_5.ogg",
+    "biblioteca/inimigos/bocalume_gorgolejo_6.ogg"
+   ],
+   "pico_em_s": [
+    0.069,
+    0.044,
+    0.123,
+    0.02,
+    0.148,
+    0.416
+   ],
+   "duracao_s": [
+    0.293,
+    0.475,
+    0.689,
+    0.588,
+    0.941,
+    2.161
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.041,
+    0.012,
+    0.033,
+    0.018,
+    0.052,
+    0.025
+   ]
+  },
+  "bocalume_morte": {
+   "arquivos": [
+    "biblioteca/inimigos/bocalume_morte_1.ogg",
+    "biblioteca/inimigos/bocalume_morte_2.ogg",
+    "biblioteca/inimigos/bocalume_morte_3.ogg"
+   ],
+   "pico_em_s": [
+    0.234,
+    0.173,
+    0.048
+   ],
+   "duracao_s": [
+    1.737,
+    0.765,
+    0.695
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.035,
+    0.13,
+    0.024
+   ]
+  },
+  "chefe_rugido": {
+   "arquivos": [
+    "biblioteca/inimigos/chefe_rugido_1.ogg",
+    "biblioteca/inimigos/chefe_rugido_2.ogg",
+    "biblioteca/inimigos/chefe_rugido_3.ogg",
+    "biblioteca/inimigos/chefe_rugido_4.ogg",
+    "biblioteca/inimigos/chefe_rugido_5.ogg"
+   ],
+   "pico_em_s": [
+    0.567,
+    1.903,
+    0.865,
+    2.647,
+    0.129
+   ],
+   "duracao_s": [
+    4.117,
+    3.654,
+    3.69,
+    4.5,
+    0.633
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.029,
+    0.365,
+    0.092,
+    0.141,
+    0.031
+   ]
+  },
+  "criatura_grunhido": {
+   "arquivos": [
+    "biblioteca/inimigos/criatura_grunhido_1.ogg",
+    "biblioteca/inimigos/criatura_grunhido_2.ogg",
+    "biblioteca/inimigos/criatura_grunhido_3.ogg",
+    "biblioteca/inimigos/criatura_grunhido_4.ogg",
+    "biblioteca/inimigos/criatura_grunhido_5.ogg"
+   ],
+   "pico_em_s": [
+    0.152,
+    0.128,
+    0.038,
+    0.087,
+    0.127
+   ],
+   "duracao_s": [
+    0.6,
+    0.372,
+    0.331,
+    0.423,
+    0.503
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.025,
+    0.008,
+    0.017,
+    0.028,
+    0.017
+   ]
+  },
+  "elite_rugido": {
+   "arquivos": [
+    "biblioteca/inimigos/elite_rugido_1.ogg",
+    "biblioteca/inimigos/elite_rugido_2.ogg",
+    "biblioteca/inimigos/elite_rugido_3.ogg",
+    "biblioteca/inimigos/elite_rugido_4.ogg",
+    "biblioteca/inimigos/elite_rugido_5.ogg",
+    "biblioteca/inimigos/elite_rugido_6.ogg"
+   ],
+   "pico_em_s": [
+    1.51,
+    0.273,
+    1.983,
+    0.879,
+    0.294,
+    0.084
+   ],
+   "duracao_s": [
+    2.905,
+    2.802,
+    3.0,
+    2.615,
+    0.918,
+    0.635
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.29,
+    0.062,
+    0.087,
+    0.029,
+    0.055,
+    0.022
+   ]
+  },
+  "ouvidor_dor": {
+   "arquivos": [
+    "biblioteca/inimigos/ouvidor_dor_1.ogg",
+    "biblioteca/inimigos/ouvidor_dor_2.ogg",
+    "biblioteca/inimigos/ouvidor_dor_3.ogg",
+    "biblioteca/inimigos/ouvidor_dor_4.ogg"
+   ],
+   "pico_em_s": [
+    0.105,
+    0.041,
+    0.161,
+    0.091
+   ],
+   "duracao_s": [
+    0.684,
+    0.26,
+    0.628,
+    0.523
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.017,
+    0.031,
+    0.078,
+    0.014
+   ]
+  },
+  "ouvidor_guincho": {
+   "arquivos": [
+    "biblioteca/inimigos/ouvidor_guincho_1.ogg",
+    "biblioteca/inimigos/ouvidor_guincho_2.ogg",
+    "biblioteca/inimigos/ouvidor_guincho_3.ogg",
+    "biblioteca/inimigos/ouvidor_guincho_4.ogg",
+    "biblioteca/inimigos/ouvidor_guincho_5.ogg",
+    "biblioteca/inimigos/ouvidor_guincho_6.ogg"
+   ],
+   "pico_em_s": [
+    0.149,
+    0.225,
+    0.188,
+    0.173,
+    0.312,
+    0.259
+   ],
+   "duracao_s": [
+    0.705,
+    0.607,
+    0.338,
+    0.429,
+    0.926,
+    0.728
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.043,
+    0.08,
+    0.048,
+    0.093,
+    0.007,
+    0.052
+   ]
+  },
+  "ouvidor_morte": {
+   "arquivos": [
+    "biblioteca/inimigos/ouvidor_morte_1.ogg",
+    "biblioteca/inimigos/ouvidor_morte_2.ogg",
+    "biblioteca/inimigos/ouvidor_morte_3.ogg",
+    "biblioteca/inimigos/ouvidor_morte_4.ogg"
+   ],
+   "pico_em_s": [
+    0.243,
+    0.166,
+    0.22,
+    0.415
+   ],
+   "duracao_s": [
+    1.089,
+    0.671,
+    1.181,
+    0.999
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.061,
+    0.062,
+    0.049,
+    0.149
+   ]
+  },
+  "ouvidor_telegrafia": {
+   "arquivos": [
+    "biblioteca/inimigos/ouvidor_telegrafia_1.ogg",
+    "biblioteca/inimigos/ouvidor_telegrafia_2.ogg",
+    "biblioteca/inimigos/ouvidor_telegrafia_3.ogg",
+    "biblioteca/inimigos/ouvidor_telegrafia_4.ogg"
+   ],
+   "pico_em_s": [
+    0.684,
+    0.505,
+    0.077,
+    0.158
+   ],
+   "duracao_s": [
+    1.385,
+    0.744,
+    0.452,
+    0.536
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.077,
+    0.184,
+    0.055,
+    0.019
+   ]
+  },
+  "ui_cancelar": {
+   "arquivos": [
+    "biblioteca/interface/ui_cancelar_1.ogg",
+    "biblioteca/interface/ui_cancelar_2.ogg",
+    "biblioteca/interface/ui_cancelar_3.ogg"
+   ],
+   "pico_em_s": [
+    0.006,
+    0.095,
+    0.399
+   ],
+   "duracao_s": [
+    0.192,
+    0.417,
+    0.566
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.002,
+    0.05,
+    0.028
+   ]
+  },
+  "ui_confirmar": {
+   "arquivos": [
+    "biblioteca/interface/ui_confirmar_1.ogg",
+    "biblioteca/interface/ui_confirmar_2.ogg",
+    "biblioteca/interface/ui_confirmar_3.ogg",
+    "biblioteca/interface/ui_confirmar_4.ogg"
+   ],
+   "pico_em_s": [
+    0.006,
+    0.021,
+    0.008,
+    0.022
+   ],
+   "duracao_s": [
+    0.208,
+    0.519,
+    0.128,
+    0.369
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.005,
+    0.013,
+    0.008,
+    0.019
+   ]
+  },
+  "ui_inventario": {
+   "arquivos": [
+    "biblioteca/interface/ui_inventario_1.ogg",
+    "biblioteca/interface/ui_inventario_2.ogg",
+    "biblioteca/interface/ui_inventario_3.ogg"
+   ],
+   "pico_em_s": [
+    0.056,
+    0.034,
+    0.528
+   ],
+   "duracao_s": [
+    0.387,
+    0.434,
+    0.8
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.03,
+    0.027,
+    0.025
+   ]
+  },
+  "ui_navegar": {
+   "arquivos": [
+    "biblioteca/interface/ui_navegar_1.ogg",
+    "biblioteca/interface/ui_navegar_2.ogg",
+    "biblioteca/interface/ui_navegar_3.ogg"
+   ],
+   "pico_em_s": [
+    0.086,
+    0.053,
+    0.078
+   ],
+   "duracao_s": [
+    0.222,
+    0.114,
+    0.162
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.016,
+    0.008,
+    0.066
+   ]
+  },
+  "ui_nivel": {
+   "arquivos": [
+    "biblioteca/interface/ui_nivel_1.ogg",
+    "biblioteca/interface/ui_nivel_2.ogg",
+    "biblioteca/interface/ui_nivel_3.ogg"
+   ],
+   "pico_em_s": [
+    0.846,
+    0.399,
+    1.325
+   ],
+   "duracao_s": [
+    3.563,
+    3.051,
+    4.583
+   ],
+   "laco": false,
+   "canais": 2,
+   "ataque_em_s": [
+    0.004,
+    0.002,
+    0.928
+   ]
+  },
+  "ui_saque_raro": {
+   "arquivos": [
+    "biblioteca/interface/ui_saque_raro_1.ogg",
+    "biblioteca/interface/ui_saque_raro_2.ogg",
+    "biblioteca/interface/ui_saque_raro_3.ogg"
+   ],
+   "pico_em_s": [
+    0.031,
+    0.006,
+    0.146
+   ],
+   "duracao_s": [
+    4.514,
+    4.382,
+    1.397
+   ],
+   "laco": false,
+   "canais": 2,
+   "ataque_em_s": [
+    0.003,
+    0.003,
+    0.087
+   ]
+  },
+  "lancar": {
+   "arquivos": [
+    "biblioteca/itens/lancar_1.ogg",
+    "biblioteca/itens/lancar_2.ogg",
+    "biblioteca/itens/lancar_3.ogg",
+    "biblioteca/itens/lancar_4.ogg"
+   ],
+   "pico_em_s": [
+    0.119,
+    0.064,
+    0.058,
+    0.087
+   ],
+   "duracao_s": [
+    0.464,
+    0.368,
+    0.415,
+    0.488
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -1.44,
+    0.0,
+    -0.11,
+    -0.39
+   ],
+   "ataque_em_s": [
+    0.078,
+    0.039,
+    0.044,
+    0.041
+   ]
+  },
+  "moedas": {
+   "arquivos": [
+    "biblioteca/itens/moedas_1.ogg",
+    "biblioteca/itens/moedas_2.ogg",
+    "biblioteca/itens/moedas_3.ogg",
+    "biblioteca/itens/moedas_4.ogg",
+    "biblioteca/itens/moedas_5.ogg",
+    "biblioteca/itens/moedas_6.ogg"
+   ],
+   "pico_em_s": [
+    0.003,
+    0.042,
+    0.007,
+    0.093,
+    0.172,
+    0.167
+   ],
+   "duracao_s": [
+    0.372,
+    0.302,
+    0.339,
+    0.373,
+    0.451,
+    0.48
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -0.49,
+    0.0,
+    -0.56,
+    0.0,
+    -4.06,
+    -5.25
+   ],
+   "ataque_em_s": [
+    0.001,
+    0.001,
+    0.003,
+    0.002,
+    0.002,
+    0.007
+   ]
+  },
+  "pegar": {
+   "arquivos": [
+    "biblioteca/itens/pegar_1.ogg",
+    "biblioteca/itens/pegar_2.ogg",
+    "biblioteca/itens/pegar_3.ogg",
+    "biblioteca/itens/pegar_4.ogg",
+    "biblioteca/itens/pegar_5.ogg",
+    "biblioteca/itens/pegar_6.ogg"
+   ],
+   "pico_em_s": [
+    0.19,
+    0.389,
+    0.043,
+    0.059,
+    0.097,
+    0.161
+   ],
+   "duracao_s": [
+    0.341,
+    0.707,
+    0.299,
+    0.264,
+    0.237,
+    0.445
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -2.2,
+    -2.35,
+    -2.14,
+    0.0,
+    -0.74,
+    0.0
+   ],
+   "ataque_em_s": [
+    0.015,
+    0.322,
+    0.039,
+    0.033,
+    0.056,
+    0.146
+   ]
+  },
+  "recepcao_pesada": {
+   "arquivos": [
+    "biblioteca/itens/recepcao_pesada_1.ogg",
+    "biblioteca/itens/recepcao_pesada_2.ogg",
+    "biblioteca/itens/recepcao_pesada_3.ogg",
+    "biblioteca/itens/recepcao_pesada_4.ogg"
+   ],
+   "pico_em_s": [
+    0.035,
+    0.022,
+    0.031,
+    0.032
+   ],
+   "duracao_s": [
+    0.76,
+    0.754,
+    0.798,
+    0.722
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -1.81,
+    0.0,
+    -0.06,
+    -0.76
+   ],
+   "ataque_em_s": [
+    0.027,
+    0.022,
+    0.03,
+    0.025
+   ]
+  },
+  "saco_saque": {
+   "arquivos": [
+    "biblioteca/itens/saco_saque_1.ogg",
+    "biblioteca/itens/saco_saque_2.ogg",
+    "biblioteca/itens/saco_saque_3.ogg",
+    "biblioteca/itens/saco_saque_4.ogg"
+   ],
+   "pico_em_s": [
+    1.013,
+    1.054,
+    0.705,
+    0.071
+   ],
+   "duracao_s": [
+    1.747,
+    1.581,
+    1.955,
+    0.629
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    0.0,
+    -1.15,
+    -0.88,
+    -0.31
+   ],
+   "ataque_em_s": [
+    0.032,
+    0.005,
+    0.005,
+    0.011
+   ]
+  },
+  "elevador_trava": {
+   "arquivos": [
+    "biblioteca/maquina/elevador_trava_1.ogg",
+    "biblioteca/maquina/elevador_trava_2.ogg",
+    "biblioteca/maquina/elevador_trava_3.ogg",
+    "biblioteca/maquina/elevador_trava_4.ogg"
+   ],
+   "pico_em_s": [
+    0.005,
+    0.007,
+    0.003,
+    0.018
+   ],
+   "duracao_s": [
+    1.6,
+    1.6,
+    1.6,
+    1.6
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    0.0,
+    -2.42,
+    -2.35,
+    -0.18
+   ],
+   "ataque_em_s": [
+    0.001,
+    0.001,
+    0.001,
+    0.014
+   ]
+  },
+  "guincho_catraca": {
+   "arquivos": [
+    "biblioteca/maquina/guincho_catraca_1.ogg",
+    "biblioteca/maquina/guincho_catraca_2.ogg",
+    "biblioteca/maquina/guincho_catraca_3.ogg",
+    "biblioteca/maquina/guincho_catraca_4.ogg",
+    "biblioteca/maquina/guincho_catraca_5.ogg"
+   ],
+   "pico_em_s": [
+    0.026,
+    0.055,
+    0.074,
+    0.037,
+    0.159
+   ],
+   "duracao_s": [
+    0.276,
+    0.305,
+    0.261,
+    0.261,
+    0.355
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    0.0,
+    -1.48,
+    -1.9,
+    0.0,
+    -1.34
+   ],
+   "ataque_em_s": [
+    0.004,
+    0.02,
+    0.002,
+    0.011,
+    0.058
+   ]
+  },
+  "guincho_corrente": {
+   "arquivos": [
+    "biblioteca/maquina/guincho_corrente_1.ogg",
+    "biblioteca/maquina/guincho_corrente_2.ogg",
+    "biblioteca/maquina/guincho_corrente_3.ogg",
+    "biblioteca/maquina/guincho_corrente_4.ogg",
+    "biblioteca/maquina/guincho_corrente_5.ogg"
+   ],
+   "pico_em_s": [
+    0.743,
+    0.349,
+    1.612,
+    0.169,
+    0.604
+   ],
+   "duracao_s": [
+    1.328,
+    1.79,
+    2.543,
+    1.908,
+    1.732
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -0.5,
+    0.0,
+    -1.97,
+    0.0,
+    -0.5
+   ],
+   "ataque_em_s": [
+    0.262,
+    0.161,
+    0.138,
+    0.002,
+    0.002
+   ]
+  },
+  "roldana_rangido": {
+   "arquivos": [
+    "biblioteca/maquina/roldana_rangido_1.ogg",
+    "biblioteca/maquina/roldana_rangido_2.ogg",
+    "biblioteca/maquina/roldana_rangido_3.ogg",
+    "biblioteca/maquina/roldana_rangido_4.ogg"
+   ],
+   "pico_em_s": [
+    0.211,
+    0.192,
+    0.066,
+    0.055
+   ],
+   "duracao_s": [
+    0.386,
+    0.315,
+    0.629,
+    0.302
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -0.13,
+    -0.2,
+    -2.51,
+    0.0
+   ],
+   "ataque_em_s": [
+    0.082,
+    0.086,
+    0.016,
+    0.054
+   ]
+  },
+  "aterrissagem": {
+   "arquivos": [
+    "biblioteca/movimento/aterrissagem_1.ogg",
+    "biblioteca/movimento/aterrissagem_2.ogg",
+    "biblioteca/movimento/aterrissagem_3.ogg"
+   ],
+   "pico_em_s": [
+    0.08,
+    0.02,
+    0.043
+   ],
+   "duracao_s": [
+    0.404,
+    0.388,
+    0.679
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    0.0,
+    -1.04,
+    -0.34
+   ],
+   "ataque_em_s": [
+    0.076,
+    0.003,
+    0.03
+   ]
+  },
+  "aterrissagem_pesada": {
+   "arquivos": [
+    "biblioteca/movimento/aterrissagem_pesada_1.ogg",
+    "biblioteca/movimento/aterrissagem_pesada_2.ogg",
+    "biblioteca/movimento/aterrissagem_pesada_3.ogg"
+   ],
+   "pico_em_s": [
+    0.044,
+    0.065,
+    0.03
+   ],
+   "duracao_s": [
+    0.674,
+    0.727,
+    0.575
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -3.12,
+    -0.67,
+    0.0
+   ],
+   "ataque_em_s": [
+    0.022,
+    0.021,
+    0.025
+   ]
+  },
+  "esquiva": {
+   "arquivos": [
+    "biblioteca/movimento/esquiva_1.ogg",
+    "biblioteca/movimento/esquiva_2.ogg",
+    "biblioteca/movimento/esquiva_3.ogg",
+    "biblioteca/movimento/esquiva_4.ogg",
+    "biblioteca/movimento/esquiva_5.ogg"
+   ],
+   "pico_em_s": [
+    0.518,
+    0.145,
+    0.113,
+    0.348,
+    0.158
+   ],
+   "duracao_s": [
+    0.697,
+    0.407,
+    0.477,
+    0.664,
+    0.697
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    0.0,
+    -1.51,
+    -2.14,
+    -1.86,
+    0.0
+   ],
+   "ataque_em_s": [
+    0.234,
+    0.133,
+    0.094,
+    0.124,
+    0.14
+   ]
+  },
+  "passo_agua": {
+   "arquivos": [
+    "biblioteca/movimento/passo_agua_1.ogg",
+    "biblioteca/movimento/passo_agua_2.ogg",
+    "biblioteca/movimento/passo_agua_3.ogg",
+    "biblioteca/movimento/passo_agua_4.ogg",
+    "biblioteca/movimento/passo_agua_5.ogg",
+    "biblioteca/movimento/passo_agua_6.ogg"
+   ],
+   "pico_em_s": [
+    0.012,
+    0.016,
+    0.046,
+    0.188,
+    0.122,
+    0.02
+   ],
+   "duracao_s": [
+    0.644,
+    0.664,
+    0.643,
+    0.636,
+    0.725,
+    0.643
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -1.09,
+    0.0,
+    -0.95,
+    -1.09,
+    -0.25,
+    0.0
+   ],
+   "ataque_em_s": [
+    0.005,
+    0.01,
+    0.027,
+    0.01,
+    0.056,
+    0.015
+   ]
+  },
+  "passo_agua_pesado": {
+   "arquivos": [
+    "biblioteca/movimento/passo_agua_pesado_1.ogg",
+    "biblioteca/movimento/passo_agua_pesado_2.ogg",
+    "biblioteca/movimento/passo_agua_pesado_3.ogg",
+    "biblioteca/movimento/passo_agua_pesado_4.ogg"
+   ],
+   "pico_em_s": [
+    0.384,
+    0.21,
+    0.127,
+    0.117
+   ],
+   "duracao_s": [
+    0.86,
+    0.945,
+    0.946,
+    0.89
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -1.08,
+    -0.17,
+    -2.9,
+    0.0
+   ],
+   "ataque_em_s": [
+    0.067,
+    0.138,
+    0.026,
+    0.051
+   ]
+  },
+  "passo_lama": {
+   "arquivos": [
+    "biblioteca/movimento/passo_lama_1.ogg",
+    "biblioteca/movimento/passo_lama_2.ogg",
+    "biblioteca/movimento/passo_lama_3.ogg",
+    "biblioteca/movimento/passo_lama_4.ogg",
+    "biblioteca/movimento/passo_lama_5.ogg",
+    "biblioteca/movimento/passo_lama_6.ogg"
+   ],
+   "pico_em_s": [
+    0.204,
+    0.15,
+    0.111,
+    0.198,
+    0.166,
+    0.142
+   ],
+   "duracao_s": [
+    0.417,
+    0.347,
+    0.427,
+    0.412,
+    0.614,
+    0.28
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    0.0,
+    -1.61,
+    0.0,
+    -0.77,
+    -0.28,
+    -2.38
+   ],
+   "ataque_em_s": [
+    0.121,
+    0.087,
+    0.021,
+    0.063,
+    0.043,
+    0.066
+   ]
+  },
+  "passo_madeira": {
+   "arquivos": [
+    "biblioteca/movimento/passo_madeira_1.ogg",
+    "biblioteca/movimento/passo_madeira_2.ogg",
+    "biblioteca/movimento/passo_madeira_3.ogg",
+    "biblioteca/movimento/passo_madeira_4.ogg",
+    "biblioteca/movimento/passo_madeira_5.ogg",
+    "biblioteca/movimento/passo_madeira_6.ogg"
+   ],
+   "pico_em_s": [
+    0.002,
+    0.09,
+    0.063,
+    0.002,
+    0.01,
+    0.002
+   ],
+   "duracao_s": [
+    0.435,
+    0.407,
+    0.363,
+    0.385,
+    0.241,
+    0.225
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -0.25,
+    0.0,
+    0.0,
+    -1.23,
+    -0.04,
+    -0.32
+   ],
+   "ataque_em_s": [
+    0.001,
+    0.002,
+    0.002,
+    0.001,
+    0.008,
+    0.001
+   ]
+  },
+  "passo_madeira_pesado": {
+   "arquivos": [
+    "biblioteca/movimento/passo_madeira_pesado_1.ogg",
+    "biblioteca/movimento/passo_madeira_pesado_2.ogg",
+    "biblioteca/movimento/passo_madeira_pesado_3.ogg",
+    "biblioteca/movimento/passo_madeira_pesado_4.ogg"
+   ],
+   "pico_em_s": [
+    0.003,
+    0.107,
+    0.002,
+    0.003
+   ],
+   "duracao_s": [
+    0.626,
+    0.492,
+    0.626,
+    0.626
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -0.01,
+    0.0,
+    -0.71,
+    -0.5
+   ],
+   "ataque_em_s": [
+    0.001,
+    0.002,
+    0.001,
+    0.001
+   ]
+  },
+  "passo_pedra": {
+   "arquivos": [
+    "biblioteca/movimento/passo_pedra_1.ogg",
+    "biblioteca/movimento/passo_pedra_2.ogg",
+    "biblioteca/movimento/passo_pedra_3.ogg",
+    "biblioteca/movimento/passo_pedra_4.ogg",
+    "biblioteca/movimento/passo_pedra_5.ogg",
+    "biblioteca/movimento/passo_pedra_6.ogg"
+   ],
+   "pico_em_s": [
+    0.007,
+    0.01,
+    0.003,
+    0.007,
+    0.008,
+    0.008
+   ],
+   "duracao_s": [
+    0.215,
+    0.219,
+    0.241,
+    0.218,
+    0.22,
+    0.092
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -3.99,
+    -1.47,
+    0.0,
+    -1.4,
+    -0.91,
+    0.0
+   ],
+   "ataque_em_s": [
+    0.003,
+    0.007,
+    0.001,
+    0.001,
+    0.005,
+    0.003
+   ]
+  },
+  "passo_pedra_pesado": {
+   "arquivos": [
+    "biblioteca/movimento/passo_pedra_pesado_1.ogg",
+    "biblioteca/movimento/passo_pedra_pesado_2.ogg",
+    "biblioteca/movimento/passo_pedra_pesado_3.ogg",
+    "biblioteca/movimento/passo_pedra_pesado_4.ogg",
+    "biblioteca/movimento/passo_pedra_pesado_5.ogg"
+   ],
+   "pico_em_s": [
+    0.017,
+    0.012,
+    0.004,
+    0.009,
+    0.009
+   ],
+   "duracao_s": [
+    0.403,
+    0.437,
+    0.702,
+    0.403,
+    0.437
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -2.62,
+    -0.45,
+    0.0,
+    -0.45,
+    0.0
+   ],
+   "ataque_em_s": [
+    0.004,
+    0.008,
+    0.001,
+    0.001,
+    0.007
+   ]
+  },
+  "pulo": {
+   "arquivos": [
+    "biblioteca/movimento/pulo_1.ogg",
+    "biblioteca/movimento/pulo_2.ogg",
+    "biblioteca/movimento/pulo_3.ogg",
+    "biblioteca/movimento/pulo_4.ogg"
+   ],
+   "pico_em_s": [
+    0.044,
+    0.169,
+    0.033,
+    0.085
+   ],
+   "duracao_s": [
+    0.437,
+    0.597,
+    0.436,
+    0.467
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -2.1,
+    -0.14,
+    0.0,
+    -4.2
+   ],
+   "ataque_em_s": [
+    0.004,
+    0.006,
+    0.032,
+    0.022
+   ]
+  },
+  "abismo": {
+   "arquivos": [
+    "biblioteca/musica/abismo_1.ogg",
+    "biblioteca/musica/abismo_2.ogg"
+   ],
+   "pico_em_s": [
+    126.259,
+    265.893
+   ],
+   "duracao_s": [
+    154.424,
+    354.727
+   ],
+   "laco": false,
+   "canais": 2,
+   "ataque_em_s": [
+    0.0,
+    0.0
+   ]
+  },
+  "exploracao": {
+   "arquivos": [
+    "biblioteca/musica/exploracao_1.ogg",
+    "biblioteca/musica/exploracao_2.ogg",
+    "biblioteca/musica/exploracao_3.ogg"
+   ],
+   "pico_em_s": [
+    86.946,
+    172.449,
+    131.494
+   ],
+   "duracao_s": [
+    282.735,
+    214.124,
+    205.584
+   ],
+   "laco": false,
+   "canais": 2,
+   "ataque_em_s": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "stinger_derrota": {
+   "arquivos": [
+    "biblioteca/musica/stinger_derrota_1.ogg",
+    "biblioteca/musica/stinger_derrota_2.ogg"
+   ],
+   "pico_em_s": [
+    3.355,
+    1.211
+   ],
+   "duracao_s": [
+    6.0,
+    4.772
+   ],
+   "laco": false,
+   "canais": 2,
+   "ataque_em_s": [
+    0.0,
+    0.0
+   ]
+  },
+  "stinger_vitoria": {
+   "arquivos": [
+    "biblioteca/musica/stinger_vitoria_1.ogg",
+    "biblioteca/musica/stinger_vitoria_2.ogg"
+   ],
+   "pico_em_s": [
+    3.149,
+    1.122
+   ],
+   "duracao_s": [
+    10.0,
+    7.008
+   ],
+   "laco": false,
+   "canais": 2,
+   "ataque_em_s": [
+    0.0,
+    0.0
+   ]
+  },
+  "tensao": {
+   "arquivos": [
+    "biblioteca/musica/tensao_1.ogg",
+    "biblioteca/musica/tensao_2.ogg"
+   ],
+   "pico_em_s": [
+    106.363,
+    40.173
+   ],
+   "duracao_s": [
+    156.303,
+    115.514
+   ],
+   "laco": false,
+   "canais": 2,
+   "ataque_em_s": [
+    0.0,
+    0.0
+   ]
+  },
+  "corrente_choque_agua": {
+   "arquivos": [
+    "biblioteca/reacoes/corrente_choque_agua_1.ogg",
+    "biblioteca/reacoes/corrente_choque_agua_2.ogg",
+    "biblioteca/reacoes/corrente_choque_agua_3.ogg"
+   ],
+   "pico_em_s": [
+    0.098,
+    0.009,
+    0.039
+   ],
+   "duracao_s": [
+    1.104,
+    1.6,
+    0.849
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -1.04,
+    -0.76,
+    0.0
+   ],
+   "ataque_em_s": [
+    0.009,
+    0.001,
+    0.002
+   ]
+  },
+  "fervura_chiado": {
+   "arquivos": [
+    "biblioteca/reacoes/fervura_chiado_1.ogg",
+    "biblioteca/reacoes/fervura_chiado_2.ogg",
+    "biblioteca/reacoes/fervura_chiado_3.ogg",
+    "biblioteca/reacoes/fervura_chiado_4.ogg"
+   ],
+   "pico_em_s": [
+    0.097,
+    0.094,
+    0.046,
+    0.097
+   ],
+   "duracao_s": [
+    0.902,
+    0.905,
+    0.905,
+    0.905
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -0.05,
+    -1.45,
+    -1.45,
+    0.0
+   ],
+   "ataque_em_s": [
+    0.01,
+    0.007,
+    0.007,
+    0.007
+   ]
+  },
+  "fervura_laco": {
+   "arquivos": [
+    "biblioteca/reacoes/fervura_laco_1.ogg",
+    "biblioteca/reacoes/fervura_laco_2.ogg",
+    "biblioteca/reacoes/fervura_laco_3.ogg"
+   ],
+   "pico_em_s": [
+    2.861,
+    5.812,
+    0.873
+   ],
+   "duracao_s": [
+    6.0,
+    6.0,
+    3.892
+   ],
+   "laco": true,
+   "canais": 1,
+   "ataque_em_s": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "floracao": {
+   "arquivos": [
+    "biblioteca/reacoes/floracao_1.ogg",
+    "biblioteca/reacoes/floracao_2.ogg",
+    "biblioteca/reacoes/floracao_3.ogg",
+    "biblioteca/reacoes/floracao_4.ogg"
+   ],
+   "pico_em_s": [
+    0.215,
+    0.323,
+    0.311,
+    0.28
+   ],
+   "duracao_s": [
+    0.959,
+    1.456,
+    0.604,
+    0.74
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -0.25,
+    -0.18,
+    0.0,
+    -0.18
+   ],
+   "ataque_em_s": [
+    0.059,
+    0.036,
+    0.034,
+    0.037
+   ]
+  },
+  "poeira_explosao": {
+   "arquivos": [
+    "biblioteca/reacoes/poeira_explosao_1.ogg",
+    "biblioteca/reacoes/poeira_explosao_2.ogg",
+    "biblioteca/reacoes/poeira_explosao_3.ogg",
+    "biblioteca/reacoes/poeira_explosao_4.ogg",
+    "biblioteca/reacoes/poeira_explosao_5.ogg",
+    "biblioteca/reacoes/poeira_explosao_6.ogg"
+   ],
+   "pico_em_s": [
+    0.069,
+    0.063,
+    0.148,
+    0.145,
+    0.173,
+    0.638
+   ],
+   "duracao_s": [
+    1.608,
+    1.491,
+    1.183,
+    1.18,
+    1.169,
+    2.2
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    0.0,
+    0.0,
+    -1.5,
+    -1.36,
+    -0.24,
+    -2.13
+   ],
+   "ataque_em_s": [
+    0.006,
+    0.002,
+    0.09,
+    0.087,
+    0.097,
+    0.081
+   ]
+  },
+  "resina_visgo": {
+   "arquivos": [
+    "biblioteca/reacoes/resina_visgo_1.ogg",
+    "biblioteca/reacoes/resina_visgo_2.ogg",
+    "biblioteca/reacoes/resina_visgo_3.ogg",
+    "biblioteca/reacoes/resina_visgo_4.ogg",
+    "biblioteca/reacoes/resina_visgo_5.ogg",
+    "biblioteca/reacoes/resina_visgo_6.ogg"
+   ],
+   "pico_em_s": [
+    0.011,
+    0.026,
+    0.408,
+    0.067,
+    0.043,
+    0.046
+   ],
+   "duracao_s": [
+    0.325,
+    0.474,
+    0.639,
+    0.447,
+    0.354,
+    0.417
+   ],
+   "laco": false,
+   "canais": 1,
+   "ganho_db": [
+    -0.67,
+    0.0,
+    -5.71,
+    -0.46,
+    0.0,
+    -2.35
+   ],
+   "ataque_em_s": [
+    0.009,
+    0.025,
+    0.295,
+    0.045,
+    0.026,
+    0.038
+   ]
+  },
+  "comp_escorador_impacto_leve": {
+   "arquivos": [
+    "biblioteca/compostos/escorador_impacto_leve_1.ogg",
+    "biblioteca/compostos/escorador_impacto_leve_2.ogg",
+    "biblioteca/compostos/escorador_impacto_leve_3.ogg",
+    "biblioteca/compostos/escorador_impacto_leve_4.ogg",
+    "biblioteca/compostos/escorador_impacto_leve_5.ogg",
+    "biblioteca/compostos/escorador_impacto_leve_6.ogg"
+   ],
+   "pico_em_s": [
+    0.041,
+    0.068,
+    0.015,
+    0.034,
+    0.039,
+    0.029
+   ],
+   "duracao_s": [
+    0.777,
+    0.817,
+    0.733,
+    0.661,
+    0.763,
+    0.791
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.013,
+    0.016,
+    0.012,
+    0.007,
+    0.014,
+    0.013
+   ]
+  },
+  "comp_escorador_impacto_final": {
+   "arquivos": [
+    "biblioteca/compostos/escorador_impacto_final_1.ogg",
+    "biblioteca/compostos/escorador_impacto_final_2.ogg",
+    "biblioteca/compostos/escorador_impacto_final_3.ogg",
+    "biblioteca/compostos/escorador_impacto_final_4.ogg",
+    "biblioteca/compostos/escorador_impacto_final_5.ogg",
+    "biblioteca/compostos/escorador_impacto_final_6.ogg"
+   ],
+   "pico_em_s": [
+    0.067,
+    0.093,
+    0.108,
+    0.016,
+    0.143,
+    0.039
+   ],
+   "duracao_s": [
+    1.004,
+    0.988,
+    0.952,
+    0.85,
+    0.908,
+    0.969
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.017,
+    0.009,
+    0.015,
+    0.012,
+    0.013,
+    0.008
+   ]
+  },
+  "comp_cristaleira_impacto_leve": {
+   "arquivos": [
+    "biblioteca/compostos/cristaleira_impacto_leve_1.ogg",
+    "biblioteca/compostos/cristaleira_impacto_leve_2.ogg",
+    "biblioteca/compostos/cristaleira_impacto_leve_3.ogg",
+    "biblioteca/compostos/cristaleira_impacto_leve_4.ogg",
+    "biblioteca/compostos/cristaleira_impacto_leve_5.ogg",
+    "biblioteca/compostos/cristaleira_impacto_leve_6.ogg"
+   ],
+   "pico_em_s": [
+    0.029,
+    0.016,
+    0.025,
+    0.43,
+    0.332,
+    0.016
+   ],
+   "duracao_s": [
+    0.823,
+    0.831,
+    0.847,
+    0.861,
+    0.874,
+    0.828
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.001,
+    0.002,
+    0.001,
+    0.001,
+    0.001,
+    0.002
+   ]
+  },
+  "comp_cristaleira_impacto_final": {
+   "arquivos": [
+    "biblioteca/compostos/cristaleira_impacto_final_1.ogg",
+    "biblioteca/compostos/cristaleira_impacto_final_2.ogg",
+    "biblioteca/compostos/cristaleira_impacto_final_3.ogg",
+    "biblioteca/compostos/cristaleira_impacto_final_4.ogg",
+    "biblioteca/compostos/cristaleira_impacto_final_5.ogg",
+    "biblioteca/compostos/cristaleira_impacto_final_6.ogg"
+   ],
+   "pico_em_s": [
+    0.039,
+    0.063,
+    0.016,
+    0.05,
+    0.015,
+    0.016
+   ],
+   "duracao_s": [
+    1.08,
+    1.138,
+    1.181,
+    1.3,
+    1.3,
+    1.134
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.002,
+    0.002,
+    0.002,
+    0.002,
+    0.002,
+    0.002
+   ]
+  },
+  "comp_coveira_impacto_leve": {
+   "arquivos": [
+    "biblioteca/compostos/coveira_impacto_leve_1.ogg",
+    "biblioteca/compostos/coveira_impacto_leve_2.ogg",
+    "biblioteca/compostos/coveira_impacto_leve_3.ogg",
+    "biblioteca/compostos/coveira_impacto_leve_4.ogg",
+    "biblioteca/compostos/coveira_impacto_leve_5.ogg",
+    "biblioteca/compostos/coveira_impacto_leve_6.ogg"
+   ],
+   "pico_em_s": [
+    0.007,
+    0.003,
+    0.003,
+    0.006,
+    0.007,
+    0.007
+   ],
+   "duracao_s": [
+    0.567,
+    0.612,
+    0.769,
+    0.772,
+    0.569,
+    0.761
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.002,
+    0.002,
+    0.001,
+    0.002,
+    0.002,
+    0.002
+   ]
+  },
+  "comp_coveira_impacto_final": {
+   "arquivos": [
+    "biblioteca/compostos/coveira_impacto_final_1.ogg",
+    "biblioteca/compostos/coveira_impacto_final_2.ogg",
+    "biblioteca/compostos/coveira_impacto_final_3.ogg",
+    "biblioteca/compostos/coveira_impacto_final_4.ogg",
+    "biblioteca/compostos/coveira_impacto_final_5.ogg",
+    "biblioteca/compostos/coveira_impacto_final_6.ogg"
+   ],
+   "pico_em_s": [
+    0.03,
+    0.006,
+    0.003,
+    0.004,
+    0.004,
+    0.003
+   ],
+   "duracao_s": [
+    0.945,
+    0.906,
+    0.931,
+    0.896,
+    0.897,
+    0.902
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.002,
+    0.002,
+    0.001,
+    0.002,
+    0.001,
+    0.001
+   ]
+  },
+  "comp_gancheiro_impacto_leve": {
+   "arquivos": [
+    "biblioteca/compostos/gancheiro_impacto_leve_1.ogg",
+    "biblioteca/compostos/gancheiro_impacto_leve_2.ogg",
+    "biblioteca/compostos/gancheiro_impacto_leve_3.ogg",
+    "biblioteca/compostos/gancheiro_impacto_leve_4.ogg",
+    "biblioteca/compostos/gancheiro_impacto_leve_5.ogg",
+    "biblioteca/compostos/gancheiro_impacto_leve_6.ogg"
+   ],
+   "pico_em_s": [
+    0.047,
+    0.066,
+    0.006,
+    0.006,
+    0.006,
+    0.05
+   ],
+   "duracao_s": [
+    0.38,
+    0.399,
+    0.434,
+    0.339,
+    0.331,
+    0.373
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.004,
+    0.005,
+    0.001,
+    0.004,
+    0.004,
+    0.005
+   ]
+  },
+  "comp_gancheiro_impacto_final": {
+   "arquivos": [
+    "biblioteca/compostos/gancheiro_impacto_final_1.ogg",
+    "biblioteca/compostos/gancheiro_impacto_final_2.ogg",
+    "biblioteca/compostos/gancheiro_impacto_final_3.ogg",
+    "biblioteca/compostos/gancheiro_impacto_final_4.ogg",
+    "biblioteca/compostos/gancheiro_impacto_final_5.ogg",
+    "biblioteca/compostos/gancheiro_impacto_final_6.ogg"
+   ],
+   "pico_em_s": [
+    0.072,
+    0.073,
+    0.098,
+    0.028,
+    0.023,
+    0.096
+   ],
+   "duracao_s": [
+    0.563,
+    0.488,
+    0.691,
+    0.629,
+    0.524,
+    0.674
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.029,
+    0.029,
+    0.019,
+    0.025,
+    0.021,
+    0.055
+   ]
+  },
+  "comp_prumo_recepcao": {
+   "arquivos": [
+    "biblioteca/compostos/prumo_recepcao_1.ogg",
+    "biblioteca/compostos/prumo_recepcao_2.ogg",
+    "biblioteca/compostos/prumo_recepcao_3.ogg",
+    "biblioteca/compostos/prumo_recepcao_4.ogg",
+    "biblioteca/compostos/prumo_recepcao_5.ogg",
+    "biblioteca/compostos/prumo_recepcao_6.ogg"
+   ],
+   "pico_em_s": [
+    0.035,
+    0.023,
+    0.032,
+    0.033,
+    0.038,
+    0.028
+   ],
+   "duracao_s": [
+    0.923,
+    0.939,
+    0.78,
+    0.825,
+    0.918,
+    0.913
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.028,
+    0.022,
+    0.024,
+    0.031,
+    0.029,
+    0.028
+   ]
+  },
+  "comp_prumo_recepcao_golpe": {
+   "arquivos": [
+    "biblioteca/compostos/prumo_recepcao_golpe_1.ogg",
+    "biblioteca/compostos/prumo_recepcao_golpe_2.ogg",
+    "biblioteca/compostos/prumo_recepcao_golpe_3.ogg",
+    "biblioteca/compostos/prumo_recepcao_golpe_4.ogg",
+    "biblioteca/compostos/prumo_recepcao_golpe_5.ogg"
+   ],
+   "pico_em_s": [
+    0.068,
+    0.043,
+    0.051,
+    0.109,
+    0.034
+   ],
+   "duracao_s": [
+    1.018,
+    0.998,
+    0.939,
+    0.859,
+    1.002
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.023,
+    0.023,
+    0.022,
+    0.022,
+    0.024
+   ]
+  },
+  "comp_corrente_reacao": {
+   "arquivos": [
+    "biblioteca/compostos/corrente_reacao_1.ogg",
+    "biblioteca/compostos/corrente_reacao_2.ogg",
+    "biblioteca/compostos/corrente_reacao_3.ogg",
+    "biblioteca/compostos/corrente_reacao_4.ogg",
+    "biblioteca/compostos/corrente_reacao_5.ogg",
+    "biblioteca/compostos/corrente_reacao_6.ogg"
+   ],
+   "pico_em_s": [
+    0.098,
+    0.009,
+    0.038,
+    0.01,
+    0.016,
+    0.095
+   ],
+   "duracao_s": [
+    1.054,
+    1.562,
+    1.035,
+    1.608,
+    1.614,
+    1.061
+   ],
+   "laco": false,
+   "canais": 1,
+   "ataque_em_s": [
+    0.002,
+    0.002,
+    0.001,
+    0.001,
+    0.002,
+    0.007
+   ]
+  }
+ },
+ "eventos": {
+  "escorador_swing_leve": {
+   "descricao": "Viga cortando o ar (golpes 1 e 2). Use tocar_antes_do_contato para o pico cair 1-2 quadros antes do impacto.",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 4,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.05,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "viga_whoosh",
+     "papel": "sopro",
+     "volume_db": -1,
+     "atraso_ms": 0.0,
+     "pitch": 1.0,
+     "pitch_var": 0.03
+    }
+   ],
+   "antecipa_pico": true
+  },
+  "escorador_swing_pesado": {
+   "descricao": "Golpe final da viga: dois sopros graves sobrepostos, mais longos.",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 5,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "viga_whoosh",
+     "papel": "sopro",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 0.86
+    },
+    {
+     "grupo": "viga_whoosh",
+     "papel": "corpo",
+     "volume_db": -7,
+     "atraso_ms": 45,
+     "pitch": 0.74
+    }
+   ],
+   "antecipa_pico": true
+  },
+  "escorador_impacto_leve": {
+   "descricao": "Viga acertando (golpes 1 e 2 do combo curto-curto-LONGO).",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 7,
+   "max_vozes": 3,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "comp_escorador_impacto_leve",
+     "papel": "composto",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0,
+     "pitch_var": 0.02
+    }
+   ],
+   "alvos": {
+    "carne": [
+     {
+      "grupo": "carne_medio",
+      "papel": "superficie",
+      "volume_db": -3.0,
+      "atraso_ms": 8.0,
+      "pitch": 1.0
+     }
+    ],
+    "gosma": [
+     {
+      "grupo": "gosma_esmaga",
+      "papel": "superficie",
+      "volume_db": -4.0,
+      "atraso_ms": 8.0,
+      "pitch": 0.95
+     }
+    ],
+    "pedra": [
+     {
+      "grupo": "passo_pedra_pesado",
+      "papel": "superficie",
+      "volume_db": -6.0,
+      "atraso_ms": 8.0,
+      "pitch": 0.9
+     }
+    ],
+    "nada": []
+   },
+   "alvo_padrao": "carne",
+   "peso_pitch": 0.06,
+   "peso_volume_db": 4,
+   "duck_db": -2.5,
+   "duck_ms": 250,
+   "receita_composto": [
+    {
+     "grupo": "viga_impacto",
+     "papel": "transiente",
+     "volume_db": 0,
+     "atraso_ms": 0,
+     "pitch": 1.0,
+     "pitch_var": 0.03
+    },
+    {
+     "grupo": "peso_thump",
+     "papel": "sub",
+     "volume_db": -9,
+     "atraso_ms": 6,
+     "pitch": 1.05
+    }
+   ]
+  },
+  "escorador_impacto_final": {
+   "descricao": "Golpe final da viga: madeira + madeira mais grave + baque sub + poeira caindo. Acompanha hit-stop.",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 9,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "comp_escorador_impacto_final",
+     "papel": "composto",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0,
+     "pitch_var": 0.02
+    }
+   ],
+   "alvos": {
+    "carne": [
+     {
+      "grupo": "carne_pesado",
+      "papel": "superficie",
+      "volume_db": -2,
+      "atraso_ms": 10,
+      "pitch": 1.0
+     },
+     {
+      "grupo": "osso_quebra",
+      "papel": "superficie",
+      "volume_db": -8,
+      "atraso_ms": 35,
+      "pitch": 1.0,
+      "probabilidade": 0.5
+     }
+    ],
+    "gosma": [
+     {
+      "grupo": "gosma_esmaga",
+      "papel": "superficie",
+      "volume_db": -3,
+      "atraso_ms": 10,
+      "pitch": 0.95
+     }
+    ],
+    "pedra": [
+     {
+      "grupo": "passo_pedra_pesado",
+      "papel": "superficie",
+      "volume_db": -5,
+      "atraso_ms": 10,
+      "pitch": 0.9
+     }
+    ],
+    "nada": []
+   },
+   "alvo_padrao": "carne",
+   "peso_pitch": 0.08,
+   "peso_volume_db": 4,
+   "duck_db": -7,
+   "duck_ms": 650,
+   "hit_stop_ms": 110,
+   "receita_composto": [
+    {
+     "grupo": "viga_impacto",
+     "papel": "transiente",
+     "volume_db": 0,
+     "atraso_ms": 0,
+     "pitch": 0.9
+    },
+    {
+     "grupo": "viga_impacto",
+     "papel": "corpo",
+     "volume_db": -5,
+     "atraso_ms": 14,
+     "pitch": 0.76
+    },
+    {
+     "grupo": "peso_thump",
+     "papel": "sub",
+     "volume_db": 0,
+     "atraso_ms": 4,
+     "pitch": 0.88
+    },
+    {
+     "grupo": "aterrissagem_pesada",
+     "papel": "cauda",
+     "volume_db": -10,
+     "atraso_ms": 28,
+     "pitch": 0.8
+    }
+   ]
+  },
+  "escorador_arrasto": {
+   "descricao": "Viga arrastando no chao (andar carregando).",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 3,
+   "max_vozes": 1,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "viga_arrasto",
+     "papel": "corpo",
+     "volume_db": -6,
+     "atraso_ms": 0.0,
+     "pitch": 1.0,
+     "pitch_var": 0.03
+    }
+   ]
+  },
+  "cristaleira_carga": {
+   "descricao": "Geodo carregando antes do disparo.",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 4,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "raio_carga",
+     "papel": "sopro",
+     "volume_db": -3,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ],
+   "antecipa_pico": true
+  },
+  "cristaleira_impacto_leve": {
+   "descricao": "Raio curto acertando.",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 6,
+   "max_vozes": 3,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "comp_cristaleira_impacto_leve",
+     "papel": "composto",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0,
+     "pitch_var": 0.02
+    }
+   ],
+   "alvos": {
+    "carne": [
+     {
+      "grupo": "carne_leve",
+      "papel": "superficie",
+      "volume_db": -8,
+      "atraso_ms": 6,
+      "pitch": 1.0
+     }
+    ],
+    "gosma": [
+     {
+      "grupo": "gosma_esmaga",
+      "papel": "superficie",
+      "volume_db": -9,
+      "atraso_ms": 6,
+      "pitch": 1.0
+     }
+    ],
+    "nada": []
+   },
+   "alvo_padrao": "carne",
+   "peso_pitch": 0.05,
+   "peso_volume_db": 3,
+   "duck_db": -2,
+   "duck_ms": 200,
+   "receita_composto": [
+    {
+     "grupo": "raio_estalo",
+     "papel": "transiente",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0,
+     "indices": [
+      0,
+      1,
+      2,
+      5
+     ]
+    },
+    {
+     "grupo": "raio_descarga",
+     "papel": "cauda",
+     "volume_db": -14,
+     "atraso_ms": 10,
+     "pitch": 1.12,
+     "max_s": 0.45
+    }
+   ]
+  },
+  "cristaleira_impacto_final": {
+   "descricao": "Descarga final do geodo: estalo + descarga + sub + estalo residual.",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 8,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "comp_cristaleira_impacto_final",
+     "papel": "composto",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0,
+     "pitch_var": 0.02
+    }
+   ],
+   "alvos": {
+    "carne": [
+     {
+      "grupo": "carne_medio",
+      "papel": "superficie",
+      "volume_db": -7,
+      "atraso_ms": 8,
+      "pitch": 1.0
+     }
+    ],
+    "gosma": [
+     {
+      "grupo": "gosma_esmaga",
+      "papel": "superficie",
+      "volume_db": -8,
+      "atraso_ms": 8,
+      "pitch": 1.0
+     }
+    ],
+    "nada": []
+   },
+   "alvo_padrao": "carne",
+   "peso_pitch": 0.06,
+   "peso_volume_db": 4,
+   "duck_db": -5,
+   "duck_ms": 500,
+   "hit_stop_ms": 70,
+   "receita_composto": [
+    {
+     "grupo": "raio_estalo",
+     "papel": "transiente",
+     "volume_db": 0,
+     "atraso_ms": 0,
+     "pitch": 1.0,
+     "indices": [
+      0,
+      1,
+      2
+     ]
+    },
+    {
+     "grupo": "raio_descarga",
+     "papel": "corpo",
+     "volume_db": -7,
+     "atraso_ms": 0,
+     "pitch": 0.92,
+     "max_s": 1.3
+    },
+    {
+     "grupo": "peso_thump",
+     "papel": "sub",
+     "volume_db": -4,
+     "atraso_ms": 6,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "raio_estalo",
+     "papel": "cauda",
+     "volume_db": -13,
+     "atraso_ms": 140,
+     "pitch": 0.8
+    }
+   ]
+  },
+  "coveira_swing": {
+   "descricao": "Pa cortando o ar com o turibulo chacoalhando.",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 4,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.05,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "pa_whoosh",
+     "papel": "sopro",
+     "volume_db": -2,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "turibulo_corrente",
+     "papel": "cauda",
+     "volume_db": -10,
+     "atraso_ms": 60,
+     "pitch": 1.0,
+     "probabilidade": 0.7
+    }
+   ],
+   "antecipa_pico": true
+  },
+  "coveira_impacto_leve": {
+   "descricao": "Pa de ferro acertando (oca, metalica).",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 7,
+   "max_vozes": 3,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "comp_coveira_impacto_leve",
+     "papel": "composto",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0,
+     "pitch_var": 0.02
+    }
+   ],
+   "alvos": {
+    "carne": [
+     {
+      "grupo": "carne_medio",
+      "papel": "superficie",
+      "volume_db": -3.0,
+      "atraso_ms": 8.0,
+      "pitch": 1.0
+     }
+    ],
+    "gosma": [
+     {
+      "grupo": "gosma_esmaga",
+      "papel": "superficie",
+      "volume_db": -4.0,
+      "atraso_ms": 8.0,
+      "pitch": 0.95
+     }
+    ],
+    "pedra": [
+     {
+      "grupo": "passo_pedra_pesado",
+      "papel": "superficie",
+      "volume_db": -6.0,
+      "atraso_ms": 8.0,
+      "pitch": 0.9
+     }
+    ],
+    "nada": []
+   },
+   "alvo_padrao": "carne",
+   "peso_pitch": 0.05,
+   "peso_volume_db": 4,
+   "duck_db": -2.5,
+   "duck_ms": 250,
+   "receita_composto": [
+    {
+     "grupo": "pa_pancada",
+     "papel": "transiente",
+     "volume_db": 0,
+     "atraso_ms": 0,
+     "pitch": 1.0,
+     "max_s": 0.55
+    },
+    {
+     "grupo": "peso_thump",
+     "papel": "sub",
+     "volume_db": -12,
+     "atraso_ms": 5,
+     "pitch": 1.1
+    }
+   ]
+  },
+  "coveira_impacto_final": {
+   "descricao": "Pazada final: pa grave dobrada + sub + corrente do turibulo.",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 9,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "comp_coveira_impacto_final",
+     "papel": "composto",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0,
+     "pitch_var": 0.02
+    }
+   ],
+   "alvos": {
+    "carne": [
+     {
+      "grupo": "carne_pesado",
+      "papel": "superficie",
+      "volume_db": -3.0,
+      "atraso_ms": 8,
+      "pitch": 1.0
+     },
+     {
+      "grupo": "osso_quebra",
+      "papel": "superficie",
+      "volume_db": -9.0,
+      "atraso_ms": 33,
+      "pitch": 1.0,
+      "probabilidade": 0.5
+     }
+    ],
+    "gosma": [
+     {
+      "grupo": "gosma_esmaga",
+      "papel": "superficie",
+      "volume_db": -4.0,
+      "atraso_ms": 8,
+      "pitch": 0.95
+     }
+    ],
+    "pedra": [
+     {
+      "grupo": "passo_pedra_pesado",
+      "papel": "superficie",
+      "volume_db": -6.0,
+      "atraso_ms": 8,
+      "pitch": 0.9
+     }
+    ],
+    "nada": []
+   },
+   "alvo_padrao": "carne",
+   "peso_pitch": 0.07,
+   "peso_volume_db": 4,
+   "duck_db": -6,
+   "duck_ms": 550,
+   "hit_stop_ms": 90,
+   "receita_composto": [
+    {
+     "grupo": "pa_pancada",
+     "papel": "transiente",
+     "volume_db": 0,
+     "atraso_ms": 0,
+     "pitch": 0.86,
+     "max_s": 0.9
+    },
+    {
+     "grupo": "pa_pancada",
+     "papel": "corpo",
+     "volume_db": -8,
+     "atraso_ms": 10,
+     "pitch": 0.74,
+     "max_s": 0.7
+    },
+    {
+     "grupo": "peso_thump",
+     "papel": "sub",
+     "volume_db": -2,
+     "atraso_ms": 4,
+     "pitch": 0.95
+    },
+    {
+     "grupo": "turibulo_corrente",
+     "papel": "cauda",
+     "volume_db": -9,
+     "atraso_ms": 70,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "coveira_turibulo": {
+   "descricao": "Balanco do turibulo (provisorio: corrente + sopro leve; falta gravacao de incensario).",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 3,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "turibulo_corrente",
+     "papel": "corpo",
+     "volume_db": -4,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "pa_whoosh",
+     "papel": "sopro",
+     "volume_db": -16,
+     "atraso_ms": 20,
+     "pitch": 0.7,
+     "probabilidade": 0.6
+    }
+   ]
+  },
+  "gancheiro_swing": {
+   "descricao": "Punhal cortando o ar, curto e seco.",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 3,
+   "max_vozes": 3,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.07,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "punhal_whoosh",
+     "papel": "sopro",
+     "volume_db": -3,
+     "atraso_ms": 0.0,
+     "pitch": 1.0,
+     "pitch_var": 0.04
+    }
+   ],
+   "antecipa_pico": true
+  },
+  "gancheiro_impacto_leve": {
+   "descricao": "Punhalada curta.",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 6,
+   "max_vozes": 4,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "comp_gancheiro_impacto_leve",
+     "papel": "composto",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0,
+     "pitch_var": 0.02
+    }
+   ],
+   "alvos": {
+    "carne": [
+     {
+      "grupo": "carne_leve",
+      "papel": "superficie",
+      "volume_db": -7,
+      "atraso_ms": 5,
+      "pitch": 1.0
+     }
+    ],
+    "gosma": [
+     {
+      "grupo": "gosma_esmaga",
+      "papel": "superficie",
+      "volume_db": -10,
+      "atraso_ms": 5,
+      "pitch": 1.1
+     }
+    ],
+    "nada": []
+   },
+   "alvo_padrao": "carne",
+   "peso_pitch": 0.04,
+   "peso_volume_db": 3,
+   "duck_db": -1,
+   "duck_ms": 120,
+   "receita_composto": [
+    {
+     "grupo": "punhal_corte",
+     "papel": "transiente",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0,
+     "indices": [
+      0,
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "grupo": "punhal_metal",
+     "papel": "corpo",
+     "volume_db": -8,
+     "atraso_ms": 3,
+     "pitch": 1.05
+    }
+   ]
+  },
+  "gancheiro_impacto_final": {
+   "descricao": "Finalizador do Gancheiro: estalo da corda + punhalada dupla (sem sub pesado: seco).",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 8,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "comp_gancheiro_impacto_final",
+     "papel": "composto",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0,
+     "pitch_var": 0.02
+    }
+   ],
+   "alvos": {
+    "carne": [
+     {
+      "grupo": "carne_medio",
+      "papel": "superficie",
+      "volume_db": -6,
+      "atraso_ms": 24,
+      "pitch": 1.0
+     }
+    ],
+    "gosma": [
+     {
+      "grupo": "gosma_esmaga",
+      "papel": "superficie",
+      "volume_db": -8,
+      "atraso_ms": 24,
+      "pitch": 1.0
+     }
+    ],
+    "nada": []
+   },
+   "alvo_padrao": "carne",
+   "peso_pitch": 0.04,
+   "peso_volume_db": 3,
+   "duck_db": -3,
+   "duck_ms": 300,
+   "hit_stop_ms": 45,
+   "receita_composto": [
+    {
+     "grupo": "corda_chicote",
+     "papel": "transiente",
+     "volume_db": -5,
+     "atraso_ms": 0,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "punhal_corte",
+     "papel": "transiente",
+     "volume_db": 0,
+     "atraso_ms": 22,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "punhal_corte",
+     "papel": "corpo",
+     "volume_db": -1,
+     "atraso_ms": 100,
+     "pitch": 1.04
+    },
+    {
+     "grupo": "punhal_metal",
+     "papel": "corpo",
+     "volume_db": -6,
+     "atraso_ms": 100,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "peso_thump",
+     "papel": "sub",
+     "volume_db": -16,
+     "atraso_ms": 24,
+     "pitch": 1.3
+    }
+   ]
+  },
+  "acerto_carne_leve": {
+   "descricao": "Superficie atingida (carne_leve). Ja incluida nos impactos via \"alvo\"; use para dano de inimigos/armadilhas.",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 5,
+   "max_vozes": 3,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "carne_leve",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "acerto_carne_medio": {
+   "descricao": "Superficie atingida (carne_medio). Ja incluida nos impactos via \"alvo\"; use para dano de inimigos/armadilhas.",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 6,
+   "max_vozes": 3,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "carne_medio",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "acerto_carne_pesado": {
+   "descricao": "Superficie atingida (carne_pesado). Ja incluida nos impactos via \"alvo\"; use para dano de inimigos/armadilhas.",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 7,
+   "max_vozes": 3,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "carne_pesado",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "acerto_gosma": {
+   "descricao": "Superficie atingida (gosma_esmaga). Ja incluida nos impactos via \"alvo\"; use para dano de inimigos/armadilhas.",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 6,
+   "max_vozes": 3,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "gosma_esmaga",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "osso_quebra": {
+   "descricao": "Superficie atingida (osso_quebra). Ja incluida nos impactos via \"alvo\"; use para dano de inimigos/armadilhas.",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 6,
+   "max_vozes": 3,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "osso_quebra",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "jogador_dano": {
+   "descricao": "Heroi levando dano.",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 8,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "carne_medio",
+     "papel": "corpo",
+     "volume_db": -2,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "peso_thump",
+     "papel": "sub",
+     "volume_db": -10,
+     "atraso_ms": 4,
+     "pitch": 1.0,
+     "escala_peso": true
+    }
+   ],
+   "duck_db": -3,
+   "duck_ms": 300
+  },
+  "passo_pedra": {
+   "descricao": "Passo (passo_pedra).",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 2,
+   "max_vozes": 4,
+   "cooldown_ms": 0,
+   "volume_db": -4,
+   "pitch": 1.0,
+   "pitch_var": 0.06,
+   "volume_var_db": 2.0,
+   "camadas": [
+    {
+     "grupo": "passo_pedra",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "passo_pedra_pesado": {
+   "descricao": "Passo (passo_pedra_pesado).",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 2,
+   "max_vozes": 4,
+   "cooldown_ms": 0,
+   "volume_db": -2,
+   "pitch": 1.0,
+   "pitch_var": 0.06,
+   "volume_var_db": 2.0,
+   "camadas": [
+    {
+     "grupo": "passo_pedra_pesado",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "peso_thump",
+     "papel": "sub",
+     "volume_db": -18,
+     "atraso_ms": 3,
+     "pitch": 1.4,
+     "escala_peso": true,
+     "peso_min": 0.6
+    }
+   ]
+  },
+  "passo_agua": {
+   "descricao": "Passo (passo_agua).",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 2,
+   "max_vozes": 4,
+   "cooldown_ms": 0,
+   "volume_db": -4,
+   "pitch": 1.0,
+   "pitch_var": 0.06,
+   "volume_var_db": 2.0,
+   "camadas": [
+    {
+     "grupo": "passo_agua",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "passo_agua_pesado": {
+   "descricao": "Passo (passo_agua_pesado).",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 2,
+   "max_vozes": 4,
+   "cooldown_ms": 0,
+   "volume_db": -2,
+   "pitch": 1.0,
+   "pitch_var": 0.06,
+   "volume_var_db": 2.0,
+   "camadas": [
+    {
+     "grupo": "passo_agua_pesado",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "passo_lama": {
+   "descricao": "Passo (passo_lama).",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 2,
+   "max_vozes": 4,
+   "cooldown_ms": 0,
+   "volume_db": -4,
+   "pitch": 1.0,
+   "pitch_var": 0.06,
+   "volume_var_db": 2.0,
+   "camadas": [
+    {
+     "grupo": "passo_lama",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "passo_madeira": {
+   "descricao": "Passo (passo_madeira).",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 2,
+   "max_vozes": 4,
+   "cooldown_ms": 0,
+   "volume_db": -4,
+   "pitch": 1.0,
+   "pitch_var": 0.06,
+   "volume_var_db": 2.0,
+   "camadas": [
+    {
+     "grupo": "passo_madeira",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "passo_madeira_pesado": {
+   "descricao": "Passo (passo_madeira_pesado).",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 2,
+   "max_vozes": 4,
+   "cooldown_ms": 0,
+   "volume_db": -2,
+   "pitch": 1.0,
+   "pitch_var": 0.06,
+   "volume_var_db": 2.0,
+   "camadas": [
+    {
+     "grupo": "passo_madeira_pesado",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "corda_rangido",
+     "papel": "cauda",
+     "volume_db": -16,
+     "atraso_ms": 20,
+     "pitch": 1.0,
+     "probabilidade": 0.3
+    }
+   ]
+  },
+  "passo_lama_pesado": {
+   "descricao": "Lama pesada (passo_lama com pitch 0,85; falta variante gravada).",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 2,
+   "max_vozes": 4,
+   "cooldown_ms": 0,
+   "volume_db": -2,
+   "pitch": 1.0,
+   "pitch_var": 0.05,
+   "volume_var_db": 2.0,
+   "camadas": [
+    {
+     "grupo": "passo_lama",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 0.85
+    }
+   ]
+  },
+  "pulo": {
+   "descricao": "Impulso do pulo.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 3,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "pulo",
+     "papel": "corpo",
+     "volume_db": -3,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "aterrissagem": {
+   "descricao": "Aterrissagem leve.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 4,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "aterrissagem",
+     "papel": "corpo",
+     "volume_db": -2,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "aterrissagem_pesada": {
+   "descricao": "Aterrissagem do Escorador ou queda alta; peso escala o sub.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 6,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "aterrissagem_pesada",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "peso_thump",
+     "papel": "sub",
+     "volume_db": -8,
+     "atraso_ms": 4,
+     "pitch": 0.95,
+     "escala_peso": true
+    }
+   ],
+   "duck_db": -3,
+   "duck_ms": 300
+  },
+  "esquiva": {
+   "descricao": "Esquiva/rolamento (tecido rapido; falta corpo rolando na pedra).",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 4,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.06,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "esquiva",
+     "papel": "corpo",
+     "volume_db": -3,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "gancho_lancar": {
+   "descricao": "Gancho lancado.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 5,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "corda_chicote",
+     "papel": "corpo",
+     "volume_db": -2,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "punhal_whoosh",
+     "papel": "sopro",
+     "volume_db": -9,
+     "atraso_ms": 0,
+     "pitch": 0.9
+    }
+   ]
+  },
+  "gancho_prender": {
+   "descricao": "Gancho crava na pedra e a corda estica.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 5,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "punhal_metal",
+     "papel": "transiente",
+     "volume_db": -3,
+     "atraso_ms": 0,
+     "pitch": 0.85
+    },
+    {
+     "grupo": "corda_rangido",
+     "papel": "cauda",
+     "volume_db": -10,
+     "atraso_ms": 40,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "corda_puxar": {
+   "descricao": "Puxao na corda.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 3,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "corda_puxar",
+     "papel": "corpo",
+     "volume_db": -3,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "corda_rangido": {
+   "descricao": "Corda/madeira sob tensao.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 2,
+   "max_vozes": 2,
+   "cooldown_ms": 250,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "corda_rangido",
+     "papel": "corpo",
+     "volume_db": -4,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "corda_estalo": {
+   "descricao": "Corda arrebentando (PROVISORIO: nao ha gravacao de corda partindo).",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 7,
+   "max_vozes": 1,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "corda_chicote",
+     "papel": "transiente",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 0.8
+    },
+    {
+     "grupo": "peso_thump",
+     "papel": "sub",
+     "volume_db": -12,
+     "atraso_ms": 5,
+     "pitch": 1.2
+    }
+   ]
+  },
+  "rapel": {
+   "descricao": "Descida de rapel (atrito).",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 3,
+   "max_vozes": 1,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "rapel_atrito",
+     "papel": "corpo",
+     "volume_db": -4,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "guincho_catraca": {
+   "descricao": "Um clique por passo da manivela; encadear no ritmo do giro.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 4,
+   "max_vozes": 3,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.03,
+   "volume_var_db": 1.0,
+   "camadas": [
+    {
+     "grupo": "guincho_catraca",
+     "papel": "transiente",
+     "volume_db": -2,
+     "atraso_ms": 0.0,
+     "pitch": 1.0,
+     "pitch_var": 0.02
+    }
+   ]
+  },
+  "guincho_corrente": {
+   "descricao": "Corrente correndo no guincho.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 4,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "guincho_corrente",
+     "papel": "corpo",
+     "volume_db": -3,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "roldana_rangido": {
+   "descricao": "Roldana rangendo.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 3,
+   "max_vozes": 2,
+   "cooldown_ms": 200,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "roldana_rangido",
+     "papel": "corpo",
+     "volume_db": -5,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "elevador_trava": {
+   "descricao": "Elevador chegando/travando.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 7,
+   "max_vozes": 1,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "elevador_trava",
+     "papel": "transiente",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "peso_thump",
+     "papel": "sub",
+     "volume_db": -6,
+     "atraso_ms": 3,
+     "pitch": 0.85
+    }
+   ],
+   "duck_db": -4,
+   "duck_ms": 400
+  },
+  "prumo_lancar": {
+   "descricao": "Prumo lancado no ar.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 6,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "lancar",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 0.9
+    },
+    {
+     "grupo": "viga_whoosh",
+     "papel": "sopro",
+     "volume_db": -7,
+     "atraso_ms": 30,
+     "pitch": 0.95
+    }
+   ]
+  },
+  "prumo_recepcao": {
+   "descricao": "Prumo recebido (couro contra o corpo + baque grave).",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 8,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "comp_prumo_recepcao",
+     "papel": "composto",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0,
+     "pitch_var": 0.02
+    }
+   ],
+   "peso_pitch": 0.06,
+   "peso_volume_db": 4,
+   "duck_db": -4,
+   "duck_ms": 350,
+   "receita_composto": [
+    {
+     "grupo": "recepcao_pesada",
+     "papel": "transiente",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "peso_thump",
+     "papel": "sub",
+     "volume_db": -3,
+     "atraso_ms": 4,
+     "pitch": 0.92
+    },
+    {
+     "grupo": "pegar",
+     "papel": "cauda",
+     "volume_db": -12,
+     "atraso_ms": 45,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "prumo_recepcao_golpe": {
+   "descricao": "Golpe de recepcao perfeito: o Prumo e rebatido/recebido no tempo certo (mais forte que a recepcao comum).",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 9,
+   "max_vozes": 1,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "comp_prumo_recepcao_golpe",
+     "papel": "composto",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0,
+     "pitch_var": 0.02
+    }
+   ],
+   "peso_pitch": 0.06,
+   "peso_volume_db": 4,
+   "duck_db": -7,
+   "duck_ms": 600,
+   "hit_stop_ms": 90,
+   "receita_composto": [
+    {
+     "grupo": "recepcao_pesada",
+     "papel": "transiente",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "viga_impacto",
+     "papel": "corpo",
+     "volume_db": -5,
+     "atraso_ms": 6,
+     "pitch": 0.85
+    },
+    {
+     "grupo": "peso_thump",
+     "papel": "sub",
+     "volume_db": 0,
+     "atraso_ms": 4,
+     "pitch": 0.85
+    },
+    {
+     "grupo": "moedas",
+     "papel": "cauda",
+     "volume_db": -16,
+     "atraso_ms": 60,
+     "pitch": 0.8
+    }
+   ]
+  },
+  "saco_saque": {
+   "descricao": "Saco de saque pesado.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 4,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "saco_saque",
+     "papel": "corpo",
+     "volume_db": -2,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "moedas",
+     "papel": "cauda",
+     "volume_db": -10,
+     "atraso_ms": 30,
+     "pitch": 1.0,
+     "probabilidade": 0.6
+    }
+   ]
+  },
+  "moedas": {
+   "descricao": "Moedas.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 3,
+   "max_vozes": 3,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "moedas",
+     "papel": "corpo",
+     "volume_db": -3,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "pegar": {
+   "descricao": "Pegar item.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 4,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "pegar",
+     "papel": "corpo",
+     "volume_db": -3,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "corrente_reacao": {
+   "descricao": "Corrente: eletricidade na agua. Depois disso, ligar o laco corrente_zumbido na poca enquanto durar.",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 8,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "comp_corrente_reacao",
+     "papel": "composto",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0,
+     "pitch_var": 0.02
+    }
+   ],
+   "duck_db": -4,
+   "duck_ms": 400,
+   "receita_composto": [
+    {
+     "grupo": "corrente_choque_agua",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "raio_estalo",
+     "papel": "transiente",
+     "volume_db": -3,
+     "atraso_ms": 0,
+     "pitch": 1.0,
+     "indices": [
+      0,
+      1,
+      2,
+      5
+     ]
+    },
+    {
+     "grupo": "raio_descarga",
+     "papel": "cauda",
+     "volume_db": -9,
+     "atraso_ms": 35,
+     "pitch": 0.9,
+     "max_s": 1.0
+    },
+    {
+     "grupo": "passo_agua_pesado",
+     "papel": "superficie",
+     "volume_db": -10,
+     "atraso_ms": 5,
+     "pitch": 0.9
+    }
+   ]
+  },
+  "corrente_zumbido": {
+   "descricao": "Laco da poca eletrificada (emissor posicional).",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 4,
+   "max_vozes": 3,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.03,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "raio_zumbido_agua",
+     "papel": "corpo",
+     "volume_db": -6,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ],
+   "laco": true
+  },
+  "fervura": {
+   "descricao": "Fervura (cal + agua): chiado e bolha.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 6,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "fervura_chiado",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "fervura_laco": {
+   "descricao": "Laco da agua fervendo.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 3,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "fervura_laco",
+     "papel": "corpo",
+     "volume_db": -6,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ],
+   "laco": true
+  },
+  "fulgor": {
+   "descricao": "Fulgor: explosao de poeira de esporos.",
+   "bus": "Golpes",
+   "espacial": true,
+   "prioridade": 8,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "poeira_explosao",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "peso_thump",
+     "papel": "sub",
+     "volume_db": -4,
+     "atraso_ms": 6,
+     "pitch": 0.8,
+     "escala_peso": true
+    }
+   ],
+   "duck_db": -6,
+   "duck_ms": 600
+  },
+  "ambar_visgo": {
+   "descricao": "Ambar/Visgo: resina gruda.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 5,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "resina_visgo",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "floracao": {
+   "descricao": "Floracao: cogumelo cresce (solucao de design).",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 5,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.04,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "floracao",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "ouvidor_telegrafia": {
+   "descricao": "Aviso antes do ataque do Ouvidor (leitura do jogador).",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 7,
+   "max_vozes": 2,
+   "cooldown_ms": 120,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.05,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "ouvidor_telegrafia",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "ouvidor_guincho": {
+   "descricao": "Guincho do Ouvidor.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 5,
+   "max_vozes": 3,
+   "cooldown_ms": 120,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.05,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "ouvidor_guincho",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "ouvidor_dor": {
+   "descricao": "Ouvidor ferido.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 6,
+   "max_vozes": 3,
+   "cooldown_ms": 120,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.05,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "ouvidor_dor",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "ouvidor_morte": {
+   "descricao": "Morte do Ouvidor + corpo caindo.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 7,
+   "max_vozes": 2,
+   "cooldown_ms": 120,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.05,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "ouvidor_morte",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "carne_pesado",
+     "papel": "cauda",
+     "volume_db": -12,
+     "atraso_ms": 150,
+     "pitch": 0.9
+    }
+   ]
+  },
+  "bocalume_gorgolejo": {
+   "descricao": "Lesma gorgolejando (ocioso).",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 3,
+   "max_vozes": 2,
+   "cooldown_ms": 120,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.05,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "bocalume_gorgolejo",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "bocalume_ataque": {
+   "descricao": "Bote do Bocalume.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 7,
+   "max_vozes": 2,
+   "cooldown_ms": 120,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.05,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "bocalume_ataque",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "bocalume_morte": {
+   "descricao": "Morte do Bocalume (gosma desabando).",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 7,
+   "max_vozes": 2,
+   "cooldown_ms": 120,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.05,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "bocalume_morte",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "gosma_esmaga",
+     "papel": "cauda",
+     "volume_db": -5,
+     "atraso_ms": 90,
+     "pitch": 0.85
+    }
+   ]
+  },
+  "criatura_grunhido": {
+   "descricao": "Grunhido generico de criatura.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 4,
+   "max_vozes": 3,
+   "cooldown_ms": 120,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.05,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "criatura_grunhido",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "elite_rugido": {
+   "descricao": "Rugido de elite.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 8,
+   "max_vozes": 1,
+   "cooldown_ms": 120,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.05,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "elite_rugido",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ],
+   "duck_db": -5,
+   "duck_ms": 900
+  },
+  "chefe_rugido": {
+   "descricao": "Rugido de chefe.",
+   "bus": "SFX",
+   "espacial": true,
+   "prioridade": 9,
+   "max_vozes": 1,
+   "cooldown_ms": 120,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.05,
+   "volume_var_db": 1.5,
+   "camadas": [
+    {
+     "grupo": "chefe_rugido",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    },
+    {
+     "grupo": "peso_thump",
+     "papel": "sub",
+     "volume_db": -8,
+     "atraso_ms": 20,
+     "pitch": 0.7,
+     "escala_peso": true
+    }
+   ],
+   "duck_db": -5,
+   "duck_ms": 900
+  },
+  "amb_caverna_base": {
+   "descricao": "Cama estereo da caverna.",
+   "bus": "Ambiente",
+   "espacial": false,
+   "prioridade": 1,
+   "max_vozes": 8,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.0,
+   "volume_var_db": 0.0,
+   "camadas": [
+    {
+     "grupo": "amb_caverna_base",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ],
+   "laco": true
+  },
+  "amb_abismo_respiracao": {
+   "descricao": "\"Respiracao\" do abismo: volume modulado lentamente pelo ambiente.gd.",
+   "bus": "Ambiente",
+   "espacial": false,
+   "prioridade": 1,
+   "max_vozes": 8,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.0,
+   "volume_var_db": 0.0,
+   "camadas": [
+    {
+     "grupo": "amb_abismo_respiracao",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ],
+   "laco": true
+  },
+  "amb_vento_caverna": {
+   "descricao": "Vento com rajadas (modulado).",
+   "bus": "Ambiente",
+   "espacial": false,
+   "prioridade": 1,
+   "max_vozes": 8,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.0,
+   "volume_var_db": 0.0,
+   "camadas": [
+    {
+     "grupo": "amb_vento_caverna",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ],
+   "laco": true
+  },
+  "amb_goteiras": {
+   "descricao": "Cama de goteiras.",
+   "bus": "Ambiente",
+   "espacial": false,
+   "prioridade": 1,
+   "max_vozes": 8,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.0,
+   "volume_var_db": 0.0,
+   "camadas": [
+    {
+     "grupo": "amb_goteiras",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ],
+   "laco": true
+  },
+  "amb_cascata": {
+   "descricao": "Cascata (emissor posicional).",
+   "bus": "Ambiente",
+   "espacial": true,
+   "prioridade": 1,
+   "max_vozes": 8,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.0,
+   "volume_var_db": 0.0,
+   "camadas": [
+    {
+     "grupo": "amb_cascata",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ],
+   "laco": true
+  },
+  "amb_rio_subterraneo": {
+   "descricao": "Rio subterraneo (emissor posicional).",
+   "bus": "Ambiente",
+   "espacial": true,
+   "prioridade": 1,
+   "max_vozes": 8,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.0,
+   "volume_var_db": 0.0,
+   "camadas": [
+    {
+     "grupo": "amb_rio_subterraneo",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ],
+   "laco": true
+  },
+  "lanterna_crepitar": {
+   "descricao": "Lanterna da guilda (emissor posicional mono).",
+   "bus": "Ambiente",
+   "espacial": true,
+   "prioridade": 1,
+   "max_vozes": 8,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.0,
+   "volume_var_db": 0.0,
+   "camadas": [
+    {
+     "grupo": "lanterna_crepitar",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ],
+   "laco": true
+  },
+  "fungos_zumbido": {
+   "descricao": "Cogumelos bioluminescentes (emissor posicional mono).",
+   "bus": "Ambiente",
+   "espacial": true,
+   "prioridade": 1,
+   "max_vozes": 8,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.0,
+   "volume_var_db": 0.0,
+   "camadas": [
+    {
+     "grupo": "fungos_zumbido",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ],
+   "laco": true
+  },
+  "gota_eco": {
+   "descricao": "Gota isolada com eco (disparada em pontos aleatorios).",
+   "bus": "Ambiente",
+   "espacial": true,
+   "prioridade": 1,
+   "max_vozes": 3,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.06,
+   "volume_var_db": 4.0,
+   "camadas": [
+    {
+     "grupo": "gota_eco",
+     "papel": "corpo",
+     "volume_db": -4,
+     "atraso_ms": 0.0,
+     "pitch": 1.0,
+     "pitch_var": 0.08
+    }
+   ]
+  },
+  "ui_cancelar": {
+   "descricao": "Interface.",
+   "bus": "UI",
+   "espacial": false,
+   "prioridade": 6,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.02,
+   "volume_var_db": 0.5,
+   "camadas": [
+    {
+     "grupo": "ui_cancelar",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "ui_confirmar": {
+   "descricao": "Interface.",
+   "bus": "UI",
+   "espacial": false,
+   "prioridade": 6,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.02,
+   "volume_var_db": 0.5,
+   "camadas": [
+    {
+     "grupo": "ui_confirmar",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "ui_inventario": {
+   "descricao": "Interface.",
+   "bus": "UI",
+   "espacial": false,
+   "prioridade": 6,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.02,
+   "volume_var_db": 0.5,
+   "camadas": [
+    {
+     "grupo": "ui_inventario",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "ui_navegar": {
+   "descricao": "Interface.",
+   "bus": "UI",
+   "espacial": false,
+   "prioridade": 6,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.02,
+   "volume_var_db": 0.5,
+   "camadas": [
+    {
+     "grupo": "ui_navegar",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "ui_nivel": {
+   "descricao": "Interface.",
+   "bus": "UI",
+   "espacial": false,
+   "prioridade": 6,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.0,
+   "volume_var_db": 0.5,
+   "camadas": [
+    {
+     "grupo": "ui_nivel",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "ui_saque_raro": {
+   "descricao": "Interface.",
+   "bus": "UI",
+   "espacial": false,
+   "prioridade": 6,
+   "max_vozes": 2,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.0,
+   "volume_var_db": 0.5,
+   "camadas": [
+    {
+     "grupo": "ui_saque_raro",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "stinger_vitoria": {
+   "descricao": "Vinheta.",
+   "bus": "Musica",
+   "espacial": false,
+   "prioridade": 9,
+   "max_vozes": 1,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.0,
+   "volume_var_db": 0.0,
+   "camadas": [
+    {
+     "grupo": "stinger_vitoria",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  },
+  "stinger_derrota": {
+   "descricao": "Vinheta.",
+   "bus": "Musica",
+   "espacial": false,
+   "prioridade": 9,
+   "max_vozes": 1,
+   "cooldown_ms": 0,
+   "volume_db": 0.0,
+   "pitch": 1.0,
+   "pitch_var": 0.0,
+   "volume_var_db": 0.0,
+   "camadas": [
+    {
+     "grupo": "stinger_derrota",
+     "papel": "corpo",
+     "volume_db": 0,
+     "atraso_ms": 0.0,
+     "pitch": 1.0
+    }
+   ]
+  }
+ },
+ "musica": {
+  "exploracao": [
+   "biblioteca/musica/exploracao_1.ogg",
+   "biblioteca/musica/exploracao_2.ogg",
+   "biblioteca/musica/exploracao_3.ogg"
+  ],
+  "tensao": [
+   "biblioteca/musica/tensao_1.ogg",
+   "biblioteca/musica/tensao_2.ogg"
+  ],
+  "abismo": [
+   "biblioteca/musica/abismo_1.ogg",
+   "biblioteca/musica/abismo_2.ogg"
+  ]
+ }
+}
