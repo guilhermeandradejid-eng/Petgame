@@ -1,0 +1,86 @@
+{
+ "tarugo": {
+  "tris": 5624,
+  "bones": 29,
+  "t_build": 0.042,
+  "t_anim": 0.066,
+  "t_export": 0.199,
+  "kb": 404.6,
+  "colisao_golpe": {
+   "min_altura_adereco": 0.041,
+   "folga_min_corpo": 0.325,
+   "violacoes": [],
+   "n_violacoes": 0
+  }
+ },
+ "anilina": {
+  "tris": 13012,
+  "bones": 29,
+  "t_build": 0.06,
+  "t_anim": 0.066,
+  "t_export": 0.203,
+  "kb": 695.0,
+  "colisao_golpe": {
+   "min_altura_adereco": 0.544,
+   "folga_min_corpo": 0.585,
+   "violacoes": [],
+   "n_violacoes": 0
+  }
+ },
+ "retros": {
+  "tris": 6016,
+  "bones": 29,
+  "t_build": 0.039,
+  "t_anim": 0.016,
+  "t_export": 0.14,
+  "kb": 393.1
+ },
+ "pavio": {
+  "tris": 5280,
+  "bones": 32,
+  "t_build": 0.029,
+  "t_anim": 0.019,
+  "t_export": 0.187,
+  "kb": 364.0
+ },
+ "caruncho": {
+  "tris": 5280,
+  "bones": 17,
+  "t_build": 0.036,
+  "t_anim": 0.031,
+  "t_export": 0.165,
+  "kb": 326.9
+ },
+ "traca": {
+  "tris": 1888,
+  "bones": 7,
+  "t_build": 0.013,
+  "t_anim": 0.003,
+  "t_export": 0.039,
+  "kb": 120.6
+ },
+ "bastidor": {
+  "tris": 664,
+  "bones": 3,
+  "t_build": 0.007,
+  "t_anim": 0.002,
+  "t_export": 0.022,
+  "kb": 48.9
+ },
+ "contrarregra": {
+  "tris": 1104,
+  "bones": 12,
+  "t_build": 0.009,
+  "t_anim": 0.003,
+  "t_export": 0.041,
+  "kb": 83.2
+ },
+ "caruncho_chifre": {
+  "tris": 5808,
+  "bones": 17,
+  "t_build": 0.028,
+  "t_anim": 0.023,
+  "t_export": 0.176,
+  "kb": 343.4
+ }
+}

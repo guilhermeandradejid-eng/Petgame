@@ -1,0 +1,219 @@
+{
+ "lamparina": {
+  "tris": 11052,
+  "por_material": {
+   "corpo": 5556,
+   "contorno": 5496
+  },
+  "ossos": 26,
+  "clipes": [
+   "lancar",
+   "idle"
+  ],
+  "t_modelo": 0.63,
+  "t_rig": 0.0,
+  "t_anim": 0.01,
+  "t_export": 0.13,
+  "kb": 519.5
+ },
+ "bento": {
+  "tris": 9164,
+  "por_material": {
+   "corpo": 4622,
+   "contorno": 4542
+  },
+  "ossos": 27,
+  "clipes": [
+   "balde",
+   "isolado",
+   "idle"
+  ],
+  "t_modelo": 0.6,
+  "t_rig": 0.0,
+  "t_anim": 0.02,
+  "t_export": 0.15,
+  "kb": 485.5
+ },
+ "barril": {
+  "tris": 1144,
+  "por_material": {
+   "corpo": 592,
+   "contorno": 552
+  },
+  "ossos": 1,
+  "clipes": [],
+  "t_modelo": 0.07,
+  "t_rig": 0.0,
+  "t_anim": 0.0,
+  "t_export": 0.04,
+  "kb": 60.1
+ },
+ "cabeco": {
+  "tris": 3784,
+  "por_material": {
+   "corpo": 1892,
+   "contorno": 1892
+  },
+  "ossos": 1,
+  "clipes": [],
+  "t_modelo": 0.06,
+  "t_rig": 0.0,
+  "t_anim": 0.0,
+  "t_export": 0.02,
+  "kb": 213.9
+ },
+ "caixote": {
+  "tris": 1408,
+  "por_material": {
+   "corpo": 704,
+   "contorno": 704
+  },
+  "ossos": 1,
+  "clipes": [],
+  "t_modelo": 0.05,
+  "t_rig": 0.0,
+  "t_anim": 0.0,
+  "t_export": 0.01,
+  "kb": 77.1
+ },
+ "rede": {
+  "tris": 1648,
+  "por_material": {
+   "corpo": 824,
+   "contorno": 824
+  },
+  "ossos": 1,
+  "clipes": [],
+  "t_modelo": 0.05,
+  "t_rig": 0.0,
+  "t_anim": 0.0,
+  "t_export": 0.01,
+  "kb": 76.9
+ },
+ "porta": {
+  "tris": 1672,
+  "por_material": {
+   "corpo": 836,
+   "contorno": 836
+  },
+  "ossos": 1,
+  "clipes": [],
+  "t_modelo": 0.05,
+  "t_rig": 0.0,
+  "t_anim": 0.0,
+  "t_export": 0.01,
+  "kb": 93.2
+ },
+ "carranca": {
+  "tris": 1248,
+  "por_material": {
+   "corpo": 638,
+   "contorno": 610
+  },
+  "ossos": 1,
+  "clipes": [],
+  "t_modelo": 0.1,
+  "t_rig": 0.0,
+  "t_anim": 0.0,
+  "t_export": 0.01,
+  "kb": 59.9
+ },
+ "borda_cais": {
+  "tris": 880,
+  "por_material": {
+   "corpo": 440,
+   "contorno": 440
+  },
+  "ossos": 1,
+  "clipes": [],
+  "t_modelo": 0.04,
+  "t_rig": 0.0,
+  "t_anim": 0.0,
+  "t_export": 0.01,
+  "kb": 50.6
+ },
+ "lasca": {
+  "tris": 1240,
+  "por_material": {
+   "corpo": 620,
+   "contorno": 620
+  },
+  "ossos": 7,
+  "clipes": [
+   "pulo",
+   "telegrafia",
+   "golpeado"
+  ],
+  "t_modelo": 0.34,
+  "t_rig": 0.0,
+  "t_anim": 0.01,
+  "t_export": 0.08,
+  "kb": 101.0
+ },
+ "ladrilheiro": {
+  "tris": 3532,
+  "por_material": {
+   "corpo": 1766,
+   "contorno": 1766
+  },
+  "ossos": 6,
+  "clipes": [
+   "erguer",
+   "idle"
+  ],
+  "t_modelo": 1.19,
+  "t_rig": 0.0,
+  "t_anim": 0.0,
+  "t_export": 0.03,
+  "kb": 233.3
+ },
+ "crosta": {
+  "tris": 3012,
+  "por_material": {
+   "corpo": 1506,
+   "contorno": 1506
+  },
+  "ossos": 7,
+  "clipes": [
+   "telegrafia",
+   "idle"
+  ],
+  "t_modelo": 0.17,
+  "t_rig": 0.0,
+  "t_anim": 0.0,
+  "t_export": 0.03,
+  "kb": 289.8
+ },
+ "nina": {
+  "tris": 7080,
+  "por_material": {
+   "corpo": 3540,
+   "contorno": 3540
+  },
+  "ossos": 24,
+  "clipes": [
+   "idle"
+  ],
+  "t_modelo": 0.2,
+  "t_rig": 0.0,
+  "t_anim": 0.0,
+  "t_export": 0.09,
+  "kb": 328.0
+ },
+ "galvao": {
+  "tris": 7468,
+  "por_material": {
+   "corpo": 3734,
+   "contorno": 3734
+  },
+  "ossos": 25,
+  "clipes": [
+   "idle"
+  ],
+  "t_modelo": 0.24,
+  "t_rig": 0.0,
+  "t_anim": 0.0,
+  "t_export": 0.05,
+  "kb": 343.4
+ }
+}

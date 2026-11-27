@@ -1,0 +1,68 @@
+{
+ "trapiche": {
+  "tris": 9084,
+  "pecas": 217,
+  "atlas": [
+   4096,
+   4096
+  ],
+  "dens": 170,
+  "t_build": 0.06,
+  "t_tinta": 40.02
+ },
+ "objetos": {
+  "tris": 7764,
+  "pecas": 182,
+  "atlas": [
+   4096,
+   2048
+  ],
+  "dens": 220,
+  "t_build": 0.06,
+  "t_tinta": 10.19
+ },
+ "fundo": {
+  "tris": 2458,
+  "pecas": 44,
+  "atlas": [
+   4096,
+   2048
+  ],
+  "dens": 130,
+  "t_build": 0.03,
+  "t_tinta": 10.67
+ },
+ "frente": {
+  "tris": 864,
+  "pecas": 10,
+  "atlas": [
+   2048,
+   512
+  ],
+  "dens": 200,
+  "t_build": 0.0,
+  "t_tinta": 2.05
+ },
+ "marolas_f": {
+  "tris": 1068,
+  "pecas": 12,
+  "atlas": [
+   2048,
+   2048
+  ],
+  "dens": 110,
+  "t_build": 0.0,
+  "t_tinta": 3.63
+ },
+ "marolas_t": {
+  "tris": 1496,
+  "pecas": 18,
+  "atlas": [
+   2048,
+   2048
+  ],
+  "dens": 90,
+  "t_build": 0.0,
+  "t_tinta": 4.0
+ }
+}

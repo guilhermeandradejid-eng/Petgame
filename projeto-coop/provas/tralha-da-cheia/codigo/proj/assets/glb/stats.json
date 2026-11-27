@@ -1,0 +1,162 @@
+{
+ "marola": {
+  "tris": 4012,
+  "bones": 29,
+  "pecas": 56,
+  "atlas": [
+   2048,
+   4096
+  ],
+  "dens": 700,
+  "t_build": 0.02,
+  "t_tinta": 10.95,
+  "t_anim": 0.04,
+  "t_export": 0.26,
+  "kb": 498.6,
+  "body": [
+   0.22,
+   0.05,
+   1.3
+  ]
+ },
+ "piaba": {
+  "tris": 4112,
+  "bones": 26,
+  "pecas": 46,
+  "atlas": [
+   2048,
+   2048
+  ],
+  "dens": 700,
+  "t_build": 0.02,
+  "t_tinta": 5.99,
+  "t_anim": 0.03,
+  "t_export": 0.13,
+  "kb": 472.7,
+  "body": [
+   0.24,
+   0.05,
+   1.2
+  ]
+ },
+ "remo": {
+  "tris": 304,
+  "bones": 1,
+  "pecas": 3,
+  "atlas": [
+   2048,
+   128
+  ],
+  "dens": 520,
+  "t_build": 0.0,
+  "t_tinta": 0.44,
+  "t_anim": 0.01,
+  "t_export": 0.01,
+  "kb": 29.9,
+  "body": []
+ },
+ "malho": {
+  "tris": 184,
+  "bones": 1,
+  "pecas": 2,
+  "atlas": [
+   2048,
+   256
+  ],
+  "dens": 520,
+  "t_build": 0.0,
+  "t_tinta": 0.68,
+  "t_anim": 0.0,
+  "t_export": 0.01,
+  "kb": 19.8,
+  "body": []
+ },
+ "bucho": {
+  "tris": 804,
+  "bones": 7,
+  "pecas": 11,
+  "atlas": [
+   2048,
+   512
+  ],
+  "dens": 520,
+  "t_build": 0.01,
+  "t_tinta": 1.47,
+  "t_anim": 0.01,
+  "t_export": 0.07,
+  "kb": 100.7,
+  "body": []
+ },
+ "gaiola": {
+  "tris": 2658,
+  "bones": 12,
+  "pecas": 39,
+  "atlas": [
+   2048,
+   1024
+  ],
+  "dens": 520,
+  "t_build": 0.01,
+  "t_tinta": 3.07,
+  "t_anim": 0.01,
+  "t_export": 0.04,
+  "kb": 266.5,
+  "body": []
+ },
+ "lata": {
+  "tris": 438,
+  "bones": 2,
+  "pecas": 5,
+  "atlas": [
+   2048,
+   512
+  ],
+  "dens": 520,
+  "t_build": 0.0,
+  "t_tinta": 1.16,
+  "t_anim": 0.01,
+  "t_export": 0.02,
+  "kb": 46.6,
+  "body": []
+ },
+ "remanso": {
+  "tris": 3036,
+  "bones": 23,
+  "pecas": 34,
+  "atlas": [
+   2048,
+   2048
+  ],
+  "dens": 700,
+  "t_build": 0.01,
+  "t_tinta": 5.56,
+  "t_anim": 0.01,
+  "t_export": 0.1,
+  "kb": 319.0,
+  "body": [
+   0.16,
+   0.05,
+   1.5
+  ]
+ },
+ "breu": {
+  "tris": 4208,
+  "bones": 25,
+  "pecas": 55,
+  "atlas": [
+   2048,
+   2048
+  ],
+  "dens": 700,
+  "t_build": 0.02,
+  "t_tinta": 8.77,
+  "t_anim": 0.01,
+  "t_export": 0.11,
+  "kb": 433.1,
+  "body": [
+   0.2,
+   0.05,
+   1.3
+  ]
+ }
+}
