@@ -1,6 +1,8 @@
 # Plumbdeep v3: a Guilda do Prumo (roguelite co-op)
 
-Conceito de jogo, versão 3, 27/11/2026. Reescreve `profundezas.md` (v1 e v2) depois da escolha do usuário entre os três conceitos (`proposta.md`). **Base:** a Guilda do Prumo, seu abismo e sua atmosfera. **Personagens:** no padrão de acabamento dos heróis de Wickwain. **Animação:** com a fluidez e o lado cinematográfico da Pequena Hoste. **Forma de jogo:** roguelite co-op, que foi o que o usuário mais gostou.
+**Mudanças da revisão (27/11/2026):** a pedido do usuário ("não é genérico ter cavaleiro, arqueiro etc., é normal; estilize para que não fique genérico"), as quatro classes inventadas (Escorador, Cristaleira, Coveira e Gancheiro) viraram **arquétipos clássicos de RPG estilizados: Cavaleiro, Arqueira, Maga e Clérigo**. As cinco desbloqueáveis viraram **Ladino, Bárbaro, Druida, Bardo e Paladino**. Os inimigos foram redesenhados como **criaturas de dark fantasy reconhecíveis** (carniçais, aranhas cegas, morcegos, cultistas, um elite blindado). A Cal virou **Sal** (sal bento do Clérigo), e as reações dela foram renomeadas (Água Benta, Clarão, Crosta de Sal, Purga). A cor do jogador saiu do corpo do herói e virou um **acento pequeno**, porque cada herói agora tem **figurino com paleta própria**. A estrutura roguelite, o mundo e as interações co-op ficaram como estavam.
+
+Conceito de jogo, versão 3, 27/11/2026. Reescreve `profundezas.md` (v1 e v2) depois da escolha do usuário entre os três conceitos (`proposta.md`). **Base:** a Guilda do Prumo, seu abismo e sua atmosfera. **Personagens:** arquétipos clássicos de RPG, no padrão de acabamento dos heróis de Wickwain. **Animação:** com a fluidez e o lado cinematográfico da Pequena Hoste. **Forma de jogo:** roguelite co-op, que foi o que o usuário mais gostou.
 
 **Como ler.** Os números são propostas para teste, não medições, exceto onde está marcado **[medido]** (provas v2 e pesquisas em `docs/pesquisa/`). **[PC]** é o nível Forward+; **[iPhone]** é a prévia Web em Compatibility/WebGL2. Tudo roda a 60 quadros por segundo; "q" quer dizer quadro.
 
@@ -18,6 +20,7 @@ Conceito de jogo, versão 3, 27/11/2026. Reescreve `profundezas.md` (v1 e v2) de
 | Carga | O saque carregado, em quilos. Pesa no movimento, faz barulho e só vira dinheiro lá em cima |
 | Âncora | Ponto de rocha-mãe na espinha do andar. Quem acende uma âncora pendura uma linha de lanternas que **fica entre corridas** |
 | O Prumo | O peso de chumbo da guilda, um por grupo. Arma, sonda e item de passe com recepção diferente por classe |
+| Chapéu | O item que define a classe (elmo, capuz ou chapéu). Trocar de chapéu na Sede é trocar de classe |
 | A Respiração | O ciclo do abismo: Inspira (vento sobe), Prende (silêncio), Expira (bafo morno de esporos) |
 | Pincelada | Uma matéria aplicada num alvo ou numa célula do chão. Duas matérias diferentes no mesmo lugar dão reação |
 | Desbotado | O herói caído: perde a cor, vira cinza e continua jogando (gira guinchos, sopra, assusta) |
@@ -32,15 +35,19 @@ Conceito de jogo, versão 3, 27/11/2026. Reescreve `profundezas.md` (v1 e v2) de
 | O que o usuário ou a crítica disse | Resposta da v3 |
 |---|---|
 | Gostou do cenário e da ambientação de Plumbdeep | Ficam: cascatas e cortinas de goteira, colônias de fungos, postes de lanterna da guilda, a ruína de Thessimor, a Coluna do Meio-Dia, o Dente com janelas acesas, a Pendura de Baixo, névoa subindo do abismo, luz fria de cima e poças de luz quente. A v3 melhora o que estava cru: rochas e chão (seção 10) |
-| Personagens e efeitos "mal acabados" | Heróis refeitos no padrão Wickwain (seção 6). Efeitos com linguagem única, camadas e timing (seção 11). Inimigos refeitos como dark fantasy ameaçador (seção 8) |
-| Gostou mais dos personagens de Wickwain | Corpo atarracado de 2,25 cabeças, rosto de cera talhada com olhos de botão, mãos com polegar, adereço-símbolo grande, contorno de casca invertida, materiais quentes pintados e cor do jogador forte |
+| Personagens e efeitos "mal acabados" | Heróis refeitos no padrão Wickwain, com deformação de verdade, textura pintada e shader por material (seções 6.1 e 6.2). Efeitos com linguagem única, camadas e timing (seção 11). Inimigos refeitos como dark fantasy ameaçador (seção 8) |
+| Gostou mais dos personagens de Wickwain | Corpo atarracado de 2,25 cabeças, rosto de cera talhada com olhos de botão, mãos com polegar, adereço-símbolo grande, contorno de casca invertida, materiais foscos pintados |
+| "Por que inventou isso? Use conceitos mais naturais" (sobre o Gancheiro e o Escorador) | As classes viram **arquétipos clássicos**: Cavaleiro, Arqueira, Maga e Clérigo, e as desbloqueáveis Ladino, Bárbaro, Druida, Bardo e Paladino. A originalidade vem da **estilização**: proporção, rosto, forma, figurino e detalhes de guilda do abismo (seção 6) |
+| O escudo-roda da Rodeira de Wickwain parecia atraente | O Cavaleiro usa um escudo redondo grande de madeira com aro de ferro e cravos, na mesma linha (seção 6.3) |
+| "O acabamento está genérico; não se prenda a cores, quero que cada um seja estiloso independente da cor" | Cada herói tem **figurino com paleta própria** e 3 ganchos visuais. A cor do jogador vira um acento trocável de 5 a 8% da área, mais luz de borda e anel (seção 6.1) |
+| "Fique atento à deformação 3D, só reposição de partes" | Malha contínua com pesos suaves, ossos de ajuste e blend shapes corretivas. Peças rígidas só no que é rígido (seção 6.2) |
 | A Pequena Hoste tem animação fluida e cinematográfica | Ciclos de andar e correr, idle com respiração e microgestos, antecipação, smear, molas, hit-stop e câmera que acompanha o golpe (seção 7) |
 | "Animações de ataque coerentes e bem feitas, com ritmo e peso" | Cada classe tem ritmo próprio, ficha de timing e tira de poses-chave, e o contato acontece no mesmo quadro para tudo: hitbox, hit-stop, flash, faísca, tremor e som (seção 7) |
-| "Bastante game juice, tudo acabado, animado e iluminado" | Tabela de juice por peso de golpe, mundo que reage, nada parado em cena e luz como protagonista (seções 7.6, 10 e 11) |
+| "Bastante game juice, tudo acabado, animado e iluminado" | Tabela de juice por peso de golpe, mundo que reage, nada parado em cena e luz como protagonista (seções 7.3, 10 e 11) |
 | Mundo vertical briga com a câmera do co-op local | O jogo acontece em **bandejas largas**. A verticalidade fica no horizonte e nas transições, que o grupo faz junto na jaula (seção 9) |
-| A Subida pode virar tarefa | Vira o **Içamento**: um combate em arena móvel de 60 a 90 s por andar, com decisões de jogar Carga fora (seção 1.6) |
-| Custo de produção de três andares abertos de 1,4 a 2 km | Cada andar vira um **kit** de cerca de 16 trechos feitos à mão, mais uma espinha fixa e um horizonte. O código monta 7 a 10 trechos por Descida (seção 1.3) |
-| O roguelite foi a parte de que o usuário mais gostou | Vira a estrutura central (seção 1) |
+| A Subida pode virar tarefa | Vira o **Içamento**: um combate em arena móvel de 60 a 90 s por andar, com decisões de jogar Carga fora (seção 2.6) |
+| Custo de produção de três andares abertos de 1,4 a 2 km | Cada andar vira um **kit** de cerca de 16 trechos feitos à mão, mais uma espinha fixa e um horizonte. O código monta 7 a 10 trechos por Descida (seção 2.3) |
+| O roguelite foi a parte de que o usuário mais gostou | Vira a estrutura central (seção 2) |
 
 **O que ficou da v1 e da v2 porque funcionava:** o Visgo isolante; o Prumo com recepção por classe; o caído que gira guinchos com força total; a Subida com a Carga (agora Içamento); as masmorras de mesa de RPG; os mapas que mentem; a Respiração do abismo; Carga visível e audível; reações de química que o jogador consegue adivinhar.
 
@@ -50,11 +57,11 @@ Conceito de jogo, versão 3, 27/11/2026. Reescreve `profundezas.md` (v1 e v2) de
 
 **Plumbdeep: a Guilda do Prumo.** A frase é **"Desça leve. Volte pesado. Mas volte."** A versão de capa é *"Eu te grudo, você eletrifica a poça, e a gente sobe rico."*
 
-Há 212 anos, o chão se abriu sob o reino de **Thessimor** numa noite sem vento, **a Mordida**. A capital, os campos e o rei caíram num buraco de 3 km de boca, **a Goela**, que nunca fechou e que **respira**. Na borda cresceu **Pendura**, uma cidade de andaimes que vive do que sobe. Os jogadores são os últimos membros da **Guilda do Prumo**, a mais antiga e a mais endividada de Pendura: ela deve **40.000 de ouro** à Guilda da Roldana.
+Há 212 anos, o chão se abriu sob o reino de **Thessimor** numa noite sem vento, **a Mordida**. A capital, os campos e o rei caíram num buraco de 3 km de boca, **a Goela**, que nunca fechou e que **respira**. Na borda cresceu **Pendura**, uma cidade de andaimes que vive do que sobe. Os jogadores são os últimos membros da **Guilda do Prumo**, a mais antiga e a mais endividada de Pendura: ela deve **40.000 de ouro** à Guilda da Roldana. A guilda aceita qualquer um que saiba descer por uma corda: um cavaleiro sem ordem, uma caçadora das bordas, uma aprendiz expulsa da Academia e um capelão que reza para a luz que cai pela boca da Goela.
 
 **Por que a Descida muda a cada vez (a ficção do roguelite).** A Goela não é parada. Entre uma Descida e outra ela dá uma **Respiração Longa**, que remexe o miolo de cada andar: desaba pontes, abre fendas e muda de lugar as florestas de fungo e as casas tombadas. Só a **rocha-mãe** fica: as paredes, os grandes marcos e as âncoras. Por isso os mapas envelhecem em uma noite, e mapas de mortos mentem. É também por isso que a guilda acende lanternas nas âncoras: são as únicas coisas que ficam.
 
-**Tom.** Dark fantasy com humor ácido, nunca infantil. Os Ouvidores descendem dos súditos engolidos. Os Afundados são exploradores de verdade, com nome bordado na capa, e um deles pode ser o seu herói da Descida passada. O humor vem do grupo, da ganância e da burocracia da morte: a Coveira cobra "taxa de corda" das botas de quem ficou embaixo. Ninguém sangra. A tinta lasca, a cera racha, e os inimigos se partem em gesso, quitina, cinza e pó.
+**Tom.** Dark fantasy com humor ácido, nunca infantil. Os Ouvidores são os súditos engolidos que viraram carniçais cegos. Os Afundados são exploradores de verdade, com nome bordado na capa, e um deles pode ser o seu herói da Descida passada. O humor vem do grupo, da ganância e da burocracia da morte: o Clérigo cobra "taxa de bênção" das botas de quem ficou embaixo, e o Cavaleiro jura lealdade a uma ordem que só tem ele e uma dívida. Ninguém sangra. A tinta lasca, a cera racha, e os inimigos se partem em gesso, osso, quitina, cinza e pó.
 
 ---
 
@@ -140,11 +147,11 @@ Isso dá cerca de **35 peças por andar**, contra um mundo contínuo de 1,4 a 2 
 
 ### 2.5 Mapas que mentem
 
-No Patamar de chegada, o grupo recebe o **Mapa do Escriba**: o grafo do andar desenhado em pergaminho, com um ícone por nó. O mapa é de ontem, e a Goela já respirou. **1 em cada 5 ícones está errado** (2 em cada 5 com Juros altos): um "cofre" que é ninho de Pingentes, uma "capela" que é um Altar da Boca. Formas de saber:
+No Patamar de chegada, o grupo recebe o **Mapa do Escriba**: o grafo do andar desenhado em pergaminho, com um ícone por nó. O mapa é de ontem, e a Goela já respirou. **1 em cada 5 ícones está errado** (2 em cada 5 com Juros altos): um "cofre" que é ninho de Pingentes, uma "capela" que é um Altar da Boca cheio de cultistas. Formas de saber:
 - **Mapas de Afundados**, derrubados pela elite, mostram a verdade de 3 nós, ou mentem de propósito, com uma armadilha preparada por quem já morreu (25%).
 - **O Prumo-sonda:** jogado num poço, o som diz se o nó de baixo está vazio, cheio de água ou habitado.
 - **A Inspira:** paredes que "fumam para dentro" escondem passagens para nós secretos.
-- **O Ecoante** (classe por chapéu) grita, e o eco desenha o contorno de nós vizinhos por 3 s.
+- **O Bardo** (classe por chapéu) toca um acorde, e o eco desenha o contorno de nós vizinhos por 3 s.
 
 ### 2.6 O Içamento (a Subida da v3)
 
@@ -153,12 +160,12 @@ No Patamar de chegada, o grupo recebe o **Mapa do Escriba**: o grafo do andar de
 **Como funciona.** No Patamar de Decisão, o grupo entra na **Jaula da Guilda**, uma plataforma de ferro e tábuas de **9 × 9 m** (6 × 6 células) presa a um cabo. A Carga fica empilhada no centro da jaula como sacos de verdade, visíveis e físicos. A jaula sobe pelo Poço, e cada andar subido é um **lance de 60 a 90 s**. A câmera fica presa à jaula (seção 9). Por fora passam as paredes do Poço, as linhas de lanternas que a guilda já acendeu, os andares de cima e, no último lance, a boca da Goela com o céu.
 
 **O que ataca a jaula:**
-- **Ouvidores** sobem pelas grades;
-- **Pingentes** caem do teto do Poço;
+- **Ouvidores** (carniçais) sobem pelas grades;
+- **Pingentes** (morcegos de pedra) caem do teto do Poço e **apagam as lanternas da jaula**;
 - **Roicordas** roem o cabo. O cabo tem 300 de vida; se chegar a zero, a jaula despenca 10 m até a trava de segurança anterior e perde 15 s;
-- **Traças-de-Lume** apagam as lanternas da jaula;
+- **Cultistas da Boca** rezam das saliências do Poço e abrem poças de Fundo no piso da jaula;
 - **Afundados** saltam das paredes;
-- inimigos **roubam sacos** e pulam com eles. O saco pode ser pego no ar com o Lance ou com o Gancho.
+- inimigos **roubam sacos** e pulam com eles. O saco pode ser pego no ar com o Lance ou com a **flecha de corda** da Arqueira.
 
 **Perseguição pela Carga.** A cada 25 kg de Carga total do grupo, o Içamento ganha **um nível de perseguição**, que soma uma onda e um tipo de inimigo. Com 0 a 24 kg, um lance é quase tranquilo. Com mais de 100 kg, é o combate mais difícil do jogo.
 
@@ -192,7 +199,7 @@ No Patamar de chegada, o grupo recebe o **Mapa do Escriba**: o grafo do andar de
 | Penduricalhos, Graças e Pactos da corrida | Âncoras acesas (a rede de lanternas) |
 | Matérias e consumíveis da corrida | Entradas no Livro de Óbitos, mapas copiados e o nível de classe |
 
-**A Pilha do Afundado.** Na Descida seguinte, os sacos perdidos aparecem no andar onde o grupo caiu, guardados por um **Afundado com a cara e as cores do seu herói**, cinza e com a mochila fundida às costas. Derrotá-lo devolve **50% da Carga** perdida e o mapa daquele andar com os nós verdadeiros.
+**A Pilha do Afundado.** Na Descida seguinte, os sacos perdidos aparecem no andar onde o grupo caiu, guardados por um **Afundado com a cara e o figurino do seu herói**, cinza e com a mochila fundida às costas. Derrotá-lo devolve **50% da Carga** perdida e o mapa daquele andar com os nós verdadeiros.
 
 ### 2.9 Meta-progressão: a Sede que cresce
 
@@ -208,14 +215,14 @@ No Patamar de chegada, o grupo recebe o **Mapa do Escriba**: o grafo do andar de
 | **A Mesa** | Início | Diorama do abismo: cada âncora acesa é um alfinete com fio de lã aceso; cada morte é uma miniatura tombada no lugar. Escolher o ponto de partida é pôr a miniatura na Mesa |
 | **Quadro de Contratos** | Início | 3 contratos por Descida |
 | **Guindaste da Guilda** | 5 níveis: 800 / 2.000 / 4.500 / 8.000 / 12.000 de ouro | +1 lance de cabo de despacho, a jaula começa com +50 de vida de cabo, e a manivela fica 8% mais rápida por nível |
-| **Cabideiro de Chapéus** | Primeiro chapéu registrado | Troca de classe entre corridas. Mostra os 9 chapéus, com os vazios em silhueta |
+| **Cabideiro de Chapéus** | Primeiro chapéu registrado | Troca de classe entre corridas. Mostra os 9 chapéus (elmos, capuzes e chapéus), com os vazios em silhueta |
 | **Sala das Relíquias** | Primeira relíquia | De 3 a 24 prateleiras. Cada relíquia exposta dá um bônus pequeno e permanente (exemplo: o Sino de Bolso de Thessimor dá +0,05 s em toda janela de recepção) |
 | **Ferraria do Poço** | Relíquia "Bigorna Real" (Andar 2) | Forja 1 peça permanente por classe (3 variantes de arma, com outro golpe final no combo) |
 | **Capela da Corda** | 1.500 de ouro | Começa cada Descida com 1 Graça nível 1 escolhida de 2 |
 | **Varanda do Escriba** | 3.000 de ouro e 6 âncoras | Escolher o Veio entre 2 em vez de sorteá-lo, e ver 1 nó mentiroso por andar |
 | **Cozinha da Viúva** | 1.200 de ouro | Uma refeição antes da Descida: +20 de vida, ou +5 kg de capacidade, ou +1 pincelada inicial |
 | **Cripta dos Afundados** | Primeira mochila de Afundado trazida | Enterrar o que vem dos Afundados dá Lastro e conta a história de quem era |
-| **Pintor de Brasões** | 600 de ouro | Cosméticos de pintura e padrão de pano. Nunca com dinheiro real |
+| **Pintor de Brasões** | 600 de ouro | Cosméticos: 2 variantes de figurino por classe (a mesma forma com outra paleta), padrões de pano e brasões. Nunca com dinheiro real |
 
 **A dívida.** São 40.000 de ouro devidos à Guilda da Roldana, em 8 parcelas de 5.000. Cada parcela paga muda Pendura (a rival para de sabotar contratos, o mercado vende mais, o guindaste rival passa a emprestar cabo). A dívida é o relógio narrativo da campanha.
 
@@ -252,11 +259,11 @@ São quatro fontes, que mudam a cada Descida e se combinam.
 | Dente de Ouvidor | A Corrente atordoa +0,6 s |
 | Fivela de Cobre | Quem está envisgado e absorve eletricidade guarda a carga: o próximo golpe aplica Estalo |
 | Prumo de Bolso | Janela de recepção do Lance +0,08 s; golpe de recepção +25% de dano |
-| Saquinho de Salitre | A Fervura explode: +20 de dano e empurrão de 2 m |
+| Saquinho de Salitre | O Clarão explode: +20 de dano e empurrão de 2 m |
 | Lanterna Rachada | Acender uma âncora cura 30 de vida de todos |
 | Corda de Três Nós | Um Desbotado que segura um guincho por 4 s se repinta sozinho (1 vez por andar) |
 | Moeda do Barqueiro | +3% de dano a cada 10 kg de Carga do próprio herói (a ganância como build) |
-| Ferradura de Gesso | O golpe final do combo racha a laje e deixa a célula caiada |
+| Ferradura de Gesso | O golpe final do combo racha a laje e deixa a célula consagrada (pincelada de Sal) |
 | Olho de Vidro do Escriba | Revela 1 nó mentiroso por andar |
 | Âmbar com Mosca | O Âmbar em aliado dura +2 s e reflete projéteis |
 | Chave Engolida | Abre 1 cofre por andar sem a máquina em dupla |
@@ -277,16 +284,16 @@ São quatro fontes, que mudam a cada Descida e se combinam.
 | Veio | Regra nesta Descida |
 |---|---|
 | Cobre | A Corrente salta até 3 células de água conectada (normal: só a poça), e Pingentes molhados conduzem |
-| Salitre | Cal + Brasa vira explosão: a Cal Acesa causa 40 de dano além de cegar |
+| Salitre | Sal + Brasa vira explosão: o Clarão causa 40 de dano além de cegar |
 | Resina Doce | O Visgo em aliado cura 4 por segundo enquanto dura |
 | Esporada | A Expira dura o dobro, e o Fulgor causa ×1,5 |
-| Água Pesada | Poças não secam, e a Fervura deixa o chão molhado em vez de seco |
-| Ferrugem | Estalo em metal (correntes, grades, a jaula) vira Corrente sem precisar de água |
+| Água Pesada | Poças não secam, e a Água Benta dura o dobro e deixa a célula molhada e consagrada |
+| Ferrugem | Estalo em metal (correntes, grades, a jaula, a armadura do Guarda Engolido) vira Corrente sem precisar de água |
 | Cinza Fria | A Brasa apaga em 2 s, mas o Piche Ardente dura o dobro |
 | Fundo Raso | O Fundo aparece em todo andar. A Purga também cura aliados em 3 m |
 
 **Como as quatro fontes se cruzam (exemplos de corrida):**
-- **Corrida de Cobre:** Veio de Cobre + Dente de Ouvidor + Fivela de Cobre. A poça vira uma rede elétrica do trecho inteiro, e o Visgo isolante deixa de ser truque e vira a estratégia central.
+- **Corrida de Cobre:** Veio de Cobre + Dente de Ouvidor + Fivela de Cobre. A poça vira uma rede elétrica do trecho inteiro, e o Visgo isolante da Arqueira deixa de ser truque e vira a estratégia central.
 - **Corrida da ganância:** Moeda do Barqueiro + Graça do Velho Peso + Pacto da Fome. O herói mais pesado vira o que bate mais forte, mas fica lento e frágil, e o grupo precisa protegê-lo como uma relíquia.
 
 ---
@@ -321,7 +328,7 @@ A **rede de lanternas da guilda** é um marco que o próprio grupo constrói (se
 - uma laje rachada que cede com um golpe pesado (desce para um Cofre);
 - uma janela acesa da Pendura de Baixo que pisca em código (um contrato secreto).
 
-**Eventos** (1 ou 2 por andar, sorteados entre 14):
+**Eventos** (1 ou 2 por andar, sorteados entre 15):
 
 | Evento | O que acontece | Decisão |
 |---|---|---|
@@ -329,16 +336,17 @@ A **rede de lanternas da guilda** é um marco que o próprio grupo constrói (se
 | Sino fora de hora | Uma Prende extra de 40 s: elites andam e os Ouvidores ouvem ×1,5 | Esconder-se ou caçar |
 | Explorador no Âmbar | Um rival preso em resina | Libertar (vira ajudante por 1 andar) ou saquear a mochila (+15 kg, e ele vira Afundado depois) |
 | O Penhorista em balanço | Uma loja extra, mas a corda dele está sendo roída | Comprar rápido |
-| Altar da Boca | Um Pacto do Fundo | Aceitar ou não |
-| Desabamento | O chão cede no meio do trecho | Cair no Cofre de baixo (ganha um nó) ou segurar a borda com o Gancho |
+| Altar da Boca | Um Pacto do Fundo, guardado por 2 Cultistas | Aceitar ou não |
+| Desabamento | O chão cede no meio do trecho | Cair no Cofre de baixo (ganha um nó) ou segurar a borda: o Cavaleiro crava o escudo, a Arqueira prende uma flecha de corda |
 | Guilda rival | 3 exploradores da Roldana disputando um cofre | Lutar, ajudar (eles dividem) ou esperar e roubar |
 | A Pilha do Afundado | O seu Afundado de uma corrida anterior | Recuperar 50% da Carga |
 | Respiração Longa | A Expira dobra e o chão esporado se espalha | Usar a seu favor (Fulgor) ou fugir |
 | Chuva de Cima | A Cascata engrossa, as goteiras viram cortinas, poças por toda parte | A Corrente fica perigosa e poderosa |
 | Poço do Prumo | Uma aposta de sonda: jogar o Prumo e escolher a profundidade | Mais fundo dá mais prêmio, mas o Prumo pode ficar preso por 1 trecho |
 | Mapa no chão | O mapa de um Afundado | 50% de chance de ser verdade |
-| Ninho aberto | Uma cova de Bocalumes depois de reação grande | Limpar (rende Penduricalho) ou contornar |
+| Ninho aberto | Casulos de ovos de Bocalume na teia, depois de reação grande | Limpar (rende Penduricalho) ou contornar |
 | Caravana de mulas-besouro | Besouros cegos carregando o saque de outra guilda | Escoltar (ouro) ou assaltar (Carga e inimigos) |
+| Procissão da Boca | Cultistas levando um explorador vivo amarrado até um Altar | Emboscar (resgate e Lastro) ou deixar passar e saquear o Altar vazio depois |
 
 ### 3.4 A rede de lanternas: o que persiste entre corridas
 
@@ -357,7 +365,7 @@ O ciclo foi comprimido para caber num andar: **6 min no total**, com Inspira de 
 
 | Fase | O que se vê e ouve | Efeito de jogo |
 |---|---|---|
-| **Inspira** | Vento frio sobe; névoa se desmancha; véus, capas e o fio da vela apontam para cima; esporos sobem para dentro das fendas | Visibilidade alta. Paredes falsas "fumam para dentro" |
+| **Inspira** | Vento frio sobe; névoa se desmancha; capas, a crista do Cavaleiro, a ponta do chapéu da Maga e as chamas das lanternas apontam para cima; esporos sobem para dentro das fendas | Visibilidade alta. Paredes falsas "fumam para dentro" |
 | **Prende** | O Sino badala; tudo para; poeira, esporos e gotas ficam suspensos no ar | Elites andam; Ouvidores ouvem ×1,5. É o melhor momento para passar escondido |
 | **Expira** | Uma frente de névoa morna sobe do Poço a 15 m/s; os fungos acendem um a um do fundo para fora | O chão aberto ganha estado esporado aos poucos; os inimigos ficam mais ativos; os fungos chegam ao máximo do brilho |
 
@@ -367,7 +375,7 @@ O ciclo foi comprimido para caber num andar: **6 min no total**, com Inspira de 
 
 ### 4.1 Chão que guarda estados e reações montadas por duas pessoas
 
-O chão é uma grade de **células de 1,5 m**, e cada célula guarda até 2 pinceladas. Estados: molhado, envisgado, em brasa, eletrificado, caiado, esporado e afundado.
+O chão é uma grade de **células de 1,5 m**, e cada célula guarda até 2 pinceladas. Estados: molhado, envisgado, em brasa, eletrificado, consagrado, esporado e afundado.
 
 **Força da reação:**
 - montada por duas pessoas diferentes: **1,0**;
@@ -377,29 +385,38 @@ O chão é uma grade de **células de 1,5 m**, e cada célula guarda até 2 pinc
 
 **No roguelite:** os trechos têm estado (alagado, esporado), o Veio reescreve uma reação por corrida e os Penduricalhos modificam reações. A química que o grupo domina muda a cada Descida.
 
-**Matérias:** Cal (Escorador), Estalo (Cristaleira), Brasa (Coveira), Visgo (Gancheiro). Água e Esporo vêm do ambiente e de classes por chapéu. Fundo vem da Goela.
+**Matérias das classes iniciais:**
+- **Brasa:** Cavaleiro (a Lâmina Acesa, a espada passada na chama da lanterna de cinto);
+- **Visgo e Água:** Arqueira (flecha de resina e flecha d'água);
+- **Estalo:** Maga (o raio do cristal do cajado);
+- **Sal:** Clérigo (sal bento da Coluna; a célula salgada fica **consagrada**).
+
+Esporo vem do ambiente e do Druida. Fundo vem da Goela, dos Cultistas e do Bárbaro.
 
 | Matérias | Reação | Efeito com força 1,0 |
 |---|---|---|
-| Cal + Água | **Fervura** | 35 de dano, depois 8/s por 4 s em 3 m; cega por 2 s |
+| Sal + Água | **Água Benta** | 30 de dano em mortos-vivos e Afundados, depois 8/s neles por 4 s em 3 m; aliados na área curam 6/s; cega mortos-vivos por 2 s |
 | Estalo + Água | **Corrente** | 30 de dano e atordoa por 1,2 s tudo o que estiver molhado na poça. **Quem está envisgado não toma nada** |
 | Brasa + Esporo | **Fulgor** | Explosão de poeira: 60 de dano em 4 m, empurrão de 3 m, ilumina 10 m por 5 s |
 | Brasa + Visgo | **Piche Ardente** | Chão em chamas e grudento por 6 s: 10/s e lentidão de 50% |
 | Visgo + Estalo | **Âmbar** | Em inimigo: casulo de 2,5 s. Em aliado: casca que absorve 40 de dano |
-| Cal + Brasa | **Cal Acesa** | Luz branca de 8 m por 0,6 s: cega por 2 s e **interrompe qualquer telegrafia** |
-| Cal + Visgo | **Argamassa** | Parede de 3 × 1,5 m por 8 s; bloqueia projéteis e tapa fendas |
+| Sal + Brasa | **Clarão** | Luz branca de 8 m por 0,6 s: cega por 2 s e **interrompe qualquer telegrafia** |
+| Sal + Visgo | **Crosta de Sal** | Parede de 3 × 1,5 m por 8 s; bloqueia projéteis e tapa fendas |
 | Esporo + Água | **Floração** | Cogumelo de 2 m de altura em 0,4 s; dura 12 s e cura 3/s quem está em cima |
 | Estalo + Esporo | **Enxame de Lume** | 6 faíscas de 8 de dano que caçam inimigos em 8 m |
-| Cal + Fundo | **Purga** | 60 de dano em Afundados, limpa o chão afundado e devolve a cor ao lugar |
+| Sal + Fundo | **Purga** | 60 de dano em Afundados e Cultistas, limpa o chão afundado e devolve a cor ao lugar |
 | Brasa + Fundo | **Fogo Fundo** (ruim) | Suga todos em 5 m para o centro por 2 s e queima 8/s, aliados incluídos |
 | Estalo + Fundo | **Estática Morta** (ruim) | A descarga salta para o aliado mais próximo: 25 de dano |
 
-**Fogo amigo construtivo.** O núcleo é o **Visgo isolante**: o Gancheiro envisga a Cristaleira (15% mais lenta por 6 s, **imune a eletricidade**), ela entra na poça cercada e eletrifica a água. Outros usos no aliado:
+**Fogo amigo construtivo.** O núcleo é o **Visgo isolante**: a Arqueira acerta a Maga com uma **flecha de resina** (15% mais lenta por 6 s, **imune a eletricidade**), ela entra na poça cercada e eletrifica a água. Outros usos no aliado:
 - **Floração** debaixo do amigo o levanta 2 m até uma beirada;
-- **Cal** apaga o amigo em chamas e o esconde por 4 s;
-- **Esporo** no amigo o transforma numa lanterna andante (5 m de luz por 10 s). Se alguém o acender, ele explode num Fulgor e leva metade do dano.
+- **Sal** no amigo em chamas apaga o fogo e o esconde dos mortos-vivos por 4 s;
+- **Esporo** no amigo o transforma numa lanterna andante (5 m de luz por 10 s). Se alguém o acender, ele explode num Fulgor e leva metade do dano;
+- **Lâmina Acesa** no escudo envisgado do Cavaleiro: o escudo vira uma tocha de Piche que ele empurra contra o bando.
 
 O dano de reação em aliados é de 100% com até 2 jogadores, 70% com 3 e 50% com 4.
+
+**Pares naturais das classes iniciais:** Arqueira + Maga (Corrente e Âmbar, o Visgo isolante); Cavaleiro + Arqueira (Piche Ardente: ela envisga o bando, ele acende); Cavaleiro + Clérigo (Clarão: interrompe a telegrafia de elite e chefe); Clérigo + Arqueira (Água Benta: a flecha d'água no sal consagrado cura o grupo e queima mortos-vivos); Maga + ambiente (Enxame de Lume na Expira).
 
 ### 4.2 Lance: passar a arma ou o item no meio do golpe
 
@@ -408,13 +425,13 @@ O dano de reação em aliados é de 100% com até 2 jogadores, 70% com 3 e 50% c
 - **Recepção:** quem aperta **Pegar** nos últimos 0,25 s do voo (0,35 s no toque) faz o golpe de recepção da sua classe.
 - **Custo:** quem arremessa fica 3 s sem arma (luta com os punhos, 6 de dano) ou até pegar outra.
 
-| Item | Escorador | Cristaleira | Coveira | Gancheiro |
+| Item | Cavaleiro | Arqueira | Maga | Clérigo |
 |---|---|---|---|---|
-| **O Prumo** (1 por grupo) | **Pilão:** crava o Prumo no chão; 70 de dano em 3 m; racha lajes | **Para-raio:** carrega e devolve como dardo; 50 de dano + Estalo | **Enterro:** onda de 4 m que derruba e consagra | **Volta ao mundo:** gira o Prumo na linha; 4 voltas de 18 de dano em 3 m |
-| Arma de aliado | Usa a arma com a força dele | Encanta com Estalo por 6 s e devolve | Abençoa (+30% por 8 s) e devolve | Arremessa de novo com dano dobrado |
-| Saco de saque | Pega e segura sem perder velocidade | — | — | Pega no ar com o gancho a até 18 m |
+| **O Prumo** (1 por grupo) | **Mangual:** enrola a corda do Prumo no punho e dá um golpe descendente de mangual; 70 de dano em 3 m; racha lajes | **Tiro de Lastro:** prende o Prumo numa flecha e o dispara num arco alto; cai a até 16 m com 55 de dano em 2,5 m e deixa a célula afundada como armadilha | **Para-raio:** o Prumo carrega no cristal e volta como dardo; 50 de dano + Estalo | **Consagração:** crava o Prumo como estaca e bate nele com a maça; onda de 4 m que derruba e pincela Sal |
+| Arma de aliado | Usa a arma com a força dele | Atira de volta como flecha, com dano dobrado | Encanta com Estalo por 6 s e devolve | Abençoa (+30% por 8 s) e devolve |
+| Saco de saque | Apara no escudo e segue sem perder velocidade | Puxa no ar com a flecha de corda a até 18 m | — | — |
 
-**No roguelite:** o Prumo é o único item que todos querem. Penduricalhos e Graças modificam as recepções, e o Lance de sacos é o verbo central do Içamento (pegar o saco que um Ouvidor roubou antes que ele pule).
+**No roguelite:** o Prumo é o único item que todos querem. Penduricalhos e Graças modificam as recepções, e o Lance de sacos é o verbo central do Içamento (pegar o saco que uma Roicorda roubou antes que ela pule).
 
 ### 4.3 Maquinaria em dupla e o caído que continua jogando
 
@@ -442,7 +459,7 @@ No Içamento, os Desbotados giram as manivelas: um grupo com dois mortos ainda s
 
 ### 4.4 Manchas de matéria nos inimigos
 
-Nos inimigos, a matéria aparece como **pincelada de tinta** na cor do jogador que aplicou, com um ícone de forma própria: gota (Água), losango (Estalo), chama (Brasa), nuvem (Cal), fio (Visgo), ponto (Esporo). Dura 5 s, com até 2 por alvo. A mira automática **prefere o alvo pincelado por outra pessoa**, e a pincelada pisca na cor de quem preparou. **Reação feita em alvo preparado por outra pessoa** dá +10% de Lastro na corrida: o roguelite premia a autoria cruzada.
+Nos inimigos, a matéria aparece como **pincelada de tinta** na cor do jogador que aplicou, com um ícone de forma própria: gota (Água), losango (Estalo), chama (Brasa), cristal de três pontas (Sal), fio (Visgo), ponto (Esporo). Dura 5 s, com até 2 por alvo. A mira automática **prefere o alvo pincelado por outra pessoa**, e a pincelada pisca na cor de quem preparou. **Reação feita em alvo preparado por outra pessoa** dá +10% de Lastro na corrida: o roguelite premia a autoria cruzada.
 
 ### 4.5 Solo com ajudante
 
@@ -452,20 +469,29 @@ Quem joga sozinho leva um de dois ajudantes:
 
 **Ordens:** siga, segure aqui, prepare o meu alvo, pegue o Lance. **Regra de ouro:** o ajudante nunca eletrifica poça com o jogador molhado e sem Visgo, nunca bloqueia passagem, e o fogo amigo dele no jogador é de 25%. O ajudante sai quando chega outro jogador e volta quando ele sai.
 
+**Como o mercenário joga cada classe inicial:**
+
+| Mercenário | Comportamento |
+|---|---|
+| **Cavaleiro** | Fica entre o jogador e o maior grupo de inimigos, bloqueia projéteis que vêm na direção do jogador e usa a Pancada de Escudo para empurrar o bando para dentro das poças. Acende a lâmina quando vê Visgo ou Esporo no chão |
+| **Arqueira** | Fica a 8 a 10 m. Prepara poças com flecha d'água perto dos inimigos, envisga o jogador antes que ele (ou um inimigo) eletrifique a poça e pega no ar os sacos roubados |
+| **Maga** | Só eletrifica poça com o jogador seco ou envisgado. Guarda o Estalo carregado para alvos pincelados pelo jogador e usa o Lampejo para sair de perto quando é cercada |
+| **Clérigo** | Fica a 4 m do jogador. Abençoa quando ele perde 40% da vida, pincela Sal sob elites para o jogador fazer o Clarão e levanta o jogador caído em 1 s |
+
 ---
 
 ## 5. Escala e combate: números gerais
 
 | Grandeza | Valor |
 |---|---|
-| Vida dos heróis | Escorador 170, Coveira 130, Gancheiro 100, Cristaleira 90 |
-| Esquiva | 2 q de início, 12 q invulnerável, 10 q de recuperação, 4,5 m, recarga de 0,6 s |
+| Vida dos heróis | Cavaleiro 170, Clérigo 140, Arqueira 100, Maga 90 |
+| Esquiva | 2 q de início, 12 q invulnerável, 10 q de recuperação, 4,5 m, recarga de 0,6 s. A Arqueira rola para trás; os outros dão um passo largo com rolamento curto |
 | Esquiva com Carga acima de 50 kg | Vira tombo: 2,5 m, 8 q invulnerável, 16 q de recuperação |
 | Telegrafia de inimigo comum | 24 a 36 q, sempre com som no fim |
 | Telegrafia de elite | 40 a 54 q |
 | Telegrafia de chefe | 45 a 90 q, com marca no chão do tamanho real |
 | Cor de perigo | **Magenta `#F03C9E`**, só em telegrafia e em reação que fere |
-| Golpe pelas costas | +50% para todos; +100% para o Gancheiro |
+| Golpe pelas costas | +50% para todos; +100% para o Ladino |
 | Dano de queda | Cair no vazio leva o herói de volta à beirada em 2 s, com 15 de dano. Nunca é morte instantânea |
 | Escala por número de jogadores (1/2/3/4) | Inimigos ×1,00/1,35/1,70/2,05; vida de comuns ×1,00/1,15/1,30/1,45; elite e chefe ×1,00/1,60/2,20/2,80 |
 
@@ -473,73 +499,91 @@ Quem joga sozinho leva um de dois ajudantes:
 
 ## 6. Classes
 
+As classes são **arquétipos clássicos de RPG**, reconhecíveis em um segundo: Cavaleiro, Arqueira, Maga e Clérigo no início, e Ladino, Bárbaro, Druida, Bardo e Paladino como desbloqueáveis. Não há gimmick inventado. O que faz cada um ser deste jogo, e não de outro, é a **estilização**: a proporção cabeçuda, o rosto talhado, a forma forte vista de cima, o figurino em camadas com paleta própria e os detalhes de explorador do abismo (lanterna de guilda no cinto, corda, fuligem, remendos, Penduricalhos tilintando).
+
 ### 6.1 O padrão de personagem (herdado de Wickwain)
 
-Todo herói segue o mesmo contrato de modelo, para que os quatro pareçam do mesmo jogo e com o mesmo acabamento:
+Todo herói segue o mesmo contrato de modelo, para que os nove pareçam do mesmo jogo e com o mesmo acabamento:
 
 - **Proporção:** 2,25 cabeças; 0,9 m de altura; cabeça de 0,4 m; corpo atarracado, de base larga e pés grandes, que **plantam** no chão.
-- **Rosto de cera talhada:** facetado, sem suavização e sem bochecha rosada. Plano de bochecha marcado, nariz em bloco, vinco talhado sob cada olho, boca recortada com 5 formas (neutra, cerrada no esforço, aberta no grito, torta de ironia, sorriso).
+- **Rosto de cera talhada:** facetado, sem bochecha rosada de boneco. Plano de bochecha marcado, nariz em bloco, vinco talhado sob cada olho, boca recortada. Expressão por **blend shapes**: piscar, sobrancelhas (2 eixos), boca neutra, esforço/brado no golpe, dor, alegria e o canto torto da ironia.
+- **Rosto sempre visível, de frente e de cima** (câmera a 46°): nada cobre o rosto. A viseira do Cavaleiro fica levantada, a aba do chapéu da Maga é virada para cima na frente, o capuz da Arqueira é curto e recuado.
 - **Olhos de botão:** um botão escuro de fuligem com brilho de 1 px. O shader `olho` desenha o branco, a pupila, o brilho e a pálpebra, com 4 parâmetros (abertura, inclinação, curva e pupila). A sobrancelha é uma peça talhada separada, que faz metade da expressão.
-- **Mãos:** luvas de 3 dedos **com polegar separado**, em duas poses (punho fechado e mão aberta) e pegada real no cabo da arma.
-- **Adereço-símbolo:** grande e **legível de cima**. Esse é o defeito que a v2 não resolveu: Cristaleira e Gancheiro viravam discos na câmera de jogo **[medido em `silhuetas.png`]**. Na v3, cada classe é desenhada primeiro pela **silhueta vista a 46° de cima**, e só depois de frente.
+- **Mãos:** luvas de 3 dedos **com polegar separado** e com forma, em três poses (punho fechado, mão aberta e pegada real no cabo da arma).
+- **Adereço-símbolo:** grande e **legível de cima**. Esse é o defeito que a v2 não resolveu: dois heróis viravam discos na câmera de jogo **[medido em `silhuetas.png`]**. Na v3, cada classe é desenhada primeiro pela **silhueta vista a 46° de cima**, e só depois de frente.
 - **Contorno:** casca invertida de 1,5 a 2 px em 1080p, na cor escura do próprio material (marrom de lavagem nos quentes, azul-negro nos frios), nunca preta.
-- **Materiais quentes pintados:** guache em 3 faixas de tom, mais lavagem nos vãos (oclusão assada em cor de vértice), luz de aresta clara e luz zenital. Madeira, couro, lã, estanho e cera. A luz do motor soma no máximo ±20%.
-- **Cor do jogador forte:** no maior pano do herói (capa, capuz, véu ou manto), cobrindo de 25 a 35% da área vista de cima. Também aparece na **luz de borda** e no **anel da base** com sinal de forma (círculo, quadrado, triângulo, losango). Cada jogador tem ainda um **padrão de pano** (liso, listras diagonais, xadrez, barra de losangos), porque cor nunca é o único código: a v2 falhou no portão de deuteranopia entre Âmbar e Verde-veneno **[medido]**.
+- **Figurino com paleta própria:** cada herói tem 2 ou 3 cores principais e um acento, com valores bem distribuídos (um claro, um médio, um escuro), e **pelo menos 4 materiais que contrastam** (metal escurecido com latão, couro envelhecido, tecido tingido com barra bordada, pele, madeira, corda). Nada de herói de uma cor só.
+- **Ganchos visuais:** cada herói tem 3 detalhes memoráveis com história (está em cada ficha), que sobrevivem à miniatura de 320 × 180.
+- **A identidade nunca depende da cor do jogador.** A cor do jogador entra só como **acento pequeno e trocável**, de 5 a 8% da área vista de cima (uma fita, um lenço, um forro, um cordão), mais a **luz de borda** e o **anel da base** com sinal de forma (círculo, quadrado, triângulo, losango). O acento leva o **padrão de pano** do jogador (liso, listras diagonais, xadrez, barra de losangos), porque cor nunca é o único código: a v2 falhou no portão de deuteranopia entre Âmbar e Verde-veneno **[medido]**.
 - **Jogadores:** Âmbar `#F0A030`, Verde-veneno `#7CD04A`, Cobalto `#3E7CF0` e Branco-giz `#F2EEE6`.
-- **Dano visível:** a cada 25% de vida perdida, a cera racha em mais lugares. Curar fecha as rachaduras.
-- **Escala de jogo:** os ícones são exagerados só no modelo de jogo (viga 1,3×, geodo 1,25×, gancho 1,3×), como na v2.
+- **Dois jogadores com a mesma classe:** distinguem-se pelo acento, pelo anel e pelo padrão, e podem escolher uma das 2 **variantes de figurino** da classe (mesma forma, paleta alternativa, no Pintor de Brasões).
+- **Dano visível:** a cada 25% de vida perdida, a tinta lasca e a cera do rosto racha em mais lugares (máscara na textura). Curar fecha as rachaduras.
+- **Escala de jogo:** os ícones são exagerados só no modelo de jogo (escudo 1,25×, arco 1,2×, cajado e cristal 1,25×, maça 1,3×).
 
-### 6.2 O Escorador (guerreiro, Cal)
+### 6.2 Acabamento técnico (o que tira o herói do "genérico")
 
-- **Silhueta de cima:** **um T com um ponto de luz no meio.** A viga de escora de 1,9 m atravessada nos ombros é mais larga que qualquer outra coisa na tela, e a vela no capacete faz um ponto quente bem no centro.
-- **Adereço-símbolo:** a **viga** de madeira ocre, com 2 cintas de ferro, lascas e fitas na cor do jogador nas pontas. O **capacete de minerador** de estanho tem uma vela grossa e acesa. A vela ilumina o rosto e o chão num raio de 3 m (luz quente que treme), e o fio de fumaça segue o vento da Respiração.
-- **Rosto:** maxilar quadrado, nariz de batata, barba curta chamuscada, sobrancelha grossa talhada num bloco só, olhos de botão pequenos e fundos, fuligem na testa. No esforço, o lábio de baixo sai para fora.
-- **Corpo:** o mais largo (1,15 × 0,93). Ombreiras de tábua amarrada, avental de couro, saco de cal na cintura que solta pó branco a cada passo.
-- **Cor:** madeira ocre e couro marrom; a cor do jogador no lenço grosso do peito e nas fitas da viga.
-- **Personalidade:** meticuloso, calado, pesado. Antes do especial, bate duas vezes com os nós dos dedos na viga ("toc, toc", 14 q).
-- **Habilidades:** **Escorar** (finca a viga por 8 s: bloqueia projéteis num cone de 90° e vira alavanca ou âncora de corda para um aliado; recarga de 10 s); **Caiar** (cone de cal de 4 m, pincelada e cegueira de 1 s; recarga de 6 s); **Desmoronar** (especial: uma linha de 8 m de pedras cai do teto; 80 de dano).
+- **Deformação de verdade, sem reposição de partes.** Tronco, pescoço, braços, mãos e pernas formam **uma malha contínua**, com pesos suaves de 2 a 4 ossos por vértice e falloff nas juntas (ombro, cotovelo, punho, quadril, joelho, tornozelo, pescoço e coluna), loops de aresta extras nas juntas, ossos de twist no braço e no antebraço, ossos de ajuste no cotovelo, no joelho e no ombro, e shape keys corretivas exportadas como blend shapes acionadas pelo ângulo da junta no Godot. **Pano mole** (capa, manto, tabardo, capuz, saia de malha) deforma por pesos e molas sem atravessar o corpo. **Peças rígidas** só no que é rígido de verdade (lâmina, escudo, elmo, placas, maça, arco fora da puxada), coladas à malha sem fresta.
+- **Texturas pintadas por código.** UV por peça, bake no Blender de AO, curvatura e cavidade, e um atlas de 1024 a 2048 por herói com gradiente de luz de cima para baixo, desgaste nas arestas, sujeira nas cavidades, trama, costuras e remendos no tecido, grão e rachaduras no couro, riscos, polido nas bordas e ferrugem leve no metal, veios e lascas na madeira, e blush e variação na pele. Mapas de rugosidade, metal e normal (costuras, rebites, trama) compostos por código. Tudo **fosco**: nada de plástico brilhante. Compressão VRAM no PC e ETC2/ASTC na web, com mipmaps.
+- **Renderização de qualidade.** Difuso com rampa suave pintada (terminador com leve cor quente na pele, o falso subsurface), AO assada e oclusão de contato, especular por material (metal com reflexo nítido e leve anisotropia; couro com brilho fosco; tecido sem brilho e com sheen na borda; pele com brilho só na ponta do nariz e nas bochechas), luz de borda controlada na cor do jogador, sombras próprias nítidas e sombra de contato no chão. **[PC]** SSAO, sombra suave, a lanterna de cinto iluminando o próprio herói e reflexo de ambiente simples no metal. **[iPhone]** a mesma leitura com AO e luz assadas.
+- **Provas obrigatórias:** folha de deformação (cotovelo e joelho dobrados de 90° a 130°, ombro erguido, quadril torcido e agachamento, sem quebra, buraco, interseção ou perda de volume); close de rosto e busto na luz da caverna (fria de cima e quente da lanterna) ao lado da versão anterior; cada herói com as 4 cores de jogador; o grupo com dois jogadores da mesma classe.
 
-### 6.3 A Cristaleira (maga, Estalo)
+### 6.3 O Cavaleiro (tanque, corpo a corpo, Brasa)
 
-- **Silhueta de cima:** **uma estrela com uma colher acesa.** O capuz curto tem 5 lascas de cristal crescendo para fora, como uma coroa quebrada (de cima, uma estrela de 5 pontas). O cajado torto é segurado inclinado à frente, com um **geodo** do tamanho da cabeça preso numa forquilha de ferro (de cima, uma linha com uma bola de luz deslocada do corpo). Isso substitui o cone de mago genérico da v2.
-- **Adereço-símbolo:** o **geodo aberto**, com o miolo de cristal facetado. Em repouso, a luz é **âmbar-mel**, quente como os heróis. Ao carregar, ele esfria para **ciano-elétrico** e ilumina 5 m em volta, piscando no ritmo da carga.
-- **Rosto:** pálida, nariz fino e arrebitado, sardas talhadas, olhos de botão maiores que os dos outros (com o reflexo do geodo), sobrancelhas arqueadas de vaidade. Duas **tranças cor de cobre**, grossas e pesadas, presas a molas.
-- **Corpo:** o mais estreito (0,9 × 1,08). Túnica de lã até as canelas, com barra queimada; botas pontudas aparecem no passo. Colar de lascas.
-- **Cor:** lã cinza-azulada, cobre e cristal; a cor do jogador no **manto de ombros** com capuz.
-- **Personalidade:** nervosa, orgulhosa, rápida demais. Toda magia termina com uma pose de "olha só" de 8 q.
-- **Habilidades:** **Estalo em cadeia** (raio que salta entre 3 alvos: 20/14/10 de dano; recarga de 5 s); **Prisma** (cristal por 10 s que divide raios em 3; sob a Coluna, vira feixe de 40 de dano por segundo); **Geodo** (especial: prende todos em 3 m numa casca de cristal por 2 s).
+- **Silhueta de cima:** **um D com crista.** O escudo redondo preso ao braço esquerdo fica à frente do corpo como um arco grosso de madeira e ferro; a **crista de crina** do elmo corre da testa à nuca e risca a cabeça redonda com uma linha clara; a espada de lâmina larga, apoiada no ombro em guarda, faz uma diagonal curta para trás.
+- **Adereço-símbolo:** o **escudo-roda**, de 0,6 m: tábuas de carvalho mel em raios, aro de ferro preto, 8 cravos de latão e umbo de ferro no centro; uma tábua remendada com chapa rebitada e **riscos de giz** contando as Descidas que ele voltou vivo. A **espada** de lâmina larga (0,55 m), com gume polido, miolo escurecido, guarda reta de latão e punho de couro enfaixado.
+- **Elmo:** bacinete de aço escurecido com **viseira de bico levantada** (o rosto fica livre de frente e de cima) e a crista de crina tingida de ferrugem-escura.
+- **Rosto:** maxilar largo, **nariz quebrado torto**, **bigode espesso caído**, sobrancelha grossa talhada num bloco só, cicatriz no queixo, olhos de botão firmes. No esforço, mostra os dentes cerrados por baixo do bigode.
+- **Corpo:** o mais largo (1,15 × 0,93). Peitoral e ombreiras de placa sobre **gibão acolchoado com costura em losango**, cota de malha nas axilas e na saia, cinto largo de fivela de latão, **lanterna de óleo da guilda** pendurada no quadril e um rolo de corda no ombro.
+- **Figurino e paleta:** aço escurecido azul-grafite com bordas polidas, latão velho, gibão **bordô profundo**, couro castanho, carvalho mel. **Acento do jogador:** a fita na ponta da crista e o lenço amarrado na alça do escudo.
+- **Ganchos visuais:** o escudo-roda com remendo e contagem de giz; a crista de crina; o bigode e o nariz quebrado emoldurados pela viseira levantada.
+- **Personalidade:** honrado, teimoso e meio fora de época: o último sentinela da Ordem da Borda, que penhorou o cavalo para pagar a guilda. Antes do especial, bate a espada duas vezes no aro do escudo ("tém, tém", 14 q).
+- **Habilidades:** **Escudo** (segurar: bloqueio de 80% num cone de 120°, com aparar nos 8 primeiros quadros; tocar: **Pancada de Escudo**, investida de 3 m com empurrão de 3 m e atordoamento de 0,6 s; recarga de 6 s); **Lâmina Acesa** (passa a lâmina na chama da lanterna do cinto: por 8 s, cada golpe pincela Brasa e deixa um rastro de fagulhas; recarga de 12 s); **Último Posto** (especial: crava o escudo no chão por 5 s; provoca todos os inimigos em 8 m, e os aliados atrás dele tomam 50% menos dano).
 
-### 6.4 A Coveira (clériga, Brasa)
+### 6.4 A Arqueira (dano à distância, Visgo e Água)
 
-- **Silhueta de cima:** **uma meia-lua com um pêndulo.** O chapéu de aba larga **cai mais para a frente que para trás** (de cima, uma meia-lua, não um disco), e o véu desce até o queixo. A **pá** apoiada no ombro faz uma linha diagonal longa, e o **turíbulo** pendurado na ponta da pá balança atrás dela como contrapeso.
-- **Adereço-símbolo:** a pá de coveiro de 1,2 m, de ferro escurecido e cabo gasto, com o turíbulo de latão numa corrente de 0,5 m. As brasas do turíbulo dão uma **luz laranja pulsante** de 3 m que **balança com o pêndulo**: as sombras em volta dela vão e voltam.
-- **Rosto** (visto pelo véu de tule cinza): pele cinza-oliva de quem vela os mortos, **olheiras talhadas fundas**, nariz longo, boca fina com o canto torto de ironia, olhos de botão semicerrados.
-- **Corpo:** encurvado (peito, pescoço e cabeça para a frente). Avental de terra, botas de lama, molho de **etiquetas de defunto** no cinto, que cresce a cada Afundado enterrado na Cripta.
-- **Cor:** terra, latão e tule cinza; a cor do jogador na **estola larga** sobre os ombros e na fita do chapéu.
-- **Personalidade:** calma, seca, ironicamente gentil. Antes do golpe forte, mede o inimigo com o cabo da pá, como quem tira medida para o caixão. No reviver, bate de leve com o chapéu na cabeça do aliado. Levanta um caído em 1 s.
-- **Habilidades:** **Incensar** (rastro de fumaça benta de 6 m por 5 s que cura aliados em 6/s e pincela Brasa nos inimigos; recarga de 9 s); **Cova Rasa** (buraco de 1,5 m que prende o primeiro inimigo por 2 s; num aliado caído, vira "berço" e ele levanta em 1 s); **Exéquias** (especial: 5 m de chão consagrado por 6 s, onde Afundados param e aliados não desbotam).
+- **Silhueta de cima:** **um arco atravessado com leque.** Em guarda, o arco longo fica atravessado na diagonal do ombro ao quadril oposto e passa do corpo dos dois lados; a aljava às costas abre um **leque de penas** atrás da cabeça; o capuz curto termina numa ponta que cai para trás. Mirando, o arco fica de pé e a silhueta vira uma linha com uma seta à frente.
+- **Adereço-símbolo:** o **arco longo** de teixo vermelho-escuro, de 1,25 m (mais alto que ela), com empunhadura de couro trançado e pontas de chifre; a **aljava** de couro com três maços de flechas que se leem pela ponta: ferro, **bexiga d'água** azul-cinza e **resina âmbar** que brilha fraco. Braçadeira de couro gravado no antebraço do arco.
+- **Rosto:** rosto em coração, nariz fino e reto, sardas talhadas, um **risco de fuligem sob cada olho** (contra o brilho da Coluna), olhos de botão atentos, com uma sobrancelha sempre mais alta que a outra. Uma mecha castanho-escura presa por uma pena. Ao mirar, fecha um olho e morde o lábio.
+- **Corpo:** magro e firme (0,9 × 1,04), pernas longas para a proporção, botas macias de cano alto amarradas, luva de três dedos na mão da corda.
+- **Figurino e paleta:** capa curta e capuz de lã **verde-oliva escuro** com barra bordada em fio de cobre (um friso de andorinhas), gibão de **couro de cervo mel** com costuras aparentes, linho cru, cinto de bolsas e uma **lanterna de cinto pequena**. **Acento do jogador:** o forro do capuz e a fita da aljava.
+- **Ganchos visuais:** o arco maior que ela; o leque de penas da aljava; os riscos de fuligem sob os olhos.
+- **Personalidade:** calma, precisa, de poucas palavras e humor seco; caçadora das bordas de Pendura, que conhece o abismo pelo som. Parada, gira uma flecha entre os dedos e testa a corda com um "tum" baixo.
+- **Habilidades:** **Flecha de Resina** (a ponta estoura numa poça de Visgo de 2,5 m por 6 s; inimigos 40% mais lentos; aliados atingidos ficam envisgados e **imunes a eletricidade**; recarga de 6 s); **Flecha d'Água** (a bexiga estoura e alaga 3 células em linha; molha quem estiver nelas; recarga de 5 s); **Chuva de Flechas** (especial: atira para o alto e, 30 q depois, 12 flechas caem num círculo de 4 m, cada uma com a última matéria usada). A **flecha de corda** (pegar sacos no ar e prender bordas) é a variante do tiro carregado quando mira um saco ou uma beirada.
 
-### 6.5 O Gancheiro (ladino, Visgo)
+### 6.5 A Maga (controle elemental, Estalo)
 
-- **Silhueta de cima:** **um girino com âncora.** Um **gancho de três pontas** de ferro, do tamanho da cabeça dele, preso às costas com as pontas para cima e para trás. A corda enrolada vai **em bandoleira**, cruzando o peito, e deixa um **rabo de corda** de 1,2 m que arrasta no chão com física. De cima, lê-se cabeça redonda, as 3 pontas e o rabo. Isso substitui a rosca de corda da v2, que virava um disco.
-- **Adereço-símbolo:** o gancho e a corda (a corda encurta visivelmente conforme ele gasta tirolesas). Dois punhais curvos e frascos de Visgo âmbar no cinto, que brilham fraco. Uma lanterna de cinto pequena dá luz quente de 2 m.
-- **Rosto:** pele escura, **cicatriz atravessando a sobrancelha**, sorriso de canto com um dente de ouro, olhos de botão estreitos. Quando pega um saco de saque, os olhos viram duas fendas felizes por 12 q.
-- **Corpo:** o mais magro (0,88 × 1,04), pernas finas e botas de sola grossa enormes. O capuz de duas pontas (as "orelhas") fica.
-- **Cor:** couro escuro e ferro; a cor do jogador no **capuz** e no forro da bandoleira.
-- **Personalidade:** exibido, ganancioso, sempre com pressa. Parado, joga um punhal para cima e pega, ou conta moedas.
-- **Habilidades:** **Gancho** (12 m: puxa inimigo pequeno até ele, puxa ele até inimigo grande ou âncora, e **puxa um aliado até ele**, o resgate de quem caiu numa beirada; recarga de 7 s); **Visgada** (poça de Visgo de 2,5 m por 6 s; inimigos 40% mais lentos; aliados atingidos ficam envisgados e **imunes a eletricidade**); **Tirolesa** (especial: corda de até 30 m por 20 s).
+- **Silhueta de cima:** **uma vírgula com estrela.** Chapéu pontudo de aba larga com a **ponta torta caída para trás**, passando da aba (de cima, um círculo com rabo, não um disco); o **cajado** segurado inclinado à frente termina no cristal aceso (de cima, uma linha que acaba numa estrela de luz, deslocada do corpo).
+- **Adereço-símbolo:** o **cajado** de 1,1 m, de madeira escura de raiz retorcida, com cintas de cobre e uma **garra de cobre de 4 dedos** segurando um cristal de quartzo do tamanho de um punho. **O cristal fica no cajado, não no chapéu.** Em repouso, ele guarda uma luz âmbar-mel, quente como os heróis; ao carregar, esfria para ciano-elétrico e ilumina 5 m.
+- **Chapéu:** feltro gasto e remendado, **aba virada para cima na frente** e presa por um broche de latão (o rosto aparece de cima), com amuletos pendurados na aba: um sininho, um dente de Ouvidor, uma pena.
+- **Rosto:** jovem, nariz arrebitado, sardas, sobrancelhas arqueadas e muito expressivas, olhos de botão grandes com o reflexo do cristal, **óculos redondos de latão** empurrados para a testa. Uma **trança grossa cor de cobre** sobre o ombro, presa com mola.
+- **Corpo:** estreito em cima e largo embaixo, um sino (0,9 × 1,08). Manto até as canelas com a barra chamuscada; botas pontudas aparecem no passo.
+- **Figurino e paleta:** feltro e lã **cor de berinjela desbotada**, forro e barra bordada em **mostarda** com runas, cobre e latão, couro tabaco. Um **livro de feitiços preso ao cinto por corrente**, com páginas soltas, e um mapa enrolado. **Acento do jogador:** a fita da base do chapéu e o forro da gola.
+- **Ganchos visuais:** o chapéu de ponta torta com amuletos; o cajado com garra de cobre e cristal que ilumina o rosto; os óculos e o livro acorrentado.
+- **Personalidade:** nervosa, curiosa e orgulhosa; aprendiz expulsa da Academia de Pendura por explodir o telhado. Toda magia termina com uma pose de "olha só" de 8 q.
+- **Habilidades:** **Estalo em Cadeia** (raio que salta entre 3 alvos: 20/14/10 de dano, pincela Estalo; recarga de 5 s); **Lampejo** (teleporte de 5 m que deixa no ponto de partida um eco de estática que pincela Estalo na célula; recarga de 7 s); **Tempestade de Bolso** (especial: nuvem de 4 m por 5 s que solta 8 raios nos alvos molhados ou pincelados, antes dos outros).
 
-### 6.6 As cinco classes desbloqueáveis (chapéus achados)
+### 6.6 O Clérigo (suporte e cura, Sal)
 
-Os chapéus aparecem em nós específicos com uma chance por Descida. Usar o chapéu na hora é grátis. Para **registrá-lo** na Sede, é preciso subir com ele (pesa 2 kg e vai na Carga) ou despachá-lo numa âncora.
+- **Silhueta de cima:** **um haltere.** Ombros largos e redondos, com a **maça** de cabeça enorme de um lado e a **lanterna-relicário** erguida do outro, as duas além da largura dos ombros; a tonsura faz um círculo claro no alto da cabeça.
+- **Adereço-símbolo:** a **maça de guerra**, com cabeça de ferro escurecido de 6 flanges e cabo de freixo enfaixado em couro; e a **lanterna-relicário** de latão, com vidro âmbar e o **Sol-Prumo** (um sol atravessado por um fio de prumo) recortado na tampa, presa numa haste curta. É o símbolo sagrado dos Clérigos da Coluna, que veneram a luz do meio-dia que desce pela boca da Goela.
+- **Rosto:** bochechas largas, nariz em bola, **tonsura**, **barba cheia grisalha trançada em duas pontas com contas de latão**, sobrancelhas espessas, pés de galinha talhados, olhos de botão bondosos. No golpe, a boca abre num brado.
+- **Corpo:** barrigudo e firme (1,1 × 0,95), pernas curtas e plantadas. Túnica de lã longa, **tabardo** com o sol bordado, cota de malha curta nos ombros, cordão na cintura com **frascos de sal** e um livro de orações.
+- **Figurino e paleta:** lã **cor de osso** com a barra manchada de fuligem, tabardo **cinza-ardósia** com o Sol-Prumo em fio de **ouro velho**, malha escurecida, couro preto e latão. **Acento do jogador:** a fita da lanterna e o cordão da cintura.
+- **Ganchos visuais:** a lanterna-relicário erguida; a maça de cabeça enorme; a barba trançada com contas.
+- **Personalidade:** caloroso, barulhento e firme; capelão da guilda que cobra "taxa de bênção" e perdoa a dívida de quem está morrendo. No reviver, bate de leve com a lanterna na testa do aliado. Levanta um caído em 1 s.
+- **Habilidades:** **Bênção** (ergue a lanterna: anel de luz de 5 m que cura 30 nos aliados e pincela Sal nas células; recarga de 9 s); **Sal Bento** (punhado de sal num cone de 4 m: pincela Sal e cega mortos-vivos por 1 s; recarga de 6 s); **Chão Consagrado** (especial: 5 m de chão consagrado por 6 s, onde mortos-vivos e Afundados param de avançar, aliados não desbotam e curam 6/s).
 
-| Classe | Onde se acha | Silhueta de cima e adereço | Matéria e papel | Recepção do Prumo |
+### 6.7 As cinco classes desbloqueáveis (chapéus achados)
+
+Os chapéus (elmos, capuzes e chapéus) aparecem em nós específicos com uma chance por Descida. Usar o chapéu na hora é grátis. Para **registrá-lo** na Sede, é preciso subir com ele (pesa 2 kg e vai na Carga) ou despachá-lo numa âncora. As cinco seguem a mesma regra das iniciais: arquétipo clássico, estilização própria, figurino com paleta própria.
+
+| Classe | Onde se acha | Silhueta de cima, adereço e figurino | Matéria e papel | Recepção do Prumo |
 |---|---|---|---|---|
-| **Arpoeiro** (patrulheiro) | Ilhas do Andar 3, ou num Afundado da Roldana | **Uma seta**: besta-arpão de 1,4 m apontada à frente; chapéu de lona encerada com aba de chuva | Água. Arpão que crava e puxa; tiro que deixa poça | **Fisga:** prende o Prumo no arpão e o dispara a 20 m, empalando em linha |
-| **Ecoante** (bardo) | Sob o Sino de Thessimor (Andar 2) | **Um caracol**: trompa de chifre espiral maior que o tronco, presa no ombro | Sem matéria própria. **Ressoa:** duplica a próxima pincelada aplicada por um aliado num raio de 6 m; o eco revela nós vizinhos | **Badalo:** bate o Prumo na trompa; onda de som de 6 m que atordoa 1,5 s |
-| **Guarda-Cofre** (paladino) | Fundo de um Cofre dos Cofreiros | **Uma moeda gigante**: escudo redondo que é a porta de um cofre, com roda de segredo | Consagra. Para-choque do grupo; o escudo vira plataforma ou tampa de fenda | **Selo:** crava o Prumo no centro do escudo; cúpula de 3 m que bloqueia projéteis por 3 s |
-| **Micélia** (druida) | Colônia gigante do Andar 1, na Expira | **Um guarda-chuva caído**: chapéu-cogumelo vivo **inclinado de lado**, com lamelas luminosas por baixo e véu de fungo; cajado de raiz | Esporo. Faz crescer Florações e colônias; cura | **Brotar:** o Prumo cai e vira um anel de 6 cogumelos que levantam e curam |
-| **Pactuado** (bruxo) | Altar da Boca, depois de aceitar 3 Pactos | **Uma gaiola**: capuz de corda trançada com uma pequena gaiola no topo, onde uma brasa preta respira | Fundo, a matéria perigosa. Transforma reações ruins em armas, com custo de vida | **Engolir:** o Prumo some na gaiola e cai no inimigo mais próximo como um poço de Fundo |
+| **Ladino** (furtivo, punhais) | Fundo do "Cofre do Peixe" e de outras masmorras de mesa | **Um S**: cachecol longo que esvoaça atrás e dois punhais curvos. Capuz de feltro carvão, colete de couro preto com mil bolsos, gazua no cinto e lanterna furta-fogo (a de portinhola) | Sem matéria própria. **Surrupiar:** rouba a pincelada de um inimigo e a guarda para o próximo golpe. +100% pelas costas | **Malabarismo:** joga o Prumo por cima do alvo, some numa nuvem de fuligem e reaparece atrás para pegá-lo; 45 de dano pelas costas |
+| **Bárbaro** (dano corpo a corpo, fúria) | Altar da Boca, depois de aceitar 3 Pactos | **Um machado**: machado de duas lâminas enorme nas costas, ombreira de pele de urso-das-cavernas com o crânio. Pele tatuada a fuligem, tranças com argolas de ferro | Fundo, a matéria perigosa. **Fúria:** transforma reações ruins (Fogo Fundo, Estática Morta) em armas, com custo de vida | **Arremesso Bruto:** gira o Prumo duas vezes pela corda e o solta em linha; 60 de dano e empurrão de 4 m em tudo que estiver no caminho |
+| **Druida** (cura e controle, Esporo) | Colônia gigante do Andar 1, na Expira | **Uma galhada**: coroa de raízes ramificadas com cogumelos pequenos crescendo nela, manto de musgo e casca, cajado de raiz. Pode virar um **texugo-das-cavernas** por 8 s | Esporo. Faz crescer Florações e colônias; cura | **Brotar:** o Prumo cai e vira um anel de 6 cogumelos que levantam e curam |
+| **Bardo** (apoio, som) | Sob o Sino de Thessimor (Andar 2) | **Uma pera com braço**: alaúde de costas com braço longo e cravelhas, chapéu de aba com uma pluma longa curvada. Gibão listrado gasto, botas de bico | Sem matéria própria. **Ressoa:** duplica a próxima pincelada aplicada por um aliado num raio de 6 m; o eco revela nós vizinhos | **Acorde:** bate o Prumo nas cordas do alaúde; onda de som de 6 m que atordoa 1,5 s |
+| **Paladino** (tanque sagrado) | Elmo do Cavaleiro Tombado (elite do Andar 2) | **Um martelo e um halo**: martelo de guerra de duas mãos e uma auréola de latão presa numa haste atrás do elmo aberto. Armadura escurecida com filetes dourados, capa longa | Sal (como o Clérigo, mas pelo martelo). **Juramento:** aliados em 4 m tomam 20% menos dano; o golpe pesado consagra a célula | **Selo:** crava o Prumo no chão sob o martelo; cúpula de 3 m que bloqueia projéteis por 3 s |
 
 ---
 
@@ -552,9 +596,9 @@ Este é o pedido explícito do usuário: **"que as animações de ataques sejam 
 1. **O movimento nasce no quadril e nos pés.** A sucessão é sempre: pé de apoio planta, depois quadril gira (2 a 3 q antes do ombro), ombro (2 q antes do braço), braço, e a arma por último.
 2. **Pés não deslizam.** O pé de apoio fica travado por IK do quadro em que planta até o fim do contato. O deslocamento do golpe vem de **root motion** (tabela exportada do Blender, com a mesma curva usada pela lógica e pela rede).
 3. **Transferência de peso visível.** Na antecipação, o peso vai para o pé de trás. No contato, passa para o da frente. Os joelhos dobram de 10° a 20° para absorver, e mais no golpe pesado.
-4. **Antecipação proporcional ao peso:** de 3 a 5 q numa punhalada, de 14 a 20 q numa viga.
-5. **Arma pesada tem inércia.** Ela atrasa de 3 a 4 q em relação à mão no começo do golpe e passa de 25° a 40° além do alvo depois do contato. Arma leve atrasa 1 q e passa de 10° a 15°.
-6. **Follow-through e sobreposição** em tudo o que é solto (vela, geodo, turíbulo, corda, tranças, capuz, véu, avental, Penduricalhos), com molas a 60 q por segundo por cima do corpo. As molas sobrevivem ao cancelamento.
+4. **Antecipação proporcional ao peso:** de 5 a 7 q num tiro rápido ou numa Faísca, de 6 a 8 q num corte de espada, de 14 a 16 q no golpe descendente do Cavaleiro e no esmagamento da maça.
+5. **Arma pesada tem inércia.** Ela atrasa de 3 a 4 q em relação à mão no começo do golpe e passa de 25° a 40° além do alvo depois do contato (a maça do Clérigo é o caso extremo: a cabeça atrasa 4 q). Arma média (a espada) atrasa 1 a 2 q e passa de 15° a 20°. O arco não tem inércia de golpe, mas tem recuo.
+6. **Follow-through e sobreposição** em tudo o que é solto (crista do Cavaleiro, capa e capuz da Arqueira, flechas na aljava, ponta do chapéu, trança e amuletos da Maga, barba trançada, tabardo e lanterna-relicário do Clérigo, lanternas de cinto, Penduricalhos), com molas a 60 q por segundo por cima do corpo. As molas sobrevivem ao cancelamento.
 7. **Recuperação que mostra o esforço:** o corpo respira fundo, a arma pesa, e o herói volta à guarda com aceleração lenta. Cada quadro da recuperação é uma pose que mistura bem com a guarda e com a esquiva, porque ela pode ser cortada.
 8. **Arcos limpos.** A ponta da arma desenha um arco de raio constante. O rastro (smear) segue esse arco e dura de 4 a 8 q.
 
@@ -564,7 +608,7 @@ Este é o pedido explícito do usuário: **"que as animações de ataques sejam 
 - **Buffer de comando** nos últimos 10 q de cada golpe. O próximo golpe sai no primeiro quadro cancelável.
 - **Janela de cancelamento clara:** golpe em golpe, a partir do fim do ativo mais N quadros (está em cada ficha); esquiva cancela tudo depois do ativo; **nada cancela a antecipação do pesado, exceto a esquiva**.
 - **Sinal da janela:** no primeiro quadro cancelável, a arma dá um brilho de 2 q na luz de aresta e soa um clique curto (desligável). O jogador aprende o ritmo pelo olho e pelo ouvido.
-- **Cadência por classe:** cada classe anima num ritmo de poses próprio (Escorador 15 poses por segundo, Coveira e Cristaleira 20, Gancheiro 30). Os adereços e as molas rodam sempre a 60.
+- **Cadência por classe:** cada classe anima num ritmo de poses próprio (Clérigo 15 poses por segundo, Cavaleiro e Maga 20, Arqueira 24). Os adereços e as molas rodam sempre a 60.
 
 ### 7.3 Coerência: o pacote de impacto no mesmo quadro
 
@@ -577,26 +621,26 @@ Este é o pedido explícito do usuário: **"que as animações de ataques sejam 
 - som do impacto;
 - a pincelada da matéria.
 
-**Nada é disparado por temporizador separado.** A lógica, o efeito e o som ouvem o mesmo sinal `contato(golpe_id, peso)`.
+**Nada é disparado por temporizador separado.** A lógica, o efeito e o som ouvem o mesmo sinal `contato(golpe_id, peso)`. Nos projéteis (flechas, Faíscas), o contato é o quadro em que o projétil acerta; o quadro de **soltura** tem seu próprio pacote menor (recuo do arco ou do cajado, clarão na ponta, som de corda ou estalo).
 
 | Quadro relativo ao contato | Evento |
 |---|---|
 | 0 | Hit-stop começa. Flash branco-quente no alvo (85 a 90% de valor, nunca 100% branco). Faísca, som e anel de impacto. Chute de câmera na direção do golpe |
 | 0 até o fim do hit-stop | O alvo treme na horizontal (na vertical se estiver no ar), com amplitude decrescente. O atacante avança 5 a 10% do movimento restante (nunca congela 100%). A arma vibra |
 | Fim do hit-stop | O knockback começa na velocidade máxima e desacelera por atrito, com poeira no chão. A pose de dano do alvo chega em 4 q |
-| +1 a +4 | Detritos com física simples, poeira, lascas de cera ou quitina, respingo de poça |
+| +1 a +4 | Detritos com física simples, poeira, lascas de gesso, osso ou quitina, respingo de poça |
 | +6 a +30 | O efeito se dissolve devagar (ataque rápido, decaimento lento). O número de dano sobe e some, se estiver ligado |
-| +30 a +600 | Permanência: marca no chão, laje rachada, cal no piso |
+| +30 a +600 | Permanência: marca no chão, laje rachada, sal no piso |
 
 **Proporção.** Tudo escala pelo peso do golpe. A reação do inimigo é proporcional ao golpe que ele levou.
 
 | Peso | Exemplo | Hit-stop | Flash | Trauma da câmera | Chute | Faíscas e detritos | Reação do inimigo |
 |---|---|---|---|---|---|---|---|
-| **Leve** | Punhal 1 e 2, Lasca | 3 q | 1 q | 0 (nada) | 0 | 4 a 6 faíscas pequenas | Tremor e achatamento 0,92; recua 0,2 m |
-| **Médio** | Pá, finalizador do Gancheiro | 6 a 7 q | 2 q | 0,15 | 0,08 m | 8 faíscas, poeira baixa | Achata 0,85; recua 0,6 m e dá um passo para trás |
-| **Pesado** | Viga 1 e 2, Estalo carregado | 8 a 10 q | 2 q | 0,25 a 0,3 | 0,15 m | 12 faíscas, lascas, anel de 2 m | Achata 0,78; knockback de 1,5 a 2 m com rastro de poeira; tropeça |
-| **Finalizador pesado** | Pilão do Escorador, recepção do Prumo | 12 q + câmera lenta 0,5× por 10 q | 2 q | 0,45 | 0,25 m + zoom de 4% | 16 faíscas, detritos, anel de 3 m, poça espirra | Achata 0,7; lançado 3 m, quica 2 vezes, cai e levanta em 40 q |
-| **Golpe que mata uma elite** | Qualquer | 16 q + câmera lenta 0,4× por 20 q | 2 q | 0,5 | 0,3 m | Explosão de gesso ou quitina | Parte-se em pedaços com física |
+| **Leve** | Tiro Rápido, Faísca | 3 q | 1 q | 0 (nada) | 0 | 4 a 6 faíscas pequenas | Tremor e achatamento 0,92; recua 0,2 m |
+| **Médio** | Cortes 1 e 2 do Cavaleiro, Maçadas 1 e 2, Tiro Firme, Arco Voltaico | 6 a 7 q | 2 q | 0,15 | 0,08 m | 8 faíscas, poeira baixa | Achata 0,85; recua 0,6 m e dá um passo para trás |
+| **Pesado** | Golpe Descendente, Pancada de Escudo, Tiro e Estalo carregados | 8 a 10 q | 2 q | 0,25 a 0,3 | 0,15 m | 12 faíscas, lascas, anel de 2 m | Achata 0,78; knockback de 1,5 a 2 m com rastro de poeira; tropeça |
+| **Finalizador pesado** | Esmagamento do Clérigo, recepção do Prumo | 12 q + câmera lenta 0,5× por 10 q | 2 q | 0,45 | 0,25 m + zoom de 4% | 16 faíscas, detritos, anel de 3 m, poça espirra | Achata 0,7; lançado 3 m, quica 2 vezes, cai e levanta em 40 q |
+| **Golpe que mata uma elite** | Qualquer | 16 q + câmera lenta 0,4× por 20 q | 2 q | 0,5 | 0,3 m | Explosão de gesso, osso ou quitina | Parte-se em pedaços com física |
 | **Chefe derrotado** | Qualquer | 30 q global + câmera lenta 0,3× por 30 q | 3 q | 0,8 | — | Tudo | Sequência própria |
 
 **Tremor da câmera:** trauma de 0 a 1, tremor = trauma² × amplitude máxima (0,3 m de deslocamento, 2,5° de rolagem), ruído suave de 18 Hz, decaimento de 2 por segundo. Em co-op na mesma tela, o tremor usa **60% do valor da tabela**, e o chute direcional (de 3 a 6 q) fica inteiro: chutar a câmera não atrapalha os outros três, tremer muito atrapalha.
@@ -609,115 +653,122 @@ Este é o pedido explícito do usuário: **"que as animações de ataques sejam 
 - **HS:** hit-stop;
 - **Rec.:** recuperação;
 - **Canc.:** a partir de quando se pode encadear o golpe seguinte e a esquiva, contado a partir do fim do ativo;
-- **Δ contato:** quadros entre este contato e o anterior, com o combo jogado no ritmo ideal.
+- **Δ contato:** quadros entre este contato e o anterior, com o combo jogado no ritmo ideal. No corpo a corpo, Δ = ativo + HS + canc. + ant. seguinte; nos projéteis o hit-stop fica no alvo, e Δ = ativo + canc. + ant. seguinte.
 
-#### Escorador: lento e pesadíssimo ("tum ... tum ... TUM")
-
-| Golpe | Ant. | Ativo | HS | Rec. | Canc. (golpe / esquiva) | Δ contato | Dano | Peso |
-|---|---|---|---|---|---|---|---|---|
-| 1. Varrida | 16 | 5 | 8 | 26 | +12 / +6 | — | 22 | Pesado |
-| 2. Volta de Escora | 14 | 5 | 9 | 24 | +12 / +6 | 39 | 22 | Pesado |
-| 3. Pilão de Escora | 20 (+ pausa de 6 no alto) | 4 | 12 + câmera lenta | 36 | — / +14 | 52 | 40, empurrão de 3 m | Finalizador pesado |
-
-O combo inteiro dura cerca de 2,4 s. O Escorador perde para todo mundo em velocidade e ganha em área e controle de beirada.
-
-**Tira de poses-chave do combo:**
-1. **Guarda (q0):** viga nos ombros, pés afastados, joelhos dobrados, a vela tremendo.
-2. **Carrega (q1 a q12):** o quadril gira para trás 35°, o peso passa para o pé de trás, a viga recua 40° e arrasta 2 q atrás do tronco, os joelhos dobram 18°, a chama inclina para trás e o lábio de baixo sai.
-3. **Planta (q12):** o pé da frente bate no chão e solta um anel de poeira; o quadril começa a girar à frente.
-4. **Contato (q16):** quadril adiantado, braços esticados, a viga horizontal com smear de 6 q; a vela deita.
-5. **Passa (q21 a q28):** a viga continua 35° além do alvo, puxa o tronco e arrasta a ponta no chão com faíscas.
-6. **Assenta (q28 a q47):** respira, os ombros sobem e descem, ele puxa a viga de volta ao ombro com um tranco.
-7. **Golpe 3, ergue (q0 a q16):** a viga sobe acima da cabeça com as duas mãos; o corpo arqueia para trás; os calcanhares saem do chão; o saco de cal derrama.
-8. **Pausa (q16 a q22):** hold no alto, com tremor de esforço de 1° a 2° e a chama vertical.
-9. **Desce (q22 a q26):** cai em 4 q, com smear vertical.
-10. **Crava (q26, contato):** os joelhos absorvem 20°, o corpo achata a 0,85, a viga entra no chão e racha a laje.
-11. **Arranca (q26 a q74):** no q50, arranca a viga com um tranco de quadril, sacode a poeira e volta à guarda.
-
-#### Gancheiro: rápido, acelerando ("ta-ta-TÁ")
+#### Cavaleiro: firme, com o terceiro pesadíssimo ("tchá-tchá ... TUM")
 
 | Golpe | Ant. | Ativo | HS | Rec. | Canc. (golpe / esquiva) | Δ contato | Dano | Peso |
 |---|---|---|---|---|---|---|---|---|
-| 1. Pique | 5 | 2 | 3 | 10 | +3 / +1 | — | 9 | Leve |
-| 2. Contra-pique | 4 | 2 | 3 | 8 | +2 / +1 | 12 | 9 | Leve |
-| 3. Fisgada | 3 + pausa de 7 | 3 | 7 | 18 | — / +6 | 18 | 20, empurrão de 1,2 m | Médio |
+| 1. Corte | 8 | 3 | 6 | 16 | +5 / +3 | — | 16 | Médio |
+| 2. Revés | 6 | 3 | 6 | 16 | +5 / +3 | 20 | 16 | Médio |
+| 3. Golpe Descendente | 14 (das quais 4 de pausa no alto) | 4 | 10 | 30 | — / +12 | 28 | 36, racha a laje | Pesado, trauma 0,3 |
+| Pancada de Escudo | 6 + investida de 3 m em 8 | 8 (durante a investida) | 8 | 20 | — / +8 | — | 20, empurrão de 3 m, atordoa 0,6 s | Pesado |
+| Bloqueio (segurar) | 4 para erguer | aparar nos 8 primeiros | 4 por golpe bloqueado | 6 para baixar | esquiva a qualquer momento | — | 80% de redução num cone de 120° | — |
 
-O primeiro contato sai 5 q depois do comando, o segundo 12 q depois do primeiro (a cadência acelera) e o terceiro 18 q depois do segundo, porque o corpo **para** numa pausa de 7 q antes dele. O combo inteiro dura cerca de 0,8 s. Pelas costas, cada golpe causa +100%.
+Os contatos caem nos quadros 8, 28 e 56. O combo inteiro dura cerca de 1,7 s. O Cavaleiro é o mais lento a matar e o único que segura uma linha: bloqueia, empurra o bando para dentro das poças e protege quem está carregando.
 
 **Tira de poses-chave do combo:**
-1. **Guarda:** agachado, punhais invertidos, o peso na ponta dos pés, o rabo de corda enrolado no chão.
-2. **Pique, ant. (q0 a q5):** o ombro direito recua e o quadril gira 20°.
-3. **Pique, contato (q5):** braço esticado e lâmina com smear de 3 q.
-4. **Contra-pique (q4 após o comando):** o outro braço sai cruzado; o capuz atrasa 3 q.
-5. **Fisgada, ant. (q0 a q3):** os dois punhais se cruzam para trás; ele afunda 10 cm nos joelhos.
-6. **Pausa (q3 a q10):** hold com os olhos estreitos e o rabo de corda ainda balançando.
-7. **Fisgada, contato (q10):** dá um passo largo, cruza os dois punhais em X e sai um smear em X.
-8. **Passa:** gira 90°, o gancho das costas balança e bate, e o rabo de corda faz um chicote no chão.
-9. **Assenta:** gira um punhal na mão e volta à guarda.
+1. **Guarda (q0):** escudo à frente na altura do peito, espada sobre o ombro, pés afastados, joelhos dobrados, a crista balançando.
+2. **Corte, carrega (q0 a q8):** o quadril gira 25° para trás, o peso vai ao pé de trás, a espada recua por cima do ombro (atrasa 1 q), o escudo abre para o lado.
+3. **Corte, contato (q8):** o pé da frente planta, o quadril gira à frente 2 q antes do ombro, a lâmina corta na horizontal com smear de 4 q, o escudo fecha no peito.
+4. **Revés (contato no q28):** sem voltar à guarda, a lâmina sobe na diagonal de baixo para cima; o tronco gira de volta; a crista atrasa 3 q.
+5. **Golpe Descendente, ergue (q0 a q8):** as duas mãos levam a espada acima da cabeça, o escudo baixa para proteger o flanco, o corpo arqueia para trás, o peso vai ao pé de trás e os calcanhares sobem.
+6. **Pausa (q8 a q12):** hold no alto, com tremor de esforço de 1° a 2°; a lâmina dá o brilho de leitura.
+7. **Desce (q12 a q14):** o pé da frente planta com anel de poeira, o quadril lidera, a lâmina cai com smear vertical.
+8. **Crava (q14, contato):** os joelhos absorvem 20°, o corpo achata a 0,88, a lâmina morde a laje e a racha; faíscas e tremor grande.
+9. **Arranca e assenta (q28 a q58):** a lâmina fica presa 6 q, ele a arranca com um tranco de quadril, gira a espada no punho e volta à guarda batendo-a de leve no escudo.
 
-#### Cristaleira: conjuração ("ti-ti ... CRAC")
+**Tira da Pancada de Escudo:** (1) abaixa o ombro e cola o escudo no corpo (q0 a q6); (2) investida de passos largos, cada pé planta a cada 4 q; (3) contato: o escudo achata o alvo, a crista e o lenço chicoteiam à frente; (4) freia em dois passos curtos com poeira, o escudo vibra no braço.
 
-| Golpe | Ant. | Ativo | HS no alvo | Rec. | Canc. | Δ disparo | Dano | Peso |
+#### Arqueira: tensão e soltura ("tic, tic ... tuuum")
+
+| Golpe | Ant. | Ativo | HS no alvo | Rec. | Canc. (golpe / esquiva) | Δ contato | Dano | Peso |
 |---|---|---|---|---|---|---|---|---|
-| 1. Lasca | 6 | 1 (disparo) | 3 | 10 | +4 / +2 | — | 12 | Leve |
-| 2. Lasca | 5 | 1 | 3 | 10 | +4 / +2 | 10 | 12 | Leve |
-| 3. Estilhaço | 14 | 1 (leque de 3) | 6 | 20 | — / +8 | 19 | 3 × 12, empurrão de 1 m | Médio |
+| 1. Tiro Rápido | 7 (puxa até o peito) | 1 (soltura) | 3 | 9 | +4 / +2 | — | 10 | Leve |
+| 2. Tiro Rápido | 6 | 1 | 3 | 9 | +4 / +2 | 11 | 10 | Leve |
+| 3. Tiro Firme | 12 (das quais 4 de mira parada) | 1 (2 flechas) | 6 | 18 | — / +8 | 17 | 2 × 12, empurrão de 1 m | Médio |
+| Tiro Carregado (segurar) | de 24 a 54 de puxada | 1 (perfura até 3) | de 6 a 10, pelo tempo de carga | 20 | — / +8 | — | de 30 a 70 | Pesado |
+
+- **Puxar com o corpo inteiro:** os pés ficam em linha, o quadril gira de lado, as escápulas se fecham, o cotovelo de trás sobe acima do ombro e a corda chega ao canto da boca. O arco **dobra de verdade** (2 ossos por braço do arco) e a corda é uma linha com 3 pontos.
+- **Tiro rápido:** puxa só até o peito e solta; a mão da corda volta para a aljava sem parar.
+- **Tiro carregado:** pausa viva no pico, com o arco tremendo 0,5° a 10 Hz, a respiração presa (o peito para) e a ponta da flecha acendendo na cor da matéria. A carga máxima dá um brilho de 2 q no gume.
+- **Soltura:** a corda vibra 6 q, o **arco salta à frente e gira 15° no punho**, o tronco recua 8° e o pé de trás planta; a capa chicoteia para a frente; a mão da corda segue até a orelha.
+
+**Tira de poses-chave do Tiro Carregado:**
+1. Guarda: arco baixo atravessado, flecha encaixada, peso no pé de trás.
+2. Encaixa (q0 a q6): gira de lado, pés em linha, o arco sobe na vertical.
+3. Puxa (q6 a q24): o corpo inteiro puxa, o cotovelo sobe, o arco curva, a capa assenta.
+4. Pico (q24 a q54, segurar): hold vivo, tremor, a ponta acesa, um olho fechado.
+5. Solta (quadro de soltura): os dedos abrem, o arco salta e gira, o tronco recua.
+6. Acompanha: a mão segue até a orelha, a capa e o capuz chicoteiam.
+7. Volta: puxa outra flecha da aljava em 10 q, com as penas da aljava balançando.
+
+#### Maga: conjuração ("ti-ti ... CRAC")
+
+| Golpe | Ant. | Ativo | HS no alvo | Rec. | Canc. (golpe / esquiva) | Δ disparo | Dano | Peso |
+|---|---|---|---|---|---|---|---|---|
+| 1. Faísca | 6 | 1 (disparo) | 3 | 10 | +4 / +2 | — | 12 | Leve |
+| 2. Faísca | 5 | 1 | 3 | 10 | +4 / +2 | 10 | 12 | Leve |
+| 3. Arco Voltaico | 14 | 1 (leque de 3 raios curtos) | 6 | 20 | — / +8 | 19 | 3 × 12, pincela Estalo, empurrão de 1 m | Médio |
 | Estalo carregado (segurar) | de 30 a 60 de carga | 1 | de 6 a 10, pelo tempo de carga | 22 | — / +10 | — | de 30 a 70 | Pesado |
 
-- **Carga:** o geodo sobe da altura do peito até acima da cabeça. A luz passa de âmbar para ciano e o raio de luz cresce de 3 para 6 m. Os pés afundam de leve, as tranças sobem com a estática e faíscas correm pelo cajado. Em carga máxima, o geodo pisca a 6 Hz.
-- **Soltura:** o **recuo do corpo** leva o tronco 12° para trás e o herói **dá um passo de 0,35 m para trás, com o pé plantando** (não desliza). As tranças chicoteiam para a frente, e o capuz cai e volta em 8 q.
-- **Fim:** pose de exibição de 8 q, com o queixo para cima.
-- **As Lascas saem do geodo** e descrevem um arco curto antes de seguir reto, para que o tiro leia como "saiu do cristal".
+- **Carga:** o cajado sobe da altura do peito até acima da cabeça. O cristal passa de âmbar para ciano e o raio de luz cresce de 3 para 6 m. **O manto infla com a estática**, a trança e os amuletos do chapéu sobem, os pés afundam de leve e faíscas correm pelas cintas de cobre do cajado. Em carga máxima, o cristal pisca a 6 Hz.
+- **Soltura:** o **recuo do corpo** leva o tronco 12° para trás e a Maga **dá um passo de 0,35 m para trás, com o pé plantando** (não desliza). A trança chicoteia para a frente, a ponta do chapéu dá uma volta e o manto desinfla em 8 q.
+- **Fim:** pose de exibição de 8 q, com o queixo para cima e os óculos escorregando.
+- **As Faíscas saem do cristal** e descrevem um arco curto antes de seguir reto, para que o tiro leia como "saiu do cajado".
 
 **Tira de poses-chave do Estalo carregado:**
-1. Guarda: o cajado inclinado, o geodo morno.
-2. Carrega: as duas mãos no cajado, o geodo subindo, os ombros tensos.
-3. Carga máxima: o geodo acima da cabeça, as tranças no ar, os olhos brancos de brilho.
-4. Solta (contato): o cajado aponta, o raio sai e o corpo recua.
+1. Guarda: o cajado inclinado, o cristal morno.
+2. Carrega: as duas mãos no cajado, o cristal subindo, os ombros tensos, o manto começando a inflar.
+3. Carga máxima: o cristal acima da cabeça, a trança no ar, o manto inflado, os olhos brancos de brilho.
+4. Solta (disparo): o cajado aponta, o raio sai e o corpo recua.
 5. Passo atrás: o pé de trás planta e o joelho absorve.
-6. Exibição: o queixo para cima e a mão na cintura.
+6. Exibição: o queixo para cima, a mão na cintura, ajeita os óculos.
 
-#### Coveira: média, com contrapeso ("TÁ-tum, TÁ-tum, TÁÁ-tum")
+#### Clérigo: pesado e firme ("TUM ... TUM ...... TUMM-uá")
 
 | Golpe | Ant. | Ativo | HS | Rec. | Canc. (golpe / esquiva) | Δ contato | Dano | Peso |
 |---|---|---|---|---|---|---|---|---|
-| 1. Pazada | 10 | 4 | 6 | 18 | +8 / +4 | — | 18 | Médio |
-| 2. Revés | 8 | 4 | 6 | 16 | +8 / +4 | 26 | 16 | Médio |
-| 3. Cova (pá + turíbulo) | 14 (das quais 6 de "medir") | 4 + 2 do turíbulo | 10 + 3 | 28 | — / +10 | 32 | 30 + 10 do turíbulo, pincelada de Brasa | Pesado |
+| 1. Maçada | 10 | 4 | 7 | 18 | +8 / +4 | — | 18 | Médio |
+| 2. Revés de Maça | 9 | 4 | 7 | 18 | +8 / +4 | 28 | 18 | Médio |
+| 3. Esmagamento | 16 (das quais 4 de pausa no alto) | 4 + 1 do pulso de luz | 12 + câmera lenta; 3 no pulso | 32 | — / +12 | 35 | 34 + 10 do pulso, pincela Sal | Finalizador pesado |
+| Bênção | 10 (ergue a lanterna) | 4 (o anel abre) | — | 14 | — / +6 | — | cura 30 | — |
 
-- **O turíbulo é o contrapeso.** Quando a pá vai para a frente, o turíbulo vai para trás, com **6 q de atraso**, e passa pelo contato **depois** da pá. No golpe 3, ele completa um arco por cima da cabeça e cai no mesmo alvo 6 q depois da pá: é um **segundo impacto** menor, com hit-stop de 3 e brasas espalhadas. É isso que dá o "TÁ-tum".
-- **A corrente continua balançando 40 q** depois que ela para.
-- Ela nunca corre de verdade: a cabeça fica parada e o véu ondula.
+- **A cabeça da maça tem inércia:** atrasa 4 q em relação à mão no começo e continua 30° além do braço depois do contato; os flanges arrastam no chão.
+- **A lanterna-relicário é o contrapeso:** quando a maça vai à frente, a lanterna vai para trás. No Esmagamento, 5 q depois do contato a lanterna erguida solta um **pulso de luz sagrada** de 3 m: um segundo impacto menor, com hit-stop de 3. É isso que dá o "TUMM-uá".
+- **A lanterna continua balançando 40 q** depois que ele para.
 
-**Tira de poses-chave do golpe 3:**
-1. Mede: estica o cabo da pá na direção do inimigo, com um olho fechado (6 q).
-2. Ergue: a pá sobe por cima do ombro, o turíbulo cai para trás e para baixo.
-3. Planta: o pé da frente e o quadril giram.
-4. Pá crava (contato 1).
-5. O turíbulo passa por cima da cabeça.
-6. Turíbulo bate (contato 2, 6 q depois): brasas no chão.
-7. Apoia: o corpo se apoia na pá cravada e respira.
-8. Arranca e volta: arranca a pá com um tranco, a corrente balança 40 q.
+**Tira de poses-chave do Esmagamento:**
+1. Ergue (q0 a q10): a maça sobe por cima do ombro em arco largo, com a cabeça atrasada; a lanterna vai para trás; o peso vai ao pé de trás; a barba balança.
+2. Pausa (q10 a q14): hold no alto, o corpo arqueado, a boca abrindo no brado.
+3. Desce (q14 a q16): o pé da frente planta e o quadril gira; a maça cai.
+4. Esmaga (q16, contato): os joelhos absorvem 20°, o corpo achata a 0,85, a maça afunda na laje e a racha.
+5. Pulso (5 q depois): a lanterna erguida acende, anel de luz e sal no chão.
+6. Apoia: o peso no cabo cravado, respira fundo, enxuga a testa com o antebraço.
+7. Arranca e volta: tranco de quadril, a maça volta ao ombro, a lanterna balança 40 q.
+
+**Tira da Bênção:** (1) firma os pés e ergue a lanterna acima da cabeça em 10 q, o corpo estica a 1,06; (2) a luz abre em anel em 4 q e a barba e o tabardo sobem; (3) desce a lanterna em 14 q com um aceno de cabeça.
 
 ### 7.5 Corpo, ciclos e idle
 
 | Item | Valor |
 |---|---|
 | Andar | Ciclo de 40 q (passo de 20). O quadril sobe e desce 3 cm, gira 6° e rola 4°. Os braços balançam em oposição |
-| Correr | Ciclo de 28 q no Gancheiro e de 32 q nos outros, com 2 q de voo por passo. O tronco inclina 10° |
+| Correr | Ciclo de 28 q na Arqueira, 32 q no Cavaleiro e na Maga e 34 q no Clérigo, com 2 q de voo por passo. O tronco inclina 10° |
 | Correr com Carga | Ciclo de 36 q. O tronco inclina 18° para a frente. A mochila (4 tamanhos) quica com mola e atrasa 4 q |
-| Idle | Respiração de 4 s: o peito sobe 2%, os ombros 1 cm. Um microgesto a cada 5 a 9 s: o Escorador ajeita o capacete, a Cristaleira bate as lascas do colar, a Coveira conta as etiquetas, o Gancheiro joga o punhal. As piscadas ficam entre 2 e 6 s |
+| Idle | Respiração de 4 s: o peito sobe 2%, os ombros 1 cm. Um microgesto a cada 5 a 9 s: o Cavaleiro sopra o bigode e ajeita a crista; a Arqueira gira uma flecha e testa a corda; a Maga empurra os óculos e folheia o livro; o Clérigo sopra a chama da lanterna e conta as contas da barba. As piscadas ficam entre 2 e 6 s |
 | Olhar | A cabeça segue o inimigo mais próximo até 60°, com 6 q de atraso |
 | Pouso | Achata a 0,85 por 4 q, sobe pó e o joelho absorve 15° |
 | Reação a dano | Leve: tremor e piscada. Médio: recua um passo. Pesado: cai sentado e levanta em 30 q |
-| Morte e desbotar | A cor escorre da cabeça para os pés em 12 pinceladas em 40 q. A vela, o geodo ou o turíbulo apagam com um fio de fumaça |
+| Morte e desbotar | A cor escorre da cabeça para os pés em 12 pinceladas em 40 q. A lanterna de cinto, o cristal ou o relicário apagam com um fio de fumaça |
 
-O achatar e esticar sempre preserva o volume. Achata no pouso e no contato pesado, estica na antecipação do salto e no lançamento. A madeira da viga e o ferro do gancho nunca deformam; quem deforma é o corpo e o pano.
+O achatar e esticar sempre preserva o volume. Achata no pouso e no contato pesado, estica na antecipação do salto e no lançamento. O aço da espada, o escudo, o elmo, a maça e as placas nunca deformam; o arco só dobra pelos próprios ossos na puxada; quem deforma é o corpo e o pano.
 
 ### 7.6 Inimigos também têm peso e ritmo
 
 - **Telegrafia:** um hold vivo de 24 a 36 q para comuns, com tremor de 1° a 2° a 10 Hz, o ponto de cor acendendo em magenta e o som no **último** quadro da espera.
-- **Recuperação:** a punição longa (de 24 a 40 q) aparece no corpo: o Ouvidor fica com a cara no chão, e o Pingente fica de ponta-cabeça.
+- **Recuperação:** a punição longa (de 24 a 40 q) aparece no corpo: o Ouvidor fica com a cara no chão, o Pingente fica atordoado de asas abertas, o Guarda Engolido fica com a alabarda cravada e o peito aberto.
+- **Ritmo por massa:** o Ouvidor e a Roicorda atacam em rajadas rápidas; o Bocalume e o Cultista são lentos e preparam o chão; o Guarda Engolido anda em passos plantados e pesados, como o Cavaleiro ao contrário.
 - **Reação proporcional:** o mesmo pacote de impacto da seção 7.3, lido pelo peso do golpe recebido.
 
 ---
@@ -725,60 +776,63 @@ O achatar e esticar sempre preserva o volume. Achata no pouso e no contato pesad
 ## 8. Inimigos
 
 **Regra de leitura:**
+- **criaturas de dark fantasy reconhecíveis à primeira vista**: carniçal, aranha, morcego, rato, zumbi de fungo, cultista, cavaleiro morto-vivo, estátua animada. Nada de bonecos-palito nem de criatura incompreensível;
+- forma forte, desenhada pela silhueta vista de cima: membros grossos, massa nos ombros, peso no chão, postura de caça;
 - corpo escuro (valor de 15 a 25%) com uma **aresta fria pintada** e contorno de casca;
-- **um único ponto de cor** (olho, isca, boca, fechadura), que acende em **magenta** na telegrafia;
-- forma forte, desenhada pela silhueta vista de cima. Nada de bonecos-palito: membros grossos, massa nos ombros, peso no chão;
+- **um único ponto de cor** (olho, isca, boca, chama do elmo), que acende em **magenta** na telegrafia;
+- o mesmo acabamento dos heróis: malha com deformação, textura pintada (osso, quitina, pele cinza, pano podre, ferro enferrujado, gesso) e shader por material;
 - o **tamanho da base** diz o perigo (comum, elite, chefe).
 
-**Família de formas:** o que nasce do abismo tem forma de **cogumelo, gancho e quitina**; o que Thessimor construiu é **bloco chanfrado e gesso**; o que caça do teto ou da água é **ponta**.
+**Família de formas:** o que nasce do abismo tem forma de **cogumelo, pata e quitina**; o que Thessimor construiu ou enterrou é **bloco chanfrado, placa e gesso**; o que caça do teto ou da água é **ponta**.
 
-**Dark fantasy, mas legível:** ameaça por massa, postura e boca. Não há sangue: os inimigos se partem em gesso, quitina, cinza e pó.
+**Dark fantasy, mas legível:** ameaça por massa, postura e boca. Não há sangue: os inimigos se partem em gesso, osso, quitina, cinza e pó.
 
 ### 8.1 Andar 1: Mata de Lume
 
 | Inimigo | Papel | Aparência (silhueta de cima e forma) | Ataque e telegrafia | Vida |
 |---|---|---|---|---|
-| **Ouvidor** | Comum, bando de 3 a 6 | **Um M agachado.** Tem 0,95 m, um pouco **mais alto que os heróis**. Corcunda, ombros largos, braços compridos que apoiam nos nós dos dedos, costelas sob a pele cinza-lívida. A cabeça pequena e sem olhos tem uma boca vertical de dentes de agulha. As **duas orelhas em leque** são de cartilagem rasgada, com veias claras que **ficam translúcidas contra a luz quente**. Veste um trapo com o brasão de Thessimor (a chave engolida por um peixe) | **Pulo-mordida** de 5 m, 14 de dano. Telegrafia de 30 q: as orelhas se abrem (a silhueta passa de M a T), a boca acende magenta e soa um estalo de língua no fim. Ouve passos (Carga = barulho) | 40 |
-| **Bocalume** | Comum, suporte | **Uma vírgula com lanterna.** Lesma de 2,4 m com **placas de quitina sobrepostas** nas costas, boca circular com anéis de dentes e um apêndice que segura uma **lanterna de guilda roubada**: a isca é **quente**, a mentira da luz amiga | **Cuspe de esporos** em cone de 5 m: 10 de dano e chão esporado. Telegrafia de 36 q: o corpo se contrai a 0,7, **a isca apaga** e a boca acende. Prepara o Fulgor para os jogadores | 90 |
-| **Pingente** | Comum, emboscada | **Uma estrela de 6 com ponta.** Casca de estalactite no teto. Ao cair, abre **6 patas de pedra** e mostra um crânio em cone | **Queda** de 30 de dano em 1,8 m. Telegrafia de 48 q: poeira cai num fio, um círculo magenta do tamanho real cresce no chão e um rangido sobe de tom. Fica 2 s preso de ponta-cabeça | 60, casca −50% até um golpe pesado |
-| **Roicorda** | Comum, praga e ladrão | **Uma cunha com rabo.** Rato sem pelo do tamanho de um cão, focinho longo, **dentes de roer laranja** (o ponto de cor) e cauda segmentada | Rói cordas, lanternas e o cabo da jaula; **rouba sacos** e foge. Mordida de 8. Telegrafia de 24 q: os dentes batem e acendem | 30 |
-| **Brotado** | Comum, lento | **Um guarda-chuva em pé.** Explorador morto tomado por fungo: a cabeça virou um **chapéu de cogumelo aberto**, com lamelas que brilham por baixo. Arrasta uma perna | **Nuvem de esporos** ao ser atingido. **Abraço** de 18 de dano. Telegrafia de 34 q: as lamelas acendem magenta. Explode num Fulgor se for aceso | 110 |
-| **Traça-de-Lume** | Comum, voa | **Um X de asas** de 1,2 m, olhos espelhados (o ponto de cor) | Caça **o herói com mais luz** (a vela do Escorador, o geodo carregado) e **apaga lanternas**. Mergulho de 12 de dano. Telegrafia de 28 q: para no ar e as asas tremem | 35 |
-| **Afundado** | Elite | **Um corcunda com picareta.** Tem 1,9 m. Explorador cinza, sem cor, com a **mochila fundida às costas** como uma corcunda de saque. Lanterna de capacete, picareta, capa com nome bordado | **Picaretada** em linha de 3 m, 40 de dano (telegrafia de 42 q: a lanterna passa a magenta e a picareta sobe). **Giro da mochila** de 3,5 m, empurrão de 4 m (54 q). Deixa rastro de chão afundado. **Ponto fraco:** as correias pelas costas | 420 |
-| **Chefe: a Isca-Mãe** | Chefe | Bocalume matriarca de **14 m**, enrolada numa colônia de fungos gigantes. A isca é **a lanterna dourada da primeira expedição da Guilda do Prumo**, perdida há 200 anos | Ver 8.4 | 4.800 |
+| **Ouvidor** (carniçal) | Comum, bando de 3 a 6 | **Um M agachado.** Carniçal de Thessimor: os súditos engolidos que viraram mortos-vivos cegos. Tem 1,0 m de pé, um palmo **mais alto que os heróis**. Corcunda, massa nos ombros, antebraços grossos com **garras de osso** que apoiam nos nós dos dedos, pele cinza-lívida esticada sobre costelas, mandíbula larga de dentes de agulha. Sem olhos: só as pálpebras fundidas. As **orelhas enormes de morcego** são rasgadas, com veias claras que **ficam translúcidas contra a luz quente**. Restos do tabardo de Thessimor (a chave engolida por um peixe) e um elo de corrente no tornozelo | **Pulo-mordida** de 5 m, 14 de dano. Telegrafia de 30 q: as orelhas se abrem (a silhueta passa de M a T), a boca se abre e acende magenta, e soa um estalo de língua no fim. Ouve passos (Carga = barulho) | 40 |
+| **Bocalume** (aranha-isca) | Comum, suporte | **Um oito com lanterna.** Aranha cega do tamanho de um javali (1,6 m de envergadura), abdômen inchado de **placas de quitina sobrepostas**, pernas grossas cobertas de cerdas e quelíceras curvas. Do abdômen sai um fio de teia com uma **lanterna de guilda roubada**, que ela balança sobre a cabeça: a isca é **quente**, a mentira da luz amiga | **Cuspe de teia esporada** em cone de 5 m: 10 de dano, lentidão e chão esporado. Telegrafia de 36 q: o abdômen se contrai a 0,7, **a isca apaga** e as quelíceras se abrem acesas. Prepara o Fulgor para os jogadores | 90 |
+| **Pingente** (morcego de pedra) | Comum, emboscada | **Uma estrela de asas.** Morcego gigante de 1,4 m de envergadura, que dorme no teto **enrolado nas próprias asas**, com crosta de calcário nas costas, e parece uma estalactite. Focinho de dentes para fora e orelhas em ponta | **Queda** de 30 de dano em 1,8 m. Telegrafia de 48 q: poeira cai num fio, um círculo magenta do tamanho real cresce no chão e um guincho sobe de tom. Fica 2 s atordoado de asas abertas. Depois voa, **apaga lanternas** e mergulha no herói com mais luz (12 de dano; telegrafia de 28 q: para no ar e as asas tremem) | 60, crosta −50% até um golpe pesado |
+| **Roicorda** | Comum, praga e ladrão | **Uma cunha com rabo.** Rato sem pelo do tamanho de um cão, pele rosada-cinza enrugada, focinho longo, **dentes de roer laranja** (o ponto de cor) e cauda segmentada | Rói cordas, lanternas e o cabo da jaula; **rouba sacos** e foge. Mordida de 8. Telegrafia de 24 q: os dentes batem e acendem | 30 |
+| **Brotado** (zumbi de fungo) | Comum, lento | **Um guarda-chuva em pé.** Explorador morto tomado por fungo, de 1,1 m, ombros caídos e braços pesados. A cabeça virou um **chapéu de cogumelo aberto**, com lamelas que brilham por baixo. Arrasta uma perna e a mochila podre | **Nuvem de esporos** ao ser atingido. **Abraço** de 18 de dano. Telegrafia de 34 q: as lamelas acendem magenta. Explode num Fulgor se for aceso | 110 |
+| **Cultista da Boca** | Comum, conjurador | **Um triângulo com dentes.** Humano vivo de Pendura que adora a Goela, de 0,95 m: manto de lona encerada cor de piche, cordas de oferenda cruzadas no peito, **máscara feita da mandíbula de um Ouvidor** com um único olho pintado (o ponto de cor) e um turíbulo de Fundo. Anda em pares, atrás dos carniçais | **Chamado da Boca:** poça de Fundo de 2 m sob um herói (telegrafia de 40 q: a máscara acende, ele ergue o turíbulo e a reza sobe de tom). **Levantar:** a cada 12 s, ergue um Ouvidor caído com 50% de vida (telegrafia de 54 q, interrompida pelo Clarão). Foge quando fica sozinho | 55 |
+| **Guarda Engolido** | Elite blindado | **Um bloco com escudo-torre.** Soldado da guarda de Thessimor, de 1,8 m, morto-vivo dentro de uma **armadura de placas completa**, enferrujada e incrustada de cracas de calcário. Elmo fechado em grade com uma **chama fria acesa por dentro** (o ponto de cor), escudo-torre com o brasão do reino, alabarda. Anda devagar, plantando cada passo | **Muralha:** avança com o escudo e é imune pela frente. **Alabardada** em arco de 3,5 m, 36 de dano (telegrafia de 44 q: a alabarda recua, a chama do elmo vira magenta e as placas rangem). **Pancada de escudo** com empurrão de 3 m (telegrafia de 40 q). **Ponto fraco:** as correias das costas; Estalo na armadura molhada (ou o Veio de Ferrugem) derruba a guarda dele por 3 s | 460 |
+| **Afundado** | Elite (e guardião da Pilha) | **Um corcunda com picareta.** Tem 1,9 m. Explorador morto-vivo, cinza e sem cor, com a **mochila fundida às costas** como uma corcunda de saque. Lanterna de capacete, picareta, capa com nome bordado. Na Pilha, usa o rosto e o figurino do seu herói | **Picaretada** em linha de 3 m, 40 de dano (telegrafia de 42 q: a lanterna passa a magenta e a picareta sobe). **Giro da mochila** de 3,5 m, empurrão de 4 m (54 q). Deixa rastro de chão afundado. **Ponto fraco:** as correias pelas costas | 420 |
+| **Chefe: a Isca-Mãe** | Chefe | Aranha-rainha cega de **12 m de envergadura**, enrolada num casulo de teia e fungos gigantes, com o abdômen coberto de filhotes. A isca, pendurada num fio grosso como corda de navio, é **a lanterna dourada da primeira expedição da Guilda do Prumo**, perdida há 200 anos | Ver 8.4 | 4.800 |
 
 ### 8.2 Andar 2: Thessimor Engolida
 
 | Inimigo | Papel | Aparência | Ataque e telegrafia | Vida |
 |---|---|---|---|---|
-| **Guarda de Gesso** | Comum pesado | **Um obelisco com lança.** Estátua de soldado de 2,1 m, gesso rachado com o vazio escuro por dentro, um **olho de vela** aceso na rachadura do elmo. Anda pose a pose, como estátua (6 poses por segundo, em degrau) | **Estocada** de 4 m, 28 de dano. Telegrafia de 36 q: recua a lança, a vela acende magenta e o gesso range | 160 |
-| **Sineiro Oco** | Comum, suporte | **Um sino sobre um manto.** Monge com um sino de bronze no lugar da cabeça e o badalo incandescente | **Dobre:** anel de som de 6 m, atordoa 0,8 s e **enfurece Ouvidores** em 15 m. Telegrafia de 40 q: o sino balança para trás e o badalo acende | 120 |
-| **Cofreiro Mudo** | Comum, guarda | **Um retângulo com disco.** Guarda fundido à porta do cofre que vigiava, com uma corrente com cadeado-mangual. O buraco da fechadura brilha | **Mangual** em arco de 3 m, 24 de dano (telegrafia de 34 q: a corrente gira 2 vezes). Imune pela frente | 150 |
-| **Escória** | Comum | **Uma gota pesada com braços.** Criatura de escória da Forja, que pinga metal e cuja boca brilha | **Respingo** que deixa o chão em brasa. Telegrafia de 30 q: incha e a boca acende | 80 |
-| **Enforcado de Raiz** | Comum, emboscada | **Um círculo com fio**, visto de cima. Corpo pendurado do teto por raízes, que desce em silêncio. Os olhos são o ponto de cor | **Laço:** puxa um herói 2 m para cima por 2 s (aliados cortam a raiz). Telegrafia de 44 q: a raiz estala e uma sombra magenta aparece no chão | 70 |
-| **Roicorda** e **Ouvidor de Brasão** | Comuns | Variantes do Andar 1. O Ouvidor de Brasão usa um elmo amassado e escudo de tábua | — | 40 / 70 |
-| **Cavaleiro Tombado** | Elite | Cavaleiro de gesso montado num cavalo de gesso partido ao meio, que se arrasta pelas patas da frente | **Carga em linha** de 10 m (telegrafia de 50 q: raspa o casco 3 vezes) | 520 |
+| **Soldado de Gesso** | Comum pesado | **Um obelisco com lança.** Estátua animada de soldado de 2,1 m, gesso rachado com o vazio escuro por dentro e um **olho de vela** aceso na rachadura do elmo. Anda pose a pose, como estátua (6 poses por segundo, em degrau) | **Estocada** de 4 m, 28 de dano. Telegrafia de 36 q: recua a lança, a vela acende magenta e o gesso range | 160 |
+| **Sineiro Oco** | Comum, suporte | **Um sino sobre um manto.** Monge morto-vivo com um sino de bronze no lugar da cabeça e o badalo incandescente | **Dobre:** anel de som de 6 m, atordoa 0,8 s e **enfurece Ouvidores** em 15 m. Telegrafia de 40 q: o sino balança para trás e o badalo acende | 120 |
+| **Cofreiro Mudo** | Comum, guarda | **Um retângulo com disco.** Guarda morto-vivo fundido à porta do cofre que vigiava, com uma corrente com cadeado-mangual. O buraco da fechadura brilha | **Mangual** em arco de 3 m, 24 de dano (telegrafia de 34 q: a corrente gira 2 vezes). Imune pela frente | 150 |
+| **Golem de Escória** | Comum | **Uma gota pesada com braços.** Criatura de escória da Forja, de 1,3 m, que pinga metal e tem a boca em brasa | **Respingo** que deixa o chão em brasa. Telegrafia de 30 q: incha e a boca acende | 80 |
+| **Enforcado** | Comum, emboscada | **Um círculo com fio**, visto de cima. Morto-vivo pendurado do teto por raízes, que desce em silêncio. Os olhos são o ponto de cor | **Laço:** puxa um herói 2 m para cima por 2 s (aliados cortam a raiz). Telegrafia de 44 q: a raiz estala e uma sombra magenta aparece no chão | 70 |
+| **Roicorda**, **Ouvidor de Brasão** e **Cultista da Boca** | Comuns | Variantes do Andar 1. O Ouvidor de Brasão usa um elmo amassado e um escudo de tábua | — | 40 / 70 / 55 |
+| **Cavaleiro Tombado** | Elite | Cavaleiro morto-vivo de armadura negra, montado num cavalo de gesso partido ao meio, que se arrasta pelas patas da frente. O elmo dele é o chapéu do Paladino | **Carga em linha** de 10 m (telegrafia de 50 q: raspa o casco 3 vezes) | 520 |
 | **Chefe: o Rei Pendurado** | Chefe | O último rei de Thessimor, de 8 m, fundido ao trono e às correntes, **de cabeça para baixo** sobre o Salão do Trono. A Coroa balança presa por um fio de ouro derretido | Ver 8.4 | 6.000 |
 
 ### 8.3 Andar 3: o Mar Calado
 
 | Inimigo | Papel | Aparência | Ataque e telegrafia | Vida |
 |---|---|---|---|---|
-| **Lavador** | Comum | **Uma meia-lua na água.** Figura curvada, meio submersa, com braços longos de lavadeira e cabelo de alga | **Puxão** para a água (estado molhado e 12 de dano). Telegrafia de 32 q: os braços saem da água e as unhas acendem | 60 |
+| **Lavadeira Afogada** | Comum | **Uma meia-lua na água.** Morta-viva curvada, meio submersa, com braços longos e cabelo de alga | **Puxão** para a água (estado molhado e 12 de dano). Telegrafia de 32 q: os braços saem da água e as unhas acendem | 60 |
 | **Lampreia de Cais** | Comum | **Um traço com boca.** Enguia de 4 m que salta de um lado do cais para o outro | **Salto** em linha de 6 m, 22 de dano. Telegrafia de 36 q: um anel de ondas magenta e a boca acesa sob a água | 70 |
-| **Remador sem Barco** | Comum | **Um remo em pé.** Remador de guilda esquelético que **anda sobre o reflexo** da água, com o remo como arma | **Remada** em arco de 3 m (telegrafia de 34 q) | 90 |
-| **Ouvidor do Lago** | Comum | Ouvidor de orelhas coladas, nadador | Pulo da água | 45 |
-| **Cantor Fundo** | Comum, estático | **Um coral de cabeças fundidas** que canta | Deixa o chão afundado em 4 m e puxa devagar. Telegrafia: as bocas acendem em sequência | 200 |
-| **Bocalume Gigante** | Elite | Bocalume de 6 m numa ilha, com 3 iscas | Cuspe triplo | 700 |
+| **Remador sem Barco** | Comum | **Um remo em pé.** Esqueleto de remador de guilda que **anda sobre o reflexo** da água, com o remo como arma | **Remada** em arco de 3 m (telegrafia de 34 q) | 90 |
+| **Ouvidor do Lago** | Comum | Carniçal de orelhas coladas à cabeça, nadador | Pulo da água | 45 |
+| **Coral de Afogados** | Comum, estático | **Um coral de cabeças fundidas** que canta | Deixa o chão afundado em 4 m e puxa devagar. Telegrafia: as bocas acendem em sequência | 200 |
+| **Aranha-Pescadora** | Elite | Bocalume de 6 m que vive numa ilha e pesca com 3 iscas | Cuspe triplo | 700 |
 | **Chefe: a Senhora das Âncoras** | Chefe | Figura de **20 m** feita das âncoras, correntes e cordas de todas as guildas perdidas. Ergue-se do lago e **puxa as cordas da Guilda do Prumo**: durante a luta, a rede de lanternas no horizonte pisca | Ver 8.4 | 7.500 |
 
 ### 8.4 Os chefes (um por andar)
 
-**A Isca-Mãe (Andar 1, cerca de 3 min).** A arena é uma clareira de poças com 4 colônias de fungo e uma cortina de goteira.
-- **Fase 1, a Luz Amiga:** a lanterna dourada atrai lentamente o herói que olhar para ela, com um puxão de 1,5 m/s. O grupo quebra o efeito apagando a isca com Cal ou passando o Prumo pelo puxado.
-- **Fase 2, Esporos:** ela cospe esporos em leque. O grupo responde com Fulgor contra ela (Brasa na nuvem).
-- **Fase 3, Mergulho:** ela se enterra e emerge sob as poças, com um círculo magenta de 60 q. A Corrente na poça onde ela vai emergir causa o dobro de dano.
-- **Final:** o Prumo lançado na isca a arranca. A lanterna da primeira expedição vira uma relíquia de 30 kg.
+**A Isca-Mãe (Andar 1, cerca de 3 min).** A arena é uma clareira de poças com 4 colônias de fungo, uma cortina de goteira e teia esticada entre as colônias.
+- **Fase 1, a Luz Amiga:** a lanterna dourada atrai lentamente o herói que olhar para ela, com um puxão de 1,5 m/s. O grupo quebra o efeito com o Clarão (Sal + Brasa) na isca ou passando o Prumo pelo puxado.
+- **Fase 2, Esporos:** ela cospe teia esporada em leque e solta filhotes. O grupo responde com Fulgor contra ela (Brasa na nuvem).
+- **Fase 3, Alçapão:** ela se enterra e emerge sob as poças, com um círculo magenta de 60 q. A Corrente na poça onde ela vai emergir causa o dobro de dano.
+- **Final:** o Prumo lançado na isca arrebenta o fio. A lanterna da primeira expedição vira uma relíquia de 30 kg.
 
 **O Rei Pendurado (Andar 2, cerca de 4 min).** É o chefe da v1, comprimido em três fases:
 - **Pêndulo:** dois jogadores giram os guinchos do mesmo lado para bater o rei na beirada (6 s vulnerável). Os Desbotados giram com força total.
@@ -789,7 +843,7 @@ O achatar e esticar sempre preserva o volume. Achata no pouso e no contato pesad
 **A Senhora das Âncoras (Andar 3, cerca de 4 min).**
 - **Cabo de guerra:** ela puxa a jaula da guilda pelo cabo, e dois jogadores no guincho seguram.
 - **Correntes molhadas:** Corrente nas correntes que saem do lago (envisgar antes quem está na água).
-- **Âncoras:** ela arremessa âncoras com marca magenta de 70 q. Quem cortar 4 cordas com o Gancho a desmonta.
+- **Âncoras:** ela arremessa âncoras com marca magenta de 70 q. Quem cortar suas 4 cordas-mestras (com flechas carregadas, golpes pesados ou o Mangual do Prumo) a desmonta.
 
 **O Fundo (Andar 4, final da campanha).** **A Língua**, chefe e lugar ao mesmo tempo, fica para depois da fatia vertical.
 
@@ -841,8 +895,8 @@ O achatar e esticar sempre preserva o volume. Achata no pouso e no contato pesad
 | Ação | Tecla |
 |---|---|
 | Mover / mirar | W A S D / mouse |
-| Ataque e combo (segurar carrega na Cristaleira e no golpe 3 do Escorador) | Botão esquerdo |
-| Habilidade 1 / 2 / especial | Botão direito / Q / R |
+| Ataque e combo (segurar carrega na Arqueira e na Maga) | Botão esquerdo |
+| Habilidade 1 / 2 / especial (o Cavaleiro bloqueia segurando a Habilidade 1) | Botão direito / Q / R |
 | Esquiva | Espaço |
 | Interagir, pegar, segurar máquina, reviver, repintar, acender âncora | E (segurar) |
 | Lance (para o aliado mais perto da mira) | F durante o golpe |
@@ -884,15 +938,15 @@ O achatar e esticar sempre preserva o volume. Achata no pouso e no contato pesad
 |---|---|---|---|
 | **Luz-chave fria de cima** | `#9FB4D0`, entra pelos rasgos do teto e pela boca da Goela | Direcional com sombra suave | Direcional sem sombra; luz zenital pintada no material |
 | **Poças de luz quente** | Lanternas e postes da guilda, âncoras acesas, a jaula | Uma `OmniLight3D` por poste próximo (até 40), sombra nas 2 mais perto | Poças pintadas no chão em 3 degraus de pincel, por uniformes globais (`lq0` a `lq9`, como na v2) |
-| **Luz própria dos heróis** | A vela do Escorador ilumina o rosto e 3 m; o geodo da Cristaleira 5 m (âmbar, ciano na carga); o turíbulo da Coveira balança a luz; a lanterna de cinto do Gancheiro | 4 luzes de herói com sombra | 4 omnis sem sombra, só perto da ação |
+| **Luz própria dos heróis** | A lanterna de cinto de cada herói ilumina o próprio rosto e 2 m em volta; o cristal do cajado da Maga, 5 m (âmbar, ciano na carga); a lanterna-relicário do Clérigo, 4 m, que balança com a maça e se ergue na Bênção; a Lâmina Acesa do Cavaleiro; a ponta de resina das flechas da Arqueira, fraca | 4 luzes de herói com sombra | 4 omnis sem sombra, só perto da ação |
 | **Luz de borda na cor do jogador** | Contorno de luz de 1 a 2 px na cor do jogador, mais forte no escuro | Shader | Shader (igual) |
-| **Luz dos efeitos** | A Corrente acende a caverna em azul por 0,4 s; o Fulgor em branco-dourado; a Cal Acesa em branco; o Piche em laranja | Luz real de curta duração | Até 3 ao mesmo tempo, e as mais fracas cedem |
+| **Luz dos efeitos** | A Corrente acende a caverna em azul por 0,4 s; o Fulgor em branco-dourado; o Clarão e a Bênção em branco-quente; o Piche em laranja | Luz real de curta duração | Até 3 ao mesmo tempo, e as mais fracas cedem |
 | **Fungos bioluminescentes** | Ciano dessaturado (até 56%), pulsam devagar (de 3 a 5 s), acendem em onda na Expira | Emissão + luz rebatida (SDFGI) | Emissão + poça pintada |
 | **Raios de luz (god rays)** | Atravessam as cortinas de goteira e a Coluna do Meio-Dia | Névoa volumétrica (`FogVolume`) | Cartões aditivos desenhados, com poeira em partículas de CPU |
 | **Glow** | Controlado: limiar alto, só em emissivos, nunca nos heróis | Glow do `Environment` | Desligado; halo pintado no cartão |
 
 **Regras de luz:**
-- **Quente é gente, frio é abismo.** Toda luz carregada pela guilda é quente; o mundo de baixo é frio.
+- **Quente é gente, frio é abismo.** Toda luz carregada pela guilda é quente; o mundo de baixo é frio. A chama fria no elmo do Guarda Engolido é a exceção que assusta.
 - **O magenta nunca ilumina o cenário.** Ele só aparece em telegrafia e em reação que fere.
 - **O herói tem valor mínimo de 35%** mesmo com a luz real desligada.
 
@@ -913,19 +967,20 @@ O achatar e esticar sempre preserva o volume. Achata no pouso e no contato pesad
 - **Chão:** lajes com desgaste nas bordas e no centro das trilhas, sujeira acumulada nos cantos, raízes cruzando, cascalho solto que **pula no impacto**, poças com borda de lodo e reflexo.
 - **Fungos:** lamelas visíveis por baixo, véu e anel na haste, escamas no chapéu, esporos saindo das lamelas na Expira.
 - **Postes da guilda:** madeira com placa de cobre da guilda, corda enrolada, lanterna de ferro com vidro sujo e mariposas pequenas.
+- **Teias:** fios de teia entre colônias e postes, que brilham na luz de borda e vibram quando algo encosta (mostram que há Bocalumes por perto).
 
 ### 10.3 Nada fica parado em cena
 
 | Elemento | Movimento |
 |---|---|
-| Heróis | Respiração, microgestos, piscadas, olhar que segue inimigos, adereços em mola, rabo de corda arrastando, chama da vela |
-| Inimigos | Respiram: orelhas do Ouvidor que tremem, placas do Bocalume que pulsam, sino do Sineiro balançando, gesso soltando pó |
+| Heróis | Respiração, microgestos, piscadas, olhar que segue inimigos, adereços em mola (crista, capa, ponta do chapéu, trança, barba, lanterna-relicário), chama da lanterna de cinto |
+| Inimigos | Respiram: orelhas do Ouvidor que tremem, abdômen do Bocalume que pulsa e isca que balança, asas do Pingente que se ajeitam no teto, turíbulo do Cultista que fumega, chama fria do Guarda Engolido que tremula, sino do Sineiro balançando, gesso soltando pó |
 | Fungos | Pulsam (de 3 a 5 s), abrem e fecham com a Respiração, soltam esporos |
 | Água | Cascatas correndo (rolagem de UV com 3 camadas), goteiras com respingos e anéis nas poças, regos com fluxo |
 | Lanternas | A chama treme a 6 a 9 Hz, a lanterna balança com o vento da Respiração e **com o choque dos golpes próximos** |
 | Névoa | 3 lâminas que sobem na Expira e se desmancham na Inspira; névoa saindo do Poço |
 | Partículas | Esporos flutuando, poeira na Coluna, pó caindo do teto com golpes pesados, mariposas nas lanternas |
-| Corda e véu | Vento na corda da jaula, nos fios de lanterna, no véu da Coveira e nos estandartes |
+| Corda, teia e pano | Vento na corda da jaula, nos fios de lanterna, nas teias, nas capas e nos estandartes |
 
 ### 10.4 O mundo reage ao golpe (juice no cenário)
 
@@ -936,7 +991,8 @@ O achatar e esticar sempre preserva o volume. Achata no pouso e no contato pesad
 | Pisar ou cair em poça | Respingo em coroa de 6 a 10 gotas, anel que se espalha, o herói fica molhado (escurece 10%) |
 | Aterrissar | Pó sobe em anel achatado, proporcional à altura |
 | Corrente na poça | A água acende, os fungos próximos piscam, as gotas no ar viram faíscas por 4 q |
-| Corda sob tensão (guincho, gancho, jaula) | Vibra em onda que corre pela corda e estala lateralmente (verlet de 16 pontos, catenária real, como na v2) |
+| Corda sob tensão (guincho, flecha de corda, jaula) | Vibra em onda que corre pela corda e estala lateralmente (verlet de 16 pontos, catenária real, como na v2) |
+| Flecha que erra | Crava na rocha ou no fungo e fica vibrando 12 q; no fungo, solta esporos |
 | Reação grande | Lanternas de toda a tela tremem; o teto solta cascalho em áreas marcadas |
 | Âncora acesa | A luz corre pela corda lanterna a lanterna, e os fungos em volta respondem com brilho |
 
@@ -954,15 +1010,18 @@ O achatar e esticar sempre preserva o volume. Achata no pouso e no contato pesad
 **Camadas de cada efeito:**
 1. **Núcleo:** a forma principal (raio, onda, clarão);
 2. **Corpo:** a massa ao redor (nuvem, poça, chama);
-3. **Partículas secundárias:** faíscas, gotas, lascas, esporos;
-4. **Rastros:** smear da arma, rastro das faíscas;
+3. **Partículas secundárias:** faíscas, gotas, lascas, esporos, cristais de sal;
+4. **Rastros:** smear da arma, rastro das faíscas e das flechas;
 5. **Luz que ilumina o entorno** ([PC] luz real; [iPhone] poça pintada);
 6. **[PC] Distorção:** onda de calor no Piche e anel de choque no finalizador.
 
 **Exemplos:**
 - **Corrente:** linhas elétricas desenhadas em 3 passadas (beirada escura, corpo ciano, miolo claro) que correm pela poça em 6 q e ramificam; anel de vapor; gotas que viram faíscas; a caverna pisca em azul.
-- **Visgo:** gota âmbar translúcida com fios que esticam e estalam; o aliado envisgado ganha um **halo âmbar** que contorna a eletricidade (separa a heroína do perigo).
+- **Visgo:** gota âmbar translúcida com fios que esticam e estalam; o aliado envisgado ganha um **halo âmbar** que contorna a eletricidade (separa o aliado do perigo).
 - **Fulgor:** bolha de poeira que acende de dentro para fora em 3 anéis, com fagulhas douradas e fumaça fria residual.
+- **Lâmina Acesa:** chama laranja desenhada em 3 línguas que lambem a lâmina para trás no movimento, fagulhas que caem e um smear quente com beirada vermelho-escura.
+- **Bênção e Clarão:** anel de luz branco-quente com raios recortados do Sol-Prumo; cristais de sal que caem como neve curta e ficam brilhando no chão.
+- **Flechas:** rastro fino da cor da ponta (cinza, azul-cinza ou âmbar), penas que deixam 2 q de smear; a bexiga d'água estoura numa coroa de gotas.
 - **Smears:** leque de malha na cor da arma com beirada escura, de 4 a 8 q, curvado no arco do golpe.
 
 **Legibilidade:** o anel e a seta do jogador ficam por cima de todo efeito. Nenhum efeito do jogador usa magenta. O efeito nunca cobre o herói que o lançou por mais de 6 q.
@@ -982,9 +1041,9 @@ O achatar e esticar sempre preserva o volume. Achata no pouso e no contato pesad
 7. **De volta à Mesa:** as âncoras acesas aparecem como fios, e uma Pilha do Afundado aparece se o grupo tiver morrido.
 
 **Elenco e sistemas:**
-- **4 classes completas**, com os 3 golpes do combo, 2 habilidades, especial e recepção do Prumo. As fichas de timing e as tiras de poses da seção 7 são implementadas e medidas.
-- **Inimigos:** Ouvidor, Bocalume, Pingente, Roicorda, Brotado e Traça-de-Lume, mais o Afundado como elite e a Isca-Mãe como chefe.
-- **6 reações:** Fervura, Corrente, Fulgor, Âmbar, Cal Acesa e Floração.
+- **4 classes completas: Cavaleiro, Arqueira, Maga e Clérigo**, com os 3 golpes do combo, 2 habilidades, especial e recepção do Prumo. As fichas de timing e as tiras de poses da seção 7 são implementadas e medidas.
+- **Inimigos:** Ouvidor, Bocalume, Pingente, Roicorda, Brotado e Cultista da Boca, mais o Guarda Engolido e o Afundado como elites e a Isca-Mãe como chefe.
+- **6 reações:** Água Benta, Corrente, Fulgor, Âmbar, Clarão e Floração.
 - **Poder por corrida:** 12 Penduricalhos, 3 Graças (uma por Padroeiro) e 3 Veios (Cobre, Esporada, Resina Doce).
 
 **Metas de aprovação:**
@@ -992,12 +1051,14 @@ O achatar e esticar sempre preserva o volume. Achata no pouso e no contato pesad
 - **Juice:** cada evento da tabela 7.3 e da tabela 10.4 aparece num clipe de teste.
 - **Nada parado:** numa captura de 10 s de idle, todos os elementos da tabela 10.3 se movem.
 - **Luz:** a captura com luz real desligada mantém os heróis com valor mínimo de 35%; a diferença Forward+ contra Compatibility fica abaixo de 6/255 (a v2 mediu 4,8 **[medido]**).
-- **Legibilidade:** silhueta preta dos 4 heróis na câmera de jogo distinta (T, estrela com colher, meia-lua com pêndulo, girino com âncora). A v2 falhou com 2 de 4.
+- **Legibilidade:** silhueta preta dos 4 heróis na câmera de jogo distinta (D com crista, arco atravessado com leque, vírgula com estrela, haltere). A v2 falhou com 2 de 4.
+- **Personagens:** folha de deformação sem quebra nem interseção; close de rosto e busto na luz da caverna comparado com a versão anterior; cada herói com as 4 cores de jogador, e uma dupla da mesma classe, continua estiloso e distinguível; reconhecimento do arquétipo em 1 s por 5 pessoas sem explicação.
+- **Inimigos:** cada inimigo é nomeado pelo tipo ("carniçal", "aranha", "morcego", "cultista", "cavaleiro morto-vivo") por 5 pessoas que veem só a folha de modelo em cinza.
 - **Portões de imagem:** cinza, borrão, miniatura 320 × 180, deuteranopia e protanopia (agora com o padrão de pano), e estresse com 4 heróis, 20 inimigos e 6 efeitos.
 - **PC:** 60 q por segundo em 1080p, com 2 jogadores locais e 2 online ao mesmo tempo.
 - **iPhone:** abre no Safari, roda a 30 q por segundo com 1 jogador e ajudante, download de até 40 MB, e volta da perda de contexto WebGL no último Patamar sem perder a Carga.
 - **Geração:** 500 sementes sem andar impossível (portão de conectividade), menos de 10% de caminhos com trecho repetido e geração em menos de 60 ms.
-- **Teste com pessoas:** 5 duplas sem instrução. Pelo menos 3 descobrem o Visgo isolante sozinhas, pelo menos 3 em 5 escolhem lastrar no Içamento pelo menos uma vez, e ninguém abandona durante o Içamento.
+- **Teste com pessoas:** 5 duplas sem instrução. Pelo menos 3 descobrem o Visgo isolante sozinhas (a flecha de resina na Maga), pelo menos 3 em 5 escolhem lastrar no Içamento pelo menos uma vez, e ninguém abandona durante o Içamento.
 
 ---
 
@@ -1008,11 +1069,14 @@ O achatar e esticar sempre preserva o volume. Achata no pouso e no contato pesad
 | **Os trechos se repetem e o andar parece pequeno** | 12 a 16 trechos por andar é pouco para dezenas de corridas | Tupla conjunta anti-repetição, 4 estados e 3 telões por trecho, eventos e Veios que mudam a química. Medir a repetição percebida com uma folha de contato a cada novo kit |
 | **O "mundo aberto" se perder no roguelite** | Grafo de salas tende a parecer corredor | Bordas abertas com vista para os trechos vizinhos, rotas paralelas, espinha com marcos fixos no horizonte e a rede de lanternas persistente |
 | **O Içamento ficar repetitivo** | É o fim de toda corrida | Perseguição pela Carga, patamar intermediário com prêmio, decisões de lastrar, inimigos que roubam sacos e o horizonte que muda com a rede. Medir o abandono |
+| **Arquétipos clássicos parecerem genéricos** | Cavaleiro, arqueira, maga e clérigo existem em todo jogo | A originalidade está na estilização: proporção de 2,25 cabeças, rosto talhado, silhueta de cima, figurino com paleta própria, 3 ganchos com história por herói e detalhes de guilda do abismo. Folha de modelo revista ao lado de heróis de jogos do gênero, procurando o que só existe aqui |
+| **Acabamento voltar a parecer "boneco de peças"** | O pipeline antigo montava peças rígidas por osso | Malha contínua com pesos suaves, ossos de ajuste, blend shapes corretivas e folha de deformação como portão obrigatório (seção 6.2) |
+| **A cor do jogador apagar o figurino, ou o figurino apagar o jogador** | Cor forte no corpo inteiro deixava todos parecidos; sem cor, o co-op confunde | Acento de 5 a 8%, luz de borda, anel com forma e padrão de pano; teste com as 4 cores e com dupla da mesma classe |
 | **Animação de ataque cara** | 4 classes × 3 golpes × fichas precisas, mais inimigos com telegrafia viva | Fichas como dados (o Blender exporta marcadores de contato e janela; o Godot lê). Um pacote de impacto único para todo golpe. Medição automática de quadro de contato e deslize de pé |
 | **Hit-stop e câmera lenta em co-op** | Congelar a tela prejudica 3 para premiar 1 | Hit-stop local por entidade. Câmera lenta global só em morte de elite, finalizador da recepção e chefe |
 | **Muita luz e juice viram ruído** | Juice demais apaga a leitura | Hierarquia: o anel do jogador e a telegrafia magenta ficam sempre por cima; o tremor da câmera é reduzido a 60% em co-op; o glow só nos emissivos; portões de imagem em todo build |
-| **Silhuetas voltarem a virar discos** | Aconteceu na v2 com 2 de 4 heróis | Desenhar pela silhueta vista de cima primeiro; teste de silhueta preta como portão obrigatório |
-| **Inimigos "fofos" ou genéricos** | Aconteceu nos três conceitos | Massa, boca e postura; um ponto de cor; nada de olhos redondos brancos; folha de modelo revista em cinza |
+| **Silhuetas voltarem a virar discos** | Aconteceu na v2 com 2 de 4 heróis; o chapéu largo da Maga é o maior risco | Desenhar pela silhueta vista de cima primeiro (ponta torta do chapéu e cajado com cristal à frente); teste de silhueta preta como portão obrigatório |
+| **Inimigos "fofos", genéricos ou incompreensíveis** | Aconteceu nos três conceitos | Criaturas reconhecíveis (carniçal, aranha, morcego, cultista, morto-vivo blindado) com massa, boca e postura; um ponto de cor; nada de olhos redondos brancos; folha de modelo revista em cinza |
 | **iPhone: memória e perda de contexto** | iOS derruba abas pesadas | Trechos de até cerca de 35 nós (0,65 ms para instanciar **[medido]**), só 3 trechos carregados por vez, salvamento em todo Patamar e âncora |
 | **Escopo dos 4 andares e das 9 classes** | Muito conteúdo para uma equipe pequena | A fatia é 1 andar. O lançamento pode ser 3 andares e 6 classes; o Fundo e 3 classes podem vir depois |
 | **Nome** | A busca de 27/11/2026 não achou jogo, mas isso não é checagem de marca | Checagem formal antes de anúncio. Alternativa reserva: "Plumbline Guild" |
